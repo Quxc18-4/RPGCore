@@ -1,0 +1,81 @@
+classes:
+  commoner:
+    display-name: "&aDân Thường"
+    icon: IRON_HOE
+    description:
+      - "&7Bạn sinh ra là 1 người bình thường."
+      - "&7Hãy lựa chọn cho mình 1 con đường riêng."
+    max-health: 50.0
+    max-resource: 50.0
+    resource-type: STAMINA
+    regen-rate: 1.0 # Hồi 2 thể lực mỗi giây
+    enchanted: false
+
+  warrior:
+    display-name: "&cChiến Binh"
+    icon: IRON_SWORD
+    description:
+      - "&7Bậc thầy cận chiến."
+      - "&7Sử dụng thể lực để tấn công."
+    max-health: 150.0
+    max-resource: 100.0
+    resource-type: STAMINA
+    regen-rate: 2.0 # Hồi 2 thể lực mỗi giây
+    enchanted: false
+
+  mage:
+    display-name: "&bPháp Sư"
+    icon: STICK
+    description:
+      - "&7Điều khiển các nguyên tố."
+      - "&7Cần rất nhiều Mana."
+    max-health: 80.0
+    max-resource: 200.0
+    resource-type: MANA
+    regen-rate: 5.0 # Hồi 5 mana mỗi giây
+    enchanted: true # Gậy phát sáng
+
+  archer:
+    display-name: "&aCung Thủ"
+    icon: BOW
+    max-health: 100.0
+    max-resource: 100.0
+    resource-type: STAMINA
+    regen-rate: 3.0
+    enchanted: false
+
+  tanker:
+    display-name: "&6Đỡ Đòn"
+    icon: SHIELD
+    max-health: 250.0
+    max-resource: 80.0
+    resource-type: STAMINA
+    regen-rate: 1.0
+    enchanted: false
+
+  reaper:
+    display-name: "&5Thần Chết"
+    icon: NETHERITE_HOE
+    max-health: 120.0
+    max-resource: 150.0
+    resource-type: MANA
+    regen-rate: 4.0
+    enchanted: true
+
+  tamer:
+    display-name: "&eThú Y"
+    icon: LEAD
+    max-health: 90.0
+    max-resource: 120.0
+    resource-type: MANA
+    regen-rate: 3.0
+    enchanted: false
+
+  assassin:
+    display-name: "&8Sát Thủ"
+    icon: SHEARS
+    max-health: 85.0
+    max-resource: 100.0
+    resource-type: STAMINA
+    regen-rate: 4.0
+    enchanted: false

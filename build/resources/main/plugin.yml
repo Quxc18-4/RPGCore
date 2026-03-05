@@ -1,0 +1,8 @@
+name: RPGCore
+version: '1.0-SNAPSHOT'
+main: vn.minecraft.rPGCore.RPGCore
+api-version: '1.21'
+commands:
+  class:
+    description: Chọn class cho nhân vật
+    usage: /class <commoner|mage|warrior>
