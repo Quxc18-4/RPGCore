@@ -5,6 +5,9 @@ api-version: '1.21'
 commands:
   class:
     description: Mở menu chọn lớp nhân vật
+  profile:
+    description: Xem thông tin chi tiết nhân vật và trang bị.
+    aliases: [ tt, info ]
   rpgadmin:
     description: Lệnh quản trị hệ thống RPG
     permission: rpgcore.admin
