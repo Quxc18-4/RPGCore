@@ -23,7 +23,7 @@ public class BossBarManager {
         BossBar healthBar = Bukkit.createBossBar(
                 formatHealthTitle(rpgPlayer),
                 BarColor.RED,
-                BarStyle.SOLID
+                BarStyle.SEGMENTED_10
         );
         healthBar.addPlayer(player);
         healthBars.put(uuid, healthBar);
@@ -32,7 +32,7 @@ public class BossBarManager {
         BossBar resourceBar = Bukkit.createBossBar(
                 formatResourceTitle(rpgPlayer),
                 resType.getColor(),
-                BarStyle.SOLID
+                BarStyle.SEGMENTED_10
         );
         resourceBar.addPlayer(player);
         resourceBars.put(uuid, resourceBar);

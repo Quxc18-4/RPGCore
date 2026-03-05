@@ -18,11 +18,13 @@ public final class RPGCore extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        // 1. Khởi tạo các hệ thống
-        playerManager = new PlayerManager();
-        bossBarManager = new BossBarManager();
+        // ... (khởi tạo ClassManager trước) ...
         ClassManager classManager = new ClassManager(this);
-        classManager.loadClasses(); // Đọc dữ liệu từ file classes.yml lên bộ nhớ
+        classManager.loadClasses();
+
+        // TRUYỀN `this` VÀ `classManager` VÀO
+        playerManager = new PlayerManager(this, classManager);
+        bossBarManager = new BossBarManager();
         ClassGUI classGUI = new ClassGUI();
 
         // 2. Đăng ký Listener
@@ -38,11 +40,21 @@ public final class RPGCore extends JavaPlugin {
         getCommand("class").setExecutor(new ClassCommand(classManager, classGUI));
 
         getLogger().info("RPGCore da duoc bat thanh cong!");
+
+        for (org.bukkit.entity.Player player : org.bukkit.Bukkit.getOnlinePlayers()) {
+            if (playerManager.getRPGPlayer(player.getUniqueId()) == null) {
+                vn.minecraft.rPGCore.player.RPGPlayer rpgPlayer = playerManager.loadPlayer(player);
+                bossBarManager.createBars(player, rpgPlayer);
+            }
+        }
     }
 
     @Override
     public void onDisable() {
-        // Có thể dọn dẹp các thứ ở đây nếu cần thiết
-        getLogger().info("RPGCore da tat.");
+        // LƯU TẤT CẢ NGƯỜI CHƠI TRƯỚC KHI SERVER TẮT ĐỂ KHÔNG MẤT DATA
+        if (playerManager != null) {
+            playerManager.saveAllPlayers();
+        }
+        getLogger().info("RPGCore da tat va luu du lieu an toan.");
     }
 }

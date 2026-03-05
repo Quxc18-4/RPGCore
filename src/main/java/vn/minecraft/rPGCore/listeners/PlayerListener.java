@@ -1,5 +1,8 @@
 package vn.minecraft.rPGCore.listeners;
 
+import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityRegainHealthEvent;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -26,14 +29,8 @@ public class PlayerListener implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-
-        // Lấy dữ liệu class "commoner" từ file yml đã được nạp
-        RPGClass defaultClass = classManager.getClassById("commoner");
-
-        // Chú ý: Cần truyền defaultClass vào constructor mới của RPGPlayer
-        RPGPlayer rpgPlayer = new RPGPlayer(player, defaultClass);
-        playerManager.addPlayer(player.getUniqueId(), rpgPlayer);
-
+        // Gọi hàm Load (Tự check xem là người cũ hay mới)
+        RPGPlayer rpgPlayer = playerManager.loadPlayer(player);
         bossBarManager.createBars(player, rpgPlayer);
     }
 
@@ -41,6 +38,64 @@ public class PlayerListener implements Listener {
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         bossBarManager.removeBars(player);
-        playerManager.removePlayer(player.getUniqueId());
+        // Gọi hàm Save (Ghi xuống file và xóa khỏi RAM)
+        playerManager.savePlayer(player.getUniqueId());
+    }
+
+    @EventHandler
+    public void onPlayerTakeDamage(EntityDamageEvent event) {
+        if (!(event.getEntity() instanceof Player)) return;
+        Player player = (Player) event.getEntity();
+        RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
+        if (rpgPlayer == null) return;
+
+        // 1. Kích hoạt giao tranh
+        rpgPlayer.setInCombat();
+
+        // 2. SCALE SÁT THƯƠNG MÔI TRƯỜNG & CHẾT ĐỐI
+        EntityDamageEvent.DamageCause cause = event.getCause();
+        double multiplier = rpgPlayer.getTotalMaxHealth() / 20.0;
+
+        if (cause == EntityDamageEvent.DamageCause.FALL ||
+                cause == EntityDamageEvent.DamageCause.LAVA ||
+                cause == EntityDamageEvent.DamageCause.DROWNING ||
+                cause == EntityDamageEvent.DamageCause.STARVATION ||
+                cause == EntityDamageEvent.DamageCause.SUFFOCATION ||
+                cause == EntityDamageEvent.DamageCause.FIRE ||
+                cause == EntityDamageEvent.DamageCause.FREEZE) {
+
+            event.setDamage(event.getDamage() * multiplier);
+        }
+
+        // Cập nhật BossBar sau 1 tick để lấy chỉ số máu mới nhất
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                bossBarManager.updateBars(player, rpgPlayer);
+            }
+        }.runTaskLater(vn.minecraft.rPGCore.RPGCore.getPlugin(vn.minecraft.rPGCore.RPGCore.class), 1L);
+    }
+
+    @EventHandler
+    public void onDealDamage(EntityDamageByEntityEvent event) {
+        if (event.getDamager() instanceof Player) {
+            RPGPlayer rpgPlayer = playerManager.getRPGPlayer(event.getDamager().getUniqueId());
+            if (rpgPlayer != null) {
+                // Gây sát thương cũng tính là vào giao tranh
+                rpgPlayer.setInCombat();
+            }
+        }
+    }
+
+    @EventHandler
+    public void onVanillaRegen(EntityRegainHealthEvent event) {
+        if (event.getEntity() instanceof Player) {
+            // Chặn tính năng ăn no tự hồi máu của Minecraft mặc định
+            // Để hệ thống tự chạy theo công thức RPG 1% - 3% của bạn
+            if (event.getRegainReason() == EntityRegainHealthEvent.RegainReason.SATIATED ||
+                    event.getRegainReason() == EntityRegainHealthEvent.RegainReason.REGEN) {
+                event.setCancelled(true);
+            }
+        }
     }
 }

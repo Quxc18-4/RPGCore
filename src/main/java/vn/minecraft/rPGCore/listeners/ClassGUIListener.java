@@ -69,7 +69,8 @@ public class ClassGUIListener implements Listener {
                 bossBarManager.updateBars(player, rpgPlayer);
 
                 // Thông báo, phát âm thanh level up và đóng GUI
-                player.sendMessage(ChatColor.GREEN + "Bạn đã chuyển sang Class: " + selectedClass.getDisplayName());
+                player.sendMessage(ChatColor.GREEN + "Bạn đã chuyển sang Class: " +
+                        ChatColor.translateAlternateColorCodes('&', selectedClass.getDisplayName()));
                 player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
                 player.closeInventory();
             }
