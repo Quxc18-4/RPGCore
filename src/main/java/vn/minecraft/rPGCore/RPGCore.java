@@ -3,6 +3,7 @@ package vn.minecraft.rPGCore;
 import org.bukkit.plugin.java.JavaPlugin;
 import vn.minecraft.rPGCore.classes.ClassManager;
 import vn.minecraft.rPGCore.commands.ClassCommand;
+import vn.minecraft.rPGCore.commands.RPGAdminCommand;
 import vn.minecraft.rPGCore.listeners.PlayerListener;
 import vn.minecraft.rPGCore.listeners.ClassGUIListener; // Thêm import này
 import vn.minecraft.rPGCore.player.PlayerManager;
@@ -38,6 +39,7 @@ public final class RPGCore extends JavaPlugin {
 
         // 4. Đăng ký lệnh
         getCommand("class").setExecutor(new ClassCommand(classManager, classGUI));
+        getCommand("rpgadmin").setExecutor(new RPGAdminCommand(playerManager));
 
         getLogger().info("RPGCore da duoc bat thanh cong!");
 

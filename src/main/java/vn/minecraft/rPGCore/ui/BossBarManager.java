@@ -49,7 +49,7 @@ public class BossBarManager {
 
         healthBar.setTitle(formatHealthTitle(rpgPlayer));
         // Đã đổi từ getBaseMaxHealth() sang getMaxHealth()
-        double hpProgress = rpgPlayer.getCurrentHealth() / rpgPlayer.getCurrentClass().getMaxHealth();
+        double hpProgress = rpgPlayer.getCurrentHealth() / rpgPlayer.getTotalMaxHealth();
         healthBar.setProgress(Math.max(0.0, Math.min(1.0, hpProgress)));
 
         resourceBar.setTitle(formatResourceTitle(rpgPlayer));
@@ -72,8 +72,8 @@ public class BossBarManager {
     }
 
     private String formatHealthTitle(RPGPlayer p) {
-        // Đã đổi từ getBaseMaxHealth() sang getMaxHealth()
-        return "§c❤ HP: " + (int)p.getCurrentHealth() + " / " + (int)p.getCurrentClass().getMaxHealth();
+        // ĐỔI: p.getCurrentClass().getMaxHealth() -> p.getTotalMaxHealth()
+        return "§c❤ HP: " + (int)p.getCurrentHealth() + " / " + (int)p.getTotalMaxHealth();
     }
 
     private String formatResourceTitle(RPGPlayer p) {

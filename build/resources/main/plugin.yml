@@ -4,5 +4,8 @@ main: vn.minecraft.rPGCore.RPGCore
 api-version: '1.21'
 commands:
   class:
-    description: Chọn class cho nhân vật
-    usage: /class <commoner|mage|warrior>
+    description: Mở menu chọn lớp nhân vật
+  rpgadmin:
+    description: Lệnh quản trị hệ thống RPG
+    permission: rpgcore.admin
+    usage: /rpgadmin <giveexp|levelup> <player> [amount]
