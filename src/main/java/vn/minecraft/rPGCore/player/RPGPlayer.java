@@ -6,16 +6,22 @@ import org.bukkit.entity.Player;
 import vn.minecraft.rPGCore.classes.RPGClass;
 
 public class RPGPlayer {
+    // HỆ THỐNG LEVEL
     private final Player bukkitPlayer;
     private RPGClass currentClass;
     private double currentResource;
     private double currentExp = 0; // Biến này sẽ lưu EXP lẻ
     private long lastCombatTime = 0;
 
+    // HỆ THỐNG ATTRIBUTE
+    private int unspentAttrPoints = 0; // Điểm tiềm năng chưa dùng
+    private final java.util.Map<String, Integer> attributes = new java.util.HashMap<>();
+
     public RPGPlayer(Player player, RPGClass defaultClass) {
         this.bukkitPlayer = player;
         this.currentClass = defaultClass;
         this.currentResource = defaultClass.getMaxResource();
+        initDefaultAttributes();
     }
 
     // --- CÁC HÀM GETTER ---
@@ -51,6 +57,7 @@ public class RPGPlayer {
             this.currentExp -= getRequiredExp();
             int newLevel = this.bukkitPlayer.getLevel() + 1;
             this.bukkitPlayer.setLevel(newLevel);
+            this.unspentAttrPoints += 3;
 
             // Cập nhật máu tối đa ngay khi lên cấp
             updateMaxStats();
@@ -108,11 +115,24 @@ public class RPGPlayer {
     }
 
     public double getTotalMaxHealth() {
-        return this.currentClass.getMaxHealth() + (this.bukkitPlayer.getLevel() * 50.0);
+        double baseHp = this.currentClass.getMaxHealth();
+        double levelBonus = this.bukkitPlayer.getLevel() * 50.0;
+
+        // Lấy điểm Thể lực (VIT) hiện có, mỗi điểm cộng thêm 20 Máu tối đa
+        double vitBonus = getAttribute("VIT") * 15.0;
+
+        return baseHp + levelBonus + vitBonus;
     }
 
     public double getTotalMaxResource() {
-        return this.currentClass.getMaxResource();
+        // Lấy Mana gốc của Class
+        double baseRes = this.currentClass.getMaxResource();
+
+        // Tính thêm Mana từ điểm INT (1 điểm INT = 2 Mana)
+        double intBonus = getAttribute("INT") * 2.0;
+
+        // Trả về tổng cộng
+        return baseRes + intBonus;
     }
 
     /**
@@ -135,5 +155,80 @@ public class RPGPlayer {
         // Thông báo cho người chơi
         this.bukkitPlayer.sendMessage("§c§l☠ BẠN ĐÃ TỬ VONG!");
         this.bukkitPlayer.sendMessage("§cHình phạt cấp độ > 20: Mất §e" + (int)lostAmount + " EXP §c(30% tiến độ).");
+    }
+
+    // Khởi tạo các chỉ số cơ bản
+    public void initDefaultAttributes() {
+        if (attributes.isEmpty()) {
+            attributes.put("STR", 0); // Sức mạnh
+            attributes.put("INT", 0); // Trí tuệ
+            attributes.put("VIT", 0); // Thể lực
+            attributes.put("AGI", 0); // Nhanh nhẹn
+            attributes.put("LUK", 0); // May mắn
+        }
+    }
+
+    public int getUnspentAttrPoints() { return unspentAttrPoints; }
+    public void setUnspentAttrPoints(int points) { this.unspentAttrPoints = points; }
+    public void addUnspentAttrPoints(int points) { this.unspentAttrPoints += points; }
+
+    public int getAttribute(String attr) {
+        return attributes.getOrDefault(attr.toUpperCase(), 0);
+    }
+
+    public void setAttribute(String attr, int value) {
+        attributes.put(attr.toUpperCase(), value);
+    }
+
+    // Hàm thực hiện việc cộng điểm từ UI/Command
+    public boolean upgradeAttribute(String attr) {
+        String key = attr.toUpperCase();
+        if (unspentAttrPoints > 0 && attributes.containsKey(key)) {
+            attributes.put(key, attributes.get(key) + 1);
+            unspentAttrPoints--;
+
+            // Nếu cộng VIT hoặc INT, phải cập nhật lại Max HP / Max Mana ngay lập tức
+            if (key.equals("VIT") || key.equals("INT")) {
+                updateMaxStats();
+            }
+            return true;
+        }
+        return false;
+    }
+
+    // Thêm hàm Reset vào RPGPlayer.java
+    public void resetAttributes() {
+        int totalSpent = 0;
+
+        // Tính tổng số điểm đã cộng
+        for (int value : attributes.values()) {
+            totalSpent += value;
+        }
+
+        if (totalSpent > 0) {
+            // Hoàn trả 80% (làm tròn xuống)
+            int refund = (int) (totalSpent * 0.8);
+
+            // Đưa tất cả về 0
+            for (String key : attributes.keySet()) {
+                attributes.put(key, 0);
+            }
+
+            // Cộng điểm hoàn trả vào điểm tiềm năng
+            this.unspentAttrPoints += refund;
+
+            // Bắt buộc phải cập nhật lại Máu và Mana ngay lập tức
+            updateMaxStats();
+
+            this.bukkitPlayer.sendMessage("§a§lTHÀNH CÔNG! §fĐã tẩy tủy chỉ số, hoàn trả §e" + refund + " điểm §f(80%).");
+            this.bukkitPlayer.playSound(this.bukkitPlayer.getLocation(), org.bukkit.Sound.BLOCK_ANVIL_USE, 1.0f, 1.0f);
+        } else {
+            this.bukkitPlayer.sendMessage("§cBạn chưa cộng điểm nào để có thể tẩy tủy!");
+        }
+    }
+
+    // Thêm hàm này để nạp EXP từ file save
+    public void setCurrentExp(double exp) {
+        this.currentExp = exp;
     }
 }

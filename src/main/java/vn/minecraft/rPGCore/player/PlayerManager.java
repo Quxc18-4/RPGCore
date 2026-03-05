@@ -42,23 +42,42 @@ public class PlayerManager {
     public RPGPlayer loadPlayer(Player player) {
         UUID uuid = player.getUniqueId();
         RPGClass defaultClass = classManager.getClassById("commoner");
+
+        // Khởi tạo player với class mặc định (đã tự động gọi initDefaultAttributes trong RPGPlayer)
         RPGPlayer rpgPlayer = new RPGPlayer(player, defaultClass);
 
         // Nếu đã có dữ liệu cũ trong file thì nạp lên
         if (config.contains(uuid.toString())) {
             String classId = config.getString(uuid + ".class");
             double savedResource = config.getDouble(uuid + ".resource");
+            double savedExp = config.getDouble(uuid + ".exp", 0.0); // Tải EXP lẻ
 
             RPGClass savedClass = classManager.getClassById(classId);
             if (savedClass != null) {
                 rpgPlayer.setClass(savedClass);
-                // Ghi đè lại mức năng lượng lúc vừa thoát game
                 rpgPlayer.setCurrentResource(savedResource);
             }
+
+            // Nạp lại EXP lẻ (Cần thêm hàm setCurrentExp trong RPGPlayer)
+            rpgPlayer.setCurrentExp(savedExp);
+
+            // Nạp dữ liệu Attribute (Chỉ số)
+            if (config.contains(uuid + ".attr")) {
+                rpgPlayer.setUnspentAttrPoints(config.getInt(uuid + ".attr.unspent", 0));
+                rpgPlayer.setAttribute("STR", config.getInt(uuid + ".attr.STR", 0));
+                rpgPlayer.setAttribute("INT", config.getInt(uuid + ".attr.INT", 0));
+                rpgPlayer.setAttribute("VIT", config.getInt(uuid + ".attr.VIT", 0));
+                rpgPlayer.setAttribute("AGI", config.getInt(uuid + ".attr.AGI", 0));
+                rpgPlayer.setAttribute("LUK", config.getInt(uuid + ".attr.LUK", 0));
+            }
         } else {
-            // Người chơi mới tinh, setup máu mạc định
+            // Người chơi mới tinh, setup class mặc định
             rpgPlayer.setClass(defaultClass);
         }
+
+        // QUAN TRỌNG: Cập nhật lại Máu/Mana tối đa sau khi đã nạp xong đồ đạc và điểm VIT/INT
+        rpgPlayer.updateMaxStats();
+        rpgPlayer.updateExpBar(); // Cập nhật lại thanh xanh lá của Minecraft
 
         activePlayers.put(uuid, rpgPlayer);
         return rpgPlayer;
@@ -68,9 +87,21 @@ public class PlayerManager {
     public void savePlayer(UUID uuid) {
         RPGPlayer rpgPlayer = activePlayers.get(uuid);
         if (rpgPlayer != null) {
+            // Lưu Class và Năng lượng
             config.set(uuid + ".class", rpgPlayer.getCurrentClass().getId());
             config.set(uuid + ".resource", rpgPlayer.getCurrentResource());
-            // (Máu sẽ được game tự lưu vào file world, không cần lưu tay)
+
+            // Lưu tiến trình EXP lẻ
+            config.set(uuid + ".exp", rpgPlayer.getCurrentExp());
+
+            // Lưu dữ liệu Attribute
+            config.set(uuid + ".attr.unspent", rpgPlayer.getUnspentAttrPoints());
+            config.set(uuid + ".attr.STR", rpgPlayer.getAttribute("STR"));
+            config.set(uuid + ".attr.INT", rpgPlayer.getAttribute("INT"));
+            config.set(uuid + ".attr.VIT", rpgPlayer.getAttribute("VIT"));
+            config.set(uuid + ".attr.AGI", rpgPlayer.getAttribute("AGI"));
+            config.set(uuid + ".attr.LUK", rpgPlayer.getAttribute("LUK"));
+
             try { config.save(file); }
             catch (IOException e) { e.printStackTrace(); }
         }
@@ -80,7 +111,6 @@ public class PlayerManager {
     public RPGPlayer getRPGPlayer(UUID uuid) { return activePlayers.get(uuid); }
     public Set<UUID> getAllPlayerUUIDs() { return activePlayers.keySet(); }
 
-    // Lưu toàn bộ khi tắt server
     public void saveAllPlayers() {
         for (UUID uuid : activePlayers.keySet()) { savePlayer(uuid); }
     }

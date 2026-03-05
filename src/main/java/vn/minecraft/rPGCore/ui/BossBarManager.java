@@ -83,6 +83,6 @@ public class BossBarManager {
 
         // Đã đổi từ getBaseMaxResource() sang getMaxResource()
         return colorCode + icon + " " + type.getName() + ": "
-                + (int)p.getCurrentResource() + " / " + (int)p.getCurrentClass().getMaxResource();
+                + (int)p.getCurrentResource() + " / " + (int)p.getTotalMaxResource();
     }
 }
