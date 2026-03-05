@@ -15,3 +15,7 @@ commands:
   attr:
     description: Mở menu nâng cấp chỉ số nhân vật (STR, INT, VIT...)
     aliases: [ stats, chiso ]
+  skill:
+    description: Mở menu kỹ năng của class
+  binds:
+    description: Mở menu gán nút cho kỹ năng

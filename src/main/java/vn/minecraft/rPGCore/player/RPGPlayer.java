@@ -5,6 +5,9 @@ import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Player;
 import vn.minecraft.rPGCore.classes.RPGClass;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class RPGPlayer {
     // HỆ THỐNG LEVEL
     private final Player bukkitPlayer;
@@ -16,6 +19,13 @@ public class RPGPlayer {
     // HỆ THỐNG ATTRIBUTE
     private int unspentAttrPoints = 0; // Điểm tiềm năng chưa dùng
     private final java.util.Map<String, Integer> attributes = new java.util.HashMap<>();
+
+    // HỆ THỐNG KỸ NĂNG & COMBO
+    private int skillPoints = 0;
+    // Map lưu cấp độ kỹ năng: Key = Tên kỹ năng (VD: "archer_spread"), Value = Cấp độ (1, 2, 3...)
+    private final Map<String, Integer> skills = new HashMap<>();
+    // Map lưu Combo: Key = Tổ hợp phím (VD: "LLR"), Value = Tên kỹ năng
+    private final Map<String, String> binds = new HashMap<>();
 
     public RPGPlayer(Player player, RPGClass defaultClass) {
         this.bukkitPlayer = player;
@@ -58,6 +68,7 @@ public class RPGPlayer {
             int newLevel = this.bukkitPlayer.getLevel() + 1;
             this.bukkitPlayer.setLevel(newLevel);
             this.unspentAttrPoints += 3;
+            this.skillPoints += 1;
 
             // Cập nhật máu tối đa ngay khi lên cấp
             updateMaxStats();
@@ -231,4 +242,16 @@ public class RPGPlayer {
     public void setCurrentExp(double exp) {
         this.currentExp = exp;
     }
+
+    // --- GETTER / SETTER KỸ NĂNG ---
+    public int getSkillPoints() { return skillPoints; }
+    public void setSkillPoints(int sp) { this.skillPoints = sp; }
+
+    public int getSkillLevel(String skillId) { return skills.getOrDefault(skillId, 0); }
+    public void setSkillLevel(String skillId, int level) { skills.put(skillId, level); }
+
+    public String getSkillByCombo(String combo) { return binds.get(combo); }
+    public void bindCombo(String combo, String skillId) { binds.put(combo, skillId); }
+    public void unbindCombo(String combo) { binds.remove(combo); }
+    public Map<String, String> getBinds() { return binds; }
 }
