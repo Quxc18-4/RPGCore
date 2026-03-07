@@ -193,4 +193,9 @@ public class TripleShotSkill implements ISkill {
     public int getUpgradeCost(int currentLevel) {
         return 1; // Mặc định luôn tốn 1 SP
     }
+
+    @Override
+    public Map<String, Integer> getRequiredSkills() {
+        return Collections.singletonMap("archer_double_shot", 8); // Cần Nhị Tiễn lv 8
+    }
 }

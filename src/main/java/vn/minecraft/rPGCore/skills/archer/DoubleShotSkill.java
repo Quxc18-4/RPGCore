@@ -185,4 +185,9 @@ public class DoubleShotSkill implements ISkill {
     public int getUpgradeCost(int currentLevel) {
         return 1; // Mặc định luôn tốn 1 SP
     }
+
+    @Override
+    public Map<String, Integer> getRequiredSkills() {
+        return Collections.emptyMap(); // Không yêu cầu gì
+    }
 }

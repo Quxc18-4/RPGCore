@@ -170,6 +170,21 @@ public class ArcherListener implements Listener {
 
             double rawDamage = (playerDmg + weaponDmg - targetArmor) * dmgMultiplier;
             event.setDamage(Math.max(1.0, rawDamage));
+
+            // =====================================
+            // GỠ BỎ I-FRAME CHUẨN XÁC 100%
+            // =====================================
+            // Dùng Runnable delay 1 Tick để đảm bảo nó chạy SAU KHI lõi Minecraft gán I-Frame mặc định
+            new org.bukkit.scheduler.BukkitRunnable() {
+                @Override
+                public void run() {
+                    // Kiểm tra null/dead để tránh lỗi console nếu quái vật đã chết
+                    if (target != null && !target.isDead()) {
+                        target.setNoDamageTicks(0);
+                    }
+                }
+            }.runTaskLater(plugin, 1L); // 1L = 1 Tick delay
+
             return; // Đã là kỹ năng thì bỏ qua bước đánh thường
         }
 
@@ -187,6 +202,20 @@ public class ArcherListener implements Listener {
         }
 
         event.setDamage(finalDamage);
+
+        // =====================================
+        // GỠ BỎ I-FRAME CHUẨN XÁC 100%
+        // =====================================
+        // Dùng Runnable delay 1 Tick để đảm bảo nó chạy SAU KHI lõi Minecraft gán I-Frame mặc định
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                // Kiểm tra null/dead để tránh lỗi console nếu quái vật đã chết
+                if (target != null && !target.isDead()) {
+                    target.setNoDamageTicks(0);
+                }
+            }
+        }.runTaskLater(plugin, 1L); // 1L = 1 Tick delay
     }
 
     // =========================================

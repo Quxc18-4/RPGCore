@@ -5,6 +5,7 @@ import org.bukkit.entity.Player;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 
 import java.util.List;
+import java.util.Map;
 
 public interface ISkill {
     String getId();               // VD: "archer_spread"
@@ -23,4 +24,6 @@ public interface ISkill {
     boolean execute(Player player, RPGPlayer rpgPlayer, int level);
     // Thêm hàm này để mỗi kỹ năng tự quyết định giá SP khi nâng cấp
     int getUpgradeCost(int currentLevel);
+    // Trả về danh sách Kỹ năng yêu cầu. Key = ID kỹ năng, Value = Level tối thiểu
+    Map<String, Integer> getRequiredSkills();
 }

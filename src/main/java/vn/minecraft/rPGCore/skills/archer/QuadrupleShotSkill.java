@@ -164,4 +164,9 @@ public class QuadrupleShotSkill implements ISkill {
         // Nếu đang ở cấp 5 (chuẩn bị lên 6) thì tốn 2 SP, còn lại tốn 1 SP
         return (currentLevel == 5) ? 2 : 1;
     }
+
+    @Override
+    public Map<String, Integer> getRequiredSkills() {
+        return Collections.singletonMap("archer_triple_shot", 10); // Cần Tam Tiễn lv 10
+    }
 }

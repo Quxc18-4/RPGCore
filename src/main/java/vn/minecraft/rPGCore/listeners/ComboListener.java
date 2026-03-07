@@ -54,6 +54,12 @@ public class ComboListener implements Listener {
 
         if (!isValidWeapon) return;
 
+        // KHÓA COMBO NẾU ĐANG NIỆM CHÚ (Liên Hoàn Tên)
+        if (player.hasMetadata("Is_Casting")) {
+            // Không cho phép bấm nút lưu vào Combo
+            return;
+        }
+
         String click = (action.name().contains("LEFT")) ? "L" : "R";
         UUID uuid = player.getUniqueId();
         String current = currentCombos.getOrDefault(uuid, "");

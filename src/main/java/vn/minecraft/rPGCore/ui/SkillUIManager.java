@@ -80,22 +80,50 @@ public class SkillUIManager implements Listener {
                 status = (boundCombo != null) ? "§aĐã gán: §l" + boundCombo : "§cChưa gán phím";
             }
 
+            // 1. KIỂM TRA ĐIỀU KIỆN MỞ KHÓA (SKILL TREE)
+            boolean meetsRequirements = true;
+            List<String> reqLore = new ArrayList<>();
+            Map<String, Integer> reqs = skill.getRequiredSkills();
+
+            if (reqs != null && !reqs.isEmpty()) {
+                reqLore.add("§8-----------------");
+                for (Map.Entry<String, Integer> req : reqs.entrySet()) {
+                    int pLevel = rpgPlayer.getSkillData().getSkillLevel(req.getKey());
+                    ISkill reqSkill = skillManager.getSkill(req.getKey());
+                    String reqName = (reqSkill != null) ? reqSkill.getName() : req.getKey();
+
+                    if (pLevel < req.getValue()) {
+                        meetsRequirements = false;
+                        reqLore.add("§c✖ Yêu cầu: " + reqName + " (Lv " + req.getValue() + ")");
+                    } else {
+                        reqLore.add("§a✔ Đạt yêu cầu: " + reqName);
+                    }
+                }
+            }
+
+            // 2. VẼ UI DỰA TRÊN TRẠNG THÁI
             if (targetComboToBind != null) {
                 inv.setItem(PANE_SLOTS[i], createItem(Material.YELLOW_STAINED_GLASS_PANE, "§e§lCLICK ĐỂ CHỌN", "§7Gán vào nút: §b" + targetComboToBind));
             } else {
-                // UI MỚI: Tách biệt hiển thị Max Level và Chưa Max Level
                 if (skillLevel >= skill.getMaxLevel()) {
-                    inv.setItem(PANE_SLOTS[i], createItem(paneMat, status,
-                            "§6§l✦ ĐÃ THÀNH THẠO ✦", // Không hiện SP, không hiện nút nâng cấp
-                            "",
-                            "§f[Chuột Phải] §bGán phím"));
+                    inv.setItem(PANE_SLOTS[i], createItem(paneMat, status, "§6§l✦ ĐÃ THÀNH THẠO ✦", "", "§f[Chuột Phải] §bGán phím"));
+                } else if (!meetsRequirements && skillLevel == 0) {
+                    // NẾU CHƯA ĐẠT YÊU CẦU: Khóa nâng cấp và hiện dòng chữ đỏ
+                    List<String> lockedLore = new ArrayList<>();
+                    lockedLore.add("§c§lCHƯA ĐỦ ĐIỀU KIỆN MỞ KHÓA!");
+                    lockedLore.addAll(reqLore);
+                    inv.setItem(PANE_SLOTS[i], createItem(Material.BARRIER, status, lockedLore.toArray(new String[0])));
                 } else {
-                    // Gọi hàm getUpgradeCost() thay vì check tên skill
                     int upgradeCost = skill.getUpgradeCost(skillLevel);
-                    inv.setItem(PANE_SLOTS[i], createItem(paneMat, status,
-                            "§eĐiểm SP hiện có: " + sp,
-                            "§cTiêu hao: " + upgradeCost + " SP", "",
-                            "§f[Chuột Trái] §aNâng cấp", "§f[Chuột Phải] §bGán phím"));
+                    List<String> upgLore = new ArrayList<>();
+                    upgLore.add("§eĐiểm SP hiện có: " + sp);
+                    upgLore.add("§cTiêu hao: " + upgradeCost + " SP");
+                    upgLore.addAll(reqLore); // Hiện list yêu cầu (Màu xanh) cho đẹp
+                    upgLore.add("");
+                    upgLore.add("§f[Chuột Trái] §aNâng cấp");
+                    upgLore.add("§f[Chuột Phải] §bGán phím");
+
+                    inv.setItem(PANE_SLOTS[i], createItem(paneMat, status, upgLore.toArray(new String[0])));
                 }
             }
         }
@@ -107,7 +135,6 @@ public class SkillUIManager implements Listener {
     }
 
     public void openBindsGUI(Player player, String targetSkillToBind) {
-        // ... (Phần BindsGUI giữ nguyên không thay đổi) ...
         RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
         if (rpgPlayer == null) return;
 
@@ -181,11 +208,24 @@ public class SkillUIManager implements Listener {
                         ISkill skill = availableSkills.get(skillIndex);
                         int currentLevel = rpgPlayer.getSkillData().getSkillLevel(skillId);
 
-                        // Gọi hàm lấy Cost thay vì kiểm tra If
                         int upgradeCost = skill.getUpgradeCost(currentLevel);
+
+                        // Lấy yêu cầu để check lại lần nữa khi click
+                        boolean canUpgrade = true;
+                        if (skill.getRequiredSkills() != null) {
+                            for (Map.Entry<String, Integer> req : skill.getRequiredSkills().entrySet()) {
+                                if (rpgPlayer.getSkillData().getSkillLevel(req.getKey()) < req.getValue()) {
+                                    canUpgrade = false;
+                                    break;
+                                }
+                            }
+                        }
 
                         if (currentLevel >= skill.getMaxLevel()) {
                             player.sendMessage("§cKỹ năng này đã đạt cấp độ tối đa!");
+                        } else if (!canUpgrade && currentLevel == 0) {
+                            player.sendMessage("§cBạn chưa đạt yêu cầu của Cây Kỹ Năng để mở khóa chiêu này!");
+                            player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_VILLAGER_NO, 1f, 1f);
                         } else if (rpgPlayer.getSkillData().getSkillPoints() >= upgradeCost) {
                             rpgPlayer.getSkillData().setSkillLevel(skillId, currentLevel + 1);
                             rpgPlayer.getSkillData().setSkillPoints(rpgPlayer.getSkillData().getSkillPoints() - upgradeCost);
