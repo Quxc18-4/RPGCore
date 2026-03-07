@@ -19,3 +19,9 @@ commands:
     description: Mở menu kỹ năng của class
   binds:
     description: Mở menu gán nút cho kỹ năng
+  rpgclassadmin:
+    description: Lệnh quản lý class cho Admin
+    permission: rpgcore.admin
+  arrow:
+    description: Lấy danh sách các mũi tên custom
+    permission: rpgcore.admin

@@ -7,13 +7,11 @@ import vn.minecraft.rPGCore.listeners.ArcherListener;
 import vn.minecraft.rPGCore.listeners.ComboListener;
 import vn.minecraft.rPGCore.listeners.PlayerListener;
 import vn.minecraft.rPGCore.listeners.ClassGUIListener; // Thêm import này
+import vn.minecraft.rPGCore.managers.ArrowRecipeManager;
 import vn.minecraft.rPGCore.player.PlayerManager;
 import vn.minecraft.rPGCore.skills.SkillManager;
-import vn.minecraft.rPGCore.ui.AttrGUI;
-import vn.minecraft.rPGCore.ui.BossBarManager;
+import vn.minecraft.rPGCore.ui.*;
 import vn.minecraft.rPGCore.player.tasks.RegenTask;
-import vn.minecraft.rPGCore.ui.ClassGUI;
-import vn.minecraft.rPGCore.ui.SkillUIManager;
 
 
 public final class RPGCore extends JavaPlugin {
@@ -35,13 +33,20 @@ public final class RPGCore extends JavaPlugin {
         SkillManager skillManager = new SkillManager(this);
         SkillUIManager skillUI = new SkillUIManager(playerManager, skillManager);
 
+        // ==========================================
+        // KHỞI TẠO HỆ THỐNG CHẾ TẠO MŨI TÊN (MỚI)
+        // ==========================================
+        ArrowRecipeManager arrowRecipeManager = new ArrowRecipeManager(this);
+        ArrowCraftingUI arrowCraftingUI = new ArrowCraftingUI(playerManager, arrowRecipeManager); // <--- Truyền thêm arrowRecipeManager vào đây
+        AdminArrowCraftingUI adminArrowCraftingUI = new AdminArrowCraftingUI(arrowRecipeManager);
+
 
         // 2. Đăng ký Listener
         getServer().getPluginManager().registerEvents(new PlayerListener(playerManager, bossBarManager, classManager), this);
 
         // THÊM DÒNG NÀY: Đăng ký sự kiện click chuột trong GUI Chọn Class, và các thứ liên quan tới class
         getServer().getPluginManager().registerEvents(new ClassGUIListener(playerManager, bossBarManager, classManager), this);
-        getServer().getPluginManager().registerEvents(new ArcherListener(this, playerManager), this);
+        getServer().getPluginManager().registerEvents(new ArcherListener(this, playerManager, arrowCraftingUI), this);
 
         //Đăng ký sự kiện cho attribute point
         getServer().getPluginManager().registerEvents(attrGUI, this);
@@ -49,6 +54,12 @@ public final class RPGCore extends JavaPlugin {
         //Đăng ký sự kiện combo listener và lệnh /skill /bind
         getServer().getPluginManager().registerEvents(new ComboListener(this, playerManager, skillManager), this);
         getServer().getPluginManager().registerEvents(skillUI, this);
+
+        // ==========================================
+        // ĐĂNG KÝ LISTENER CHO GIAO DIỆN CHẾ TẠO (MỚI)
+        // ==========================================
+        getServer().getPluginManager().registerEvents(arrowCraftingUI, this);
+        getServer().getPluginManager().registerEvents(adminArrowCraftingUI, this);
 
         // 3. Chạy Task sau 0 ticks, lặp lại mỗi 20 ticks (1 giây)
         new RegenTask(playerManager, bossBarManager).runTaskTimer(this, 0L, 20L);
@@ -60,6 +71,8 @@ public final class RPGCore extends JavaPlugin {
         getCommand("attr").setExecutor(new AttrCommand(attrGUI));
         getCommand("skill").setExecutor(new SkillCommand(skillUI));
         getCommand("binds").setExecutor(new BindsCommand(skillUI));
+        getCommand("rpgclassadmin").setExecutor(new RPGClassAdminCommand(adminArrowCraftingUI));
+        getCommand("arrow").setExecutor(new ArrowCommand(arrowRecipeManager));
 
         getLogger().info("RPGCore da duoc bat thanh cong!");
 
