@@ -20,6 +20,7 @@ public class SkillManager {
         registerSkill(new QuadrupleShotSkill(plugin));
         registerSkill(new RapidFireSkill(plugin));
         registerSkill(new ArrowRainSkill(plugin));
+        registerSkill(new HeavyBlowShootSkill(plugin));
     }
 
     public void registerSkill(ISkill skill) {

@@ -83,8 +83,16 @@ public class SkillUIManager implements Listener {
             // 1. KIỂM TRA ĐIỀU KIỆN MỞ KHÓA (SKILL TREE)
             boolean meetsRequirements = true;
             List<String> reqLore = new ArrayList<>();
-            Map<String, Integer> reqs = skill.getRequiredSkills();
 
+            // KIỂM TRA CẤP ĐỘ NGƯỜI CHƠI (Sử dụng Level mặc định của Minecraft)
+            if (player.getLevel() < skill.getRequiredPlayerLevel()) {
+                meetsRequirements = false;
+                reqLore.add("§c✖ Yêu cầu: Đạt Cấp độ " + skill.getRequiredPlayerLevel());
+            } else if (skill.getRequiredPlayerLevel() > 1) {
+                reqLore.add("§a✔ Đạt yêu cầu: Cấp độ " + skill.getRequiredPlayerLevel());
+            }
+
+            Map<String, Integer> reqs = skill.getRequiredSkills();
             if (reqs != null && !reqs.isEmpty()) {
                 reqLore.add("§8-----------------");
                 for (Map.Entry<String, Integer> req : reqs.entrySet()) {

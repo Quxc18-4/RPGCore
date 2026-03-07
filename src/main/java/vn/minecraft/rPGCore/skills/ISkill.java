@@ -26,4 +26,6 @@ public interface ISkill {
     int getUpgradeCost(int currentLevel);
     // Trả về danh sách Kỹ năng yêu cầu. Key = ID kỹ năng, Value = Level tối thiểu
     Map<String, Integer> getRequiredSkills();
+    // Thêm hàm để quy định cấp độ tối thiểu của người chơi (Mặc định là 1 nếu không cài đặt)
+    default int getRequiredPlayerLevel() { return 1; }
 }
