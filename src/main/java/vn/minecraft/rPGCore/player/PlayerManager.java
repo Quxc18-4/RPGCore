@@ -75,6 +75,26 @@ public class PlayerManager {
             rpgPlayer.setClass(defaultClass);
         }
 
+        // NẠP HỆ THỐNG KỸ NĂNG VÀ COMBO
+        rpgPlayer.setSkillPoints(config.getInt(uuid + ".sp", 0));
+
+        // Nạp Level các kỹ năng
+        if (config.contains(uuid + ".skills")) {
+            // Lấy ra danh sách các kỹ năng đã lưu
+            for (String skillId : config.getConfigurationSection(uuid + ".skills").getKeys(false)) {
+                int level = config.getInt(uuid + ".skills." + skillId);
+                rpgPlayer.setSkillLevel(skillId, level);
+            }
+        }
+
+        // Nạp các nút Combo đã gán
+        if (config.contains(uuid + ".binds")) {
+            for (String combo : config.getConfigurationSection(uuid + ".binds").getKeys(false)) {
+                String skillId = config.getString(uuid + ".binds." + combo);
+                rpgPlayer.bindCombo(combo, skillId);
+            }
+        }
+
         // QUAN TRỌNG: Cập nhật lại Máu/Mana tối đa sau khi đã nạp xong đồ đạc và điểm VIT/INT
         rpgPlayer.updateMaxStats();
         rpgPlayer.updateExpBar(); // Cập nhật lại thanh xanh lá của Minecraft
@@ -101,6 +121,23 @@ public class PlayerManager {
             config.set(uuid + ".attr.VIT", rpgPlayer.getAttribute("VIT"));
             config.set(uuid + ".attr.AGI", rpgPlayer.getAttribute("AGI"));
             config.set(uuid + ".attr.LUK", rpgPlayer.getAttribute("LUK"));
+
+            // LƯU HỆ THỐNG KỸ NĂNG VÀ COMBO
+            config.set(uuid + ".sp", rpgPlayer.getSkillPoints());
+
+            // Xóa dữ liệu rác cũ (nếu có) trước khi ghi đè để tránh lỗi
+            config.set(uuid + ".skills", null);
+            config.set(uuid + ".binds", null);
+
+            // Lưu từng kỹ năng mà người chơi đã nâng
+            for (Map.Entry<String, Integer> entry : rpgPlayer.getSkills().entrySet()) {
+                config.set(uuid + ".skills." + entry.getKey(), entry.getValue());
+            }
+
+            // Lưu từng tổ hợp phím đã gán
+            for (Map.Entry<String, String> entry : rpgPlayer.getBinds().entrySet()) {
+                config.set(uuid + ".binds." + entry.getKey(), entry.getValue());
+            }
 
             try { config.save(file); }
             catch (IOException e) { e.printStackTrace(); }

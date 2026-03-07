@@ -25,10 +25,8 @@ public class SkillUIManager implements Listener {
     private final Map<UUID, String> pendingSkillBind = new HashMap<>();
     private final Map<UUID, Integer> playerSkillPages = new HashMap<>(); // Lưu trang hiện tại
 
-    // 16 Tổ hợp phím chuẩn (Chỉ có 4 phím)
+    // Chỉ còn 8 tổ hợp bắt đầu bằng R
     private final String[] SUPPORTED_COMBOS = {
-            "LLLL", "LLLR", "LLRL", "LLRR",
-            "LRLL", "LRLR", "LRRL", "LRRR",
             "RLLL", "RLLR", "RLRL", "RLRR",
             "RRLL", "RRLR", "RRRL", "RRRR"
     };
@@ -127,8 +125,8 @@ public class SkillUIManager implements Listener {
         Inventory inv = Bukkit.createInventory(null, 54, BINDS_TITLE);
         fillBackground(inv);
 
-        // Xếp 16 ô ra giữa rương cho đẹp (4 hàng x 4 cột)
-        int[] comboSlots = {11, 12, 14, 15, 20, 21, 23, 24, 29, 30, 32, 33, 38, 39, 41, 42};
+        // Căn giữa 8 ô này trên UI (2 hàng x 4 cột ở giữa rương)
+        int[] comboSlots = {20, 21, 22, 23, 29, 30, 31, 32};
 
         for (int i = 0; i < SUPPORTED_COMBOS.length; i++) {
             String combo = SUPPORTED_COMBOS[i];

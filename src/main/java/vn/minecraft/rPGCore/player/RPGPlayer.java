@@ -254,4 +254,5 @@ public class RPGPlayer {
     public void bindCombo(String combo, String skillId) { binds.put(combo, skillId); }
     public void unbindCombo(String combo) { binds.remove(combo); }
     public Map<String, String> getBinds() { return binds; }
+    public Map<String, Integer> getSkills() { return skills; }
 }
