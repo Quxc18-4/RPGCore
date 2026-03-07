@@ -20,7 +20,7 @@ import java.util.*;
 public class SkillUIManager implements Listener {
 
     private final PlayerManager playerManager;
-    private final SkillManager skillManager; // Khai báo thêm SkillManager
+    private final SkillManager skillManager;
 
     private final String SKILL_TITLE = "§8§lKỸ NĂNG NHÂN VẬT";
     private final String BINDS_TITLE = "§8§lTỔ HỢP PHÍM (COMBO)";
@@ -33,7 +33,6 @@ public class SkillUIManager implements Listener {
     private final int[] ICON_SLOTS = {10, 12, 14, 19, 21, 23, 28, 30, 32, 37, 39, 41};
     private final int[] PANE_SLOTS = {11, 13, 15, 20, 22, 24, 29, 31, 33, 38, 40, 42};
 
-    // Bổ sung SkillManager vào Constructor
     public SkillUIManager(PlayerManager playerManager, SkillManager skillManager) {
         this.playerManager = playerManager;
         this.skillManager = skillManager;
@@ -50,7 +49,6 @@ public class SkillUIManager implements Listener {
         Inventory inv = Bukkit.createInventory(null, 54, SKILL_TITLE);
         fillBackground(inv);
 
-        // Lấy tự động danh sách kỹ năng từ Manager
         List<ISkill> availableSkills = skillManager.getSkillsForClass(rpgPlayer.getCurrentClass().getId());
 
         int sp = rpgPlayer.getSkillData().getSkillPoints();
@@ -65,7 +63,6 @@ public class SkillUIManager implements Listener {
             int skillLevel = rpgPlayer.getSkillData().getSkillLevel(skillId);
             String boundCombo = getComboBySkill(rpgPlayer, skillId);
 
-            // Tự động sinh Mô tả từ Interface
             List<String> lore = new ArrayList<>();
             lore.add("§fCấp độ: §e" + skillLevel + "/" + skill.getMaxLevel());
             lore.add("§fTiêu hao: §b" + skill.getManaCost(skillLevel) + " Mana");
@@ -83,16 +80,23 @@ public class SkillUIManager implements Listener {
                 status = (boundCombo != null) ? "§aĐã gán: §l" + boundCombo : "§cChưa gán phím";
             }
 
-            // Tính số SP cần để nâng cấp
-            int upgradeCost = (skillId.equals("archer_quad_shot") && skillLevel == 5) ? 2 : 1;
-
             if (targetComboToBind != null) {
                 inv.setItem(PANE_SLOTS[i], createItem(Material.YELLOW_STAINED_GLASS_PANE, "§e§lCLICK ĐỂ CHỌN", "§7Gán vào nút: §b" + targetComboToBind));
             } else {
-                inv.setItem(PANE_SLOTS[i], createItem(paneMat, status,
-                        "§eĐiểm SP hiện có: " + sp,
-                        "§cTiêu hao: " + upgradeCost + " SP", "", // Thêm dòng báo giá SP
-                        "§f[Chuột Trái] §aNâng cấp", "§f[Chuột Phải] §bGán phím"));
+                // UI MỚI: Tách biệt hiển thị Max Level và Chưa Max Level
+                if (skillLevel >= skill.getMaxLevel()) {
+                    inv.setItem(PANE_SLOTS[i], createItem(paneMat, status,
+                            "§6§l✦ ĐÃ THÀNH THẠO ✦", // Không hiện SP, không hiện nút nâng cấp
+                            "",
+                            "§f[Chuột Phải] §bGán phím"));
+                } else {
+                    // Gọi hàm getUpgradeCost() thay vì check tên skill
+                    int upgradeCost = skill.getUpgradeCost(skillLevel);
+                    inv.setItem(PANE_SLOTS[i], createItem(paneMat, status,
+                            "§eĐiểm SP hiện có: " + sp,
+                            "§cTiêu hao: " + upgradeCost + " SP", "",
+                            "§f[Chuột Trái] §aNâng cấp", "§f[Chuột Phải] §bGán phím"));
+                }
             }
         }
 
@@ -103,6 +107,7 @@ public class SkillUIManager implements Listener {
     }
 
     public void openBindsGUI(Player player, String targetSkillToBind) {
+        // ... (Phần BindsGUI giữ nguyên không thay đổi) ...
         RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
         if (rpgPlayer == null) return;
 
@@ -121,7 +126,6 @@ public class SkillUIManager implements Listener {
                 inv.setItem(comboSlots[i], createItem(Material.YELLOW_STAINED_GLASS_PANE, "§e§l" + combo, "§7Click để gán vào đây"));
             } else {
                 if (boundSkillId != null) {
-                    // Lấy tên Skill đẹp từ Manager
                     ISkill boundSkill = skillManager.getSkill(boundSkillId);
                     String displayName = (boundSkill != null) ? boundSkill.getName() : boundSkillId;
 
@@ -160,7 +164,6 @@ public class SkillUIManager implements Listener {
 
             int index = getIndexFromSlots(PANE_SLOTS, slot);
             if (index != -1) {
-                // Tự động tìm SkillId dựa vào Index được click
                 List<ISkill> availableSkills = skillManager.getSkillsForClass(rpgPlayer.getCurrentClass().getId());
                 int skillIndex = (page * 12) + index;
 
@@ -178,12 +181,12 @@ public class SkillUIManager implements Listener {
                         ISkill skill = availableSkills.get(skillIndex);
                         int currentLevel = rpgPlayer.getSkillData().getSkillLevel(skillId);
 
-                        int upgradeCost = (skillId.equals("archer_quad_shot") && currentLevel == 5) ? 2 : 1;
+                        // Gọi hàm lấy Cost thay vì kiểm tra If
+                        int upgradeCost = skill.getUpgradeCost(currentLevel);
 
                         if (currentLevel >= skill.getMaxLevel()) {
                             player.sendMessage("§cKỹ năng này đã đạt cấp độ tối đa!");
                         } else if (rpgPlayer.getSkillData().getSkillPoints() >= upgradeCost) {
-                            // Trừ điểm theo upgradeCost
                             rpgPlayer.getSkillData().setSkillLevel(skillId, currentLevel + 1);
                             rpgPlayer.getSkillData().setSkillPoints(rpgPlayer.getSkillData().getSkillPoints() - upgradeCost);
 

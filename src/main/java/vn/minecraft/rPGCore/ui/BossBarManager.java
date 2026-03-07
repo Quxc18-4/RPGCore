@@ -55,7 +55,8 @@ public class BossBarManager {
         resourceBar.setTitle(formatResourceTitle(rpgPlayer));
         resourceBar.setColor(rpgPlayer.getCurrentClass().getResourceType().getColor());
         // Đã đổi từ getBaseMaxResource() sang getMaxResource()
-        double resProgress = rpgPlayer.getCurrentResource() / rpgPlayer.getCurrentClass().getMaxResource();
+        // ĐỒNG BỘ: Sử dụng getTotalMaxResource() để bao gồm cả điểm INT
+        double resProgress = rpgPlayer.getCurrentResource() / rpgPlayer.getTotalMaxResource();
         resourceBar.setProgress(Math.max(0.0, Math.min(1.0, resProgress)));
     }
 
