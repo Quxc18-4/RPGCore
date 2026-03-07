@@ -8,6 +8,7 @@ import vn.minecraft.rPGCore.listeners.ComboListener;
 import vn.minecraft.rPGCore.listeners.PlayerListener;
 import vn.minecraft.rPGCore.listeners.ClassGUIListener; // Thêm import này
 import vn.minecraft.rPGCore.player.PlayerManager;
+import vn.minecraft.rPGCore.skills.SkillManager;
 import vn.minecraft.rPGCore.ui.AttrGUI;
 import vn.minecraft.rPGCore.ui.BossBarManager;
 import vn.minecraft.rPGCore.player.tasks.RegenTask;
@@ -31,7 +32,8 @@ public final class RPGCore extends JavaPlugin {
         bossBarManager = new BossBarManager();
         ClassGUI classGUI = new ClassGUI();
         AttrGUI attrGUI = new AttrGUI(playerManager);
-        SkillUIManager skillUI = new SkillUIManager(playerManager);
+        SkillManager skillManager = new SkillManager(this);
+        SkillUIManager skillUI = new SkillUIManager(playerManager, skillManager);
 
 
         // 2. Đăng ký Listener
@@ -45,7 +47,7 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(attrGUI, this);
 
         //Đăng ký sự kiện combo listener và lệnh /skill /bind
-        getServer().getPluginManager().registerEvents(new ComboListener(this, playerManager), this);
+        getServer().getPluginManager().registerEvents(new ComboListener(this, playerManager, skillManager), this);
         getServer().getPluginManager().registerEvents(skillUI, this);
 
         // 3. Chạy Task sau 0 ticks, lặp lại mỗi 20 ticks (1 giây)

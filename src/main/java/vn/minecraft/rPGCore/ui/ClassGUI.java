@@ -50,6 +50,11 @@ public class ClassGUI {
             lore.add("§eNhấp để chọn class này!");
             meta.setLore(lore);
 
+            // ==========================================
+            // THÊM DÒNG NÀY ĐỂ ẨN "When in Main Hand..."
+            // ==========================================
+            meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ATTRIBUTES);
+
             // Thêm hiệu ứng phát sáng (Enchant) cho Mage/Reaper
             if (rpgClass.isEnchanted()) {
                 meta.addEnchant(Enchantment.FLAME, 1, true);

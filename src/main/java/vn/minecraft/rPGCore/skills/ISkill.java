@@ -1,0 +1,24 @@
+package vn.minecraft.rPGCore.skills;
+
+import org.bukkit.Material;
+import org.bukkit.entity.Player;
+import vn.minecraft.rPGCore.player.RPGPlayer;
+
+import java.util.List;
+
+public interface ISkill {
+    String getId();               // VD: "archer_spread"
+    String getName();             // VD: "Mưa Tên Kép"
+    String getRequiredClass();    // VD: "archer"
+    Material getIcon();           // Icon hiển thị trên Menu
+
+    int getMaxLevel();
+    double getManaCost(int level);
+    long getCooldown(int level);  // Trả về Milliseconds
+
+    // Tự động sinh mô tả dựa trên cấp độ hiện tại
+    List<String> getDescription(int level);
+
+    // Hàm thực thi chính khi bấm đúng Combo
+    boolean execute(Player player, RPGPlayer rpgPlayer, int level);
+}

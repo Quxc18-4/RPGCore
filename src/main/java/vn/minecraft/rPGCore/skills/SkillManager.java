@@ -1,0 +1,39 @@
+package vn.minecraft.rPGCore.skills;
+
+import org.bukkit.plugin.java.JavaPlugin;
+import vn.minecraft.rPGCore.skills.archer.DoubleShotSkill;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class SkillManager {
+    private final Map<String, ISkill> registeredSkills = new HashMap<>();
+    private final JavaPlugin plugin;
+
+    public SkillManager(JavaPlugin plugin) {
+        this.plugin = plugin;
+        // Nơi đăng ký mọi kỹ năng của Server
+        registerSkill(new DoubleShotSkill(plugin));
+    }
+
+    public void registerSkill(ISkill skill) {
+        registeredSkills.put(skill.getId(), skill);
+    }
+
+    public ISkill getSkill(String id) {
+        return registeredSkills.get(id);
+    }
+
+    // Lọc ra các kỹ năng dành riêng cho class của người chơi để vẽ lên UI
+    public List<ISkill> getSkillsForClass(String classId) {
+        List<ISkill> list = new ArrayList<>();
+        for (ISkill skill : registeredSkills.values()) {
+            if (skill.getRequiredClass().equalsIgnoreCase(classId)) {
+                list.add(skill);
+            }
+        }
+        return list;
+    }
+}

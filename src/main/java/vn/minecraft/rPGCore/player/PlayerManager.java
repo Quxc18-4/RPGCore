@@ -17,7 +17,6 @@ import java.util.UUID;
 public class PlayerManager {
     private final Map<UUID, RPGPlayer> activePlayers = new HashMap<>();
 
-    // Khai báo các biến quản lý file
     private final JavaPlugin plugin;
     private final ClassManager classManager;
     private File file;
@@ -43,14 +42,12 @@ public class PlayerManager {
         UUID uuid = player.getUniqueId();
         RPGClass defaultClass = classManager.getClassById("commoner");
 
-        // Khởi tạo player với class mặc định (đã tự động gọi initDefaultAttributes trong RPGPlayer)
         RPGPlayer rpgPlayer = new RPGPlayer(player, defaultClass);
 
-        // Nếu đã có dữ liệu cũ trong file thì nạp lên
         if (config.contains(uuid.toString())) {
             String classId = config.getString(uuid + ".class");
             double savedResource = config.getDouble(uuid + ".resource");
-            double savedExp = config.getDouble(uuid + ".exp", 0.0); // Tải EXP lẻ
+            double savedExp = config.getDouble(uuid + ".exp", 0.0);
 
             RPGClass savedClass = classManager.getClassById(classId);
             if (savedClass != null) {
@@ -58,46 +55,38 @@ public class PlayerManager {
                 rpgPlayer.setCurrentResource(savedResource);
             }
 
-            // Nạp lại EXP lẻ (Cần thêm hàm setCurrentExp trong RPGPlayer)
             rpgPlayer.setCurrentExp(savedExp);
 
-            // Nạp dữ liệu Attribute (Chỉ số)
-            if (config.contains(uuid + ".attr")) {
-                rpgPlayer.setUnspentAttrPoints(config.getInt(uuid + ".attr.unspent", 0));
-                rpgPlayer.setAttribute("STR", config.getInt(uuid + ".attr.STR", 0));
-                rpgPlayer.setAttribute("INT", config.getInt(uuid + ".attr.INT", 0));
-                rpgPlayer.setAttribute("VIT", config.getInt(uuid + ".attr.VIT", 0));
-                rpgPlayer.setAttribute("AGI", config.getInt(uuid + ".attr.AGI", 0));
-                rpgPlayer.setAttribute("LUK", config.getInt(uuid + ".attr.LUK", 0));
-            }
+            // Nạp dữ liệu Attribute (Gọi qua getAttributeData)
+            rpgPlayer.getAttributeData().setUnspentAttrPoints(config.getInt(uuid + ".attr.unspent", 0));
+            rpgPlayer.getAttributeData().setAttribute("STR", config.getInt(uuid + ".attr.STR", 0));
+            rpgPlayer.getAttributeData().setAttribute("INT", config.getInt(uuid + ".attr.INT", 0));
+            rpgPlayer.getAttributeData().setAttribute("VIT", config.getInt(uuid + ".attr.VIT", 0));
+            rpgPlayer.getAttributeData().setAttribute("AGI", config.getInt(uuid + ".attr.AGI", 0));
+            rpgPlayer.getAttributeData().setAttribute("LUK", config.getInt(uuid + ".attr.LUK", 0));
         } else {
-            // Người chơi mới tinh, setup class mặc định
             rpgPlayer.setClass(defaultClass);
         }
 
-        // NẠP HỆ THỐNG KỸ NĂNG VÀ COMBO
-        rpgPlayer.setSkillPoints(config.getInt(uuid + ".sp", 0));
+        // NẠP HỆ THỐNG KỸ NĂNG VÀ COMBO (Gọi qua getSkillData)
+        rpgPlayer.getSkillData().setSkillPoints(config.getInt(uuid + ".sp", 0));
 
-        // Nạp Level các kỹ năng
         if (config.contains(uuid + ".skills")) {
-            // Lấy ra danh sách các kỹ năng đã lưu
             for (String skillId : config.getConfigurationSection(uuid + ".skills").getKeys(false)) {
                 int level = config.getInt(uuid + ".skills." + skillId);
-                rpgPlayer.setSkillLevel(skillId, level);
+                rpgPlayer.getSkillData().setSkillLevel(skillId, level);
             }
         }
 
-        // Nạp các nút Combo đã gán
         if (config.contains(uuid + ".binds")) {
             for (String combo : config.getConfigurationSection(uuid + ".binds").getKeys(false)) {
                 String skillId = config.getString(uuid + ".binds." + combo);
-                rpgPlayer.bindCombo(combo, skillId);
+                rpgPlayer.getSkillData().bindCombo(combo, skillId);
             }
         }
 
-        // QUAN TRỌNG: Cập nhật lại Máu/Mana tối đa sau khi đã nạp xong đồ đạc và điểm VIT/INT
         rpgPlayer.updateMaxStats();
-        rpgPlayer.updateExpBar(); // Cập nhật lại thanh xanh lá của Minecraft
+        rpgPlayer.updateExpBar();
 
         activePlayers.put(uuid, rpgPlayer);
         return rpgPlayer;
@@ -107,35 +96,29 @@ public class PlayerManager {
     public void savePlayer(UUID uuid) {
         RPGPlayer rpgPlayer = activePlayers.get(uuid);
         if (rpgPlayer != null) {
-            // Lưu Class và Năng lượng
             config.set(uuid + ".class", rpgPlayer.getCurrentClass().getId());
             config.set(uuid + ".resource", rpgPlayer.getCurrentResource());
-
-            // Lưu tiến trình EXP lẻ
             config.set(uuid + ".exp", rpgPlayer.getCurrentExp());
 
             // Lưu dữ liệu Attribute
-            config.set(uuid + ".attr.unspent", rpgPlayer.getUnspentAttrPoints());
-            config.set(uuid + ".attr.STR", rpgPlayer.getAttribute("STR"));
-            config.set(uuid + ".attr.INT", rpgPlayer.getAttribute("INT"));
-            config.set(uuid + ".attr.VIT", rpgPlayer.getAttribute("VIT"));
-            config.set(uuid + ".attr.AGI", rpgPlayer.getAttribute("AGI"));
-            config.set(uuid + ".attr.LUK", rpgPlayer.getAttribute("LUK"));
+            config.set(uuid + ".attr.unspent", rpgPlayer.getAttributeData().getUnspentAttrPoints());
+            config.set(uuid + ".attr.STR", rpgPlayer.getAttributeData().getAttribute("STR"));
+            config.set(uuid + ".attr.INT", rpgPlayer.getAttributeData().getAttribute("INT"));
+            config.set(uuid + ".attr.VIT", rpgPlayer.getAttributeData().getAttribute("VIT"));
+            config.set(uuid + ".attr.AGI", rpgPlayer.getAttributeData().getAttribute("AGI"));
+            config.set(uuid + ".attr.LUK", rpgPlayer.getAttributeData().getAttribute("LUK"));
 
             // LƯU HỆ THỐNG KỸ NĂNG VÀ COMBO
-            config.set(uuid + ".sp", rpgPlayer.getSkillPoints());
+            config.set(uuid + ".sp", rpgPlayer.getSkillData().getSkillPoints());
 
-            // Xóa dữ liệu rác cũ (nếu có) trước khi ghi đè để tránh lỗi
             config.set(uuid + ".skills", null);
             config.set(uuid + ".binds", null);
 
-            // Lưu từng kỹ năng mà người chơi đã nâng
-            for (Map.Entry<String, Integer> entry : rpgPlayer.getSkills().entrySet()) {
+            for (Map.Entry<String, Integer> entry : rpgPlayer.getSkillData().getSkills().entrySet()) {
                 config.set(uuid + ".skills." + entry.getKey(), entry.getValue());
             }
 
-            // Lưu từng tổ hợp phím đã gán
-            for (Map.Entry<String, String> entry : rpgPlayer.getBinds().entrySet()) {
+            for (Map.Entry<String, String> entry : rpgPlayer.getSkillData().getBinds().entrySet()) {
                 config.set(uuid + ".binds." + entry.getKey(), entry.getValue());
             }
 

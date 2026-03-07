@@ -37,36 +37,36 @@ public class AttrGUI implements Listener {
             }
         }
 
-        int unspent = rpgPlayer.getUnspentAttrPoints();
+        int unspent = rpgPlayer.getAttributeData().getUnspentAttrPoints();
 
         // Nút STR (Sức mạnh) - Kính Đỏ
         inv.setItem(10, createItem(Material.RED_STAINED_GLASS_PANE, "§c§lSỨC MẠNH (STR)",
                 "§7Tăng sát thương vật lý.",
-                "§fĐã cộng: §c" + rpgPlayer.getAttribute("STR"),
+                "§fĐã cộng: §c" + rpgPlayer.getAttributeData().getAttribute("STR"),
                 "", "§aNhấp để nâng cấp!", "§eĐiểm tiềm năng: " + unspent));
 
         // Nút INT (Trí tuệ) - Kính Tím
         inv.setItem(11, createItem(Material.PURPLE_STAINED_GLASS_PANE, "§5§lTRÍ TUỆ (INT)",
                 "§7Tăng Mana tối đa và sát thương phép.",
-                "§fĐã cộng: §5" + rpgPlayer.getAttribute("INT"),
+                "§fĐã cộng: §5" + rpgPlayer.getAttributeData().getAttribute("INT"),
                 "", "§aNhấp để nâng cấp!", "§eĐiểm tiềm năng: " + unspent));
 
         // Nút VIT (Thể lực) - Kính Xanh Lá
         inv.setItem(12, createItem(Material.GREEN_STAINED_GLASS_PANE, "§a§lTHỂ LỰC (VIT)",
                 "§7Tăng Máu tối đa (+20/điểm).",
-                "§fĐã cộng: §a" + rpgPlayer.getAttribute("VIT"),
+                "§fĐã cộng: §a" + rpgPlayer.getAttributeData().getAttribute("VIT"),
                 "", "§aNhấp để nâng cấp!", "§eĐiểm tiềm năng: " + unspent));
 
         // Nút AGI (Nhanh nhẹn) - Kính Xanh Dương
         inv.setItem(13, createItem(Material.BLUE_STAINED_GLASS_PANE, "§9§lNHANH NHẸN (AGI)",
                 "§7Tăng tốc độ chạy và né tránh.",
-                "§fĐã cộng: §9" + rpgPlayer.getAttribute("AGI"),
+                "§fĐã cộng: §9" + rpgPlayer.getAttributeData().getAttribute("AGI"),
                 "", "§aNhấp để nâng cấp!", "§eĐiểm tiềm năng: " + unspent));
 
         // Nút LUK (May mắn) - Kính Vàng
         inv.setItem(14, createItem(Material.YELLOW_STAINED_GLASS_PANE, "§e§lMAY MẮN (LUK)",
                 "§7Tăng tỉ lệ rơi đồ và chí mạng.",
-                "§fĐã cộng: §e" + rpgPlayer.getAttribute("LUK"),
+                "§fĐã cộng: §e" + rpgPlayer.getAttributeData().getAttribute("LUK"),
                 "", "§aNhấp để nâng cấp!", "§eĐiểm tiềm năng: " + unspent));
 
         // Nút Reset
@@ -103,13 +103,13 @@ public class AttrGUI implements Listener {
         int slot = event.getSlot();
         boolean upgraded = false;
 
-        if (slot == 10) upgraded = rpgPlayer.upgradeAttribute("STR");
-        else if (slot == 11) upgraded = rpgPlayer.upgradeAttribute("INT");
-        else if (slot == 12) upgraded = rpgPlayer.upgradeAttribute("VIT");
-        else if (slot == 13) upgraded = rpgPlayer.upgradeAttribute("AGI");
-        else if (slot == 14) upgraded = rpgPlayer.upgradeAttribute("LUK");
+        if (slot == 10) upgraded = rpgPlayer.getAttributeData().upgradeAttribute("STR");
+        else if (slot == 11) upgraded = rpgPlayer.getAttributeData().upgradeAttribute("INT");
+        else if (slot == 12) upgraded = rpgPlayer.getAttributeData().upgradeAttribute("VIT");
+        else if (slot == 13) upgraded = rpgPlayer.getAttributeData().upgradeAttribute("AGI");
+        else if (slot == 14) upgraded = rpgPlayer.getAttributeData().upgradeAttribute("LUK");
         else if (slot == 16) {
-            rpgPlayer.resetAttributes();
+            rpgPlayer.getAttributeData().resetAttributes();
             openGUI(player); // Load lại GUI sau khi reset
             return;
         }

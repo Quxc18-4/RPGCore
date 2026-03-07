@@ -7,9 +7,10 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
-import vn.minecraft.rPGCore.classes.Skill.Archer.ArcherSkillManager;
 import vn.minecraft.rPGCore.player.PlayerManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
+import vn.minecraft.rPGCore.skills.ISkill;
+import vn.minecraft.rPGCore.skills.SkillManager;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -19,88 +20,55 @@ public class ComboListener implements Listener {
 
     private final JavaPlugin plugin;
     private final PlayerManager playerManager;
-    private final ArcherSkillManager archerSkillManager; // Class thực thi kỹ năng
+    private final SkillManager skillManager;
 
-    // Lưu trữ chuỗi Combo hiện tại của người chơi
     private final Map<UUID, String> currentCombos = new HashMap<>();
-    // Lưu trữ Task để tự động reset Combo nếu ngừng bấm
     private final Map<UUID, BukkitRunnable> resetTasks = new HashMap<>();
 
-    public ComboListener(JavaPlugin plugin, PlayerManager playerManager) {
+    // Đã thay ArcherSkillManager bằng SkillManager tổng
+    public ComboListener(JavaPlugin plugin, PlayerManager playerManager, SkillManager skillManager) {
         this.plugin = plugin;
         this.playerManager = playerManager;
-        this.archerSkillManager = new ArcherSkillManager(plugin, playerManager);
+        this.skillManager = skillManager;
     }
 
     @EventHandler
     public void onPlayerClick(PlayerInteractEvent event) {
-        // 1. SỬA LỖI "DOUBLE R": Bỏ qua sự kiện nếu nó phát ra từ tay trái (Off-hand)
-        if (event.getHand() == org.bukkit.inventory.EquipmentSlot.OFF_HAND) {
-            return;
-        }
+        if (event.getHand() == org.bukkit.inventory.EquipmentSlot.OFF_HAND) return;
 
         Player player = event.getPlayer();
         Action action = event.getAction();
-
-        // Bỏ qua nếu đạp trúng Physical block (Pressure plate...)
         if (action == Action.PHYSICAL) return;
 
         RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
         if (rpgPlayer == null) return;
 
-        // 2. KIỂM TRA VŨ KHÍ CỦA CLASS (Vũ khí chính chủ mới được dùng Combo)
         org.bukkit.inventory.ItemStack mainItem = player.getInventory().getItemInMainHand();
         org.bukkit.Material mainType = mainItem.getType();
         String classId = rpgPlayer.getCurrentClass().getId().toLowerCase();
 
         boolean isValidWeapon = false;
-
-        // Kiểm tra cho class Archer
-        if (classId.equals("archer")) {
-            if (mainType == org.bukkit.Material.BOW || mainType == org.bukkit.Material.CROSSBOW) {
-                isValidWeapon = true;
-            }
-        }
-        // TODO: Sau này bạn thêm các Class khác vào đây.
-        // Ví dụ: else if (classId.equals("warrior")) { if (mainType.name().endsWith("_SWORD")) isValidWeapon = true; }
-
-        // Nếu đang không cầm vũ khí hợp lệ của Class, không cho phép niệm chú
-        if (!isValidWeapon) {
-            return;
+        if (classId.equals("archer") && (mainType == org.bukkit.Material.BOW || mainType == org.bukkit.Material.CROSSBOW)) {
+            isValidWeapon = true;
         }
 
-        // 3. XỬ LÝ LOGIC NỐI CHUỖI COMBO (Đã áp dụng quy tắc R mở đầu)
+        if (!isValidWeapon) return;
+
         String click = (action.name().contains("LEFT")) ? "L" : "R";
         UUID uuid = player.getUniqueId();
-
         String current = currentCombos.getOrDefault(uuid, "");
 
-        // Chỉ cho phép bắt đầu chuỗi bằng R. Nếu đang đánh thường (L), bỏ qua luôn.
-        if (current.isEmpty() && click.equals("L")) {
-            return;
-        }
+        if (current.isEmpty() && click.equals("L")) return;
 
-        // Nối thêm nút mới vào chuỗi
         String combo = current + click;
-
-        // Giới hạn tối đa 4 nút
-        if (combo.length() > 4) {
-            combo = click.equals("R") ? "R" : "";
-        }
-
+        if (combo.length() > 4) combo = click.equals("R") ? "R" : "";
         if (combo.isEmpty()) return;
 
         currentCombos.put(uuid, combo);
-
-        // Hiển thị Combo đang bấm lên Action Bar
         player.sendActionBar("§e⚡ Đang niệm chú: §b§l" + combo + "...");
 
-        // Hủy Task reset cũ (nếu có)
-        if (resetTasks.containsKey(uuid)) {
-            resetTasks.get(uuid).cancel();
-        }
+        if (resetTasks.containsKey(uuid)) resetTasks.get(uuid).cancel();
 
-        // Đặt Task reset mới sau 1 giây (20 ticks)
         BukkitRunnable resetTask = new BukkitRunnable() {
             @Override
             public void run() {
@@ -112,19 +80,23 @@ public class ComboListener implements Listener {
         resetTask.runTaskLater(plugin, 20L);
         resetTasks.put(uuid, resetTask);
 
-        // KIỂM TRA SKILL KHI ĐỦ 4 NÚT
+        // KIỂM TRA SKILL TỪ INTERFACE
         if (combo.length() == 4) {
-            String mappedSkill = rpgPlayer.getSkillByCombo(combo);
-            if (mappedSkill != null) {
-                boolean success = archerSkillManager.executeSkill(player, rpgPlayer, mappedSkill);
-                if (success) {
-                    player.sendActionBar("§a§l✔ Kích hoạt thành công!");
+            String mappedSkillId = rpgPlayer.getSkillData().getSkillByCombo(combo);
+            if (mappedSkillId != null) {
+                ISkill skill = skillManager.getSkill(mappedSkillId);
+                if (skill != null) {
+                    int level = rpgPlayer.getSkillData().getSkillLevel(mappedSkillId);
+
+                    // Gọi hàm execute() của Interface
+                    if (skill.execute(player, rpgPlayer, level)) {
+                        player.sendActionBar("§a§l✔ Kích hoạt thành công!");
+                    }
                 }
             } else {
                 player.sendActionBar("§c§l✖ Sai tổ hợp phím!");
             }
 
-            // Xóa chuỗi bất kể thành công hay thất bại
             currentCombos.remove(uuid);
             resetTask.cancel();
         }
