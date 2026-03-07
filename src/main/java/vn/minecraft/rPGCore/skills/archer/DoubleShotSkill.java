@@ -74,7 +74,7 @@ public class DoubleShotSkill implements ISkill {
         lore.add("§7Bắn liên tiếp 2 đợt 2 mũi tên về phía trước.");
 
         // Tính toán hiển thị cho chuẩn xác
-        double dmg = 45 + (displayLevel - 1) * 5;
+        double dmg = 65 + (displayLevel - 1) * 5;
         double pen = 20 + (displayLevel - 1) * 1;
         if (displayLevel >= 10) pen += 1; // Thưởng cấp 10
 
@@ -160,7 +160,7 @@ public class DoubleShotSkill implements ISkill {
 
         if (skillLevel >= 10) ignoreChance += 0.01;
 
-        dmgMultiplier = Math.min(0.90, dmgMultiplier);
+        dmgMultiplier = Math.min(1.10, dmgMultiplier);
         ignoreChance = Math.min(0.30, ignoreChance);
 
         arrow.setMetadata("Is_Custom_Skill", new FixedMetadataValue(plugin, true));

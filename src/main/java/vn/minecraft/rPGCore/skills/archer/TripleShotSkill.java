@@ -74,7 +74,7 @@ public class TripleShotSkill implements ISkill {
         lore.add("§7Bắn liên tiếp 3 đợt, mỗi đợt 3 mũi tên."); // 3 đợt x 3 mũi = 9 mũi
 
         // Tính toán hiển thị: Base 30% dmg, 20% pen
-        double dmg = 30 + (displayLevel - 1) * 5;
+        double dmg = 35 + (displayLevel - 1) * 5;
         double pen = 20 + (displayLevel - 1) * 1;
         if (displayLevel >= 10) pen += 2; // Thưởng cấp 10 (+2%)
 
@@ -163,13 +163,13 @@ public class TripleShotSkill implements ISkill {
 
         // ÁP DỤNG CÔNG THỨC MỚI CỦA TAM TIỄN
         double dmgMultiplier = 0.35 + (skillLevel - 1) * 0.05; // Base 35%, tăng 5%
-        double ignoreChance = 0.25 + (skillLevel - 1) * 0.01; // Base 25%, tăng 1%
+        double ignoreChance = 0.20 + (skillLevel - 1) * 0.01; // Base 25%, tăng 1%
 
         if (skillLevel >= 10) ignoreChance += 0.02; // Thưởng cấp 10: +2% xuyên giáp
 
-        // Giới hạn max level 10: Dmg max = 80%, Pen max = 36%
+        // Giới hạn max level 10: Dmg max = 80%, Pen max = 30%
         dmgMultiplier = Math.min(0.80, dmgMultiplier);
-        ignoreChance = Math.min(0.36, ignoreChance);
+        ignoreChance = Math.min(0.30, ignoreChance);
 
         // Đóng gói Metadata chuyển cho ArcherListener tính toán
         arrow.setMetadata("Is_Custom_Skill", new FixedMetadataValue(plugin, true));

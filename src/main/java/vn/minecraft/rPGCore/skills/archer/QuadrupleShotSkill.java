@@ -54,7 +54,7 @@ public class QuadrupleShotSkill implements ISkill {
 
         lore.add("§7Bắn liên tiếp 4 đợt, mỗi đợt 4 mũi tên.");
 
-        double dmg = 25 + (displayLevel - 1) * 7;
+        double dmg = 25 + (displayLevel - 1) * 8;
         double pen = 35 + (displayLevel - 1) * 2;
 
         lore.add("§7Sát thương: §c" + (int) dmg + "% §7mỗi mũi");
@@ -129,7 +129,7 @@ public class QuadrupleShotSkill implements ISkill {
         Arrow arrow = player.getWorld().spawnArrow(spawnLoc, velocity, 3.5f, 0f);
         arrow.setShooter(player);
 
-        double dmgMultiplier = 0.25 + (skillLevel - 1) * 0.07;
+        double dmgMultiplier = 0.25 + (skillLevel - 1) * 0.08;
         double ignoreChance = 0.35 + (skillLevel - 1) * 0.02;
 
         arrow.setMetadata("Is_Custom_Skill", new FixedMetadataValue(plugin, true));
