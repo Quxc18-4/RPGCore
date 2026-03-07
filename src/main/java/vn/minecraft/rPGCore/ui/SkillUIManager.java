@@ -83,11 +83,15 @@ public class SkillUIManager implements Listener {
                 status = (boundCombo != null) ? "§aĐã gán: §l" + boundCombo : "§cChưa gán phím";
             }
 
+            // Tính số SP cần để nâng cấp
+            int upgradeCost = (skillId.equals("archer_quad_shot") && skillLevel == 5) ? 2 : 1;
+
             if (targetComboToBind != null) {
                 inv.setItem(PANE_SLOTS[i], createItem(Material.YELLOW_STAINED_GLASS_PANE, "§e§lCLICK ĐỂ CHỌN", "§7Gán vào nút: §b" + targetComboToBind));
             } else {
                 inv.setItem(PANE_SLOTS[i], createItem(paneMat, status,
-                        "§eĐiểm SP hiện có: " + sp, "",
+                        "§eĐiểm SP hiện có: " + sp,
+                        "§cTiêu hao: " + upgradeCost + " SP", "", // Thêm dòng báo giá SP
                         "§f[Chuột Trái] §aNâng cấp", "§f[Chuột Phải] §bGán phím"));
             }
         }
@@ -174,15 +178,19 @@ public class SkillUIManager implements Listener {
                         ISkill skill = availableSkills.get(skillIndex);
                         int currentLevel = rpgPlayer.getSkillData().getSkillLevel(skillId);
 
+                        int upgradeCost = (skillId.equals("archer_quad_shot") && currentLevel == 5) ? 2 : 1;
+
                         if (currentLevel >= skill.getMaxLevel()) {
                             player.sendMessage("§cKỹ năng này đã đạt cấp độ tối đa!");
-                        } else if (rpgPlayer.getSkillData().getSkillPoints() > 0) {
+                        } else if (rpgPlayer.getSkillData().getSkillPoints() >= upgradeCost) {
+                            // Trừ điểm theo upgradeCost
                             rpgPlayer.getSkillData().setSkillLevel(skillId, currentLevel + 1);
-                            rpgPlayer.getSkillData().setSkillPoints(rpgPlayer.getSkillData().getSkillPoints() - 1);
+                            rpgPlayer.getSkillData().setSkillPoints(rpgPlayer.getSkillData().getSkillPoints() - upgradeCost);
+
                             player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1f, 2f);
                             openSkillGUI(player, null, page);
                         } else {
-                            player.sendMessage("§cKhông đủ điểm Kỹ Năng (SP)!");
+                            player.sendMessage("§cKhông đủ điểm Kỹ Năng (SP)! Cần " + upgradeCost + " SP.");
                         }
                     } else if (event.getClick() == ClickType.RIGHT) {
                         if (rpgPlayer.getSkillData().getSkillLevel(skillId) > 0) openBindsGUI(player, skillId);

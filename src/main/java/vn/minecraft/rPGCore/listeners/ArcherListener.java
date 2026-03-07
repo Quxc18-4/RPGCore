@@ -129,6 +129,40 @@ public class ArcherListener implements Listener {
             double dmgMultiplier = arrow.getMetadata("Skill_DmgMulti").get(0).asDouble();
             double ignoreChance = arrow.getMetadata("Skill_ArmorPen").get(0).asDouble();
 
+            // KIỂM TRA HIỆU ỨNG TỨ TIỄN (CẤP 6)
+            if (arrow.hasMetadata("Quad_Effect")) {
+                String effect = arrow.getMetadata("Quad_Effect").get(0).asString();
+
+                if (effect.equals("LIGHTNING")) {
+                    target.getWorld().strikeLightningEffect(target.getLocation());
+                    dmgMultiplier = 3.0; // Tăng sát thương mũi tên lên 300%
+                }
+                else if (effect.equals("FREEZE")) {
+                    // Khóa di chuyển 1.5s (30 ticks) bằng Slowness cấp 10
+                    target.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.SLOWNESS, 30, 10));
+                    // Hạt Particle Băng dày đặc thay thế cho việc đặt block vật lý (tránh lỗi kẹt map)
+                    target.getWorld().spawnParticle(org.bukkit.Particle.BLOCK, target.getLocation().add(0, 1, 0), 40, 0.5, 0.5, 0.5, org.bukkit.Bukkit.createBlockData(org.bukkit.Material.ICE));
+
+                    // Delay 1.5s (30 ticks) sau đó áp dụng Slowness 30% (Cấp 2) trong 2s (40 ticks)
+                    new org.bukkit.scheduler.BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            if (!target.isDead()) {
+                                target.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.SLOWNESS, 40, 1));
+                            }
+                        }
+                    }.runTaskLater(plugin, 30L);
+                }
+                else if (effect.equals("FLAME")) {
+                    target.setFireTicks(60); // Đốt cháy 3s
+                    // Vẫn giữ dmgMultiplier = 60% (mặc định của lv6)
+                }
+                else if (effect.equals("POISON")) {
+                    target.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.POISON, 60, 1)); // Độc cấp 2 trong 3s
+                    // Vẫn giữ dmgMultiplier = 60% (mặc định của lv6)
+                }
+            }
+
             if (Math.random() <= ignoreChance) {
                 targetArmor = 0;
                 player.sendMessage("§b§lXUYÊN GIÁP! §fMũi tên kỹ năng đã phớt lờ giáp của mục tiêu!");

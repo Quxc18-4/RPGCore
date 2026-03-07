@@ -2,6 +2,8 @@ package vn.minecraft.rPGCore.skills;
 
 import org.bukkit.plugin.java.JavaPlugin;
 import vn.minecraft.rPGCore.skills.archer.DoubleShotSkill;
+import vn.minecraft.rPGCore.skills.archer.QuadrupleShotSkill;
+import vn.minecraft.rPGCore.skills.archer.TripleShotSkill;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,6 +18,8 @@ public class SkillManager {
         this.plugin = plugin;
         // Nơi đăng ký mọi kỹ năng của Server
         registerSkill(new DoubleShotSkill(plugin));
+        registerSkill(new TripleShotSkill(plugin));
+        registerSkill(new QuadrupleShotSkill(plugin));
     }
 
     public void registerSkill(ISkill skill) {

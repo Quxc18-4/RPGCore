@@ -123,7 +123,7 @@ public class RPGPlayer {
     public double getTotalMaxResource() {
         double baseRes = this.currentClass.getMaxResource();
         // Lấy INT từ Component
-        double intBonus = this.attributeData.getAttribute("INT") * 2.0;
+        double intBonus = this.attributeData.getAttribute("INT") * 1.0;
         return baseRes + intBonus;
     }
 }

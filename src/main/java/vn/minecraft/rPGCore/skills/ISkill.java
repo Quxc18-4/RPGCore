@@ -21,4 +21,6 @@ public interface ISkill {
 
     // Hàm thực thi chính khi bấm đúng Combo
     boolean execute(Player player, RPGPlayer rpgPlayer, int level);
+    // Thêm hàm này để mỗi kỹ năng tự quyết định giá SP khi nâng cấp
+    int getUpgradeCost(int currentLevel);
 }

@@ -120,7 +120,7 @@ public class DoubleShotSkill implements ISkill {
             public void run() {
                 shootParallelArrows(player, level);
             }
-        }.runTaskLater(plugin, 10L);
+        }.runTaskLater(plugin, 5L);
 
         return true;
     }
@@ -155,7 +155,7 @@ public class DoubleShotSkill implements ISkill {
         Arrow arrow = player.getWorld().spawnArrow(spawnLoc, velocity, 3.5f, 0f);
         arrow.setShooter(player);
 
-        double dmgMultiplier = 0.45 + (skillLevel - 1) * 0.05;
+        double dmgMultiplier = 0.65 + (skillLevel - 1) * 0.05;
         double ignoreChance = 0.20 + (skillLevel - 1) * 0.01;
 
         if (skillLevel >= 10) ignoreChance += 0.01;
@@ -179,5 +179,10 @@ public class DoubleShotSkill implements ISkill {
                 arrow.getWorld().spawnParticle(Particle.CRIT, arrow.getLocation(), 1, 0.0, 0.0, 0.0, 0.0);
             }
         }.runTaskTimer(plugin, 0L, 1L);
+    }
+
+    @Override
+    public int getUpgradeCost(int currentLevel) {
+        return 1; // Mặc định luôn tốn 1 SP
     }
 }
