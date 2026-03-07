@@ -1,10 +1,7 @@
 package vn.minecraft.rPGCore.skills;
 
 import org.bukkit.plugin.java.JavaPlugin;
-import vn.minecraft.rPGCore.skills.archer.DoubleShotSkill;
-import vn.minecraft.rPGCore.skills.archer.QuadrupleShotSkill;
-import vn.minecraft.rPGCore.skills.archer.RapidFireSkill;
-import vn.minecraft.rPGCore.skills.archer.TripleShotSkill;
+import vn.minecraft.rPGCore.skills.archer.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -22,6 +19,7 @@ public class SkillManager {
         registerSkill(new TripleShotSkill(plugin));
         registerSkill(new QuadrupleShotSkill(plugin));
         registerSkill(new RapidFireSkill(plugin));
+        registerSkill(new ArrowRainSkill(plugin));
     }
 
     public void registerSkill(ISkill skill) {
