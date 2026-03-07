@@ -68,7 +68,7 @@ public class QuadrupleShotSkill implements ISkill {
             lore.add("");
             lore.add("§6§l✦ ĐỘT PHÁ TỐI THƯỢNG ✦");
             lore.add("§e22% xác suất mỗi mũi tên mang 1 trong 4");
-            lore.add("§ehiệu ứng: §bBăng§e, §aSét§e, §cLửa§e, §2Độc§e.");
+            lore.add("§ehiệu ứng: §bBăng§e, §eSét§e, §cLửa§e, §2Độc§e.");
         }
         return lore;
     }
