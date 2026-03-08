@@ -25,3 +25,8 @@ commands:
   arrow:
     description: Lấy danh sách các mũi tên custom
     permission: rpgcore.admin
+  eq:
+    description: Sinh trang bị RPG ngẫu nhiên (Dành cho Admin)
+    usage: /<command> roll <weapon|armor> <tier(1-8)> <level> [lineage] [extra_stats]
+    permission: rpgcore.admin
+    permission-message: §cBạn không đủ quyền hạn để tạo trang bị!

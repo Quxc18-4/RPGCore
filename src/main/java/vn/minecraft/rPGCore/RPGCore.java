@@ -73,6 +73,11 @@ public final class RPGCore extends JavaPlugin {
         getCommand("binds").setExecutor(new BindsCommand(skillUI));
         getCommand("rpgclassadmin").setExecutor(new RPGClassAdminCommand(adminArrowCraftingUI));
         getCommand("arrow").setExecutor(new ArrowCommand(arrowRecipeManager));
+        if (this.getCommand("eq") != null) {
+            this.getCommand("eq").setExecutor(new EquipmentCommand());
+        } else {
+            getLogger().warning("Khong the tim thay lenh /eq trong plugin.yml!");
+        }
 
         getLogger().info("RPGCore da duoc bat thanh cong!");
 
