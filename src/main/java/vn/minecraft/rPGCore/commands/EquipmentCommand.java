@@ -13,26 +13,28 @@ import java.util.*;
 
 public class EquipmentCommand implements CommandExecutor, TabCompleter {
 
+    // TIERS BÂY GIỜ CHỈ CÒN LƯU: Màu, Tên Tier, Hệ số nhân gốc (Base Multiplier)
     private final Object[][] TIERS = {
-            {"§7", "common", 1.0, 0.40, 0.70},
-            {"§a", "uncommon", 1.2, 0.60, 0.85},
-            {"§b", "rare", 1.5, 0.80, 1.00},
-            {"§5", "epic", 1.8, 0.90, 1.05},
-            {"§d", "mythical", 2.2, 0.95, 1.10},
-            {"§6", "heroic", 2.8, 1.00, 1.15},
-            {"§c", "legendary", 3.5, 1.05, 1.15},
-            {"§e", "divine", 5.0, 1.10, 1.15}
+            {"§7", "common", 1.0},
+            {"§a", "uncommon", 1.2},
+            {"§b", "rare", 1.5},
+            {"§5", "epic", 1.8},
+            {"§d", "mythical", 2.2},
+            {"§6", "heroic", 2.8},
+            {"§c", "legendary", 3.5},
+            {"§e", "divine", 5.0}
     };
 
-    private final String[][] QUALITIES = {
-            {"Rusty", "Broken", "Ruined", "Chipped"},
-            {"Old", "Worn", "Dull", "Faded"},
-            {"Normal", "Standard", "Decent", "Common"},
-            {"Fine", "Polished", "Refined", "Sturdy"},
-            {"Reinforced", "Flawless", "Exceptional"},
-            {"Masterwork", "Heroic", "Glorious"},
-            {"Legendary", "Exquisite", "Perfect"},
-            {"Divine", "Godly", "Ascended", "Transcendent"}
+    // QUY TẮC QUALITY ĐỘC LẬP: { Danh_sách_tên, Min_Var, Max_Var, Trọng_số_xuất_hiện }
+    private final Object[][] QUALITY_DB = {
+            {new String[]{"Rusty", "Broken", "Ruined", "Chipped"}, 0.40, 0.70, 100},    // Tồi tàn nhất (Rất dễ ra)
+            {new String[]{"Old", "Worn", "Dull", "Faded"}, 0.60, 0.85, 80},
+            {new String[]{"Normal", "Standard", "Decent", "Common"}, 0.80, 1.00, 60},   // Hàng tiêu chuẩn
+            {new String[]{"Fine", "Polished", "Refined", "Sturdy"}, 0.90, 1.05, 40},
+            {new String[]{"Reinforced", "Flawless", "Exceptional", "Immaculate"}, 0.95, 1.10, 20},
+            {new String[]{"Masterwork", "Heroic", "Glorious", "Majestic"}, 1.00, 1.15, 10},
+            {new String[]{"Legendary", "Exquisite", "Perfect", "Peerless"}, 1.05, 1.15, 5},     // Rất hiếm
+            {new String[]{"Divine", "Godly", "Ascended", "Transcendent"}, 1.10, 1.20, 2}        // Thần thánh (Cực kỳ khó ra)
     };
 
     private final List<String> VALID_CLASSES = Arrays.asList("warrior", "archer", "mage", "assassin", "summoner", "reaper", "guardian");
@@ -40,19 +42,18 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
     private final List<String> ALL_LINEAGES = Arrays.asList("vampiric", "experienced", "hunter", "magical", "giant", "armored", "scavenger", "swift", "shattering");
     private final List<String> WEAPON_LINEAGES = Arrays.asList("vampiric", "experienced", "hunter", "magical", "scavenger", "swift", "shattering");
 
-    // DATABASE MỚI: { "Tên chỉ số", Giới_hạn_Max (0=Không giới hạn), Trọng_số_Weight }
-    // Weight càng nhỏ -> Càng hiếm ra (Ví dụ: Giảm hồi chiêu cực kỳ khó ra so với Hồi phục)
+    // DATABASE CHỈ SỐ PHỤ: { "Tên chỉ số", Giới_hạn_Max (0=Không giới hạn), Trọng_số_Weight }
     private final Object[][] RANDOM_STATS_DB = {
-            {"Tỉ lệ chí mạng", 100, 50},       // Rare
-            {"Sát thương chí mạng", 0, 50},    // Rare
-            {"Tỉ lệ xuyên giáp", 80, 30},      // Epic
-            {"Tỉ lệ hút máu", 50, 15},         // Mythic (Rất khó ra)
-            {"Tỉ lệ đỡ đòn", 50, 60},          // Uncommon
-            {"Tỉ lệ né tránh", 50, 60},        // Uncommon
-            {"Tỉ lệ hồi phục", 0, 100},        // Common (Dễ ra nhất)
-            {"Tốc độ đánh", 100, 40},          // Rare
-            {"Giảm hồi chiêu", 40, 10},        // Legendary (Cực kỳ khó ra)
-            {"Tốc độ di chuyển", 0, 80}        // Common (Đã gỡ giới hạn thành 0)
+            {"Tỉ lệ chí mạng", 100, 50},
+            {"Sát thương chí mạng", 0, 50},
+            {"Tỉ lệ xuyên giáp", 80, 30},
+            {"Tỉ lệ hút máu", 50, 15},
+            {"Tỉ lệ đỡ đòn", 50, 60},
+            {"Tỉ lệ né tránh", 50, 60},
+            {"Tỉ lệ hồi phục", 0, 100},
+            {"Tốc độ đánh", 100, 40},
+            {"Giảm hồi chiêu", 40, 10},
+            {"Tốc độ di chuyển", 0, 80}
     };
 
     @Override
@@ -109,13 +110,40 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
                     lineage = WEAPON_LINEAGES.get(rand.nextInt(WEAPON_LINEAGES.size()));
                 }
 
+                // Lấy thông số Tier
                 String tierColor = (String) TIERS[tierIndex][0];
                 double tierMulti = (double) TIERS[tierIndex][2];
-                double minVar = (double) TIERS[tierIndex][3];
-                double maxVar = (double) TIERS[tierIndex][4];
 
+                // ----------------------------------------------------
+                // THUẬT TOÁN GACHA QUALITY ĐỘC LẬP THEO TRỌNG SỐ
+                // ----------------------------------------------------
+                int totalQualityWeight = 0;
+                for (Object[] q : QUALITY_DB) {
+                    totalQualityWeight += (int) q[3];
+                }
+
+                int qualityRoll = rand.nextInt(totalQualityWeight);
+                int currentWeight = 0;
+                Object[] chosenQuality = QUALITY_DB[0]; // Mặc định là nhóm đầu tiên
+
+                for (Object[] q : QUALITY_DB) {
+                    currentWeight += (int) q[3];
+                    if (qualityRoll < currentWeight) {
+                        chosenQuality = q;
+                        break;
+                    }
+                }
+
+                // Chọn ngẫu nhiên 1 từ đồng nghĩa trong nhóm Quality đã trúng
+                String[] qualityNames = (String[]) chosenQuality[0];
+                String qualityName = qualityNames[rand.nextInt(qualityNames.length)];
+
+                double minVar = (double) chosenQuality[1];
+                double maxVar = (double) chosenQuality[2];
+
+                // TÍNH TOÁN BIÊN ĐỘ GIAO ĐỘNG (Quality Multiplier)
                 double qualityMod = minVar + (rand.nextDouble() * (maxVar - minVar));
-                String quality = QUALITIES[tierIndex][rand.nextInt(QUALITIES[tierIndex].length)];
+                // ----------------------------------------------------
 
                 Material mat;
                 String baseItemName;
@@ -133,7 +161,7 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
                 ItemStack item = new ItemStack(mat);
                 ItemMeta meta = item.getItemMeta();
 
-                meta.setDisplayName(tierColor + "§l" + quality + " " + capitalize(lineage) + " " + baseItemName);
+                meta.setDisplayName(tierColor + "§l" + qualityName + " " + capitalize(lineage) + " " + baseItemName);
 
                 List<String> lore = new ArrayList<>();
 
@@ -144,7 +172,7 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
 
                 // CHỈ SỐ CHÍNH VÀ ĐỘ BỀN
                 lore.add(tierColor + "§l✦ Chỉ số chính:");
-                int maxDurability; // Biến lưu độ bền
+                int maxDurability;
 
                 if (isWeapon) {
                     double baseAtk = level * 4.5 * tierMulti * qualityMod;
@@ -166,8 +194,8 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
                     maxDurability = (int) (2500 * (tierMulti * 0.3 + qualityMod * 0.7));
                 }
 
-                // Thêm dòng Độ bền ngay dưới chỉ số chính
                 lore.add("§7 - Độ bền: §a" + maxDurability + "§8/§a" + maxDurability);
+                lore.add("§7 - Cơ hội bảo vệ: §e3§8/§e3");
                 lore.add("");
 
                 // DÒNG DÕI LẺ
@@ -179,7 +207,6 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
                 if (subStats > 0) {
                     lore.add("§d§l✦ Thuộc tính Phụ:");
 
-                    // Thuật toán Gacha theo Weight
                     List<Integer> availableIndices = new ArrayList<>();
                     for (int i = 0; i < RANDOM_STATS_DB.length; i++) {
                         availableIndices.add(i);
@@ -189,23 +216,21 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
                     int actualSubStats = Math.min(subStats, availableIndices.size());
 
                     for (int i = 0; i < actualSubStats; i++) {
-                        // Tính tổng Weight của các dòng chưa được chọn
                         int totalWeight = 0;
                         for (int index : availableIndices) {
                             totalWeight += (int) RANDOM_STATS_DB[index][2];
                         }
 
-                        // Quay số
                         int roll = rand.nextInt(totalWeight);
-                        int currentWeight = 0;
+                        int currentWeightRoll = 0;
                         int chosenIndex = -1;
 
                         for (int j = 0; j < availableIndices.size(); j++) {
                             int index = availableIndices.get(j);
-                            currentWeight += (int) RANDOM_STATS_DB[index][2];
-                            if (roll < currentWeight) {
+                            currentWeightRoll += (int) RANDOM_STATS_DB[index][2];
+                            if (roll < currentWeightRoll) {
                                 chosenIndex = index;
-                                availableIndices.remove(j); // Xóa khỏi danh sách để không trùng lặp
+                                availableIndices.remove(j);
                                 break;
                             }
                         }
@@ -215,15 +240,12 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
                         }
                     }
 
-                    // Sắp xếp lại danh sách đã quay trúng để in ra theo thứ tự cố định
                     Collections.sort(selectedIndices);
 
-                    // Thay thế đoạn code in dòng phụ cũ bằng đoạn này (Bỏ capStr)
                     for (int index : selectedIndices) {
                         String statName = (String) RANDOM_STATS_DB[index][0];
                         double value = (1.0 + rand.nextDouble() * 2.5) * tierMulti * qualityMod;
 
-                        // Đã gỡ bỏ chuỗi capStr để thẻ đồ trông gọn gàng, bí ẩn hơn
                         lore.add("§7 - " + statName + ": §e+" + String.format("%.1f", value) + "%");
                     }
                     lore.add("");
@@ -235,6 +257,8 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
                     lore.add("");
                 }
 
+                meta.setUnbreakable(true);
+                meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_UNBREAKABLE);
                 meta.setLore(lore);
                 meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ATTRIBUTES);
                 item.setItemMeta(meta);

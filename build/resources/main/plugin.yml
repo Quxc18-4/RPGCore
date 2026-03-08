@@ -30,3 +30,7 @@ commands:
     usage: /<command> roll <weapon|armor> <tier(1-8)> <level> [lineage] [extra_stats]
     permission: rpgcore.admin
     permission-message: §cBạn không đủ quyền hạn để tạo trang bị!
+  repairadmin:
+    description: Lấy bộ dụng cụ sửa chữa và Đá mài
+    permission: rpgcore.admin
+    usage: /repairadmin <kit|stone> [loại/số_lần] [số_lượng]

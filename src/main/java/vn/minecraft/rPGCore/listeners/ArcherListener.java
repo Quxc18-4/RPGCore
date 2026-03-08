@@ -3,8 +3,6 @@ package vn.minecraft.rPGCore.listeners;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
-import org.bukkit.attribute.Attribute;
-import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -23,6 +21,7 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
+import vn.minecraft.rPGCore.managers.DurabilityManager;
 import vn.minecraft.rPGCore.player.PlayerManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 import vn.minecraft.rPGCore.ui.ArrowCraftingUI;
@@ -183,7 +182,7 @@ public class ArcherListener implements Listener {
     }
 
     // =========================================
-    // 2. CÔNG THỨC SÁT THƯƠNG (HIT ENTITY)
+    // 2. CÔNG THỨC SÁT THƯƠNG (GỌI COMBAT MANAGER)
     // =========================================
     @EventHandler
     public void onArrowHit(EntityDamageByEntityEvent event) {
@@ -204,6 +203,15 @@ public class ArcherListener implements Listener {
         RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
         if (rpgPlayer == null) return;
 
+        ItemStack weapon = player.getInventory().getItemInMainHand();
+
+        // CHẶN SỬ DỤNG VŨ KHÍ SAI HỆ / THIẾU CẤP ĐỘ
+        vn.minecraft.rPGCore.listeners.EquipmentListener eqListener = new vn.minecraft.rPGCore.listeners.EquipmentListener(playerManager);
+        if (!eqListener.canPlayerUse(player, weapon)) {
+            event.setCancelled(true);
+            return;
+        }
+
         String weaponType = "BOW";
         if (isNormalHit) {
             weaponType = arrow.getMetadata("WeaponType").get(0).asString();
@@ -212,39 +220,18 @@ public class ArcherListener implements Listener {
             if (heldType == Material.CROSSBOW) weaponType = "CROSSBOW";
         }
 
-        // --- 1. LẤY TỔNG CHỈ SỐ TỪ TRANG BỊ ---
-        vn.minecraft.rPGCore.managers.StatManager.PlayerStats eqStats = vn.minecraft.rPGCore.managers.StatManager.getEquipmentStats(player);
+        boolean isCrossbow = weaponType.equals("CROSSBOW");
 
-        double playerStr = rpgPlayer.getAttributeData().getAttribute("STR") * 2.0;
+        // KHAI BÁO CÁC THÔNG SỐ CỘNG THÊM TỪ KỸ NĂNG (Mặc định là 0)
+        double dmgMulti = 1.0;
+        double extraArmorPen = 0.0;
+        double extraLifeSteal = 0.0;
+        int durabilityLoss = 1;
 
-        // Random sát thương từ khoảng Min -> Max của trang bị
-        double weaponDmg = eqStats.minPhysicalDamage + (Math.random() * (eqStats.maxPhysicalDamage - eqStats.minPhysicalDamage));
-        if (weaponDmg <= 0) weaponDmg = (weaponType.equals("BOW")) ? 15.0 : 25.0; // Dự phòng
-
-        double rawDamage = playerStr + weaponDmg;
-
-        // --- 2. XỬ LÝ CHÍ MẠNG (CRITICAL HIT) ---
-        boolean isCrit = (Math.random() * 100) <= eqStats.critRate;
-        if (isCrit) {
-            // Tính sát thương bạo kích: Base * (1 + (CritDamage / 100))
-            rawDamage = rawDamage * (1.0 + (eqStats.critDamage / 100.0));
-            // Hiệu ứng Bạo kích
-            target.getWorld().spawnParticle(org.bukkit.Particle.CRIT, target.getLocation().add(0, 1, 0), 15, 0.5, 0.5, 0.5, 0.1);
-            player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_ATTACK_CRIT, 1.0f, 1.2f);
-        }
-
-        // --- 3. TÍNH TOÁN GIÁP VÀ XUYÊN GIÁP ---
-        double targetArmor = 0;
-        AttributeInstance armorAttr = target.getAttribute(Attribute.ARMOR);
-        if (armorAttr != null) targetArmor = armorAttr.getValue();
-
-        // Trừ giáp của địch theo % Xuyên Giáp của bản thân
-        targetArmor = targetArmor * (1.0 - (eqStats.armorPen / 100.0));
-
-        // --- XỬ LÝ 8 MŨI TÊN ĐẶC BIỆT ---
+        // XỬ LÝ HIỆU ỨNG CỦA 8 LOẠI MŨI TÊN ĐẶC BIỆT
         if (arrow.hasMetadata("CustomArrowType")) {
             String cType = arrow.getMetadata("CustomArrowType").get(0).asString();
-            double dmgMulti = 1.0;
+            durabilityLoss = 2; // Bắn tên xịn tốn 2 độ bền
 
             if (cType.equals("arrow_ice")) {
                 event.setCancelled(true);
@@ -258,45 +245,29 @@ public class ArcherListener implements Listener {
             else if (cType.equals("arrow_lightning")) { dmgMulti = 1.5; target.getWorld().strikeLightningEffect(target.getLocation()); target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 30, 10)); }
             else if (cType.equals("arrow_explosive")) { dmgMulti = 1.35; }
             else if (cType.equals("arrow_poison")) { dmgMulti = 0.8; target.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 200, 0)); target.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 200, 0)); }
-
-            double finalDmg = Math.max(1.0, (rawDamage - targetArmor) * dmgMulti);
-            event.setDamage(finalDmg);
-
-            // Mũi tên Huyết (LifeSteal) CỘNG DỒN với chỉ số Hút máu của trang bị!
-            if (cType.equals("arrow_lifesteal")) {
-                double totalLifesteal = 0.15 + (eqStats.lifeSteal / 100.0);
-                healPlayer(player, finalDmg * totalLifesteal);
-            } else if (eqStats.lifeSteal > 0) {
-                healPlayer(player, finalDmg * (eqStats.lifeSteal / 100.0));
-            }
-
-            removeIFrame(target);
-            return;
+            else if (cType.equals("arrow_lifesteal")) { extraLifeSteal = 15.0; } // Mũi tên huyết cộng 15% hút máu
         }
-
-        // --- XỬ LÝ SÁT THƯƠNG KỸ NĂNG CƠ BẢN ---
-        if (isCustomSkill) {
-            double dmgMultiplier = arrow.getMetadata("Skill_DmgMulti").get(0).asDouble();
+        // XỬ LÝ SÁT THƯƠNG KỸ NĂNG (Nhị/Tam/Tứ tiễn)
+        else if (isCustomSkill) {
+            dmgMulti = arrow.getMetadata("Skill_DmgMulti").get(0).asDouble();
             double ignoreChance = arrow.getMetadata("Skill_ArmorPen").get(0).asDouble();
-
-            if (Math.random() <= ignoreChance) { targetArmor = 0; } // Xuyên giáp tuyệt đối từ Skill
-
-            double finalDmg = Math.max(1.0, (rawDamage - targetArmor) * dmgMultiplier);
-            event.setDamage(finalDmg);
-
-            if (eqStats.lifeSteal > 0) healPlayer(player, finalDmg * (eqStats.lifeSteal / 100.0));
-            removeIFrame(target);
-            return;
+            if (Math.random() <= ignoreChance) extraArmorPen = 100.0; // Skill có tỷ lệ bỏ qua 100% giáp
+            durabilityLoss = 3; // Dùng skill tốn 3 độ bền
         }
 
-        // --- XỬ LÝ ĐÁNH THƯỜNG ---
-        double finalDamage = Math.max(1.0, rawDamage - targetArmor);
-        if (weaponType.equals("CROSSBOW")) finalDamage *= 1.55;
+        // ==============================================================
+        // GỌI COMBAT MANAGER - NHỜ NÓ TÍNH HỘ TOÀN BỘ SÁT THƯƠNG
+        // ==============================================================
+        double finalDamage = vn.minecraft.rPGCore.managers.CombatManager.calculateDamage(player, rpgPlayer, target, dmgMulti, extraArmorPen, false, isCrossbow);
 
+        // Đẩy sát thương cuối cùng vào Entity
         event.setDamage(finalDamage);
 
-        // Hút máu từ đòn đánh thường
-        if (eqStats.lifeSteal > 0) healPlayer(player, finalDamage * (eqStats.lifeSteal / 100.0));
+        // Gọi hàm Hút Máu (Nó sẽ tự động cộng % của Trang bị và extra của mũi tên)
+        vn.minecraft.rPGCore.managers.CombatManager.applyLifeSteal(player, rpgPlayer, finalDamage, extraLifeSteal);
+
+        // Trừ độ bền
+        DurabilityManager.damageItem(player, rpgPlayer, weapon, durabilityLoss);
 
         removeIFrame(target);
     }
@@ -539,13 +510,5 @@ public class ArcherListener implements Listener {
     // Hàm phụ trợ check block an toàn để đặt băng đè lên
     private boolean isReplaceable(Material mat) {
         return mat.isAir() || mat == Material.WATER || mat == Material.SHORT_GRASS || mat == Material.TALL_GRASS;
-    }
-
-    // Hàm phụ trợ Hút máu
-    private void healPlayer(Player player, double amount) {
-        if (amount <= 0) return;
-        double maxHp = player.getAttribute(Attribute.MAX_HEALTH).getValue();
-        player.setHealth(Math.min(maxHp, player.getHealth() + amount));
-        player.getWorld().spawnParticle(Particle.HEART, player.getLocation().add(0, 2, 0), 1, 0.3, 0.3, 0.3, 0);
     }
 }

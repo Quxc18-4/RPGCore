@@ -87,6 +87,7 @@ public class PlayerManager {
 
         rpgPlayer.updateMaxStats();
         rpgPlayer.updateExpBar();
+        rpgPlayer.updateEquipmentStats(); // <-- THÊM DÒNG NÀY ĐỂ QUÉT CHỈ SỐ LÚC VỪA VÀO GAME
 
         activePlayers.put(uuid, rpgPlayer);
         return rpgPlayer;
