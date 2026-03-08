@@ -32,6 +32,7 @@ public final class RPGCore extends JavaPlugin {
         AttrGUI attrGUI = new AttrGUI(playerManager);
         SkillManager skillManager = new SkillManager(this);
         SkillUIManager skillUI = new SkillUIManager(playerManager, skillManager);
+        BlacksmithGUI blacksmithGUI = new BlacksmithGUI();
 
         ArrowRecipeManager arrowRecipeManager = new ArrowRecipeManager(this);
         ArrowCraftingUI arrowCraftingUI = new ArrowCraftingUI(playerManager, arrowRecipeManager);
@@ -59,6 +60,7 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(arrowCraftingUI, this);
         getServer().getPluginManager().registerEvents(adminArrowCraftingUI, this);
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.DurabilityListener(playerManager), this);
+        getServer().getPluginManager().registerEvents(blacksmithGUI, this);
 
         // 3. Chạy Task
         new RegenTask(playerManager, bossBarManager).runTaskTimer(this, 0L, 20L);

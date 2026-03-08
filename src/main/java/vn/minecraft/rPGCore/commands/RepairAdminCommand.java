@@ -76,6 +76,17 @@ public class RepairAdminCommand implements CommandExecutor {
                 meta.setLore(List.of("§7Dùng để phục hồi §53000 §7độ bền."));
                 break;
             case 4:
+                stone = new ItemStack(Material.YELLOW_DYE, amount);
+                meta = stone.getItemMeta();
+                meta.setDisplayName("§6Đá Mài Cực Phẩm");
+                meta.setLore(List.of("§7Dùng để phục hồi §6100% §7độ bền."));
+                break;
+            case 5:
+                stone = new ItemStack(Material.NETHER_STAR, amount);
+                meta = stone.getItemMeta();
+                meta.setDisplayName("§dĐá Nâng Cấp");
+                meta.setLore(List.of("§7Nguyên liệu dùng tại Lò Rèn", "§7để nâng cấp chỉ số trang bị."));
+                break;
             default:
                 stone = new ItemStack(Material.YELLOW_DYE, amount);
                 meta = stone.getItemMeta();

@@ -38,9 +38,13 @@ public class RPGPlayer {
         public double regenRate = 0.0; public double attackSpeed = 0.0;
         public double cooldownReduction = 0.0; public double moveSpeed = 0.0;
 
-        // THÊM 2 BIẾN NÀY ĐỂ LƯU HỆ SỐ NHÂN TỪ SET BONUS
         public double hpMultiplier = 1.0;
         public double armorMultiplier = 1.0;
+
+        // CÁC CHỈ SỐ TỪ DÒNG DÕI
+        public double expBonus = 0.0;
+        public double manaRegen = 0.0;
+        public double dropRate = 0.0;
 
         public Map<String, Integer> setCounts = new HashMap<>();
     }
@@ -81,20 +85,19 @@ public class RPGPlayer {
         allEquips[4] = mainHand;
 
         String playerClassId = this.currentClass != null ? this.currentClass.getId() : "none";
-        String playerClassName = this.currentClass != null ? org.bukkit.ChatColor.stripColor(this.currentClass.getDisplayName()) : "None";
+        String playerClassName = this.currentClass != null ? ChatColor.stripColor(this.currentClass.getDisplayName()) : "None";
+
         for (ItemStack item : allEquips) {
             if (item == null || !item.hasItemMeta() || !item.getItemMeta().hasLore()) continue;
 
-            // KIỂM TRA ĐỒ HỎNG BẰNG TÊN GẠCH NGANG (§8§m)
             if (item.getItemMeta().hasDisplayName() && item.getItemMeta().getDisplayName().startsWith("§8§m")) {
-                continue; // Đồ hỏng -> Không quét chỉ số, không quét set
+                continue;
             }
 
             List<String> lore = item.getItemMeta().getLore();
-            boolean isWeapon = (item == mainHand);
+            boolean isWeapon = (item.equals(mainHand));
             boolean isValidClass = false;
 
-            // KIỂM TRA LỚP NHÂN VẬT (Class Lock)
             for (String line : lore) {
                 String cleanLine = ChatColor.stripColor(line).trim();
                 if (cleanLine.startsWith("▶ Thuộc class:")) {
@@ -107,7 +110,6 @@ public class RPGPlayer {
             }
             if (!isValidClass) continue;
 
-            // QUÉT DATA
             for (String line : lore) {
                 String clean = ChatColor.stripColor(line).trim();
                 if (clean.isEmpty()) continue;
@@ -121,33 +123,43 @@ public class RPGPlayer {
                     String[] parts = clean.substring(2).split(":");
                     if (parts.length == 2) {
                         String statName = parts[0].trim();
-                        String valStr = parts[1].split("\\(")[0].replaceAll("[+%]", "").trim();
+                        boolean isPercent = parts[1].contains("%");
+
+                        // BỘ LỌC CỰC MẠNH: Xóa mọi dấu +, %, ★ và khoảng trắng để Java đọc được số
+                        String valStr = parts[1].split("\\(")[0].replaceAll("[+%★\\s]", "");
+
                         try {
                             if (valStr.contains("~")) {
                                 String[] range = valStr.split("~");
                                 if (statName.contains("vật lý")) {
-                                    currentStats.minPhysicalDamage += Double.parseDouble(range[0].trim());
-                                    currentStats.maxPhysicalDamage += Double.parseDouble(range[1].trim());
+                                    currentStats.minPhysicalDamage += Double.parseDouble(range[0]);
+                                    currentStats.maxPhysicalDamage += Double.parseDouble(range[1]);
                                 } else if (statName.contains("phép thuật")) {
-                                    currentStats.minMagicalDamage += Double.parseDouble(range[0].trim());
-                                    currentStats.maxMagicalDamage += Double.parseDouble(range[1].trim());
+                                    currentStats.minMagicalDamage += Double.parseDouble(range[0]);
+                                    currentStats.maxMagicalDamage += Double.parseDouble(range[1]);
                                 }
                             } else {
                                 if (statName.equals("Độ bền") || statName.equals("Cơ hội bảo vệ")) continue;
                                 double val = Double.parseDouble(valStr);
                                 switch (statName) {
-                                    case "Máu tối đa": currentStats.maxHealth += val; break;
+                                    case "Máu tối đa":
+                                        if (isPercent) currentStats.hpMultiplier += (val / 100.0);
+                                        else currentStats.maxHealth += val; break;
                                     case "Giáp": currentStats.armor += val; break;
+                                    case "Tổng Giáp": currentStats.armorMultiplier += (val / 100.0); break;
                                     case "Tỉ lệ chí mạng": currentStats.critRate += val; break;
                                     case "Sát thương chí mạng": currentStats.critDamage += val; break;
-                                    case "Tỉ lệ xuyên giáp": currentStats.armorPen += val; break;
-                                    case "Tỉ lệ hút máu": currentStats.lifeSteal += val; break;
+                                    case "Tỉ lệ xuyên giáp": case "Xuyên giáp": currentStats.armorPen += val; break;
+                                    case "Tỉ lệ hút máu": case "Hút máu": currentStats.lifeSteal += val; break;
                                     case "Tỉ lệ né tránh": currentStats.dodgeRate += val; break;
                                     case "Tỉ lệ đỡ đòn": currentStats.blockRate += val; break;
                                     case "Tỉ lệ hồi phục": currentStats.regenRate += val; break;
                                     case "Tốc độ đánh": currentStats.attackSpeed += val; break;
                                     case "Giảm hồi chiêu": currentStats.cooldownReduction += val; break;
-                                    case "Tốc độ di chuyển": currentStats.moveSpeed += val; break;
+                                    case "Tốc độ di chuyển": case "Tốc độ chạy": currentStats.moveSpeed += val; break;
+                                    case "Nhận Kinh nghiệm": currentStats.expBonus += val; break;
+                                    case "Hồi Năng lượng": currentStats.manaRegen += val; break;
+                                    case "Tỉ lệ rớt đồ": currentStats.dropRate += val; break;
                                 }
                             }
                         } catch (Exception ignored) {}
@@ -158,8 +170,8 @@ public class RPGPlayer {
 
         applySetBonuses();
         updateSetVisuals();
-        updateMaxStats(); // Cập nhật lại thanh Máu Vanilla
-        updateMoveSpeed(); // Cập nhật Tốc chạy Vanilla
+        updateMaxStats();
+        updateMoveSpeed();
     }
 
     private void applySetBonuses() {
@@ -169,6 +181,9 @@ public class RPGPlayer {
         int armored = currentStats.setCounts.getOrDefault("armored", 0);
         int swift = currentStats.setCounts.getOrDefault("swift", 0);
         int shattering = currentStats.setCounts.getOrDefault("shattering", 0);
+        int experienced = currentStats.setCounts.getOrDefault("experienced", 0);
+        int magical = currentStats.setCounts.getOrDefault("magical", 0);
+        int scavenger = currentStats.setCounts.getOrDefault("scavenger", 0);
 
         if (vampiric >= 3) currentStats.lifeSteal += 12.0;
         if (hunter >= 3) currentStats.critRate += 8.0;
@@ -177,6 +192,9 @@ public class RPGPlayer {
         if (armored >= 3) currentStats.armorMultiplier += 0.25;
         if (swift >= 3) currentStats.moveSpeed += 15.0;
         if (shattering >= 3) currentStats.armorPen += 15.0;
+        if (experienced >= 3) currentStats.expBonus += 15.0;
+        if (magical >= 3) currentStats.manaRegen += 20.0;
+        if (scavenger >= 3) currentStats.dropRate += 20.0;
 
         if (currentStats.critRate > 100.0) currentStats.critRate = 100.0;
         if (currentStats.armorPen > 80.0) currentStats.armorPen = 80.0;

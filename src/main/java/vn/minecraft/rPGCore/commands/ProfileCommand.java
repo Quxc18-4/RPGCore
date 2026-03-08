@@ -8,7 +8,6 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import vn.minecraft.rPGCore.managers.StatManager;
 import vn.minecraft.rPGCore.player.PlayerManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 
@@ -74,26 +73,63 @@ public class ProfileCommand implements CommandExecutor {
     }
 
     // ===============================================
-    // GIAO DIỆN /PROFILE STATS (TỔNG CHỈ SỐ)
+    // GIAO DIỆN /PROFILE STATS (TỔNG CHỈ SỐ MỚI)
     // ===============================================
     private void showStats(Player player) {
+        RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
+        if (rpgPlayer == null) return;
+
+        // Ép hệ thống quét lại toàn bộ đồ trên người trước khi in ra
+        rpgPlayer.updateEquipmentStats();
+        RPGPlayer.PlayerStats stats = rpgPlayer.getStats();
+
         player.sendMessage("§8§m---------------------------------------");
         player.sendMessage("         §a§lBẢNG CHỈ SỐ CHI TIẾT");
         player.sendMessage("");
 
-        Map<String, Double> stats = StatManager.getPlayerStats(player);
+        Map<String, Double> map = new java.util.LinkedHashMap<>();
 
-        if (stats.isEmpty()) {
+        if (stats.minPhysicalDamage > 0) {
+            map.put("Sát thương vật lý (Nhỏ nhất)", stats.minPhysicalDamage);
+            map.put("Sát thương vật lý (Lớn nhất)", stats.maxPhysicalDamage);
+        }
+        if (stats.minMagicalDamage > 0) {
+            map.put("Sát thương phép thuật (Nhỏ nhất)", stats.minMagicalDamage);
+            map.put("Sát thương phép thuật (Lớn nhất)", stats.maxMagicalDamage);
+        }
+
+        if (stats.maxHealth > 0) map.put("Máu tối đa", stats.maxHealth);
+        if (stats.hpMultiplier > 1.0) map.put("Máu tối đa (%)", (stats.hpMultiplier - 1.0) * 100);
+
+        if (stats.armor > 0) map.put("Giáp", stats.armor);
+        if (stats.armorMultiplier > 1.0) map.put("Tổng Giáp (%)", (stats.armorMultiplier - 1.0) * 100);
+
+        map.put("Tỉ lệ chí mạng", stats.critRate);
+        map.put("Sát thương chí mạng", stats.critDamage);
+
+        if (stats.armorPen > 0) map.put("Tỉ lệ xuyên giáp", stats.armorPen);
+        if (stats.lifeSteal > 0) map.put("Tỉ lệ hút máu", stats.lifeSteal);
+        if (stats.dodgeRate > 0) map.put("Tỉ lệ né tránh", stats.dodgeRate);
+        if (stats.blockRate > 0) map.put("Tỉ lệ đỡ đòn", stats.blockRate);
+        if (stats.regenRate > 0) map.put("Tỉ lệ hồi phục", stats.regenRate);
+        if (stats.attackSpeed > 0) map.put("Tốc độ đánh", stats.attackSpeed);
+        if (stats.cooldownReduction > 0) map.put("Giảm hồi chiêu", stats.cooldownReduction);
+        if (stats.moveSpeed > 0) map.put("Tốc độ di chuyển", stats.moveSpeed);
+
+        // Thêm các chỉ số của Dòng dõi
+        if (stats.expBonus > 0) map.put("Nhận Kinh nghiệm", stats.expBonus);
+        if (stats.manaRegen > 0) map.put("Hồi Năng lượng", stats.manaRegen);
+        if (stats.dropRate > 0) map.put("Tỉ lệ rớt đồ", stats.dropRate);
+
+        if (map.isEmpty()) {
             player.sendMessage(" §7- Chưa có chỉ số nào từ trang bị.");
         } else {
-            for (Map.Entry<String, Double> entry : stats.entrySet()) {
+            for (Map.Entry<String, Double> entry : map.entrySet()) {
                 String key = entry.getKey();
                 double value = entry.getValue();
 
-                // Tự động thêm dấu % nếu là các chỉ số đặc thù
-                String suffix = (key.contains("Tỉ lệ") || key.contains("Tốc độ") || key.contains("Giảm")) ? "%" : "";
+                String suffix = (key.contains("Tỉ lệ") || key.contains("Tốc độ") || key.contains("Giảm") || key.contains("(%)") || key.equals("Nhận Kinh nghiệm") || key.equals("Hồi Năng lượng")) ? "%" : "";
 
-                // Đổi màu Đỏ đậm nếu chỉ số đã chạm Max Cap (Giới hạn)
                 String color = "§e";
                 if (key.equals("Giảm hồi chiêu") && value >= 40.0) color = "§c§l";
                 if (key.equals("Tỉ lệ chí mạng") && value >= 100.0) color = "§c§l";
@@ -103,8 +139,6 @@ public class ProfileCommand implements CommandExecutor {
                 if (key.equals("Tỉ lệ đỡ đòn") && value >= 50.0) color = "§c§l";
                 if (key.equals("Tỉ lệ né tránh") && value >= 50.0) color = "§c§l";
 
-                // Ví dụ in ra: ▶ Tỉ lệ chí mạng: +45.5%
-                // Nếu là khoảng sát thương (Nhỏ nhất/Lớn nhất) thì không cần dấu +
                 String prefix = key.contains("Nhỏ nhất") || key.contains("Lớn nhất") ? "" : "+";
 
                 player.sendMessage(" §7▶ " + key + ": " + color + prefix + String.format("%.1f", value) + suffix);

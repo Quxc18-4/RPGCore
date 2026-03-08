@@ -176,21 +176,25 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
 
                 if (isWeapon) {
                     double baseAtk = level * 4.5 * tierMulti * qualityMod;
-                    double minAtk = baseAtk * 0.85;
-                    double maxAtk = baseAtk * 1.15;
+                    // Sát thương dao động +- 25%
+                    double minAtk = baseAtk * 0.75;
+                    double maxAtk = baseAtk * 1.25;
                     String dmgType = rpgClass.equalsIgnoreCase("mage") ? "Sát thương phép thuật" : "Sát thương vật lý";
 
                     lore.add("§7 - " + dmgType + ": §f" + String.format("%.1f", minAtk) + " §8~ §f" + String.format("%.1f", maxAtk));
 
-                    // Vũ khí có base độ bền là 1500
                     maxDurability = (int) (1500 * (tierMulti * 0.3 + qualityMod * 0.7));
                 } else {
                     double baseHp = level * 15 * tierMulti * qualityMod;
                     double baseArmor = level * 1.5 * tierMulti * qualityMod;
-                    lore.add("§7 - Máu tối đa: §a+" + Math.round(baseHp));
-                    lore.add("§7 - Giáp: §f+" + Math.round(baseArmor));
 
-                    // Giáp có base độ bền là 2500
+                    // Máu và Giáp dao động +- 15% (Random từ 0.85 đến 1.15)
+                    double finalHp = baseHp * (0.85 + (rand.nextDouble() * 0.30));
+                    double finalArmor = baseArmor * (0.85 + (rand.nextDouble() * 0.30));
+
+                    lore.add("§7 - Máu tối đa: §a+" + Math.round(finalHp));
+                    lore.add("§7 - Giáp: §f+" + Math.round(finalArmor));
+
                     maxDurability = (int) (2500 * (tierMulti * 0.3 + qualityMod * 0.7));
                 }
 
@@ -198,9 +202,29 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
                 lore.add("§7 - Cơ hội bảo vệ: §e3§8/§e3");
                 lore.add("");
 
-                // DÒNG DÕI LẺ
+                // ==============================================================
+                // HỆ THỐNG GEAR SCORE (45% Level - 35% Tier - 20% Quality)
+                // ==============================================================
+                // Chuẩn hóa Level (Giả sử Level 100 là Max)
+                double levelFactor = Math.min(level, 100) / 100.0; // Range: 0.01 -> 1.0
+
+                // Chuẩn hóa Tier (Có 8 Tier, lấy Index chia 7)
+                double tierFactor = (double) tierIndex / (TIERS.length - 1); // Range: 0.0 -> 1.0
+
+                // Chuẩn hóa Quality (Min là 0.4, Max là 1.2)
+                double qualityFactor = (qualityMod - 0.4) / (1.2 - 0.4); // Range: 0.0 -> 1.0
+
+                // TỔNG ĐIỂM SỨC MẠNH TỪ 0.0 (Phế nhất) ĐẾN 1.0 (Hoàn hảo)
+                double powerRating = (levelFactor * 0.45) + (tierFactor * 0.35) + (qualityFactor * 0.20);
+
+                // Hệ số nhân cho Chỉ số phụ (Cùi nhất x1.0, Max Ping x15.0)
+                double statMulti = 1.0 + (14.0 * powerRating);
+
+                // ==============================================================
+
+                // DÒNG DÕI LẺ (Sử dụng hệ số tổng hợp mới)
                 lore.add(tierColor + "§l✦ Thuộc tính Dòng dõi (" + capitalize(lineage) + "):");
-                applyLineageStatsOnly(lore, lineage.toLowerCase(), tierMulti, qualityMod);
+                applyLineageStatsOnly(lore, lineage.toLowerCase(), statMulti);
                 lore.add("");
 
                 // DÒNG PHỤ KÈM HIỂN THỊ MAX CAP & WEIGHTED RANDOM
@@ -244,7 +268,9 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
 
                     for (int index : selectedIndices) {
                         String statName = (String) RANDOM_STATS_DB[index][0];
-                        double value = (1.0 + rand.nextDouble() * 2.5) * tierMulti * qualityMod;
+
+                        // ĐÃ GIẢM 50%: Base Random (0.5% -> 1.75%) Nhân với Gear Score
+                        double value = (0.5 + rand.nextDouble() * 1.25) * statMulti;
 
                         lore.add("§7 - " + statName + ": §e+" + String.format("%.1f", value) + "%");
                     }
@@ -331,20 +357,20 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
         return new Object[]{mat, name};
     }
 
-    private void applyLineageStatsOnly(List<String> lore, String lineage, double tierMulti, double qualityMod) {
+    private void applyLineageStatsOnly(List<String> lore, String lineage, double statMulti) {
         switch (lineage) {
-            case "vampiric": lore.add("§c - Hút máu: +" + String.format("%.1f", 3 * tierMulti * qualityMod) + "%"); break;
-            case "experienced": lore.add("§b - Nhận Kinh nghiệm: +" + String.format("%.1f", 5 * tierMulti * qualityMod) + "%"); break;
+            case "vampiric": lore.add("§c - Hút máu: +" + String.format("%.1f", 1.5 * statMulti) + "%"); break;
+            case "experienced": lore.add("§b - Nhận Kinh nghiệm: +" + String.format("%.1f", 2.5 * statMulti) + "%"); break;
             case "hunter":
-                lore.add("§e - Tỉ lệ chí mạng: +" + String.format("%.1f", 2 * tierMulti * qualityMod) + "%");
-                lore.add("§e - Sát thương chí mạng: +" + String.format("%.1f", 8 * tierMulti * qualityMod) + "%");
+                lore.add("§e - Tỉ lệ chí mạng: +" + String.format("%.1f", 1.0 * statMulti) + "%");
+                lore.add("§e - Sát thương chí mạng: +" + String.format("%.1f", 4.0 * statMulti) + "%");
                 break;
-            case "magical": lore.add("§9 - Hồi Năng lượng: +" + String.format("%.1f", 5 * tierMulti * qualityMod) + "%"); break;
-            case "giant": lore.add("§a - Máu tối đa: +" + String.format("%.1f", 5 * tierMulti * qualityMod) + "%"); break;
-            case "armored": lore.add("§6 - Tổng Giáp: +" + String.format("%.1f", 5 * tierMulti * qualityMod) + "%"); break;
-            case "scavenger": lore.add("§e - Tỉ lệ rớt đồ: +" + String.format("%.1f", 4 * tierMulti * qualityMod) + "%"); break;
-            case "swift": lore.add("§f - Tốc độ chạy: +" + String.format("%.1f", 3 * tierMulti * qualityMod) + "%"); break;
-            case "shattering": lore.add("§4 - Xuyên giáp: +" + String.format("%.1f", 4 * tierMulti * qualityMod) + "%"); break;
+            case "magical": lore.add("§9 - Hồi Năng lượng: +" + String.format("%.1f", 2.5 * statMulti) + "%"); break;
+            case "giant": lore.add("§a - Máu tối đa: +" + String.format("%.1f", 2.5 * statMulti) + "%"); break;
+            case "armored": lore.add("§6 - Tổng Giáp: +" + String.format("%.1f", 2.5 * statMulti) + "%"); break;
+            case "scavenger": lore.add("§e - Tỉ lệ rớt đồ: +" + String.format("%.1f", 2.0 * statMulti) + "%"); break;
+            case "swift": lore.add("§f - Tốc độ chạy: +" + String.format("%.1f", 1.5 * statMulti) + "%"); break;
+            case "shattering": lore.add("§4 - Xuyên giáp: +" + String.format("%.1f", 2.0 * statMulti) + "%"); break;
             default: lore.add("§7 - Không có thuộc tính bổ sung."); break;
         }
     }
