@@ -5,90 +5,163 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class StatManager {
 
-    // Hàm quyét toàn bộ trang bị đang mặc và trả về Tổng chỉ số
-    public static Map<String, Double> getPlayerStats(Player player) {
-        Map<String, Double> stats = new HashMap<>();
-        Map<String, Integer> setCounts = new HashMap<>();
+    // Class lưu trữ toàn bộ chỉ số đã được xử lý (Phục vụ cho tính toán Combat)
+    public static class PlayerStats {
+        public double minPhysicalDamage = 0.0;
+        public double maxPhysicalDamage = 0.0;
+        public double minMagicalDamage = 0.0;
+        public double maxMagicalDamage = 0.0;
 
+        public double maxHealth = 0.0;
+        public double armor = 0.0;
+
+        // Base Stats (Chỉ số cơ bản của nhân vật)
+        public double critRate = 5.0;      // Mặc định 5%
+        public double critDamage = 50.0;   // Mặc định 50% (Gây 150% sát thương)
+
+        public double armorPen = 0.0;
+        public double lifeSteal = 0.0;
+        public double dodgeRate = 0.0;
+        public double blockRate = 0.0;
+        public double regenRate = 0.0;
+        public double attackSpeed = 0.0;
+        public double cooldownReduction = 0.0;
+        public double moveSpeed = 0.0;
+
+        public Map<String, Integer> setCounts = new HashMap<>();
+    }
+
+    // Hàm lấy Object PlayerStats (Dùng cho class ArcherListener / Chiến đấu)
+    public static PlayerStats getEquipmentStats(Player player) {
+        PlayerStats stats = new PlayerStats();
         ItemStack[] armor = player.getInventory().getArmorContents();
         ItemStack mainHand = player.getInventory().getItemInMainHand();
 
-        // Gộp chung Giáp và Vũ khí vào 1 mảng để quét
         ItemStack[] allEquips = new ItemStack[5];
         System.arraycopy(armor, 0, allEquips, 0, 4);
         allEquips[4] = mainHand;
 
         for (ItemStack item : allEquips) {
             if (item == null || !item.hasItemMeta() || !item.getItemMeta().hasLore()) continue;
-
             boolean isWeapon = (item == mainHand);
 
             for (String line : item.getItemMeta().getLore()) {
-                // Xóa mã màu để dễ đọc text
                 String clean = ChatColor.stripColor(line).trim();
                 if (clean.isEmpty()) continue;
 
-                // 1. Nhận diện Set Dòng dõi để đếm (Chỉ tính Giáp)
                 if (!isWeapon && clean.startsWith("✦ Thuộc tính Dòng dõi (")) {
                     String lineage = clean.substring(clean.indexOf("(") + 1, clean.indexOf(")")).toLowerCase();
-                    setCounts.put(lineage, setCounts.getOrDefault(lineage, 0) + 1);
+                    stats.setCounts.put(lineage, stats.setCounts.getOrDefault(lineage, 0) + 1);
                     continue;
                 }
 
-                // 2. Tự động Nhận diện và Cộng dồn MỌI CHỈ SỐ
                 if (clean.startsWith("- ")) {
                     String[] parts = clean.substring(2).split(":");
                     if (parts.length == 2) {
                         String statName = parts[0].trim();
-                        // Loại bỏ dấu + và dấu % để lấy số nguyên chất
-                        String valStr = parts[1].replaceAll("[+%]", "").trim();
+                        // Lọc bỏ dấu +, %, chữ "Giới hạn"
+                        String valStr = parts[1].split("\\(")[0].replaceAll("[+%]", "").trim();
 
-                        // Nếu là khoảng sát thương vũ khí (VD: 100.0 ~ 150.0)
-                        if (valStr.contains("~")) {
-                            String[] range = valStr.split("~");
-                            try {
+                        try {
+                            if (valStr.contains("~")) {
+                                String[] range = valStr.split("~");
                                 double min = Double.parseDouble(range[0].trim());
                                 double max = Double.parseDouble(range[1].trim());
-                                stats.put(statName + " (Nhỏ nhất)", stats.getOrDefault(statName + " (Nhỏ nhất)", 0.0) + min);
-                                stats.put(statName + " (Lớn nhất)", stats.getOrDefault(statName + " (Lớn nhất)", 0.0) + max);
-                            } catch (NumberFormatException ignored) {}
-                        } else {
-                            // Cộng dồn các chỉ số bình thường (Máu, Giáp, Chí mạng, v.v)
-                            try {
-                                double value = Double.parseDouble(valStr);
-                                stats.put(statName, stats.getOrDefault(statName, 0.0) + value);
-                            } catch (NumberFormatException ignored) {}
-                        }
+                                if (statName.contains("vật lý")) {
+                                    stats.minPhysicalDamage += min;
+                                    stats.maxPhysicalDamage += max;
+                                } else if (statName.contains("phép thuật")) {
+                                    stats.minMagicalDamage += min;
+                                    stats.maxMagicalDamage += max;
+                                }
+                            } else {
+                                double val = Double.parseDouble(valStr);
+                                switch (statName) {
+                                    case "Máu tối đa": stats.maxHealth += val; break;
+                                    case "Giáp": stats.armor += val; break;
+                                    case "Tỉ lệ chí mạng": stats.critRate += val; break;
+                                    case "Sát thương chí mạng": stats.critDamage += val; break;
+                                    case "Tỉ lệ xuyên giáp": stats.armorPen += val; break;
+                                    case "Tỉ lệ hút máu": stats.lifeSteal += val; break;
+                                    case "Tỉ lệ né tránh": stats.dodgeRate += val; break;
+                                    case "Tỉ lệ đỡ đòn": stats.blockRate += val; break;
+                                    case "Tỉ lệ hồi phục": stats.regenRate += val; break;
+                                    case "Tốc độ đánh": stats.attackSpeed += val; break;
+                                    case "Giảm hồi chiêu": stats.cooldownReduction += val; break;
+                                    case "Tốc độ di chuyển": stats.moveSpeed += val; break;
+                                }
+                            }
+                        } catch (NumberFormatException ignored) {}
                     }
                 }
             }
         }
 
-        // 3. XỬ LÝ SET BONUS (Cộng dồn thêm chỉ số nếu mặc đủ bộ)
-        if (setCounts.getOrDefault("giant", 0) >= 3) {
-            double currentHp = stats.getOrDefault("Máu tối đa", 0.0);
-            stats.put("Máu tối đa", currentHp * 1.25); // Set 3 Giant: +25% Máu
-        }
-        if (setCounts.getOrDefault("armored", 0) >= 3) {
-            double currentArmor = stats.getOrDefault("Giáp", 0.0);
-            stats.put("Giáp", currentArmor * 1.25); // Set 3 Armored: +25% Giáp
-        }
-        if (setCounts.getOrDefault("hunter", 0) >= 3) {
-            stats.put("Tỉ lệ chí mạng", stats.getOrDefault("Tỉ lệ chí mạng", 0.0) + 8.0);
-        }
-        // Todo: Thêm tiếp các Set Bonus khác tại đây sau này...
+        applySetBonuses(stats);
 
-        // 4. KIỂM TRA GIỚI HẠN (HARD CAPS)
-        if (stats.getOrDefault("Tỉ lệ chí mạng", 0.0) > 100.0) stats.put("Tỉ lệ chí mạng", 100.0);
-        if (stats.getOrDefault("Tỉ lệ xuyên giáp", 0.0) > 80.0) stats.put("Tỉ lệ xuyên giáp", 80.0);
-        if (stats.getOrDefault("Giảm hồi chiêu", 0.0) > 40.0) stats.put("Giảm hồi chiêu", 40.0);
-        if (stats.getOrDefault("Tỉ lệ hút máu", 0.0) > 50.0) stats.put("Tỉ lệ hút máu", 50.0);
-        if (stats.getOrDefault("Tốc độ đánh", 0.0) > 100.0) stats.put("Tốc độ đánh", 100.0);
+        // Giới hạn chỉ số (Hard Caps)
+        if (stats.critRate > 100.0) stats.critRate = 100.0;
+        if (stats.armorPen > 80.0) stats.armorPen = 80.0;
+        if (stats.cooldownReduction > 40.0) stats.cooldownReduction = 40.0;
+        if (stats.lifeSteal > 50.0) stats.lifeSteal = 50.0;
+        if (stats.attackSpeed > 100.0) stats.attackSpeed = 100.0;
+        if (stats.dodgeRate > 50.0) stats.dodgeRate = 50.0;
+        if (stats.blockRate > 50.0) stats.blockRate = 50.0;
 
         return stats;
+    }
+
+    private static void applySetBonuses(PlayerStats stats) {
+        int vampiric = stats.setCounts.getOrDefault("vampiric", 0);
+        int hunter = stats.setCounts.getOrDefault("hunter", 0);
+        int giant = stats.setCounts.getOrDefault("giant", 0);
+        int armored = stats.setCounts.getOrDefault("armored", 0);
+        int swift = stats.setCounts.getOrDefault("swift", 0);
+        int shattering = stats.setCounts.getOrDefault("shattering", 0);
+
+        if (vampiric >= 3) stats.lifeSteal += 12.0;
+        if (hunter >= 3) stats.critRate += 8.0;
+        if (hunter >= 4) stats.critDamage += 40.0;
+        if (giant >= 3) stats.maxHealth *= 1.25;
+        if (armored >= 3) stats.armor *= 1.25;
+        if (swift >= 3) stats.moveSpeed += 15.0;
+        if (shattering >= 3) stats.armorPen += 15.0;
+    }
+
+    // Hàm chuyển đổi sang Map (Giữ nguyên để KHÔNG LÀM LỖI lệnh /profile stats)
+    public static Map<String, Double> getPlayerStats(Player player) {
+        PlayerStats stats = getEquipmentStats(player);
+        Map<String, Double> map = new LinkedHashMap<>(); // Dùng LinkedHashMap để in theo thứ tự cố định
+
+        if (stats.minPhysicalDamage > 0) {
+            map.put("Sát thương vật lý (Nhỏ nhất)", stats.minPhysicalDamage);
+            map.put("Sát thương vật lý (Lớn nhất)", stats.maxPhysicalDamage);
+        }
+        if (stats.minMagicalDamage > 0) {
+            map.put("Sát thương phép thuật (Nhỏ nhất)", stats.minMagicalDamage);
+            map.put("Sát thương phép thuật (Lớn nhất)", stats.maxMagicalDamage);
+        }
+
+        if (stats.maxHealth > 0) map.put("Máu tối đa", stats.maxHealth);
+        if (stats.armor > 0) map.put("Giáp", stats.armor);
+
+        map.put("Tỉ lệ chí mạng", stats.critRate);
+        map.put("Sát thương chí mạng", stats.critDamage);
+
+        if (stats.armorPen > 0) map.put("Tỉ lệ xuyên giáp", stats.armorPen);
+        if (stats.lifeSteal > 0) map.put("Tỉ lệ hút máu", stats.lifeSteal);
+        if (stats.dodgeRate > 0) map.put("Tỉ lệ né tránh", stats.dodgeRate);
+        if (stats.blockRate > 0) map.put("Tỉ lệ đỡ đòn", stats.blockRate);
+        if (stats.regenRate > 0) map.put("Tỉ lệ hồi phục", stats.regenRate);
+        if (stats.attackSpeed > 0) map.put("Tốc độ đánh", stats.attackSpeed);
+        if (stats.cooldownReduction > 0) map.put("Giảm hồi chiêu", stats.cooldownReduction);
+        if (stats.moveSpeed > 0) map.put("Tốc độ di chuyển", stats.moveSpeed);
+
+        return map;
     }
 }

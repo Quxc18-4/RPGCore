@@ -142,8 +142,10 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
                 lore.add("§8▶ Yêu cầu cấp độ: " + level);
                 lore.add("");
 
-                // CHỈ SỐ CHÍNH
+                // CHỈ SỐ CHÍNH VÀ ĐỘ BỀN
                 lore.add(tierColor + "§l✦ Chỉ số chính:");
+                int maxDurability; // Biến lưu độ bền
+
                 if (isWeapon) {
                     double baseAtk = level * 4.5 * tierMulti * qualityMod;
                     double minAtk = baseAtk * 0.85;
@@ -151,12 +153,21 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
                     String dmgType = rpgClass.equalsIgnoreCase("mage") ? "Sát thương phép thuật" : "Sát thương vật lý";
 
                     lore.add("§7 - " + dmgType + ": §f" + String.format("%.1f", minAtk) + " §8~ §f" + String.format("%.1f", maxAtk));
+
+                    // Vũ khí có base độ bền là 1500
+                    maxDurability = (int) (1500 * (tierMulti * 0.3 + qualityMod * 0.7));
                 } else {
                     double baseHp = level * 15 * tierMulti * qualityMod;
                     double baseArmor = level * 1.5 * tierMulti * qualityMod;
                     lore.add("§7 - Máu tối đa: §a+" + Math.round(baseHp));
                     lore.add("§7 - Giáp: §f+" + Math.round(baseArmor));
+
+                    // Giáp có base độ bền là 2500
+                    maxDurability = (int) (2500 * (tierMulti * 0.3 + qualityMod * 0.7));
                 }
+
+                // Thêm dòng Độ bền ngay dưới chỉ số chính
+                lore.add("§7 - Độ bền: §a" + maxDurability + "§8/§a" + maxDurability);
                 lore.add("");
 
                 // DÒNG DÕI LẺ

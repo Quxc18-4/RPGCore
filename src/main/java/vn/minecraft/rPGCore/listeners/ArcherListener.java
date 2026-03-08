@@ -212,12 +212,34 @@ public class ArcherListener implements Listener {
             if (heldType == Material.CROSSBOW) weaponType = "CROSSBOW";
         }
 
-        double playerDmg = rpgPlayer.getAttributeData().getAttribute("STR") * 2.0;
-        double weaponDmg = (weaponType.equals("BOW")) ? 15.0 : 25.0;
+        // --- 1. LẤY TỔNG CHỈ SỐ TỪ TRANG BỊ ---
+        vn.minecraft.rPGCore.managers.StatManager.PlayerStats eqStats = vn.minecraft.rPGCore.managers.StatManager.getEquipmentStats(player);
 
+        double playerStr = rpgPlayer.getAttributeData().getAttribute("STR") * 2.0;
+
+        // Random sát thương từ khoảng Min -> Max của trang bị
+        double weaponDmg = eqStats.minPhysicalDamage + (Math.random() * (eqStats.maxPhysicalDamage - eqStats.minPhysicalDamage));
+        if (weaponDmg <= 0) weaponDmg = (weaponType.equals("BOW")) ? 15.0 : 25.0; // Dự phòng
+
+        double rawDamage = playerStr + weaponDmg;
+
+        // --- 2. XỬ LÝ CHÍ MẠNG (CRITICAL HIT) ---
+        boolean isCrit = (Math.random() * 100) <= eqStats.critRate;
+        if (isCrit) {
+            // Tính sát thương bạo kích: Base * (1 + (CritDamage / 100))
+            rawDamage = rawDamage * (1.0 + (eqStats.critDamage / 100.0));
+            // Hiệu ứng Bạo kích
+            target.getWorld().spawnParticle(org.bukkit.Particle.CRIT, target.getLocation().add(0, 1, 0), 15, 0.5, 0.5, 0.5, 0.1);
+            player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_ATTACK_CRIT, 1.0f, 1.2f);
+        }
+
+        // --- 3. TÍNH TOÁN GIÁP VÀ XUYÊN GIÁP ---
         double targetArmor = 0;
         AttributeInstance armorAttr = target.getAttribute(Attribute.ARMOR);
         if (armorAttr != null) targetArmor = armorAttr.getValue();
+
+        // Trừ giáp của địch theo % Xuyên Giáp của bản thân
+        targetArmor = targetArmor * (1.0 - (eqStats.armorPen / 100.0));
 
         // --- XỬ LÝ 8 MŨI TÊN ĐẶC BIỆT ---
         if (arrow.hasMetadata("CustomArrowType")) {
@@ -226,64 +248,10 @@ public class ArcherListener implements Listener {
 
             if (cType.equals("arrow_ice")) {
                 event.setCancelled(true);
-                arrow.remove(); // Xóa ngay mũi tên để chống nảy
-
-                target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 20, 10)); // Trói 1s
-                target.setFreezeTicks(60); // Vanilla: Quái vật tái xanh
-
-                // Âm thanh ĐÓNG BĂNG ban đầu (nghe tiếng rắc rắc nhẹ)
-                target.getWorld().playSound(target.getLocation(), org.bukkit.Sound.BLOCK_GLASS_PLACE, 1f, 2f);
-
-                org.bukkit.block.data.BlockData iceData = org.bukkit.Bukkit.createBlockData(Material.BLUE_ICE);
-
-                // Dùng Runnable chạy mỗi 1 tick để duy trì lồng băng đứng im trong 1 giây
+                target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 20, 10));
                 new BukkitRunnable() {
-                    int ticks = 0;
-                    @Override
-                    public void run() {
-                        // Nếu quái chết giữa chừng thì hủy luôn hiệu ứng
-                        if (target.isDead() || !target.isValid()) {
-                            this.cancel();
-                            return;
-                        }
-
-                        // Hết 1 giây (20 ticks) -> VỠ BĂNG
-                        if (ticks >= 20) {
-                            target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40, 0)); // Chậm thêm 2s
-
-                            // Turn 2: Nổ tung các khối băng thật (Particle.BLOCK có trọng lực) văng ra xung quanh
-                            target.getWorld().spawnParticle(Particle.BLOCK, target.getLocation().add(0, 1, 0), 50, 0.5, 0.8, 0.5, 0.15, iceData);
-                            target.getWorld().playSound(target.getLocation(), org.bukkit.Sound.BLOCK_GLASS_BREAK, 1f, 0.8f);
-
-                            this.cancel();
-                            return;
-                        }
-
-                        // TRONG SUỐT 1 GIÂY (Turn 1): VẼ LỒNG BĂNG ẢO
-                        Location entLoc = target.getLocation();
-                        // Dùng Bụi màu Xanh Băng (Ice Blue) và Trắng để lồng không bị rớt xuống đất
-                        org.bukkit.Particle.DustOptions iceDust = new org.bukkit.Particle.DustOptions(org.bukkit.Color.fromRGB(173, 216, 230), 1.2f);
-                        org.bukkit.Particle.DustOptions whiteDust = new org.bukkit.Particle.DustOptions(org.bukkit.Color.WHITE, 1.0f);
-
-                        // Lồng băng sẽ xoay nhè nhẹ tạo cảm giác ma thuật lạnh lẽo
-                        double angleOffset = ticks * 0.1;
-
-                        // Vẽ các vòng tròn từ chân lên đầu (Cao 2.0 block)
-                        for (double y = 0; y <= 2.0; y += 0.4) {
-                            for (double a = 0; a < Math.PI * 2; a += Math.PI / 4) { // 8 điểm mỗi vòng
-                                double x = Math.cos(a + angleOffset) * 0.7;
-                                double z = Math.sin(a + angleOffset) * 0.7;
-
-                                // Đan xen màu Xanh nhạt và Trắng
-                                org.bukkit.Particle.DustOptions color = (y % 0.8 == 0) ? whiteDust : iceDust;
-                                entLoc.getWorld().spawnParticle(org.bukkit.Particle.DUST, entLoc.clone().add(x, y, z), 1, color);
-                            }
-                        }
-
-                        ticks++;
-                    }
-                }.runTaskTimer(plugin, 0L, 1L); // Chạy siêu mượt mỗi tick
-
+                    @Override public void run() { if (!target.isDead()) target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40, 0)); }
+                }.runTaskLater(plugin, 20L);
                 return;
             }
             else if (cType.equals("arrow_fire")) { dmgMulti = 1.2; target.setFireTicks(100); }
@@ -291,14 +259,15 @@ public class ArcherListener implements Listener {
             else if (cType.equals("arrow_explosive")) { dmgMulti = 1.35; }
             else if (cType.equals("arrow_poison")) { dmgMulti = 0.8; target.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 200, 0)); target.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 200, 0)); }
 
-            double rawDamage = (playerDmg + weaponDmg - targetArmor) * dmgMulti;
-            event.setDamage(Math.max(1.0, rawDamage));
+            double finalDmg = Math.max(1.0, (rawDamage - targetArmor) * dmgMulti);
+            event.setDamage(finalDmg);
 
+            // Mũi tên Huyết (LifeSteal) CỘNG DỒN với chỉ số Hút máu của trang bị!
             if (cType.equals("arrow_lifesteal")) {
-                double healAmt = event.getFinalDamage() * 0.15;
-                double maxHp = player.getAttribute(Attribute.MAX_HEALTH).getValue();
-                player.setHealth(Math.min(maxHp, player.getHealth() + healAmt));
-                player.getWorld().spawnParticle(Particle.HEART, player.getLocation().add(0, 2, 0), 3, 0.5, 0.5, 0.5, 0);
+                double totalLifesteal = 0.15 + (eqStats.lifeSteal / 100.0);
+                healPlayer(player, finalDmg * totalLifesteal);
+            } else if (eqStats.lifeSteal > 0) {
+                healPlayer(player, finalDmg * (eqStats.lifeSteal / 100.0));
             }
 
             removeIFrame(target);
@@ -310,31 +279,25 @@ public class ArcherListener implements Listener {
             double dmgMultiplier = arrow.getMetadata("Skill_DmgMulti").get(0).asDouble();
             double ignoreChance = arrow.getMetadata("Skill_ArmorPen").get(0).asDouble();
 
-            if (arrow.hasMetadata("Quad_Effect")) {
-                String effect = arrow.getMetadata("Quad_Effect").get(0).asString();
-                if (effect.equals("LIGHTNING")) { target.getWorld().strikeLightningEffect(target.getLocation()); dmgMultiplier = 3.0; }
-                else if (effect.equals("FREEZE")) { target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 30, 10)); target.getWorld().spawnParticle(Particle.BLOCK, target.getLocation().add(0, 1, 0), 40, 0.5, 0.5, 0.5, org.bukkit.Bukkit.createBlockData(Material.ICE)); new BukkitRunnable() { @Override public void run() { if (!target.isDead()) target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40, 1)); } }.runTaskLater(plugin, 30L); }
-                else if (effect.equals("FLAME")) { target.setFireTicks(60); }
-                else if (effect.equals("POISON")) { target.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 60, 1)); }
-            }
+            if (Math.random() <= ignoreChance) { targetArmor = 0; } // Xuyên giáp tuyệt đối từ Skill
 
-            if (Math.random() <= ignoreChance) { targetArmor = 0; player.sendMessage("§b§lXUYÊN GIÁP! §fMũi tên kỹ năng đã phớt lờ giáp của mục tiêu!"); }
+            double finalDmg = Math.max(1.0, (rawDamage - targetArmor) * dmgMultiplier);
+            event.setDamage(finalDmg);
 
-            double rawDamage = (playerDmg + weaponDmg - targetArmor) * dmgMultiplier;
-            event.setDamage(Math.max(1.0, rawDamage));
+            if (eqStats.lifeSteal > 0) healPlayer(player, finalDmg * (eqStats.lifeSteal / 100.0));
             removeIFrame(target);
             return;
         }
 
         // --- XỬ LÝ ĐÁNH THƯỜNG ---
-        double finalDamage = 0;
-        if (weaponType.equals("BOW")) { finalDamage = Math.max(1.0, playerDmg + weaponDmg - targetArmor) * 0.95; }
-        else if (weaponType.equals("CROSSBOW")) {
-            if (Math.random() <= 0.33) targetArmor = 0;
-            finalDamage = Math.max(1.0, playerDmg + weaponDmg - targetArmor) * 1.55;
-        }
+        double finalDamage = Math.max(1.0, rawDamage - targetArmor);
+        if (weaponType.equals("CROSSBOW")) finalDamage *= 1.55;
 
         event.setDamage(finalDamage);
+
+        // Hút máu từ đòn đánh thường
+        if (eqStats.lifeSteal > 0) healPlayer(player, finalDamage * (eqStats.lifeSteal / 100.0));
+
         removeIFrame(target);
     }
 
@@ -576,5 +539,13 @@ public class ArcherListener implements Listener {
     // Hàm phụ trợ check block an toàn để đặt băng đè lên
     private boolean isReplaceable(Material mat) {
         return mat.isAir() || mat == Material.WATER || mat == Material.SHORT_GRASS || mat == Material.TALL_GRASS;
+    }
+
+    // Hàm phụ trợ Hút máu
+    private void healPlayer(Player player, double amount) {
+        if (amount <= 0) return;
+        double maxHp = player.getAttribute(Attribute.MAX_HEALTH).getValue();
+        player.setHealth(Math.min(maxHp, player.getHealth() + amount));
+        player.getWorld().spawnParticle(Particle.HEART, player.getLocation().add(0, 2, 0), 1, 0.3, 0.3, 0.3, 0);
     }
 }
