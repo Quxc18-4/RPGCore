@@ -255,10 +255,106 @@ public class ArcherListener implements Listener {
             Player shooter = arrow.getShooter() instanceof Player ? (Player) arrow.getShooter() : null;
 
             if (cType.equals("arrow_nature")) {
-                hitLoc.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, hitLoc, 30, 2, 0.5, 2);
-                for (org.bukkit.entity.Entity e : hitLoc.getWorld().getNearbyEntities(hitLoc, 4.0, 2.0, 4.0)) {
-                    if (e instanceof LivingEntity && e != shooter) { ((LivingEntity) e).addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40, 10)); }
+
+                // 1. TÌM VỊ TRÍ MẶT ĐẤT CHUẨN XÁC
+                Location exactHitLoc;
+                if (event.getHitEntity() != null) {
+                    exactHitLoc = event.getHitEntity().getLocation().clone();
+                } else {
+                    exactHitLoc = arrow.getLocation().clone();
+                    while (!exactHitLoc.getBlock().getType().isSolid() && exactHitLoc.getY() > exactHitLoc.getWorld().getMinHeight()) {
+                        exactHitLoc.subtract(0, 1, 0);
+                    }
+                    exactHitLoc.setY(exactHitLoc.getBlockY() + 1.05);
                 }
+
+                // 2. TÍNH TOÁN DÂY LEO VÀ RỄ CÂY (Thêm biến phân loại màu)
+                List<double[]> vines = new java.util.ArrayList<>();
+                int vineCount = 28; // Tăng thêm chút xíu cho rậm rạp
+
+                for (int i = 0; i < vineCount; i++) {
+                    double r1 = Math.sqrt(Math.random()) * 4.5;
+                    double angle1 = Math.random() * Math.PI * 2;
+                    double startX = r1 * Math.cos(angle1);
+                    double startZ = r1 * Math.sin(angle1);
+
+                    double r2 = Math.sqrt(Math.random()) * 4.5;
+                    double angle2 = Math.random() * Math.PI * 2;
+                    double endX = r2 * Math.cos(angle2);
+                    double endZ = r2 * Math.sin(angle2);
+
+                    double maxHeight = 0.2 + (Math.random() * 0.4);
+
+                    // Thêm biến type: 0.0 là Rễ (Nâu), 1.0 là Dây leo (Xanh)
+                    double type = Math.random() > 0.5 ? 1.0 : 0.0;
+
+                    // Lưu dữ liệu: {startX, startZ, endX, endZ, maxHeight, type}
+                    vines.add(new double[]{startX, startZ, endX, endZ, maxHeight, type});
+                }
+
+                new BukkitRunnable() {
+                    int ticks = 0;
+                    @Override
+                    public void run() {
+                        if (ticks >= 40) { this.cancel(); return; } // Tồn tại 2s
+
+                        Location center = exactHitLoc.clone();
+
+                        // ĐỊNH NGHĨA 3 BẢNG MÀU MỚI
+                        // Màu Nâu Đất (Saddle Brown) cho Rễ cây
+                        org.bukkit.Particle.DustOptions rootDust = new org.bukkit.Particle.DustOptions(org.bukkit.Color.fromRGB(101, 67, 33), 0.9f);
+                        // Màu Xanh Đậm (Forest Green) cho Dây leo dưới đất
+                        org.bukkit.Particle.DustOptions groundVineDust = new org.bukkit.Particle.DustOptions(org.bukkit.Color.fromRGB(34, 139, 34), 0.8f);
+                        // Màu Xanh Lục Bảo/Dạ Quang (Lime Green) cho Vòng trói ma thuật
+                        org.bukkit.Particle.DustOptions bindDust = new org.bukkit.Particle.DustOptions(org.bukkit.Color.fromRGB(50, 205, 50), 0.7f);
+
+                        // 1. VẼ MẶT ĐẤT: ĐAN XEN RỄ CÂY VÀ DÂY LEO
+                        for (double[] v : vines) {
+                            // Đọc biến type ở index 5 để quyết định màu
+                            org.bukkit.Particle.DustOptions currentDust = (v[5] == 0.0) ? rootDust : groundVineDust;
+
+                            for (double t = 0; t <= 1; t += 0.1) {
+                                double curX = v[0] + (v[2] - v[0]) * t;
+                                double curZ = v[1] + (v[3] - v[1]) * t;
+                                double curY = 4 * v[4] * t * (1 - t);
+
+                                center.getWorld().spawnParticle(org.bukkit.Particle.DUST, center.clone().add(curX, curY, curZ), 1, currentDust);
+                            }
+                        }
+
+                        // 2. TRÓI CHÂN BẰNG MA PHÁP (Màu Xanh Dạ Quang nổi bật)
+                        for (org.bukkit.entity.Entity e : center.getWorld().getNearbyEntities(center, 4.0, 2.0, 4.0)) {
+                            if (e instanceof LivingEntity && e != shooter) {
+                                LivingEntity target = (LivingEntity) e;
+                                target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40, 10));
+
+                                Location entLoc = target.getLocation();
+                                double spinSpeed = ticks * 0.4;
+                                double entRadius = 0.55;
+
+                                for (double y = 0; y <= 0.8; y += 0.2) {
+                                    double a1 = spinSpeed + (y * Math.PI * 2);
+                                    double x1 = entRadius * Math.cos(a1);
+                                    double z1 = entRadius * Math.sin(a1);
+                                    // Dùng bindDust (Xanh sáng) cho vòng trói
+                                    entLoc.getWorld().spawnParticle(org.bukkit.Particle.DUST, entLoc.clone().add(x1, y, z1), 1, bindDust);
+
+                                    double a2 = a1 + Math.PI;
+                                    double x2 = entRadius * Math.cos(a2);
+                                    double z2 = entRadius * Math.sin(a2);
+                                    entLoc.getWorld().spawnParticle(org.bukkit.Particle.DUST, entLoc.clone().add(x2, y, z2), 1, bindDust);
+                                }
+                            }
+                        }
+
+                        // Hạt mầm tinh linh rải rác bay lên từ mặt đất
+                        if (ticks % 5 == 0) {
+                            center.getWorld().spawnParticle(org.bukkit.Particle.HAPPY_VILLAGER, center.clone().add((Math.random()*8)-4, Math.random()*2, (Math.random()*8)-4), 2);
+                        }
+
+                        ticks++;
+                    }
+                }.runTaskTimer(plugin, 0L, 1L);
             }
             else if (cType.equals("arrow_ice") && event.getHitBlock() != null) {
                 hitLoc.getWorld().spawnParticle(Particle.SNOWFLAKE, hitLoc, 30, 1.5, 0.5, 1.5, 0.05);
@@ -277,22 +373,71 @@ public class ArcherListener implements Listener {
                 }
             }
             else if (cType.equals("arrow_blackhole")) {
+
+                Location exactHitLoc = arrow.getLocation();
+
                 new BukkitRunnable() {
                     int ticks = 0;
                     @Override
                     public void run() {
+                        // Vẫn tồn tại 2s (40 ticks), nhưng hàm này giờ chạy mỗi 1 tick để animation mượt hơn
                         if (ticks >= 40) { this.cancel(); return; }
-                        hitLoc.getWorld().spawnParticle(Particle.PORTAL, hitLoc.clone().add(0, 1, 0), 20, 0.5, 0.5, 0.5, 0.1);
-                        hitLoc.getWorld().playSound(hitLoc, org.bukkit.Sound.BLOCK_BEACON_AMBIENT, 0.5f, 2.0f);
-                        for (org.bukkit.entity.Entity e : hitLoc.getWorld().getNearbyEntities(hitLoc, 5.0, 5.0, 5.0)) {
+
+                        Location center = exactHitLoc.clone().add(0, 1.5, 0);
+
+                        // 1. LÕI LỖ ĐEN (R = 0.4) - Giảm số lượng spawn xuống 20 vì giờ chạy mỗi 1 tick
+                        org.bukkit.Particle.DustOptions blackDust = new org.bukkit.Particle.DustOptions(org.bukkit.Color.BLACK, 1.5f);
+                        for (int i = 0; i < 20; i++) {
+                            double u = Math.random();
+                            double v = Math.random();
+                            double theta = 2 * Math.PI * u;
+                            double phi = Math.acos(2 * v - 1);
+
+                            double x = 0.4 * Math.sin(phi) * Math.cos(theta);
+                            double y = 0.4 * Math.sin(phi) * Math.sin(theta);
+                            double z = 0.4 * Math.cos(phi);
+
+                            center.getWorld().spawnParticle(org.bukkit.Particle.DUST, center.clone().add(x, y, z), 1, blackDust);
+                        }
+
+                        // Khởi tạo Bụi màu Tím (Purple) cho viền bồi tụ (Không trọng lực, không bị rơi)
+                        org.bukkit.Particle.DustOptions purpleDust = new org.bukkit.Particle.DustOptions(org.bukkit.Color.fromRGB(138, 43, 226), 1.2f);
+
+                        // 2. VÒNG BỒI TỤ TRONG (Quỹ đạo 1 hạt bay quanh R = 1.2)
+                        // Bỏ vòng lặp for, chỉ tính 1 điểm dựa vào ticks
+                        double angle1 = ticks * 0.4; // Tốc độ bay
+                        double x1 = 1.2 * Math.cos(angle1);
+                        double z1 = 1.2 * Math.sin(angle1);
+                        double y1 = z1 * Math.sin(Math.toRadians(40)); // Nghiêng 40 độ
+                        double finalZ1 = z1 * Math.cos(Math.toRadians(40));
+
+                        center.getWorld().spawnParticle(org.bukkit.Particle.DUST, center.clone().add(x1, y1, finalZ1), 1, purpleDust);
+
+                        // 3. VÒNG BỒI TỤ NGOÀI (Quỹ đạo 1 hạt bay quanh R = 1.8)
+                        double angle2 = -ticks * 0.3; // Bay ngược chiều và chậm hơn chút
+                        double x2 = 1.8 * Math.cos(angle2);
+                        double z2 = 1.8 * Math.sin(angle2);
+                        double y2 = z2 * Math.sin(Math.toRadians(-40)); // Nghiêng -40 độ
+                        double finalZ2 = z2 * Math.cos(Math.toRadians(-40));
+
+                        center.getWorld().spawnParticle(org.bukkit.Particle.DUST, center.clone().add(x2, y2, finalZ2), 1, purpleDust);
+
+                        // Âm thanh rung chấn
+                        if (ticks % 10 == 0) {
+                            center.getWorld().playSound(center, org.bukkit.Sound.BLOCK_BEACON_AMBIENT, 2.0f, 0.5f);
+                        }
+
+                        // Lực hút quái vật (Lực kéo giảm xuống 0.15 vì giờ nó hút 20 lần/giây thay vì 10 lần)
+                        for (org.bukkit.entity.Entity e : center.getWorld().getNearbyEntities(center, 5.0, 5.0, 5.0)) {
                             if (e instanceof LivingEntity && e != shooter) {
-                                Vector pull = hitLoc.toVector().subtract(e.getLocation().toVector()).normalize().multiply(0.2);
+                                Vector pull = center.toVector().subtract(e.getLocation().toVector()).normalize().multiply(0.15);
                                 e.setVelocity(e.getVelocity().add(pull));
                             }
                         }
-                        ticks += 2;
+
+                        ticks++; // Tăng 1 tick
                     }
-                }.runTaskTimer(plugin, 0L, 2L);
+                }.runTaskTimer(plugin, 0L, 1L); // ĐỔI THÀNH 1L: Chạy mỗi tick (siêu mượt)
             }
         }
 
