@@ -118,19 +118,68 @@ public class ArcherListener implements Listener {
 
     private void fireArrow(Player player, String weaponType, String customType) {
         Arrow arrow = player.launchProjectile(Arrow.class);
-        arrow.setVelocity(arrow.getVelocity().multiply(1.5));
+
+        // --- XỬ LÝ TỐC ĐỘ VÀ TRỌNG LỰC ---
+        if (customType != null && customType.equals("arrow_lightning")) {
+            arrow.setVelocity(arrow.getVelocity().normalize().multiply(4.5));
+            arrow.setGravity(false);
+        } else {
+            arrow.setVelocity(arrow.getVelocity().multiply(1.5));
+        }
+
         arrow.setMetadata("WeaponType", new FixedMetadataValue(plugin, weaponType));
 
         if (customType != null) {
             arrow.setMetadata("CustomArrowType", new FixedMetadataValue(plugin, customType));
+            if (customType.equals("arrow_fire")) arrow.setFireTicks(2000);
         }
 
         player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_ARROW_SHOOT, 1.0f, 1.0f);
 
+        // --- VẼ VỆT ĐUÔI (TRAIL) ĐÃ SỬA ---
+        if (customType != null) {
+            Location startLoc = player.getEyeLocation(); // Lấy vị trí mắt người chơi
+
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    if (arrow.isDead() || arrow.isOnGround()) { this.cancel(); return; }
+                    Location loc = arrow.getLocation();
+
+                    // NẾU MŨI TÊN CHƯA BAY XA HƠN 1.5 BLOCK THÌ KHÔNG VẼ (1.5^2 = 2.25)
+                    if (loc.distanceSquared(startLoc) < 2.25) return;
+
+                    switch (customType) {
+                        case "arrow_fire":
+                            loc.getWorld().spawnParticle(org.bukkit.Particle.FLAME, loc, 5, 0.1, 0.1, 0.1, 0.02);
+                            org.bukkit.Particle.DustOptions orange = new org.bukkit.Particle.DustOptions(org.bukkit.Color.ORANGE, 1.2f);
+                            loc.getWorld().spawnParticle(org.bukkit.Particle.DUST, loc, 4, 0.1, 0.1, 0.1, orange);
+                            break;
+                        case "arrow_poison":
+                            org.bukkit.Particle.DustOptions purple = new org.bukkit.Particle.DustOptions(org.bukkit.Color.PURPLE, 1.5f);
+                            loc.getWorld().spawnParticle(org.bukkit.Particle.DUST, loc, 6, 0.15, 0.15, 0.15, purple);
+                            loc.getWorld().spawnParticle(org.bukkit.Particle.WITCH, loc, 3, 0.1, 0.1, 0.1, 0);
+                            break;
+                        case "arrow_explosive":
+                            loc.getWorld().spawnParticle(org.bukkit.Particle.CAMPFIRE_COSY_SMOKE, loc, 6, 0.1, 0.1, 0.1, 0.05);
+                            break;
+                        case "arrow_lifesteal":
+                            org.bukkit.Particle.DustOptions red = new org.bukkit.Particle.DustOptions(org.bukkit.Color.fromRGB(200, 0, 0), 1.5f);
+                            loc.getWorld().spawnParticle(org.bukkit.Particle.DUST, loc, 6, 0.1, 0.1, 0.1, red);
+                            break;
+                        case "arrow_lightning":
+                            loc.getWorld().spawnParticle(org.bukkit.Particle.FIREWORK, loc, 5, 0.1, 0.1, 0.1, 0.05);
+                            loc.getWorld().spawnParticle(Particle.ENCHANTED_HIT, loc, 4, 0.1, 0.1, 0.1, 0.05);
+                            break;
+                    }
+                }
+            }.runTaskTimer(plugin, 1L, 1L);
+        }
+
         new BukkitRunnable() {
             @Override
             public void run() { if (arrow != null && arrow.isValid()) arrow.remove(); }
-        }.runTaskLater(plugin, 40L);
+        }.runTaskLater(plugin, 60L);
     }
 
     // =========================================
@@ -167,7 +216,6 @@ public class ArcherListener implements Listener {
         double weaponDmg = (weaponType.equals("BOW")) ? 15.0 : 25.0;
 
         double targetArmor = 0;
-        // Đã FIX LỖI 1.21.1
         AttributeInstance armorAttr = target.getAttribute(Attribute.ARMOR);
         if (armorAttr != null) targetArmor = armorAttr.getValue();
 
@@ -178,13 +226,64 @@ public class ArcherListener implements Listener {
 
             if (cType.equals("arrow_ice")) {
                 event.setCancelled(true);
-                target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 20, 10));
+                arrow.remove(); // Xóa ngay mũi tên để chống nảy
+
+                target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 20, 10)); // Trói 1s
+                target.setFreezeTicks(60); // Vanilla: Quái vật tái xanh
+
+                // Âm thanh ĐÓNG BĂNG ban đầu (nghe tiếng rắc rắc nhẹ)
+                target.getWorld().playSound(target.getLocation(), org.bukkit.Sound.BLOCK_GLASS_PLACE, 1f, 2f);
+
+                org.bukkit.block.data.BlockData iceData = org.bukkit.Bukkit.createBlockData(Material.BLUE_ICE);
+
+                // Dùng Runnable chạy mỗi 1 tick để duy trì lồng băng đứng im trong 1 giây
                 new BukkitRunnable() {
+                    int ticks = 0;
                     @Override
                     public void run() {
-                        if (!target.isDead()) target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40, 0));
+                        // Nếu quái chết giữa chừng thì hủy luôn hiệu ứng
+                        if (target.isDead() || !target.isValid()) {
+                            this.cancel();
+                            return;
+                        }
+
+                        // Hết 1 giây (20 ticks) -> VỠ BĂNG
+                        if (ticks >= 20) {
+                            target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40, 0)); // Chậm thêm 2s
+
+                            // Turn 2: Nổ tung các khối băng thật (Particle.BLOCK có trọng lực) văng ra xung quanh
+                            target.getWorld().spawnParticle(Particle.BLOCK, target.getLocation().add(0, 1, 0), 50, 0.5, 0.8, 0.5, 0.15, iceData);
+                            target.getWorld().playSound(target.getLocation(), org.bukkit.Sound.BLOCK_GLASS_BREAK, 1f, 0.8f);
+
+                            this.cancel();
+                            return;
+                        }
+
+                        // TRONG SUỐT 1 GIÂY (Turn 1): VẼ LỒNG BĂNG ẢO
+                        Location entLoc = target.getLocation();
+                        // Dùng Bụi màu Xanh Băng (Ice Blue) và Trắng để lồng không bị rớt xuống đất
+                        org.bukkit.Particle.DustOptions iceDust = new org.bukkit.Particle.DustOptions(org.bukkit.Color.fromRGB(173, 216, 230), 1.2f);
+                        org.bukkit.Particle.DustOptions whiteDust = new org.bukkit.Particle.DustOptions(org.bukkit.Color.WHITE, 1.0f);
+
+                        // Lồng băng sẽ xoay nhè nhẹ tạo cảm giác ma thuật lạnh lẽo
+                        double angleOffset = ticks * 0.1;
+
+                        // Vẽ các vòng tròn từ chân lên đầu (Cao 2.0 block)
+                        for (double y = 0; y <= 2.0; y += 0.4) {
+                            for (double a = 0; a < Math.PI * 2; a += Math.PI / 4) { // 8 điểm mỗi vòng
+                                double x = Math.cos(a + angleOffset) * 0.7;
+                                double z = Math.sin(a + angleOffset) * 0.7;
+
+                                // Đan xen màu Xanh nhạt và Trắng
+                                org.bukkit.Particle.DustOptions color = (y % 0.8 == 0) ? whiteDust : iceDust;
+                                entLoc.getWorld().spawnParticle(org.bukkit.Particle.DUST, entLoc.clone().add(x, y, z), 1, color);
+                            }
+                        }
+
+                        ticks++;
                     }
-                }.runTaskLater(plugin, 20L);
+                }.runTaskTimer(plugin, 0L, 1L); // Chạy siêu mượt mỗi tick
+
                 return;
             }
             else if (cType.equals("arrow_fire")) { dmgMulti = 1.2; target.setFireTicks(100); }
@@ -268,9 +367,9 @@ public class ArcherListener implements Listener {
                     exactHitLoc.setY(exactHitLoc.getBlockY() + 1.05);
                 }
 
-                // 2. TÍNH TOÁN DÂY LEO VÀ RỄ CÂY (Thêm biến phân loại màu)
+                // 2. TÍNH TOÁN DÂY LEO VÀ RỄ CÂY
                 List<double[]> vines = new java.util.ArrayList<>();
-                int vineCount = 28; // Tăng thêm chút xíu cho rậm rạp
+                int vineCount = 28;
 
                 for (int i = 0; i < vineCount; i++) {
                     double r1 = Math.sqrt(Math.random()) * 4.5;
@@ -285,10 +384,8 @@ public class ArcherListener implements Listener {
 
                     double maxHeight = 0.2 + (Math.random() * 0.4);
 
-                    // Thêm biến type: 0.0 là Rễ (Nâu), 1.0 là Dây leo (Xanh)
                     double type = Math.random() > 0.5 ? 1.0 : 0.0;
 
-                    // Lưu dữ liệu: {startX, startZ, endX, endZ, maxHeight, type}
                     vines.add(new double[]{startX, startZ, endX, endZ, maxHeight, type});
                 }
 
@@ -296,21 +393,16 @@ public class ArcherListener implements Listener {
                     int ticks = 0;
                     @Override
                     public void run() {
-                        if (ticks >= 40) { this.cancel(); return; } // Tồn tại 2s
+                        if (ticks >= 40) { this.cancel(); return; }
 
                         Location center = exactHitLoc.clone();
 
-                        // ĐỊNH NGHĨA 3 BẢNG MÀU MỚI
-                        // Màu Nâu Đất (Saddle Brown) cho Rễ cây
                         org.bukkit.Particle.DustOptions rootDust = new org.bukkit.Particle.DustOptions(org.bukkit.Color.fromRGB(101, 67, 33), 0.9f);
-                        // Màu Xanh Đậm (Forest Green) cho Dây leo dưới đất
                         org.bukkit.Particle.DustOptions groundVineDust = new org.bukkit.Particle.DustOptions(org.bukkit.Color.fromRGB(34, 139, 34), 0.8f);
-                        // Màu Xanh Lục Bảo/Dạ Quang (Lime Green) cho Vòng trói ma thuật
                         org.bukkit.Particle.DustOptions bindDust = new org.bukkit.Particle.DustOptions(org.bukkit.Color.fromRGB(50, 205, 50), 0.7f);
 
-                        // 1. VẼ MẶT ĐẤT: ĐAN XEN RỄ CÂY VÀ DÂY LEO
+                        // 1. VẼ MẶT ĐẤT
                         for (double[] v : vines) {
-                            // Đọc biến type ở index 5 để quyết định màu
                             org.bukkit.Particle.DustOptions currentDust = (v[5] == 0.0) ? rootDust : groundVineDust;
 
                             for (double t = 0; t <= 1; t += 0.1) {
@@ -322,7 +414,7 @@ public class ArcherListener implements Listener {
                             }
                         }
 
-                        // 2. TRÓI CHÂN BẰNG MA PHÁP (Màu Xanh Dạ Quang nổi bật)
+                        // 2. TRÓI CHÂN BẰNG MA PHÁP
                         for (org.bukkit.entity.Entity e : center.getWorld().getNearbyEntities(center, 4.0, 2.0, 4.0)) {
                             if (e instanceof LivingEntity && e != shooter) {
                                 LivingEntity target = (LivingEntity) e;
@@ -336,7 +428,6 @@ public class ArcherListener implements Listener {
                                     double a1 = spinSpeed + (y * Math.PI * 2);
                                     double x1 = entRadius * Math.cos(a1);
                                     double z1 = entRadius * Math.sin(a1);
-                                    // Dùng bindDust (Xanh sáng) cho vòng trói
                                     entLoc.getWorld().spawnParticle(org.bukkit.Particle.DUST, entLoc.clone().add(x1, y, z1), 1, bindDust);
 
                                     double a2 = a1 + Math.PI;
@@ -347,7 +438,6 @@ public class ArcherListener implements Listener {
                             }
                         }
 
-                        // Hạt mầm tinh linh rải rác bay lên từ mặt đất
                         if (ticks % 5 == 0) {
                             center.getWorld().spawnParticle(org.bukkit.Particle.HAPPY_VILLAGER, center.clone().add((Math.random()*8)-4, Math.random()*2, (Math.random()*8)-4), 2);
                         }
@@ -357,17 +447,50 @@ public class ArcherListener implements Listener {
                 }.runTaskTimer(plugin, 0L, 1L);
             }
             else if (cType.equals("arrow_ice") && event.getHitBlock() != null) {
-                hitLoc.getWorld().spawnParticle(Particle.SNOWFLAKE, hitLoc, 30, 1.5, 0.5, 1.5, 0.05);
-                for (org.bukkit.entity.Entity e : hitLoc.getWorld().getNearbyEntities(hitLoc, 3.0, 2.0, 3.0)) {
-                    if (e instanceof LivingEntity && e != shooter) { ((LivingEntity) e).addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 60, 0)); }
-                }
+                // Bão tuyết diện rộng trong 3 giây
+                Location exactHitLoc = arrow.getLocation();
+                exactHitLoc.getWorld().playSound(exactHitLoc, org.bukkit.Sound.BLOCK_SNOW_BREAK, 1.0f, 0.5f);
+
+                new BukkitRunnable() {
+                    int ticks = 0;
+                    @Override
+                    public void run() {
+                        if (ticks >= 60) { this.cancel(); return; }
+
+                        double rx = (Math.random() * 6) - 3;
+                        double rz = (Math.random() * 6) - 3;
+                        double ry = Math.random() * 2.5 + 0.5;
+
+                        exactHitLoc.getWorld().spawnParticle(Particle.SNOWFLAKE, exactHitLoc.clone().add(rx, ry, rz), 2, 0.2, 0.2, 0.2, 0.01);
+                        exactHitLoc.getWorld().spawnParticle(Particle.WHITE_ASH, exactHitLoc.clone().add(rx, 0.1, rz), 1, 0, 0, 0, 0);
+
+                        if (ticks % 10 == 0) {
+                            for (org.bukkit.entity.Entity e : exactHitLoc.getWorld().getNearbyEntities(exactHitLoc, 3.0, 2.0, 3.0)) {
+                                if (e instanceof LivingEntity && e != shooter) {
+                                    ((LivingEntity) e).addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40, 0));
+                                }
+                            }
+                        }
+                        ticks++;
+                    }
+                }.runTaskTimer(plugin, 0L, 1L);
             }
             else if (cType.equals("arrow_explosive")) {
                 hitLoc.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, hitLoc, 1);
                 hitLoc.getWorld().playSound(hitLoc, org.bukkit.Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.0f);
                 for (org.bukkit.entity.Entity e : hitLoc.getWorld().getNearbyEntities(hitLoc, 4.0, 4.0, 4.0)) {
                     if (e instanceof LivingEntity && e != shooter) {
-                        Vector knockback = e.getLocation().toVector().subtract(hitLoc.toVector()).normalize().multiply(1.5).setY(0.5);
+                        // Tính toán Vector hướng đẩy
+                        Vector knockback = e.getLocation().toVector().subtract(hitLoc.toVector());
+
+                        // KHẮC PHỤC LỖI "x not finite":
+                        // Nếu quái vật trùng chính xác với tâm vụ nổ (Vector = 0), tạo hướng đẩy ngẫu nhiên
+                        if (knockback.lengthSquared() < 0.0001) {
+                            knockback = new Vector(Math.random() - 0.5, 0, Math.random() - 0.5);
+                        }
+
+                        // An toàn để normalize
+                        knockback.normalize().multiply(1.5).setY(0.5);
                         e.setVelocity(knockback);
                     }
                 }
@@ -380,12 +503,10 @@ public class ArcherListener implements Listener {
                     int ticks = 0;
                     @Override
                     public void run() {
-                        // Vẫn tồn tại 2s (40 ticks), nhưng hàm này giờ chạy mỗi 1 tick để animation mượt hơn
                         if (ticks >= 40) { this.cancel(); return; }
 
                         Location center = exactHitLoc.clone().add(0, 1.5, 0);
 
-                        // 1. LÕI LỖ ĐEN (R = 0.4) - Giảm số lượng spawn xuống 20 vì giờ chạy mỗi 1 tick
                         org.bukkit.Particle.DustOptions blackDust = new org.bukkit.Particle.DustOptions(org.bukkit.Color.BLACK, 1.5f);
                         for (int i = 0; i < 20; i++) {
                             double u = Math.random();
@@ -400,34 +521,28 @@ public class ArcherListener implements Listener {
                             center.getWorld().spawnParticle(org.bukkit.Particle.DUST, center.clone().add(x, y, z), 1, blackDust);
                         }
 
-                        // Khởi tạo Bụi màu Tím (Purple) cho viền bồi tụ (Không trọng lực, không bị rơi)
                         org.bukkit.Particle.DustOptions purpleDust = new org.bukkit.Particle.DustOptions(org.bukkit.Color.fromRGB(138, 43, 226), 1.2f);
 
-                        // 2. VÒNG BỒI TỤ TRONG (Quỹ đạo 1 hạt bay quanh R = 1.2)
-                        // Bỏ vòng lặp for, chỉ tính 1 điểm dựa vào ticks
-                        double angle1 = ticks * 0.4; // Tốc độ bay
+                        double angle1 = ticks * 0.4;
                         double x1 = 1.2 * Math.cos(angle1);
                         double z1 = 1.2 * Math.sin(angle1);
-                        double y1 = z1 * Math.sin(Math.toRadians(40)); // Nghiêng 40 độ
+                        double y1 = z1 * Math.sin(Math.toRadians(40));
                         double finalZ1 = z1 * Math.cos(Math.toRadians(40));
 
                         center.getWorld().spawnParticle(org.bukkit.Particle.DUST, center.clone().add(x1, y1, finalZ1), 1, purpleDust);
 
-                        // 3. VÒNG BỒI TỤ NGOÀI (Quỹ đạo 1 hạt bay quanh R = 1.8)
-                        double angle2 = -ticks * 0.3; // Bay ngược chiều và chậm hơn chút
+                        double angle2 = -ticks * 0.3;
                         double x2 = 1.8 * Math.cos(angle2);
                         double z2 = 1.8 * Math.sin(angle2);
-                        double y2 = z2 * Math.sin(Math.toRadians(-40)); // Nghiêng -40 độ
+                        double y2 = z2 * Math.sin(Math.toRadians(-40));
                         double finalZ2 = z2 * Math.cos(Math.toRadians(-40));
 
                         center.getWorld().spawnParticle(org.bukkit.Particle.DUST, center.clone().add(x2, y2, finalZ2), 1, purpleDust);
 
-                        // Âm thanh rung chấn
                         if (ticks % 10 == 0) {
                             center.getWorld().playSound(center, org.bukkit.Sound.BLOCK_BEACON_AMBIENT, 2.0f, 0.5f);
                         }
 
-                        // Lực hút quái vật (Lực kéo giảm xuống 0.15 vì giờ nó hút 20 lần/giây thay vì 10 lần)
                         for (org.bukkit.entity.Entity e : center.getWorld().getNearbyEntities(center, 5.0, 5.0, 5.0)) {
                             if (e instanceof LivingEntity && e != shooter) {
                                 Vector pull = center.toVector().subtract(e.getLocation().toVector()).normalize().multiply(0.15);
@@ -435,9 +550,9 @@ public class ArcherListener implements Listener {
                             }
                         }
 
-                        ticks++; // Tăng 1 tick
+                        ticks++;
                     }
-                }.runTaskTimer(plugin, 0L, 1L); // ĐỔI THÀNH 1L: Chạy mỗi tick (siêu mượt)
+                }.runTaskTimer(plugin, 0L, 1L);
             }
         }
 
@@ -456,5 +571,10 @@ public class ArcherListener implements Listener {
             @Override
             public void run() { if (target != null && !target.isDead()) target.setNoDamageTicks(0); }
         }.runTaskLater(plugin, 1L);
+    }
+
+    // Hàm phụ trợ check block an toàn để đặt băng đè lên
+    private boolean isReplaceable(Material mat) {
+        return mat.isAir() || mat == Material.WATER || mat == Material.SHORT_GRASS || mat == Material.TALL_GRASS;
     }
 }
