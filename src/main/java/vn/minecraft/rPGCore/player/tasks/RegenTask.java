@@ -2,6 +2,7 @@ package vn.minecraft.rPGCore.player.tasks;
 
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
+import vn.minecraft.rPGCore.listeners.FoodListener;
 import vn.minecraft.rPGCore.player.PlayerManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 import vn.minecraft.rPGCore.ui.BossBarManager;
@@ -26,6 +27,10 @@ public class RegenTask extends BukkitRunnable {
 
             Player player = rpgPlayer.getBukkitPlayer();
             if (player == null || !player.isOnline() || player.isDead()) continue;
+
+            // Kiểm tra xem người chơi có đang sở hữu Buff "No Căng" từ đồ ăn không
+            boolean hasFullnessBuff = FoodListener.fullnessTimers.containsKey(uuid) &&
+                    FoodListener.fullnessTimers.get(uuid) > System.currentTimeMillis();
 
             int foodLevel = player.getFoodLevel(); // 0 - 20
             int playerLevel = player.getLevel();

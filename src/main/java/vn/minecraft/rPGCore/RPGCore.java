@@ -9,6 +9,8 @@ import vn.minecraft.rPGCore.listeners.EquipmentListener; // Import thêm
 import vn.minecraft.rPGCore.listeners.PlayerListener;
 import vn.minecraft.rPGCore.listeners.ClassGUIListener;
 import vn.minecraft.rPGCore.managers.ArrowRecipeManager;
+import vn.minecraft.rPGCore.managers.CookingManager;
+import vn.minecraft.rPGCore.managers.IngredientManager;
 import vn.minecraft.rPGCore.player.PlayerManager;
 import vn.minecraft.rPGCore.skills.SkillManager;
 import vn.minecraft.rPGCore.ui.*;
@@ -33,6 +35,9 @@ public final class RPGCore extends JavaPlugin {
         SkillManager skillManager = new SkillManager(this);
         SkillUIManager skillUI = new SkillUIManager(playerManager, skillManager);
         BlacksmithGUI blacksmithGUI = new BlacksmithGUI();
+        // Khởi tạo và đăng ký hệ thống Nấu Ăn
+        IngredientManager ingredientManager = new IngredientManager(this);
+        CookingManager cookingManager = new CookingManager(this, ingredientManager);
 
         ArrowRecipeManager arrowRecipeManager = new ArrowRecipeManager(this);
         ArrowCraftingUI arrowCraftingUI = new ArrowCraftingUI(playerManager, arrowRecipeManager);
@@ -61,6 +66,9 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(adminArrowCraftingUI, this);
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.DurabilityListener(playerManager), this);
         getServer().getPluginManager().registerEvents(blacksmithGUI, this);
+        getServer().getPluginManager().registerEvents(cookingManager, this);
+        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.FoodListener(), this);
+        getServer().getPluginManager().registerEvents(cookingManager, this);
 
         // 3. Chạy Task
         new RegenTask(playerManager, bossBarManager).runTaskTimer(this, 0L, 20L);
@@ -74,6 +82,7 @@ public final class RPGCore extends JavaPlugin {
         getCommand("binds").setExecutor(new BindsCommand(skillUI));
         getCommand("rpgclassadmin").setExecutor(new RPGClassAdminCommand(adminArrowCraftingUI));
         getCommand("arrow").setExecutor(new ArrowCommand(arrowRecipeManager));
+        getCommand("ig").setExecutor(new ItemAdminCommand(ingredientManager));
 
         // Đăng ký lệnh Lấy dụng cụ sửa chữa
         if (this.getCommand("repairadmin") != null) {

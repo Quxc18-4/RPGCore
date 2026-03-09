@@ -34,3 +34,6 @@ commands:
     description: Lấy bộ dụng cụ sửa chữa và Đá mài
     permission: rpgcore.admin
     usage: /repairadmin <kit|stone> [loại/số_lần] [số_lượng]
+  ig:
+    description: Lệnh lấy đồ ăn RPG
+    permission: rpgcore.admin
