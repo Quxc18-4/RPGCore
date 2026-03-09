@@ -67,7 +67,7 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.DurabilityListener(playerManager), this);
         getServer().getPluginManager().registerEvents(blacksmithGUI, this);
         getServer().getPluginManager().registerEvents(cookingManager, this);
-        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.FoodListener(), this);
+        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.FoodListener(this), this);
         getServer().getPluginManager().registerEvents(cookingManager, this);
 
         // 3. Chạy Task
