@@ -106,11 +106,30 @@ public class ArcherListener implements Listener {
             }
         }
 
+        // 1. LẤY TỐC ĐỘ ĐÁNH TỪ TRANG BỊ (Equipment Stats)
+        // Giả sử biến lưu tốc độ đánh trong PlayerStats của bạn tên là attackSpeed hoặc cdr (Cooldown Reduction)
+        double equipAtkSpeed = rpgPlayer.getStats().attackSpeed;
+
+        // 2. LẤY TỐC ĐỘ ĐÁNH TỪ ĐỒ ĂN (Food Buffs)
+        double foodAtkSpeed = vn.minecraft.rPGCore.RPGCore.getInstance().getFoodBuffManager().getBonus(player.getUniqueId(), vn.minecraft.rPGCore.managers.FoodBuffManager.StatType.ATK_SPEED);
+
+        // 3. TỔNG HỢP TỐC ĐỘ ĐÁNH
+        double totalAtkSpeedBonus = equipAtkSpeed + foodAtkSpeed;
+
+        // 4. ÉP VÀO CÔNG THỨC GIẢM COOLDOWN
+        // Nếu tổng bonus là 50% -> Tốc độ bắn sẽ nhanh gấp rưỡi (1.5 lần)
+        long bowCooldown = (long) (1100 / (1.0 + (totalAtkSpeedBonus / 100.0)));
+        long crossbowCooldown = (long) (1800 / (1.0 + (totalAtkSpeedBonus / 100.0)));
+
+        // Đảm bảo không bắn nhanh như súng máy (Giới hạn cap tối thiểu là 300ms)
+        bowCooldown = Math.max(300, bowCooldown);
+        crossbowCooldown = Math.max(500, crossbowCooldown);
+
         if (type == Material.BOW) {
-            nextShootTime.put(player.getUniqueId(), currentTime + 1100);
+            nextShootTime.put(player.getUniqueId(), currentTime + bowCooldown);
             fireArrow(player, "BOW", customArrowType);
         } else if (type == Material.CROSSBOW) {
-            nextShootTime.put(player.getUniqueId(), currentTime + 1800);
+            nextShootTime.put(player.getUniqueId(), currentTime + crossbowCooldown);
             fireArrow(player, "CROSSBOW", customArrowType);
         }
     }

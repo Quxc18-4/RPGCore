@@ -21,6 +21,9 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import vn.minecraft.rPGCore.cooking.CookingEngine;
+import vn.minecraft.rPGCore.cooking.FoodItemData;
+import vn.minecraft.rPGCore.cooking.NutritionStats;
 
 import java.util.*;
 
@@ -28,16 +31,41 @@ public class CookingManager implements Listener {
 
     private final JavaPlugin plugin;
     private final IngredientManager ingredientManager;
+    private final CookingEngine cookingEngine;
+
     private final Map<Location, FinishedPot> activePots = new HashMap<>();
     private final Set<Location> cookingPots = new HashSet<>();
-    private final NamespacedKey COOKED_TIME_KEY;
-    private final NamespacedKey MAX_FRESHNESS_KEY; // Thêm dòng này
+
+    // Các Khóa PDC (Persistent Data Container)
+    public final NamespacedKey COOKED_TIME_KEY;
+    public final NamespacedKey MAX_FRESHNESS_KEY;
+    public final NamespacedKey DURATION_KEY;
+    public final NamespacedKey BOREDOM_KEY;
+
+    // Khóa Stats
+    public final NamespacedKey STAT_DMG, STAT_CDR, STAT_MS, STAT_AS, STAT_PEN, STAT_REGEN, STAT_HP;
+    public final NamespacedKey FAT_DEBUFF_KEY;
 
     public CookingManager(JavaPlugin plugin, IngredientManager ingredientManager) {
         this.plugin = plugin;
         this.ingredientManager = ingredientManager;
-        this.COOKED_TIME_KEY = new NamespacedKey(plugin, "cooked_time");
-        this.MAX_FRESHNESS_KEY = new NamespacedKey(plugin, "max_freshness"); // Thêm dòng này
+        this.cookingEngine = new CookingEngine();
+
+        // Khởi tạo Key
+        this.COOKED_TIME_KEY = new NamespacedKey(plugin, "food_cooked_time");
+        this.MAX_FRESHNESS_KEY = new NamespacedKey(plugin, "food_max_freshness");
+        this.DURATION_KEY = new NamespacedKey(plugin, "food_duration");
+        this.BOREDOM_KEY = new NamespacedKey(plugin, "food_boredom");
+
+        this.STAT_DMG = new NamespacedKey(plugin, "food_stat_dmg");
+        this.STAT_CDR = new NamespacedKey(plugin, "food_stat_cdr");
+        this.STAT_MS = new NamespacedKey(plugin, "food_stat_ms");
+        this.STAT_AS = new NamespacedKey(plugin, "food_stat_as");
+        this.STAT_PEN = new NamespacedKey(plugin, "food_stat_pen");
+        this.STAT_REGEN = new NamespacedKey(plugin, "food_stat_regen");
+        this.STAT_HP = new NamespacedKey(plugin, "food_stat_hp");
+        this.FAT_DEBUFF_KEY = new NamespacedKey(plugin, "food_fat_debuff");
+
         startItemScanner();
     }
 
@@ -53,6 +81,9 @@ public class CookingManager implements Listener {
         }
     }
 
+    // ==========================================
+    // 1. QUÉT & NẤU (GIỮ NGUYÊN LOGIC CŨ)
+    // ==========================================
     private void startItemScanner() {
         new BukkitRunnable() {
             @Override
@@ -60,9 +91,7 @@ public class CookingManager implements Listener {
                 Iterator<Map.Entry<Location, FinishedPot>> activeIt = activePots.entrySet().iterator();
                 while (activeIt.hasNext()) {
                     Map.Entry<Location, FinishedPot> entry = activeIt.next();
-                    if (entry.getKey().getBlock().getType() != Material.WATER_CAULDRON) {
-                        activeIt.remove();
-                    }
+                    if (entry.getKey().getBlock().getType() != Material.WATER_CAULDRON) activeIt.remove();
                 }
                 cookingPots.removeIf(loc -> loc.getBlock().getType() != Material.WATER_CAULDRON);
 
@@ -106,32 +135,32 @@ public class CookingManager implements Listener {
     private void startCookingProcess(Block cauldronBlock) {
         Location loc = cauldronBlock.getLocation();
         cookingPots.add(loc);
-
         cauldronBlock.getWorld().playSound(loc, Sound.BLOCK_BUBBLE_COLUMN_UPWARDS_INSIDE, 1f, 1f);
 
-        // [MỚI]: TẠO HOLOGRAM ĐẾM NGƯỢC
         org.bukkit.entity.TextDisplay hologram = loc.getWorld().spawn(loc.clone().add(0.5, 1.2, 0.5), org.bukkit.entity.TextDisplay.class);
-        hologram.setBillboard(org.bukkit.entity.Display.Billboard.CENTER); // Luôn xoay mặt về phía người chơi
+        hologram.setBillboard(org.bukkit.entity.Display.Billboard.CENTER);
         hologram.setDefaultBackground(false);
-        hologram.setBackgroundColor(Color.fromARGB(100, 0, 0, 0)); // Nền đen mờ
+        hologram.setBackgroundColor(Color.fromARGB(100, 0, 0, 0));
 
         new BukkitRunnable() {
             int ticks = 0;
-            final int MAX_TICKS = 400; // 20 giây (20 ticks * 20s)
+            final int MAX_TICKS = 400; // 20s
             final List<Item> ingredients = new ArrayList<>();
 
             @Override
             public void run() {
-                // Hủy nếu Vạc bị đập
                 if (cauldronBlock.getType() != Material.WATER_CAULDRON) {
                     cookingPots.remove(loc);
-                    hologram.remove(); // Xóa Hologram
+                    hologram.remove();
                     this.cancel();
                     return;
                 }
 
-                // Quét nguyên liệu
                 boolean addedNewItem = false;
+                // [MỚI]: Đếm tổng số lượng (amount) đồ ăn đang có trong nồi
+                int currentTotal = 0;
+                for (Item i : ingredients) currentTotal += i.getItemStack().getAmount();
+
                 for (Item item : loc.getWorld().getEntitiesByClass(Item.class)) {
                     if (item.isDead()) continue;
                     Block iBlock = item.getLocation().getBlock();
@@ -140,53 +169,73 @@ public class CookingManager implements Listener {
                     if ((iBlock.equals(cauldronBlock) || iBlockBelow.equals(cauldronBlock)) && !ingredients.contains(item)) {
                         String ingredientId = ingredientManager.getIngredientId(item.getItemStack());
                         if (ingredientId != null) {
-                            if (ingredients.size() < 9) {
-                                ingredients.add(item);
-                                item.setPickupDelay(9999);
-                                addedNewItem = true; // Đánh dấu là có đồ mới
+
+                            // Nếu nồi chưa đầy 9 món
+                            if (currentTotal < 9) {
+                                int amt = item.getItemStack().getAmount();
+
+                                // Nếu số lượng ném vào hút lọt hết vào nồi
+                                if (currentTotal + amt <= 9) {
+                                    ingredients.add(item);
+                                    item.setPickupDelay(9999);
+                                    currentTotal += amt;
+                                    addedNewItem = true;
+                                }
+                                // Nếu ném quá nhiều (VD: Đang có 8 món, ném vào 64 món) -> Cắt đôi Stack
+                                else {
+                                    int needed = 9 - currentTotal;
+                                    ItemStack originalStack = item.getItemStack();
+
+                                    // Tạo ra 1 phần để hút vào nồi
+                                    ItemStack suckedStack = originalStack.clone();
+                                    suckedStack.setAmount(needed);
+
+                                    // Trừ đi phần đã hút, phần còn lại nảy búng ra ngoài
+                                    originalStack.setAmount(originalStack.getAmount() - needed);
+                                    item.setItemStack(originalStack);
+                                    item.setVelocity(new org.bukkit.util.Vector((Math.random() - 0.5) * 0.5, 0.5, (Math.random() - 0.5) * 0.5));
+
+                                    // Sinh ra thực thể mới nằm ngoan ngoãn trong nồi
+                                    Item suckedEntity = loc.getWorld().dropItem(item.getLocation(), suckedStack);
+                                    suckedEntity.setPickupDelay(9999);
+                                    suckedEntity.setVelocity(new org.bukkit.util.Vector(0, 0, 0));
+                                    ingredients.add(suckedEntity);
+
+                                    currentTotal = 9;
+                                    addedNewItem = true;
+                                }
                             } else {
+                                // Nồi đã đầy, búng mọi thứ ra
                                 item.setVelocity(new org.bukkit.util.Vector((Math.random() - 0.5) * 0.5, 0.5, (Math.random() - 0.5) * 0.5));
                             }
                         } else {
+                            // Rác Vanilla -> Búng ra
                             item.setVelocity(new org.bukkit.util.Vector((Math.random() - 0.5) * 0.5, 0.5, (Math.random() - 0.5) * 0.5));
                         }
                     }
                 }
 
-                // [MỚI]: RESET ĐỒNG HỒ NẾU CÓ ĐỒ MỚI VÀO NỒI
-                if (addedNewItem) {
-                    ticks = 0;
-                    loc.getWorld().playSound(loc, Sound.ENTITY_ITEM_PICKUP, 1f, 0.5f);
-                }
-
-                // CẬP NHẬT CHỮ HOLOGRAM (Mỗi giây update 1 lần để đỡ lag)
+                // Cập nhật Hologram hiển thị đúng Số lượng / 9
                 if (ticks % 20 == 0) {
                     int secondsLeft = (MAX_TICKS - ticks) / 20;
-                    hologram.setText("§e♨ Đang nấu...\n§f" + secondsLeft + "s §8| §a" + ingredients.size() + "§8/§a9 món");
+                    hologram.setText("§e♨ Đang nấu...\n§f" + secondsLeft + "s §8| §a" + currentTotal + "§8/§a9 món");
                 }
 
-                double centerOfCauldronX = loc.getX() + 0.5;
-                double centerOfCauldronZ = loc.getZ() + 0.5;
-                double waterY = loc.getY() + 0.65;
-
+                double cX = loc.getX() + 0.5, cZ = loc.getZ() + 0.5, wY = loc.getY() + 0.65;
                 for (int i = 0; i < ingredients.size(); i++) {
                     Item item = ingredients.get(i);
                     if (item.isDead()) continue;
-
-                    double bobbing = Math.sin(ticks * 0.3 + i) * 0.15;
-                    double offsetX = Math.cos(ticks * 0.1 + i) * 0.2;
-                    double offsetZ = Math.sin(ticks * 0.15 + i) * 0.2;
-                    item.teleport(new Location(loc.getWorld(), centerOfCauldronX + offsetX, waterY + bobbing, centerOfCauldronZ + offsetZ));
+                    item.teleport(new Location(loc.getWorld(), cX + Math.cos(ticks*0.1+i)*0.2, wY + Math.sin(ticks*0.3+i)*0.15, cZ + Math.sin(ticks*0.15+i)*0.2));
                 }
 
                 if (ticks % 3 == 0) {
-                    loc.getWorld().spawnParticle(Particle.BUBBLE_POP, centerOfCauldronX, waterY + 0.2, centerOfCauldronZ, 3, 0.2, 0.1, 0.2, 0.05);
-                    loc.getWorld().spawnParticle(Particle.CAMPFIRE_COSY_SMOKE, centerOfCauldronX, waterY + 0.3, centerOfCauldronZ, 1, 0.1, 0.1, 0.1, 0.01);
+                    loc.getWorld().spawnParticle(Particle.BUBBLE_POP, cX, wY + 0.2, cZ, 3, 0.2, 0.1, 0.2, 0.05);
+                    loc.getWorld().spawnParticle(Particle.CAMPFIRE_COSY_SMOKE, cX, wY + 0.3, cZ, 1, 0.1, 0.1, 0.1, 0.01);
                 }
 
                 if (ticks >= MAX_TICKS) {
                     finishCooking(cauldronBlock, ingredients);
-                    hologram.remove(); // Nấu xong thì xóa Hologram
+                    hologram.remove();
                     this.cancel();
                 }
                 ticks++;
@@ -194,106 +243,110 @@ public class CookingManager implements Listener {
         }.runTaskTimer(plugin, 0L, 1L);
     }
 
+    // ==========================================
+    // 2. KẾT NỐI VỚI OOP ENGINE VÀ XUẤT ĐỒ ĂN
+    // ==========================================
     private void finishCooking(Block cauldronBlock, List<Item> ingredients) {
         Location loc = cauldronBlock.getLocation();
         cookingPots.remove(loc);
 
-        // 1. TẬP HỢP DỮ LIỆU NGUYÊN LIỆU ĐỂ CHẤM ĐIỂM
+        // Chuẩn bị dữ liệu Đầu vào cho Engine
         List<IngredientManager.IngredientData> recipeData = new ArrayList<>();
         for (Item item : ingredients) {
             String id = ingredientManager.getIngredientId(item.getItemStack());
             if (id != null) {
                 IngredientManager.IngredientData data = ingredientManager.getIngredientData(id);
-                if (data != null) recipeData.add(data);
+                if (data != null) {
+                    // [MỚI]: Add dữ liệu vào mảng ứng với số lượng (Amount) của vật phẩm
+                    int amount = item.getItemStack().getAmount();
+                    for (int i = 0; i < amount; i++) {
+                        recipeData.add(data);
+                    }
+                }
             }
             item.remove();
         }
+        // Gọi Trái tim Toán học
+        FoodItemData resultData = cookingEngine.evaluate(recipeData);
+        NutritionStats stats = new NutritionStats(recipeData); // Dùng để in Bảng dinh dưỡng
 
-        // 2. GỌI HỆ THỐNG TRÍ TUỆ NHÂN TẠO ĐỂ PHÂN TÍCH MÓN ĂN
-        ItemStack result = evaluateRecipe(recipeData);
+        // Tạo Vật phẩm dựa trên kết quả
+        ItemStack resultItem = buildFoodItem(resultData, stats);
 
-        // 3. XÁC ĐỊNH MÀU SẮC NƯỚC SÔI THEO TÊN MÓN ĂN
-        Color pColor = Color.fromRGB(200, 150, 50); // Mặc định Vàng nâu
-        String name = result.getItemMeta().getDisplayName();
-
-        if (name.contains("Kì Lạ")) pColor = Color.fromRGB(80, 100, 80); // Thất bại -> Xám xanh
-        else if (name.contains("Thịt")) pColor = Color.fromRGB(200, 50, 0); // Thịt -> Đỏ cam
-        else if (name.contains("Rau") || name.contains("Salad")) pColor = Color.fromRGB(50, 200, 50); // Rau -> Xanh lá
+        // Chọn màu nước
+        Color pColor = Color.fromRGB(200, 150, 50);
+        if (resultData.isRuined) pColor = Color.fromRGB(80, 100, 80);
+        else if (stats.meat + stats.fish >= 1.0) pColor = Color.fromRGB(200, 50, 0);
+        else if (stats.veg >= 1.0) pColor = Color.fromRGB(50, 200, 50);
 
         cauldronBlock.getWorld().playSound(loc, Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
         loc.getWorld().spawnParticle(Particle.FIREWORK, loc.clone().add(0.5, 0.8, 0.5), 15, 0.2, 0.2, 0.2, 0.1);
 
-        activePots.put(loc, new FinishedPot(result, 6, pColor));
+        activePots.put(loc, new FinishedPot(resultItem, 6, pColor));
     }
 
-    // =======================================================
-    // HỆ THỐNG CHẤM ĐIỂM VÀ TẠO MÓN ĂN (DYNAMIC RECIPE ENGINE)
-    // =======================================================
-    private ItemStack evaluateRecipe(List<IngredientManager.IngredientData> ingredients) {
-        double meat = 0, veg = 0, fish = 0, fat = 0, starch = 0, monster = 0, magic = 0, spice = 0;
-        double totalPoints = 0;
-
-        for (IngredientManager.IngredientData data : ingredients) {
-            totalPoints += data.points;
-            switch (data.category) {
-                case MEAT: meat += data.points; break;
-                case VEG: veg += data.points; break;
-                case FISH: fish += data.points; break;
-                case FAT: fat += data.points; break;
-                case STARCH: starch += data.points; break;
-                case MONSTER: monster += data.points; break;
-                case MAGIC: magic += data.points; break;
-                case SPICE: spice += data.points; break;
-                default: break;
-            }
-        }
-
-        ItemStack item = new ItemStack(Material.MUSHROOM_STEW);
+    // ==========================================
+    // 3. KHẮC DỮ LIỆU (PDC) VÀ LORE SIÊU ĐẸP
+    // ==========================================
+    private ItemStack buildFoodItem(FoodItemData data, NutritionStats stats) {
+        ItemStack item = new ItemStack(data.material);
         ItemMeta meta = item.getItemMeta();
-        String name = "§8Món Ăn Kì Lạ";
+        NamespacedKey SPICE_KEY = new NamespacedKey(plugin, "food_spice");
+        meta.getPersistentDataContainer().set(SPICE_KEY, PersistentDataType.DOUBLE, stats.getTotalSpice());
+        meta.setDisplayName(data.name);
+
         List<String> lore = new ArrayList<>();
+        lore.add("§8Đang xác định độ tươi..."); // FoodListener sẽ đè dòng này khi cầm lên
+        lore.add("");
+        lore.add("§f§lThông tin chung:");
+        lore.add("§7 ⌚ No Căng: §a" + data.durationMinutes + " Phút");
+        lore.add("§7 🤢 Tỉ lệ Ngấy: §e" + data.boredomPoints + "%");
+        lore.add("");
+        lore.add("§f§lBảng Dinh Dưỡng:");
+        if (stats.meat > 0) lore.add("§7 🥩 Thịt: §c" + String.format("%.2f", stats.meat));
+        if (stats.fish > 0) lore.add("§7 🐟 Cá: §b" + String.format("%.2f", stats.fish));
+        if (stats.veg > 0) lore.add("§7 🥬 Rau Củ: §a" + String.format("%.2f", stats.veg));
+        if (stats.starch > 0) lore.add("§7 🥖 Tinh Bột: §e" + String.format("%.2f", stats.starch));
+        if (stats.fat > 0) lore.add("§7 🧈 Chất Béo: §e" + String.format("%.2f", stats.fat));
+        if (stats.getTotalSpice() > 0) lore.add("§7 🧂 Gia Vị: §f" + String.format("%.2f", stats.getTotalSpice()));
 
-        // BIẾN LƯU TRỮ THỜI GIAN THIU (Tính bằng phút)
-        int maxFreshnessMinutes = 30; // Mặc định 30 phút
-
-        if (totalPoints == 0 || (monster + magic) / totalPoints > 0.25) {
-            name = "§8Món Ăn Kì Lạ";
-            lore.add("§7Nấu sai công thức hoặc tạp chất quá nhiều...");
-            maxFreshnessMinutes = 10; // Đồ độc thiu cực nhanh (10 phút)
-        } else {
-            if (meat >= 1.0 && veg >= 0.5) {
-                name = "§6§lThịt Hầm Thượng Hạng";
-                item.setType(Material.RABBIT_STEW);
-                lore.add("§7Món ăn cân bằng hoàn hảo giữa thịt và rau củ.");
-                maxFreshnessMinutes = 60; // Nấu kĩ, để được 1 tiếng
-            } else if (meat >= 1.0) {
-                name = "§c§lSúp Thịt Nguyên Tảng";
-                item.setType(Material.RABBIT_STEW);
-                lore.add("§7Nhiều năng lượng, nhưng ăn nhiều sẽ nặng bụng.");
-                maxFreshnessMinutes = 45;
-            } else if (veg >= 1.0) {
-                name = "§a§lSalad Súp Thanh Lọc";
-                item.setType(Material.BEETROOT_SOUP);
-                lore.add("§7Tươi mát và thanh khiết. Giúp giải độc cơ thể.");
-                maxFreshnessMinutes = 15; // Rau sống dễ hỏng (15 phút)
-            } else {
-                name = "§e§lSúp Thập Cẩm";
-                item.setType(Material.MUSHROOM_STEW);
-            }
-
-            if (spice > 0) {
-                lore.add("§6[Đậm Vị] §7- Giảm đáng kể độ ngán khi ăn liên tục.");
-                maxFreshnessMinutes += 15; // Gia vị giúp bảo quản đồ ăn lâu hơn
-            }
-            if (fat > 0) lore.add("§e[Béo Ngậy] §7- Tăng cường sức mạnh của Buff.");
+        if (data.bonusDmg != 0 || data.cdr != 0 || data.moveSpeed != 0 || data.atkSpeed != 0 || data.armorPen != 0 || data.regenRate != 0 || data.maxHpBonus != 0) {
+            lore.add("");
+            lore.add("§f§lHiệu Ứng Cơ Thể:");
+            if (data.bonusDmg != 0) lore.add("§7 🗡 Sát thương: §c" + (data.bonusDmg > 0 ? "+" : "") + String.format("%.1f", data.bonusDmg) + "%");
+            if (data.cdr != 0) lore.add("§7 ⏳ Hồi chiêu: §9" + (data.cdr > 0 ? "+" : "") + String.format("%.1f", data.cdr) + "%");
+            if (data.moveSpeed != 0) lore.add("§7 💨 Tốc chạy: §f" + (data.moveSpeed > 0 ? "+" : "") + String.format("%.1f", data.moveSpeed) + "%");
+            if (data.atkSpeed != 0) lore.add("§7 ⚡ Tốc đánh: §e" + (data.atkSpeed > 0 ? "+" : "") + String.format("%.1f", data.atkSpeed) + "%");
+            if (data.armorPen != 0) lore.add("§7 🛡 Xuyên giáp: §4" + (data.armorPen > 0 ? "+" : "") + String.format("%.1f", data.armorPen) + "%");
+            if (data.regenRate != 0) lore.add("§7 💖 Hồi máu: §a" + (data.regenRate > 0 ? "+" : "") + String.format("%.1f", data.regenRate) + "%");
+            if (data.maxHpBonus != 0) lore.add("§7 ❤ Máu tối đa: §c" + (data.maxHpBonus > 0 ? "+" : "") + String.format("%.1f", data.maxHpBonus));
         }
 
-        // LƯU ÂM THẦM VÀO ITEM (Không in ra Lore nữa)
-        long currentTime = System.currentTimeMillis();
-        meta.getPersistentDataContainer().set(COOKED_TIME_KEY, PersistentDataType.LONG, currentTime);
-        meta.getPersistentDataContainer().set(MAX_FRESHNESS_KEY, PersistentDataType.INTEGER, maxFreshnessMinutes);
+        if (data.hasFatDebuff) {
+            lore.add("§7 ⚠ Quá Ngấy: §c-20% Tốc chạy");
+        }
 
-        meta.setDisplayName(name);
+        if (!data.flavorTags.isEmpty()) {
+            lore.add("");
+            lore.addAll(data.flavorTags);
+        }
+
+        // --- KHẮC DỮ LIỆU ẨN VÀO ITEM (PDC) ---
+        meta.getPersistentDataContainer().set(COOKED_TIME_KEY, PersistentDataType.LONG, System.currentTimeMillis());
+        meta.getPersistentDataContainer().set(MAX_FRESHNESS_KEY, PersistentDataType.INTEGER, data.freshnessMinutes);
+        meta.getPersistentDataContainer().set(DURATION_KEY, PersistentDataType.INTEGER, data.durationMinutes);
+        meta.getPersistentDataContainer().set(BOREDOM_KEY, PersistentDataType.INTEGER, data.boredomPoints);
+
+        meta.getPersistentDataContainer().set(STAT_DMG, PersistentDataType.DOUBLE, data.bonusDmg);
+        meta.getPersistentDataContainer().set(STAT_CDR, PersistentDataType.DOUBLE, data.cdr);
+        meta.getPersistentDataContainer().set(STAT_MS, PersistentDataType.DOUBLE, data.moveSpeed);
+        meta.getPersistentDataContainer().set(STAT_AS, PersistentDataType.DOUBLE, data.atkSpeed);
+        meta.getPersistentDataContainer().set(STAT_PEN, PersistentDataType.DOUBLE, data.armorPen);
+        meta.getPersistentDataContainer().set(STAT_REGEN, PersistentDataType.DOUBLE, data.regenRate);
+        meta.getPersistentDataContainer().set(STAT_HP, PersistentDataType.DOUBLE, data.maxHpBonus);
+
+        meta.getPersistentDataContainer().set(FAT_DEBUFF_KEY, PersistentDataType.BYTE, (byte) (data.hasFatDebuff ? 1 : 0));
+
         meta.setLore(lore);
         item.setItemMeta(meta);
         return item;
@@ -301,6 +354,7 @@ public class CookingManager implements Listener {
 
     @EventHandler
     public void onScoopSoup(PlayerInteractEvent event) {
+        if (event.getHand() != org.bukkit.inventory.EquipmentSlot.HAND) return;
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
         Block block = event.getClickedBlock();
         if (block == null || block.getType() != Material.WATER_CAULDRON) return;
@@ -315,10 +369,8 @@ public class CookingManager implements Listener {
             event.setCancelled(true);
 
             FinishedPot pot = activePots.get(loc);
-
             handItem.setAmount(handItem.getAmount() - 1);
 
-            // Mỗi lần múc là tạo ra 1 clone mới (Để lỡ múc sau 5 phút thì Timestamp vẫn là lúc Nồi chín)
             player.getInventory().addItem(pot.resultItem.clone());
             player.playSound(loc, Sound.ENTITY_GENERIC_DRINK, 1f, 1f);
 

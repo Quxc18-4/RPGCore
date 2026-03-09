@@ -5,12 +5,10 @@ import vn.minecraft.rPGCore.classes.ClassManager;
 import vn.minecraft.rPGCore.commands.*;
 import vn.minecraft.rPGCore.listeners.ArcherListener;
 import vn.minecraft.rPGCore.listeners.ComboListener;
-import vn.minecraft.rPGCore.listeners.EquipmentListener; // Import thêm
+import vn.minecraft.rPGCore.listeners.EquipmentListener;
 import vn.minecraft.rPGCore.listeners.PlayerListener;
 import vn.minecraft.rPGCore.listeners.ClassGUIListener;
-import vn.minecraft.rPGCore.managers.ArrowRecipeManager;
-import vn.minecraft.rPGCore.managers.CookingManager;
-import vn.minecraft.rPGCore.managers.IngredientManager;
+import vn.minecraft.rPGCore.managers.*;
 import vn.minecraft.rPGCore.player.PlayerManager;
 import vn.minecraft.rPGCore.skills.SkillManager;
 import vn.minecraft.rPGCore.ui.*;
@@ -21,6 +19,10 @@ public final class RPGCore extends JavaPlugin {
     private static RPGCore instance;
     private PlayerManager playerManager;
     private BossBarManager bossBarManager;
+
+    // [ĐÃ SỬA LỖI]: Đưa 2 Manager này ra ngoài làm biến toàn cục của Class
+    private BoredomManager boredomManager;
+    private FoodBuffManager foodBuffManager;
 
     @Override
     public void onEnable() {
@@ -35,30 +37,25 @@ public final class RPGCore extends JavaPlugin {
         SkillManager skillManager = new SkillManager(this);
         SkillUIManager skillUI = new SkillUIManager(playerManager, skillManager);
         BlacksmithGUI blacksmithGUI = new BlacksmithGUI();
-        // Khởi tạo và đăng ký hệ thống Nấu Ăn
+
         IngredientManager ingredientManager = new IngredientManager(this);
         CookingManager cookingManager = new CookingManager(this, ingredientManager);
+
+        // [ĐÃ SỬA LỖI]: Khởi tạo bằng từ khóa 'this' để lưu vào Class
+        this.boredomManager = new BoredomManager(this);
+        this.foodBuffManager = new FoodBuffManager(this);
 
         ArrowRecipeManager arrowRecipeManager = new ArrowRecipeManager(this);
         ArrowCraftingUI arrowCraftingUI = new ArrowCraftingUI(playerManager, arrowRecipeManager);
         AdminArrowCraftingUI adminArrowCraftingUI = new AdminArrowCraftingUI(arrowRecipeManager);
 
-        // ==========================================
-        // KHỞI TẠO GUI SỬA CHỮA (MỚI)
-        // ==========================================
         RepairGUI repairGUI = new RepairGUI();
 
-        // 2. Đăng ký Listener
         getServer().getPluginManager().registerEvents(new PlayerListener(playerManager, bossBarManager, classManager), this);
         getServer().getPluginManager().registerEvents(new ClassGUIListener(playerManager, bossBarManager, classManager), this);
         getServer().getPluginManager().registerEvents(new ArcherListener(this, playerManager, arrowCraftingUI), this);
-
-        // ĐĂNG KÝ LISTENER KIỂM TRA MẶC ĐỒ & CLASS
         getServer().getPluginManager().registerEvents(new EquipmentListener(playerManager), this);
-
-        // Đăng ký GUI Sửa chữa
         getServer().getPluginManager().registerEvents(repairGUI, this);
-
         getServer().getPluginManager().registerEvents(attrGUI, this);
         getServer().getPluginManager().registerEvents(new ComboListener(this, playerManager, skillManager), this);
         getServer().getPluginManager().registerEvents(skillUI, this);
@@ -67,13 +64,12 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.DurabilityListener(playerManager), this);
         getServer().getPluginManager().registerEvents(blacksmithGUI, this);
         getServer().getPluginManager().registerEvents(cookingManager, this);
-        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.FoodListener(this), this);
-        getServer().getPluginManager().registerEvents(cookingManager, this);
 
-        // 3. Chạy Task
+        // Dùng this.boredomManager và this.foodBuffManager
+        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.FoodListener(this, this.boredomManager, this.foodBuffManager), this);
+
         new RegenTask(playerManager, bossBarManager).runTaskTimer(this, 0L, 20L);
 
-        // 4. Đăng ký lệnh
         getCommand("class").setExecutor(new ClassCommand(classManager, classGUI));
         getCommand("rpgadmin").setExecutor(new RPGAdminCommand(playerManager));
         getCommand("profile").setExecutor(new ProfileCommand(playerManager));
@@ -84,11 +80,9 @@ public final class RPGCore extends JavaPlugin {
         getCommand("arrow").setExecutor(new ArrowCommand(arrowRecipeManager));
         getCommand("ig").setExecutor(new ItemAdminCommand(ingredientManager));
 
-        // Đăng ký lệnh Lấy dụng cụ sửa chữa
         if (this.getCommand("repairadmin") != null) {
             this.getCommand("repairadmin").setExecutor(new RepairAdminCommand());
         }
-
         if (this.getCommand("eq") != null) {
             this.getCommand("eq").setExecutor(new EquipmentCommand());
         } else {
@@ -115,5 +109,14 @@ public final class RPGCore extends JavaPlugin {
 
     public static RPGCore getInstance() {
         return instance;
+    }
+
+    // [ĐÃ SỬA LỖI]: Hàm Getter đã xuất hiện để các class khác gọi
+    public FoodBuffManager getFoodBuffManager() {
+        return this.foodBuffManager;
+    }
+
+    public BoredomManager getBoredomManager() {
+        return this.boredomManager;
     }
 }

@@ -254,11 +254,19 @@ public class RPGPlayer {
         this.bukkitPlayer.setHealthScaled(true);
     }
 
-    private void updateMoveSpeed() {
+    public void updateMoveSpeed() {
         AttributeInstance moveSpeedAttr = this.bukkitPlayer.getAttribute(Attribute.MOVEMENT_SPEED);
         if (moveSpeedAttr != null) {
             double equipSpeed = currentStats != null ? currentStats.moveSpeed : 0.0;
-            moveSpeedAttr.setBaseValue(0.1 * (1.0 + (equipSpeed / 100.0)));
+
+            // [TÍCH HỢP ĐỒ ĂN]
+            double foodMoveSpeed = vn.minecraft.rPGCore.RPGCore.getInstance().getFoodBuffManager().getBonus(this.bukkitPlayer.getUniqueId(), vn.minecraft.rPGCore.managers.FoodBuffManager.StatType.MOVE_SPEED);
+
+            // [TÍCH HỢP ATTRIBUTE]: AGI (Mỗi điểm AGI tăng 0.1% Tốc độ chạy)
+            double agiSpeedBonus = this.attributeData.getAttribute("AGI") * 0.1;
+
+            double totalSpeedBonus = equipSpeed + foodMoveSpeed + agiSpeedBonus;
+            moveSpeedAttr.setBaseValue(0.1 * (1.0 + (totalSpeedBonus / 100.0)));
         }
     }
 
@@ -270,8 +278,11 @@ public class RPGPlayer {
         // CHỈ NHÂN HỆ SỐ SET BONUS CHO RIÊNG MÁU CỦA TRANG BỊ
         double equipHp = currentStats != null ? (currentStats.maxHealth * currentStats.hpMultiplier) : 0.0;
 
+        // [TÍCH HỢP FOOD BUFF]: TĂNG MÁU TỐI ĐA (Từ Tinh bột)
+        double foodMaxHp = vn.minecraft.rPGCore.RPGCore.getInstance().getFoodBuffManager().getBonus(this.bukkitPlayer.getUniqueId(), vn.minecraft.rPGCore.managers.FoodBuffManager.StatType.MAX_HP);
+
         // Lượng máu hồi 1%/s sau này của bạn sẽ tính dựa trên tổng của toàn bộ phép cộng này!
-        return baseHp + levelBonus + vitBonus + equipHp;
+        return baseHp + levelBonus + vitBonus + equipHp + foodMaxHp;
     }
 
     // --- CÁC HÀM CŨ GIỮ NGUYÊN BÊN DƯỚI ---

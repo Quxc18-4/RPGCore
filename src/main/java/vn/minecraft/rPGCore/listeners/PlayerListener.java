@@ -78,11 +78,34 @@ public class PlayerListener implements Listener {
 
     @EventHandler
     public void onDealDamage(EntityDamageByEntityEvent event) {
+        // 1. KHI NGƯỜI CHƠI ĐÁNH QUÁI (Đưa vào trạng thái Combat)
         if (event.getDamager() instanceof Player) {
             RPGPlayer rpgPlayer = playerManager.getRPGPlayer(event.getDamager().getUniqueId());
             if (rpgPlayer != null) {
-                // Gây sát thương cũng tính là vào giao tranh
                 rpgPlayer.setInCombat();
+            }
+        }
+
+        // 2. KHI NGƯỜI CHƠI BỊ QUÁI ĐÁNH (Tính Né Tránh, Đỡ Đòn)
+        if (event.getEntity() instanceof Player) {
+            Player victim = (Player) event.getEntity();
+            RPGPlayer rpgVictim = playerManager.getRPGPlayer(victim.getUniqueId());
+
+            if (rpgVictim != null) {
+                rpgVictim.setInCombat(); // Bị đấm cũng tính là combat
+
+                // Lấy lượng sát thương gốc mà quái gây ra
+                double incomingDamage = event.getDamage();
+
+                // Trả qua thuật toán Dodge & Block & AGI
+                double finalDamage = vn.minecraft.rPGCore.managers.CombatManager.calculateDamageTaken(victim, rpgVictim, incomingDamage);
+
+                // Nếu né thành công (sát thương trả về 0), hủy sự kiện để không bị knockback
+                if (finalDamage <= 0) {
+                    event.setCancelled(true);
+                } else {
+                    event.setDamage(finalDamage);
+                }
             }
         }
     }
