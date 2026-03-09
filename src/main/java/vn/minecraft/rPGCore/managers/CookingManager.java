@@ -31,11 +31,13 @@ public class CookingManager implements Listener {
     private final Map<Location, FinishedPot> activePots = new HashMap<>();
     private final Set<Location> cookingPots = new HashSet<>();
     private final NamespacedKey COOKED_TIME_KEY;
+    private final NamespacedKey MAX_FRESHNESS_KEY; // Thêm dòng này
 
     public CookingManager(JavaPlugin plugin, IngredientManager ingredientManager) {
         this.plugin = plugin;
         this.ingredientManager = ingredientManager;
         this.COOKED_TIME_KEY = new NamespacedKey(plugin, "cooked_time");
+        this.MAX_FRESHNESS_KEY = new NamespacedKey(plugin, "max_freshness"); // Thêm dòng này
         startItemScanner();
     }
 
@@ -231,7 +233,6 @@ public class CookingManager implements Listener {
         double meat = 0, veg = 0, fish = 0, fat = 0, starch = 0, monster = 0, magic = 0, spice = 0;
         double totalPoints = 0;
 
-        // Bóc tách điểm từ từng nguyên liệu
         for (IngredientManager.IngredientData data : ingredients) {
             totalPoints += data.points;
             switch (data.category) {
@@ -247,58 +248,50 @@ public class CookingManager implements Listener {
             }
         }
 
-        ItemStack item = new ItemStack(Material.MUSHROOM_STEW); // Mặc định là chén súp
+        ItemStack item = new ItemStack(Material.MUSHROOM_STEW);
         ItemMeta meta = item.getItemMeta();
         String name = "§8Món Ăn Kì Lạ";
         List<String> lore = new ArrayList<>();
 
-        // KIỂM DUYỆT ĐỘC TỐ: Nếu (Quái vật + Ma thuật) chiếm HƠN 25% tổng điểm -> Nấu hỏng!
+        // BIẾN LƯU TRỮ THỜI GIAN THIU (Tính bằng phút)
+        int maxFreshnessMinutes = 30; // Mặc định 30 phút
+
         if (totalPoints == 0 || (monster + magic) / totalPoints > 0.25) {
             name = "§8Món Ăn Kì Lạ";
             lore.add("§7Nấu sai công thức hoặc tạp chất quá nhiều...");
-            lore.add("§cĂn vào chắc chắn sẽ bị ngộ độc!");
+            maxFreshnessMinutes = 10; // Đồ độc thiu cực nhanh (10 phút)
         } else {
-            // PHÂN LOẠI MÓN ĂN DỰA TRÊN ĐIỂM SỐ
             if (meat >= 1.0 && veg >= 0.5) {
                 name = "§6§lThịt Hầm Thượng Hạng";
                 item.setType(Material.RABBIT_STEW);
                 lore.add("§7Món ăn cân bằng hoàn hảo giữa thịt và rau củ.");
-                lore.add("§7Độ no: §aRất lâu");
+                maxFreshnessMinutes = 60; // Nấu kĩ, để được 1 tiếng
             } else if (meat >= 1.0) {
                 name = "§c§lSúp Thịt Nguyên Tảng";
                 item.setType(Material.RABBIT_STEW);
                 lore.add("§7Nhiều năng lượng, nhưng ăn nhiều sẽ nặng bụng.");
-                lore.add("§7Độ no: §aLâu");
+                maxFreshnessMinutes = 45;
             } else if (veg >= 1.0) {
                 name = "§a§lSalad Súp Thanh Lọc";
                 item.setType(Material.BEETROOT_SOUP);
                 lore.add("§7Tươi mát và thanh khiết. Giúp giải độc cơ thể.");
-                lore.add("§7Độ no: §eNhanh đói");
+                maxFreshnessMinutes = 15; // Rau sống dễ hỏng (15 phút)
             } else {
                 name = "§e§lSúp Thập Cẩm";
                 item.setType(Material.MUSHROOM_STEW);
-                lore.add("§7Một món súp hỗn hợp, cung cấp năng lượng cơ bản.");
             }
 
-            // GIA VỊ: Nhận diện hương vị thêm vào
             if (spice > 0) {
                 lore.add("§6[Đậm Vị] §7- Giảm đáng kể độ ngán khi ăn liên tục.");
+                maxFreshnessMinutes += 15; // Gia vị giúp bảo quản đồ ăn lâu hơn
             }
-            if (fat > 0) {
-                lore.add("§e[Béo Ngậy] §7- Tăng cường sức mạnh của Buff.");
-            }
+            if (fat > 0) lore.add("§e[Béo Ngậy] §7- Tăng cường sức mạnh của Buff.");
         }
 
-        // =======================================================
-        // ĐÓNG DẤU THỜI GIAN (TIMESTAMP) CHO ĐỘ TƯƠI MỚI CỦA ĐỒ ĂN
-        // =======================================================
+        // LƯU ÂM THẦM VÀO ITEM (Không in ra Lore nữa)
         long currentTime = System.currentTimeMillis();
-        lore.add("");
-        // Lưu thời gian lên Lore bằng mã màu tàng hình (Hoặc chỉ để admin dễ debug)
-        lore.add("§8[Ra lò: " + new java.text.SimpleDateFormat("HH:mm:ss").format(new Date(currentTime)) + "]");
-
-        // Ghi trực tiếp Timestamp vào PDC của Item để sau này Phase 4 lôi ra tính toán
         meta.getPersistentDataContainer().set(COOKED_TIME_KEY, PersistentDataType.LONG, currentTime);
+        meta.getPersistentDataContainer().set(MAX_FRESHNESS_KEY, PersistentDataType.INTEGER, maxFreshnessMinutes);
 
         meta.setDisplayName(name);
         meta.setLore(lore);

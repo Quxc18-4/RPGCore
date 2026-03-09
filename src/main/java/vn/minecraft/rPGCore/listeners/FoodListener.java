@@ -24,11 +24,13 @@ import java.util.UUID;
 public class FoodListener implements Listener {
 
     public static final Map<UUID, Long> fullnessTimers = new HashMap<>();
-    public static final Map<UUID, Integer> boredomLevels = new HashMap<>(); // Lưu % Độ ngán
+    public static final Map<UUID, Integer> boredomLevels = new HashMap<>();
     private final NamespacedKey COOKED_TIME_KEY;
+    private final NamespacedKey MAX_FRESHNESS_KEY;
 
     public FoodListener(JavaPlugin plugin) {
         this.COOKED_TIME_KEY = new NamespacedKey(plugin, "cooked_time");
+        this.MAX_FRESHNESS_KEY = new NamespacedKey(plugin, "max_freshness");
     }
 
     @EventHandler
@@ -39,55 +41,65 @@ public class FoodListener implements Listener {
 
             ItemMeta meta = item.getItemMeta();
 
-            // CHỈ QUÉT ĐỒ ĂN CÓ DẤU TIMESTAMP CỦA RPGCORE
+            // CHỈ XỬ LÝ NẾU ĐÂY LÀ ĐỒ ĂN CÓ DẤU THỜI GIAN CỦA RPG
             if (!meta.getPersistentDataContainer().has(COOKED_TIME_KEY, PersistentDataType.LONG)) return;
 
-            event.setCancelled(true); // Ngăn ăn kiểu Vanilla
+            event.setCancelled(true);
             Player player = event.getPlayer();
             UUID uuid = player.getUniqueId();
             String name = ChatColor.stripColor(meta.getDisplayName());
 
-            // 1. TÍNH TOÁN ĐỘ TƯƠI MỚI (FRESHNESS)
+            // 1. TÍNH TOÁN ĐỘ TƯƠI MỚI DỰA TRÊN THÔNG SỐ ẨN
             long cookedTime = meta.getPersistentDataContainer().get(COOKED_TIME_KEY, PersistentDataType.LONG);
-            long ageInMinutes = (System.currentTimeMillis() - cookedTime) / (60 * 1000);
+            int maxFreshness = meta.getPersistentDataContainer().getOrDefault(MAX_FRESHNESS_KEY, PersistentDataType.INTEGER, 30);
+            long ageInMinutes = (System.currentTimeMillis() - cookedTime) / 60000;
 
-            if (ageInMinutes > 30) {
-                // ĐÃ THIU HỎNG
-                player.sendMessage("§cỌe... Món này đã bốc mùi thiu do để quá lâu!");
+            if (ageInMinutes > maxFreshness) {
+                player.sendMessage("§cỌe... Món này đã thiu thối do để quá lâu (" + ageInMinutes + "/" + maxFreshness + " phút)!");
                 player.addPotionEffect(new PotionEffect(PotionEffectType.HUNGER, 300, 1));
                 player.addPotionEffect(new PotionEffect(PotionEffectType.NAUSEA, 200, 0));
                 consumeItem(player, item);
                 return;
             }
 
-            // 2. KIỂM TRA ĐỘ NGÁN (BOREDOM)
+            // 2. CHỐNG SPAM CLICK & XỬ LÝ ĐỘ NGÁN (BOREDOM)
             int currentBoredom = boredomLevels.getOrDefault(uuid, 0);
             boolean isSpicyOrFatty = name.contains("Đậm Vị") || name.contains("Béo Ngậy");
 
             if (!isSpicyOrFatty) {
-                if (currentBoredom >= 50 && Math.random() < 0.3) {
-                    player.sendMessage("§eBạn cảm thấy quá ngán món này và không thể nuốt trôi...");
+                if (currentBoredom >= 100) {
+                    player.sendMessage("§c✖ Bạn đã quá ngán đồ ăn nhạt nhẽo! Cổ họng bạn từ chối nuốt thêm!");
                     player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_BURP, 1f, 0.5f);
-                    return; // Không mất item, chỉ không ăn được
+                    return; // KHÓA HOÀN TOÀN, CÓ SPAM CŨNG KHÔNG ĂN ĐƯỢC
                 }
-                boredomLevels.put(uuid, Math.min(100, currentBoredom + 15)); // Tăng 15% độ ngán
+                else if (currentBoredom >= 50) {
+                    // Tỉ lệ từ chối tăng dần theo độ ngán (50% -> 99%)
+                    if (Math.random() * 100 < currentBoredom) {
+                        player.sendMessage("§eBạn cảm thấy buồn nôn khi ngửi thấy món này...");
+                        player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_BURP, 1f, 0.5f);
+                        // Càng cố spam click, độ ngán càng tăng nhanh để chặn lại
+                        boredomLevels.put(uuid, Math.min(100, currentBoredom + 10));
+                        return;
+                    }
+                }
+                boredomLevels.put(uuid, Math.min(100, currentBoredom + 25)); // Ăn thành công, tăng 25% ngán
             } else {
-                boredomLevels.put(uuid, 0); // Reset độ ngán nếu ăn đồ ngon/có gia vị
+                boredomLevels.put(uuid, 0); // Ăn đồ có gia vị sẽ chữa được ngán
                 player.sendMessage("§aHương vị đậm đà làm bạn lấy lại cảm giác thèm ăn!");
             }
 
-            // 3. XỬ LÝ TÁC DỤNG CỦA TỪNG MÓN ĂN
-            int durationMinutes = 5; // Mặc định 5 phút No Căng
+            // 3. XỬ LÝ TÁC DỤNG CỦA MÓN ĂN
+            int durationMinutes = 5;
 
             if (name.contains("Thịt Hầm Thượng Hạng")) {
                 durationMinutes = 20;
                 player.addPotionEffect(new PotionEffect(PotionEffectType.STRENGTH, 20 * 60 * 20, 0));
             } else if (name.contains("Súp Thịt Nguyên Tảng")) {
                 durationMinutes = 15;
-                player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 3 * 60 * 20, 0)); // Nặng bụng 3 phút
+                player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 3 * 60 * 20, 0));
             } else if (name.contains("Salad Súp Thanh Lọc")) {
-                durationMinutes = 2; // Cực nhanh đói
-                player.getActivePotionEffects().forEach(effect -> player.removePotionEffect(effect.getType())); // Giải độc
+                durationMinutes = 2;
+                player.getActivePotionEffects().forEach(effect -> player.removePotionEffect(effect.getType()));
                 player.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 30 * 20, 1));
             } else if (name.contains("Kì Lạ")) {
                 durationMinutes = 0;
@@ -95,12 +107,12 @@ public class FoodListener implements Listener {
                 player.sendMessage("§cBạn bị ngộ độc thực phẩm!");
             }
 
-            // 4. ÁP DỤNG HỆ SỐ TƯƠI MỚI
-            if (ageInMinutes <= 5) {
-                player.sendMessage("§6Bạn vừa húp một ngụm súp nóng hổi! (+1 Phút No căng)");
-                durationMinutes += 1;
+            // 4. ÁP DỤNG TRẠNG THÁI NÓNG/NGUỘI TỰ ĐỘNG
+            if (ageInMinutes <= maxFreshness * 0.15) { // 15% thời gian đầu tiên (Ví dụ: 9 phút đầu của món 60p)
+                player.sendMessage("§6Bạn vừa húp một ngụm súp nóng hổi! (+2 Phút No căng)");
+                durationMinutes += 2;
                 player.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 100, 0));
-            } else if (ageInMinutes >= 20) {
+            } else if (ageInMinutes >= maxFreshness * 0.75) { // 25% thời gian cuối (Sắp hỏng)
                 player.sendMessage("§eMón súp đã nguội lạnh... Mất 50% hiệu quả.");
                 durationMinutes /= 2;
             }
@@ -124,7 +136,6 @@ public class FoodListener implements Listener {
         }
     }
 
-    // 5. NGĂN TỤT THỨC ĂN NẾU CÓ BUFF "NO CĂNG"
     @EventHandler
     public void onHungerDeplete(FoodLevelChangeEvent event) {
         if (!(event.getEntity() instanceof Player)) return;
