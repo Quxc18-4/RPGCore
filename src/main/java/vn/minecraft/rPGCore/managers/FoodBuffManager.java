@@ -11,7 +11,8 @@ import java.util.UUID;
 public class FoodBuffManager {
 
     public enum StatType {
-        DMG, CDR, MOVE_SPEED, ATK_SPEED, ARMOR_PEN, REGEN, MAX_HP
+        DMG, CDR, MOVE_SPEED, ATK_SPEED, ARMOR_PEN, REGEN, MAX_HP,
+        LIFE_STEAL, CRIT_RATE, DROP_RATE // THÊM 3 CHỈ SỐ NÀY
     }
 
     private static class ActiveBuff {

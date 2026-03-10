@@ -45,6 +45,7 @@ public class CookingManager implements Listener {
     // Khóa Stats
     public final NamespacedKey STAT_DMG, STAT_CDR, STAT_MS, STAT_AS, STAT_PEN, STAT_REGEN, STAT_HP;
     public final NamespacedKey FAT_DEBUFF_KEY;
+    public final NamespacedKey STAT_LS, STAT_CRIT, STAT_DROP, POTION_EFFECTS_KEY;
 
     public CookingManager(JavaPlugin plugin, IngredientManager ingredientManager) {
         this.plugin = plugin;
@@ -65,6 +66,11 @@ public class CookingManager implements Listener {
         this.STAT_REGEN = new NamespacedKey(plugin, "food_stat_regen");
         this.STAT_HP = new NamespacedKey(plugin, "food_stat_hp");
         this.FAT_DEBUFF_KEY = new NamespacedKey(plugin, "food_fat_debuff");
+
+        this.STAT_LS = new NamespacedKey(plugin, "food_stat_ls");
+        this.STAT_CRIT = new NamespacedKey(plugin, "food_stat_crit");
+        this.STAT_DROP = new NamespacedKey(plugin, "food_stat_drop");
+        this.POTION_EFFECTS_KEY = new NamespacedKey(plugin, "food_potion_effects");
 
         startItemScanner();
     }
@@ -320,6 +326,9 @@ public class CookingManager implements Listener {
             if (data.armorPen != 0) lore.add("§7 🛡 Xuyên giáp: §4" + (data.armorPen > 0 ? "+" : "") + String.format("%.1f", data.armorPen) + "%");
             if (data.regenRate != 0) lore.add("§7 💖 Hồi máu: §a" + (data.regenRate > 0 ? "+" : "") + String.format("%.1f", data.regenRate) + "%");
             if (data.maxHpBonus != 0) lore.add("§7 ❤ Máu tối đa: §c" + (data.maxHpBonus > 0 ? "+" : "") + String.format("%.1f", data.maxHpBonus));
+            if (data.lifeSteal != 0) lore.add("§7 🦇 Hút máu: §c" + (data.lifeSteal > 0 ? "+" : "") + String.format("%.1f", data.lifeSteal) + "%");
+            if (data.critRate != 0) lore.add("§7 🎯 Tỉ lệ Chí mạng: §e" + (data.critRate > 0 ? "+" : "") + String.format("%.1f", data.critRate) + "%");
+            if (data.dropRate != 0) lore.add("§7 🎁 Tỉ lệ Rớt đồ: §b" + (data.dropRate > 0 ? "+" : "") + String.format("%.1f", data.dropRate) + "%");
         }
 
         if (data.hasFatDebuff) {
@@ -346,6 +355,15 @@ public class CookingManager implements Listener {
         meta.getPersistentDataContainer().set(STAT_HP, PersistentDataType.DOUBLE, data.maxHpBonus);
 
         meta.getPersistentDataContainer().set(FAT_DEBUFF_KEY, PersistentDataType.BYTE, (byte) (data.hasFatDebuff ? 1 : 0));
+
+        meta.getPersistentDataContainer().set(STAT_LS, PersistentDataType.DOUBLE, data.lifeSteal);
+        meta.getPersistentDataContainer().set(STAT_CRIT, PersistentDataType.DOUBLE, data.critRate);
+        meta.getPersistentDataContainer().set(STAT_DROP, PersistentDataType.DOUBLE, data.dropRate);
+
+        if (!data.potionEffects.isEmpty()) {
+            String joinedEffects = String.join(";", data.potionEffects);
+            meta.getPersistentDataContainer().set(POTION_EFFECTS_KEY, PersistentDataType.STRING, joinedEffects);
+        }
 
         meta.setLore(lore);
         item.setItemMeta(meta);

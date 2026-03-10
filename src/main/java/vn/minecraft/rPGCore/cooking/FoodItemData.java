@@ -13,12 +13,20 @@ public class FoodItemData {
 
     // Hệ thống Stats nội tại (RPG)
     public double bonusDmg = 0;
-    public double cdr = 0; // Cooldown Reduction
+    public double cdr = 0;
     public double moveSpeed = 0;
     public double atkSpeed = 0;
     public double armorPen = 0;
     public double regenRate = 0;
     public double maxHpBonus = 0;
+
+    // 3 CHỈ SỐ MỚI TỪ NHÓM MA THUẬT
+    public double lifeSteal = 0;
+    public double critRate = 0;
+    public double dropRate = 0;
+
+    // Lưu trữ Hiệu ứng Vanilla (Format: TÊN_HIỆU_ỨNG:CẤP_ĐỘ)
+    public List<String> potionEffects = new ArrayList<>();
 
     // Các Cờ (Flags) trạng thái
     public boolean isRuined = false;

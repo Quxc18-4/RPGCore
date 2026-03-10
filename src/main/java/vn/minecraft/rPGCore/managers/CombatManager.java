@@ -14,7 +14,7 @@ import java.util.UUID;
 public class CombatManager {
 
     /**
-     * HÀM TÍNH TOÁN SÁT THƯƠNG GÂY RA (Có LUK tăng Chí Mạng)
+     * HÀM TÍNH TOÁN SÁT THƯƠNG GÂY RA (Có LUK tăng Chí Mạng & Đồ ăn)
      */
     public static double calculateDamage(Player attacker, RPGPlayer rpgPlayer, LivingEntity target, double dmgMultiplier, double extraArmorPen, boolean isMagic, boolean isCrossbow) {
         RPGPlayer.PlayerStats stats = rpgPlayer.getStats();
@@ -30,14 +30,18 @@ public class CombatManager {
 
         double rawDamage = baseStat + weaponDmg;
 
+        // [TÍCH HỢP ĐỒ ĂN]: Sát thương tổng (DMG)
         double foodDmgBonus = RPGCore.getInstance().getFoodBuffManager().getBonus(uuid, FoodBuffManager.StatType.DMG);
         if (foodDmgBonus != 0) {
             rawDamage = rawDamage * (1.0 + (foodDmgBonus / 100.0));
         }
 
-        // [TÍCH HỢP ATTRIBUTE]: LUK (Mỗi điểm LUK tăng 0.2% Tỉ lệ Chí Mạng)
+        // [TÍCH HỢP ATTRIBUTE & ĐỒ ĂN]: Tỉ lệ Chí Mạng
         double lukBonusCrit = rpgPlayer.getAttributeData().getAttribute("LUK") * 0.2;
-        boolean isCrit = (Math.random() * 100) <= (stats.critRate + lukBonusCrit);
+        double foodCritRate = RPGCore.getInstance().getFoodBuffManager().getBonus(uuid, FoodBuffManager.StatType.CRIT_RATE);
+
+        // Tổng Tỉ lệ Chí Mạng = Trang bị + Điểm LUK + Đồ Ăn
+        boolean isCrit = (Math.random() * 100) <= (stats.critRate + lukBonusCrit + foodCritRate);
 
         if (isCrit) {
             rawDamage = rawDamage * (1.0 + (stats.critDamage / 100.0));
@@ -71,7 +75,6 @@ public class CombatManager {
         if (totalDodgeRate > 0 && (Math.random() * 100) <= totalDodgeRate) {
             victim.getWorld().spawnParticle(Particle.CLOUD, victim.getLocation().add(0, 1, 0), 10, 0.3, 0.3, 0.3, 0.1);
             victim.playSound(victim.getLocation(), Sound.ENTITY_ENDER_DRAGON_FLAP, 1.0f, 2.0f);
-            // Gửi action bar thay vì chat để không trôi tin nhắn
             victim.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR, net.md_5.bungee.api.chat.TextComponent.fromLegacyText("§a§l[NÉ THÀNH CÔNG]"));
             return 0.0; // Miễn sát thương
         }
@@ -90,8 +93,16 @@ public class CombatManager {
         return finalDamage;
     }
 
+    /**
+     * HÀM ÁP DỤNG HÚT MÁU CHO MỌI CLASS
+     */
     public static void applyLifeSteal(Player attacker, RPGPlayer rpgPlayer, double damageDealt, double extraLifeStealPct) {
-        double totalLifeSteal = (rpgPlayer.getStats() != null ? rpgPlayer.getStats().lifeSteal : 0.0) + extraLifeStealPct;
+        // [TÍCH HỢP ĐỒ ĂN]: Hút máu
+        double foodLifeSteal = RPGCore.getInstance().getFoodBuffManager().getBonus(attacker.getUniqueId(), FoodBuffManager.StatType.LIFE_STEAL);
+
+        // Tổng Hút Máu = Trang bị + Kỹ năng (Mũi tên) + Đồ Ăn
+        double totalLifeSteal = (rpgPlayer.getStats() != null ? rpgPlayer.getStats().lifeSteal : 0.0) + extraLifeStealPct + foodLifeSteal;
+
         if (totalLifeSteal <= 0) return;
 
         double healAmount = damageDealt * (totalLifeSteal / 100.0);

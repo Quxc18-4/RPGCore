@@ -32,6 +32,7 @@ public class FoodListener implements Listener {
     // Keys
     private final NamespacedKey COOKED_TIME_KEY, MAX_FRESHNESS_KEY, DURATION_KEY, BOREDOM_KEY, SPICE_KEY;
     private final NamespacedKey STAT_DMG, STAT_CDR, STAT_MS, STAT_AS, STAT_PEN, STAT_REGEN, STAT_HP, FAT_DEBUFF_KEY;
+    private final NamespacedKey STAT_LS, STAT_CRIT, STAT_DROP, POTION_EFFECTS_KEY;
 
     public FoodListener(JavaPlugin plugin, BoredomManager boredomManager, FoodBuffManager foodBuffManager) {
         this.boredomManager = boredomManager;
@@ -51,6 +52,11 @@ public class FoodListener implements Listener {
         this.STAT_REGEN = new NamespacedKey(plugin, "food_stat_regen");
         this.STAT_HP = new NamespacedKey(plugin, "food_stat_hp");
         this.FAT_DEBUFF_KEY = new NamespacedKey(plugin, "food_fat_debuff");
+
+        this.STAT_LS = new NamespacedKey(plugin, "food_stat_ls");
+        this.STAT_CRIT = new NamespacedKey(plugin, "food_stat_crit");
+        this.STAT_DROP = new NamespacedKey(plugin, "food_stat_drop");
+        this.POTION_EFFECTS_KEY = new NamespacedKey(plugin, "food_potion_effects");
     }
 
     @EventHandler
@@ -135,6 +141,30 @@ public class FoodListener implements Listener {
         applyStat(uuid, meta, STAT_PEN, StatType.ARMOR_PEN, baseDuration, effectMultiplier);
         applyStat(uuid, meta, STAT_REGEN, StatType.REGEN, baseDuration, effectMultiplier);
         applyStat(uuid, meta, STAT_HP, StatType.MAX_HP, baseDuration, effectMultiplier);
+        applyStat(uuid, meta, STAT_LS, StatType.LIFE_STEAL, baseDuration, effectMultiplier);
+        applyStat(uuid, meta, STAT_CRIT, StatType.CRIT_RATE, baseDuration, effectMultiplier);
+        applyStat(uuid, meta, STAT_DROP, StatType.DROP_RATE, baseDuration, effectMultiplier);
+
+        // ==========================================
+        // BƠM POTION EFFECTS VÀ ÉP THỜI GIAN = NO CĂNG
+        // ==========================================
+        String effectsStr = meta.getPersistentDataContainer().get(POTION_EFFECTS_KEY, PersistentDataType.STRING);
+        if (effectsStr != null && !effectsStr.isEmpty()) {
+
+            // Tính số Ticks = Số phút * 60 giây * 20 ticks (Ép thời gian bằng với độ No lâu)
+            int durationTicks = (int) (baseDuration * 60 * 20 * effectMultiplier);
+
+            for (String eff : effectsStr.split(";")) {
+                String[] parts = eff.split(":");
+                PotionEffectType type = PotionEffectType.getByName(parts[0]);
+                int amplifier = Integer.parseInt(parts[1]); // Cấp độ hiệu ứng
+
+                if (type != null) {
+                    // Xóa hạt Particle của Vanilla đi để tránh mù lòa màn hình như bạn yêu cầu
+                    player.addPotionEffect(new PotionEffect(type, durationTicks, amplifier, false, false, false));
+                }
+            }
+        }
 
         // Áp dụng Debuff Quá Ngấy
         if (meta.getPersistentDataContainer().getOrDefault(FAT_DEBUFF_KEY, PersistentDataType.BYTE, (byte)0) == 1) {
@@ -148,6 +178,26 @@ public class FoodListener implements Listener {
         player.sendMessage("§aBạn cảm thấy no căng! (" + baseDuration + " phút)");
 
         consumeItem(player, item);
+    }
+
+    // ==========================================
+    // CHẶN VANILLA MINECRAFT LÀM TỤT THANH ĐÓI KHI ĐANG "NO CĂNG"
+    // ==========================================
+    @EventHandler
+    public void onHungerDeplete(org.bukkit.event.entity.FoodLevelChangeEvent event) {
+        if (!(event.getEntity() instanceof Player)) return;
+        Player player = (Player) event.getEntity();
+        UUID uuid = player.getUniqueId();
+
+        // Kiểm tra xem cuốn sổ No Căng có tên người chơi không và thời gian còn hạn không
+        if (fullnessTimers.containsKey(uuid) && fullnessTimers.get(uuid) > System.currentTimeMillis()) {
+
+            // Nếu mức đói mới (sắp bị đổi) MÀ THẤP HƠN mức đói hiện tại -> Nghĩa là game đang định trừ đói
+            if (event.getFoodLevel() < player.getFoodLevel()) {
+                // Hủy luôn hành động đó!
+                event.setCancelled(true);
+            }
+        }
     }
 
     private void applyStat(UUID uuid, ItemMeta meta, NamespacedKey key, StatType type, int duration, double multiplier) {
