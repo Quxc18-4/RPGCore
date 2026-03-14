@@ -51,8 +51,7 @@ public final class RPGCore extends JavaPlugin {
 
         RepairGUI repairGUI = new RepairGUI();
 
-        getServer().getPluginManager().registerEvents(new PlayerListener(playerManager, bossBarManager, classManager), this);
-        getServer().getPluginManager().registerEvents(new ClassGUIListener(playerManager, bossBarManager, classManager), this);
+        getServer().getPluginManager().registerEvents(new PlayerListener(playerManager, bossBarManager), this);        getServer().getPluginManager().registerEvents(new ClassGUIListener(playerManager, bossBarManager, classManager), this);
         getServer().getPluginManager().registerEvents(new ArcherListener(this, playerManager, arrowCraftingUI), this);
         getServer().getPluginManager().registerEvents(new EquipmentListener(playerManager), this);
         getServer().getPluginManager().registerEvents(repairGUI, this);
