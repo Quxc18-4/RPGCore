@@ -102,8 +102,11 @@ public final class RPGCore extends JavaPlugin {
         } else {
             getLogger().warning("Khong the tim thay lenh /eq trong plugin.yml!");
         }
+        if (this.getCommand("spawnnpc") != null) {
+            this.getCommand("spawnnpc").setExecutor(new SpawnNPCCommand());
+        }
 
-        getLogger().info("RPGCore da duoc bat thanh cong!");
+        getLogger().info("RPGCore đã được bật thành công!");
 
         for (org.bukkit.entity.Player player : org.bukkit.Bukkit.getOnlinePlayers()) {
             if (playerManager.getRPGPlayer(player.getUniqueId()) == null) {

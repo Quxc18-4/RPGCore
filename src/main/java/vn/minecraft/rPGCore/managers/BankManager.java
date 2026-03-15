@@ -33,13 +33,13 @@ public class BankManager {
                 "§7Quét toàn bộ túi đồ của bạn", "§7và nạp hết Xu vào tài khoản ảo.", "", "§eClick để Nạp ngay!"));
 
         // Nút Thông Tin
-        inv.setItem(13, createGuiItem(Material.BOOK, "§e§lSỔ TÀI KHOẢN",
-                "§7Chủ thẻ: §f" + player.getName(),
+        inv.setItem(13, createGuiItem(Material.BOOK, "§e§lTÀI KHOẢN CÁ NHÂN",
+                "§7Chủ nhân: §f" + player.getName(),
                 "§7Số dư hiện tại: ", "§b" + currencyManager.formatCurrency(currentBalance)));
 
         // Nút Rút Tiền
-        inv.setItem(15, createGuiItem(Material.GOLD_INGOT, "§6§lRÚT TIỀN MẶT",
-                "§7Chuyển đổi tiền trong tài khoản ảo", "§7thành các đồng Xu vật lý để giao dịch.", "", "§eClick để chọn mệnh giá!"));
+        inv.setItem(15, createGuiItem(Material.GOLD_INGOT, "§6§lRÚT TIỀN XU",
+                "§7Chuyển đổi tiền trong tài khoản ảo", "§7thành các §eđồng Xu §7vật lý để giao dịch.", "", "§eClick để chọn mệnh giá!"));
 
         return inv;
     }
@@ -53,11 +53,11 @@ public class BankManager {
         ItemStack glass = createGuiItem(Material.GRAY_STAINED_GLASS_PANE, "§0");
         for (int i = 0; i < 27; i++) inv.setItem(i, glass);
 
-        inv.setItem(11, createGuiItem(Material.GOLD_NUGGET, "§eRút 1 Xu Vàng", "§7Tốn: 4096 Đồng (Số dư ảo)", "", "§eClick Trái để Rút!"));
-        inv.setItem(13, createGuiItem(Material.IRON_NUGGET, "§fRút 1 Xu Bạc", "§7Tốn: 64 Đồng (Số dư ảo)", "", "§eClick Trái để Rút!"));
-        inv.setItem(15, createGuiItem(Material.RAW_COPPER, "§6Rút 1 Xu Đồng", "§7Tốn: 1 Đồng (Số dư ảo)", "", "§eClick Trái để Rút!"));
+        inv.setItem(11, createGuiItem(Material.GOLD_NUGGET, "§eRút 1 Xu Vàng", "§7Tiêu hao: 4096 Đồng (Số dư ảo)", "", "§eClick Trái để Rút!"));
+        inv.setItem(13, createGuiItem(Material.IRON_NUGGET, "§fRút 1 Xu Bạc", "§7Tiêu hao: 64 Đồng (Số dư ảo)", "", "§eClick Trái để Rút!"));
+        inv.setItem(15, createGuiItem(Material.COPPER_NUGGET, "§6Rút 1 Xu Đồng", "§7Tiêu hao: 1 Đồng (Số dư ảo)", "", "§eClick Trái để Rút!"));
 
-        inv.setItem(26, createGuiItem(Material.BARRIER, "§cQuay Lại", "§7Trở về Menu Ngân Hàng"));
+        inv.setItem(26, createGuiItem(Material.RED_STAINED_GLASS_PANE, "§cQuay Lại", "§7Trở về Menu Ngân Hàng"));
         return inv;
     }
 

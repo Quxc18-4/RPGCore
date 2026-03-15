@@ -117,7 +117,7 @@ public class ShopManager {
         return shops.containsKey(shopId) && shops.get(shopId).containsKey(page) && !shops.get(shopId).get(page).isEmpty();
     }
 
-    // SỬA: TẠO UI CHO ADMIN (Hiển thị đúng tên NPC)
+    // SỬA: TẠO UI CHO ADMIN (Đánh dấu Hàng Mua / Bán)
     public Inventory openAdminGUI(String shopId, String shopName, int page) {
         // Cắt bớt tên nếu quá dài để tránh lỗi UI
         String safeName = shopName.length() > 20 ? shopName.substring(0, 20) : shopName;
@@ -127,13 +127,40 @@ public class ShopManager {
         for (int i = 0; i < 9; i++) inv.setItem(i, blackGlass);
         for (int i = 36; i < 45; i++) inv.setItem(i, blackGlass);
         inv.setItem(17, getPaginationButton(shopId, page, true));
-        inv.setItem(26, blackGlass);
-        inv.setItem(35, blackGlass);
 
+        // ==========================================
+        // [MỚI] ĐÁNH DẤU HÀNG MUA / BÁN Ở Ô RÌA
+        // ==========================================
+        // Hàng 3 (Ô 26): Giá Shop BÁN cho người chơi -> Kính Đỏ
+        ItemStack sellLabel = createGlass(Material.RED_STAINED_GLASS_PANE, "§c§lGIÁ BÁN (Shop Bán)");
+        org.bukkit.inventory.meta.ItemMeta sellMeta = sellLabel.getItemMeta();
+        sellMeta.setLore(java.util.Arrays.asList("§7Giá mà người chơi phải trả", "§7để MUA vật phẩm này."));
+        sellLabel.setItemMeta(sellMeta);
+        inv.setItem(26, sellLabel);
+
+        // Hàng 4 (Ô 35): Giá Shop MUA của người chơi -> Kính Xanh
+        ItemStack buyLabel = createGlass(Material.GREEN_STAINED_GLASS_PANE, "§a§lGIÁ MUA (Shop Thu Mua)");
+        org.bukkit.inventory.meta.ItemMeta buyMeta = buyLabel.getItemMeta();
+        buyMeta.setLore(java.util.Arrays.asList("§7Giá mà người chơi nhận được", "§7khi BÁN vật phẩm này cho Shop."));
+        buyLabel.setItemMeta(buyMeta);
+        inv.setItem(35, buyLabel);
+
+        // Load vật phẩm đã lưu
         if (shops.containsKey(shopId) && shops.get(shopId).containsKey(page)) {
             for (int i = 0; i < 8; i++) {
                 ShopItem sItem = shops.get(shopId).get(page).get(i);
-                if (sItem != null) inv.setItem(i + 9, sItem.item);
+                if (sItem != null) {
+                    // Đặt vật phẩm chính vào Hàng 2
+                    inv.setItem(i + 9, sItem.item);
+
+                    // [FIX LỖI] Đặt lại Tiền vật lý vào Hàng 3 (Giá Bán) và Hàng 4 (Giá Mua)
+                    if (sItem.sellPrice > 0) {
+                        inv.setItem(i + 18, currencyManager.createCurrencyStackFromValue(sItem.sellPrice));
+                    }
+                    if (sItem.buyPrice > 0) {
+                        inv.setItem(i + 27, currencyManager.createCurrencyStackFromValue(sItem.buyPrice));
+                    }
+                }
             }
         }
         return inv;

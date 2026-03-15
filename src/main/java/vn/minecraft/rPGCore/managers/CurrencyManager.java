@@ -150,4 +150,69 @@ public class CurrencyManager {
             amount -= toGive;
         }
     }
+
+    // ==========================================
+    // HÀM DỊCH NGƯỢC GIÁ TRỊ THÀNH VẬT PHẨM (DÙNG CHO ADMIN GUI)
+    // ==========================================
+    public ItemStack createCurrencyStackFromValue(long value) {
+        if (value <= 0) return null;
+
+        // Vì Admin chỉ có 1 ô để đặt giá (tối đa 64 item), ta có thể dịch ngược lại chính xác đồng tiền họ đã đặt
+        if (value % 4096 == 0 && (value / 4096) <= 64) {
+            return getCurrencyItem("gold", (int) (value / 4096));
+        }
+        else if (value % 64 == 0 && (value / 64) <= 64) {
+            return getCurrencyItem("iron", (int) (value / 64));
+        }
+        else if (value <= 64) {
+            return getCurrencyItem("copper", (int) value);
+        }
+
+        return null; // Trả về null nếu không xác định được
+    }
+
+    // ==========================================
+    // CÁC HÀM XỬ LÝ GIAO DỊCH BẰNG TIỀN MẶT
+    // ==========================================
+
+    // 1. Lấy tổng số tiền vật lý đang có trong túi đồ
+    public long getTotalPhysicalCurrency(org.bukkit.entity.Player player) {
+        long total = 0;
+        for (org.bukkit.inventory.ItemStack item : player.getInventory().getContents()) {
+            total += getCurrencyValue(item);
+        }
+        return total;
+    }
+
+    // 2. Trả tiền vật lý trực tiếp vào túi (Tự chia ra Vàng/Bạc/Đồng)
+    public void givePhysicalCurrency(org.bukkit.entity.Player player, long amount) {
+        if (amount <= 0) return;
+        long gold = amount / 4096;
+        long iron = (amount % 4096) / 64;
+        long copper = amount % 64;
+
+        if (gold > 0) giveCurrencySafe(player, "gold", gold);
+        if (iron > 0) giveCurrencySafe(player, "iron", iron);
+        if (copper > 0) giveCurrencySafe(player, "copper", copper);
+    }
+
+    // 3. Thanh toán tiền mặt (Tự động tính toán và thối lại tiền thừa)
+    public boolean takePhysicalCurrency(org.bukkit.entity.Player player, long amount) {
+        long total = getTotalPhysicalCurrency(player);
+        if (total < amount) return false; // Không đủ tiền mặt
+
+        // Xóa sạch toàn bộ tiền cũ trong túi
+        org.bukkit.inventory.Inventory inv = player.getInventory();
+        for (int i = 0; i < inv.getSize(); i++) {
+            if (getCurrencyValue(inv.getItem(i)) > 0) {
+                inv.setItem(i, null);
+            }
+        }
+
+        // Tính tiền thừa và trả lại vào túi
+        long remaining = total - amount;
+        givePhysicalCurrency(player, remaining);
+
+        return true; // Thanh toán thành công
+    }
 }

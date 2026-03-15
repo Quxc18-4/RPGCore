@@ -45,7 +45,7 @@ public class ShopListener implements Listener {
     }
 
     // ==========================================
-    // 1. CLICK VÀO NPC DÂN LÀNG
+    // 1. CLICK VÀO NPC DÂN LÀNG (PHIÊN BẢN CHỐNG ĐẨY + LƯU NBT)
     // ==========================================
     @EventHandler
     public void onNPCClick(PlayerInteractEntityEvent event) {
@@ -58,9 +58,25 @@ public class ShopListener implements Listener {
                 event.setCancelled(true);
                 Player player = event.getPlayer();
 
-                // TẠO SHOP ID TỪ TỌA ĐỘ CỦA NPC (VD: world_10_65_20)
-                Location loc = npc.getLocation();
-                String shopId = loc.getWorld().getName() + "_" + loc.getBlockX() + "_" + loc.getBlockY() + "_" + loc.getBlockZ();
+                // [BẢO VỆ 1]: CHỐNG ĐẨY VẬT LÝ (Xóa va chạm)
+                npc.setCollidable(false);
+
+                // [BẢO VỆ 2]: LƯU TỌA ĐỘ VÀO BỘ NHỚ NPC (Khắc phục lỗi đẩy đi mất shop)
+                org.bukkit.persistence.PersistentDataContainer pdc = npc.getPersistentDataContainer();
+                org.bukkit.NamespacedKey key = new org.bukkit.NamespacedKey(vn.minecraft.rPGCore.RPGCore.getInstance(), "shop_id");
+                String shopId;
+
+                // Nếu NPC này ĐÃ TỪNG được click và có lưu ShopID trong người
+                if (pdc.has(key, org.bukkit.persistence.PersistentDataType.STRING)) {
+                    shopId = pdc.get(key, org.bukkit.persistence.PersistentDataType.STRING);
+                }
+                // Nếu là NPC mới toanh (Click lần đầu tiên)
+                else {
+                    Location loc = npc.getLocation();
+                    shopId = loc.getWorld().getName() + "_" + loc.getBlockX() + "_" + loc.getBlockY() + "_" + loc.getBlockZ();
+                    // Lưu vĩnh viễn ID này vào người NPC
+                    pdc.set(key, org.bukkit.persistence.PersistentDataType.STRING, shopId);
+                }
 
                 // Phân quyền OP / Admin
                 boolean isAdmin = player.isOp() || player.hasPermission("rpgcore.admin");
@@ -70,7 +86,7 @@ public class ShopListener implements Listener {
 
                 if (isAdmin) {
                     player.openInventory(shopManager.openAdminGUI(shopId, name, 1));
-                    player.sendMessage("§aĐang mở Chế độ Quản lý Shop (Tọa độ: " + shopId + ")");
+                    player.sendMessage("§aĐang mở Chế độ Quản lý Shop (Mã cửa hàng: " + shopId + ")");
                 } else {
                     player.openInventory(shopManager.openPlayerGUI(shopId, name, 1));
                 }
@@ -170,34 +186,42 @@ public class ShopListener implements Listener {
         }
 
         // ==========================================
-        // XỬ LÝ MUA BÁN CỦA NGƯỜI CHƠI
+        // XỬ LÝ MUA BÁN CỦA NGƯỜI CHƠI (BẰNG TIỀN MẶT)
         // ==========================================
         if (!session.isAdmin && event.getRawSlot() >= 9 && event.getRawSlot() <= 16) {
             int index = event.getRawSlot() - 9;
             ShopManager.ShopItem shopItem = shopManager.getShopItem(session.shopId, page, index);
             if (shopItem == null) return;
 
-            RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
-
+            // BÁN VẬT PHẨM CHO SHOP -> Nhận lại Tiền Mặt
             if (event.isLeftClick()) {
                 if (shopItem.buyPrice <= 0) return;
+
                 if (player.getInventory().containsAtLeast(shopItem.item, shopItem.item.getAmount())) {
                     player.getInventory().removeItem(shopItem.item);
-                    rpgPlayer.addBalance(shopItem.buyPrice);
-                    player.sendMessage("§aĐã bán và nhận được " + currencyManager.formatCurrency(shopItem.buyPrice));
+
+                    // Gọi hàm trả tiền mặt vào túi đồ thay vì cộng vào Balance ảo
+                    currencyManager.givePhysicalCurrency(player, shopItem.buyPrice);
+
+                    player.sendMessage("§aĐã bán và nhận được " + currencyManager.formatCurrency(shopItem.buyPrice) + " tiền mặt");
                     player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f);
                 } else {
-                    player.sendMessage("§cBạn không có đủ vật phẩm để bán!");
+                    player.sendMessage("§cBạn không có đủ số lượng vật phẩm này để bán!");
                 }
-            } else if (event.isRightClick()) {
+            }
+            // MUA VẬT PHẨM TỪ SHOP -> Trừ Tiền Mặt
+            else if (event.isRightClick()) {
                 if (shopItem.sellPrice <= 0) return;
-                if (rpgPlayer.getBalance() >= shopItem.sellPrice) {
-                    rpgPlayer.withdraw(shopItem.sellPrice);
+
+                // Kiểm tra và trừ tiền mặt trong túi (Hàm này đã tự động xử lý thối tiền)
+                if (currencyManager.takePhysicalCurrency(player, shopItem.sellPrice)) {
                     player.getInventory().addItem(shopItem.item.clone());
-                    player.sendMessage("§aĐã mua với giá " + currencyManager.formatCurrency(shopItem.sellPrice));
+
+                    player.sendMessage("§aĐã mua thành công với giá " + currencyManager.formatCurrency(shopItem.sellPrice));
                     player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 1f, 1f);
                 } else {
-                    player.sendMessage("§cBạn không đủ tiền!");
+                    player.sendMessage("§cBạn không có đủ tiền mặt trong túi đồ!");
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
                 }
             }
         }
