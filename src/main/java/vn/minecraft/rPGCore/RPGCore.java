@@ -128,6 +128,11 @@ public final class RPGCore extends JavaPlugin {
         return instance;
     }
 
+    // [MỚI THÊM]: Mở cửa cho các Manager khác lấy dữ liệu người chơi
+    public PlayerManager getPlayerManager() {
+        return this.playerManager;
+    }
+
     public FoodBuffManager getFoodBuffManager() {
         return this.foodBuffManager;
     }

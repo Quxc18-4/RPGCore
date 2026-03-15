@@ -199,7 +199,9 @@ public class BlacksmithGUI implements Listener {
         return multi;
     }
 
-    // Cập nhật lại chỉ số chính và Tên trang bị
+    // ===============================================
+    // CẬP NHẬT CHỈ SỐ KHI LÊN CẤP (Hỗ trợ Kháng Phép)
+    // ===============================================
     private void applyStatsChange(ItemStack item, int oldLevel, int newLevel) {
         ItemMeta meta = item.getItemMeta();
         List<String> lore = meta.getLore();
@@ -210,7 +212,6 @@ public class BlacksmithGUI implements Listener {
             String line = lore.get(i);
             String clean = ChatColor.stripColor(line).trim();
 
-            // [ĐÃ SỬA LỖI]: Bắt chính xác tên chỉ số chính để không đọc nhầm "Sát thương chí mạng"
             if (clean.startsWith("- Sát thương vật lý:") || clean.startsWith("- Sát thương phép thuật:")) {
                 String[] parts = clean.split(":");
                 String prefix = line.substring(0, line.indexOf(":") + 1);
@@ -224,24 +225,21 @@ public class BlacksmithGUI implements Listener {
 
                 lore.set(i, prefix + " §f" + String.format("%.1f", newMin) + " §8~ §f" + String.format("%.1f", newMax));
             }
-            else if (clean.startsWith("- Máu tối đa:") || clean.startsWith("- Giáp:")) {
+            // THÊM: Hỗ trợ cộng dồn Kháng Phép
+            else if (clean.startsWith("- Máu tối đa:") || clean.startsWith("- Giáp:") || clean.startsWith("- Kháng phép:")) {
                 String[] parts = clean.split(":");
                 String prefix = line.substring(0, line.indexOf(":") + 1);
                 double oldVal = Double.parseDouble(ChatColor.stripColor(parts[1]).replace("+", "").replace("%", "").trim());
 
                 double newVal = (oldVal / oldMulti) * newMulti;
-                lore.set(i, prefix + " §a+" + Math.round(newVal));
+                String color = clean.startsWith("- Kháng phép:") ? "§b+" : (clean.startsWith("- Giáp:") ? "§f+" : "§a+");
+                lore.set(i, prefix + " " + color + Math.round(newVal));
             }
         }
 
-        // DỌN DẸP TÊN VẬT PHẨM BẰNG REGEX
         String name = meta.getDisplayName();
         name = name.replaceAll(" (?:§.)?\\[\\+\\d+\\]", "");
-
-        if (newLevel > 0) {
-            name = name + " " + getLevelColor(newLevel) + "[+" + newLevel + "]";
-        }
-
+        if (newLevel > 0) name = name + " " + getLevelColor(newLevel) + "[+" + newLevel + "]";
         meta.setDisplayName(name);
         meta.setLore(lore);
         item.setItemMeta(meta);
@@ -288,37 +286,28 @@ public class BlacksmithGUI implements Listener {
     }
 
     // ===============================================
-    // HÀM TÍCH LŨY NGÔI SAO VÀNG CỘNG DỒN NHIỀU LẦN
+    // HÀM ĐỘT PHÁ MỐC BẢO HIỂM (NERF CÒN 30%)
     // ===============================================
     private void boostStatLine(List<String> lore, int index) {
         String line = lore.get(index);
-
-        // Đếm số sao vàng hiện tại đang có trên dòng này
         int starCount = 0;
-        for (char c : line.toCharArray()) {
-            if (c == '★') starCount++;
-        }
+        for (char c : line.toCharArray()) if (c == '★') starCount++;
 
-        // Làm sạch chuỗi để tách lấy con số (Loại bỏ màu sắc và xóa sao cũ)
         String clean = ChatColor.stripColor(line).replace("★", "").trim();
         String[] parts = clean.split("\\+");
         if (parts.length < 2) return;
 
-        // Giữ lại phần chữ đằng trước
         String prefix = line.substring(0, line.indexOf("+") + 1);
         String valueStr = parts[1].replace("%", "").trim();
 
         try {
             double val = Double.parseDouble(valueStr);
-            double newVal = val * 1.5; // Tăng 50%
+            // YÊU CẦU: Giảm từ tăng 50% (1.5) xuống còn 30% (1.3)
+            double newVal = val * 1.3;
 
-            // Tạo chuỗi sao mới (Số sao cũ + thêm 1 sao mới)
             StringBuilder stars = new StringBuilder(" §e");
-            for (int i = 0; i <= starCount; i++) {
-                stars.append("★");
-            }
+            for (int i = 0; i <= starCount; i++) stars.append("★");
 
-            // Ghi đè lại dòng lore với chỉ số mới và dàn sao mới
             lore.set(index, prefix + String.format("%.1f", newVal) + "%" + stars.toString());
         } catch (Exception ignored) {}
     }

@@ -17,7 +17,6 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
@@ -88,7 +87,6 @@ public class ArcherListener implements Listener {
         long allowedTime = nextShootTime.getOrDefault(player.getUniqueId(), 0L);
         if (currentTime < allowedTime) return;
 
-        // KIỂM TRA TAY TRÁI (Mũi tên Custom)
         ItemStack offHandItem = player.getInventory().getItemInOffHand();
         String customArrowType = null;
 
@@ -106,22 +104,11 @@ public class ArcherListener implements Listener {
             }
         }
 
-        // 1. LẤY TỐC ĐỘ ĐÁNH TỪ TRANG BỊ (Equipment Stats)
-        // Giả sử biến lưu tốc độ đánh trong PlayerStats của bạn tên là attackSpeed hoặc cdr (Cooldown Reduction)
-        double equipAtkSpeed = rpgPlayer.getStats().attackSpeed;
+        double totalAtkSpeedBonus = rpgPlayer.getTotalStatsMap().getOrDefault("Tốc độ đánh", 0.0);
 
-        // 2. LẤY TỐC ĐỘ ĐÁNH TỪ ĐỒ ĂN (Food Buffs)
-        double foodAtkSpeed = vn.minecraft.rPGCore.RPGCore.getInstance().getFoodBuffManager().getBonus(player.getUniqueId(), vn.minecraft.rPGCore.managers.FoodBuffManager.StatType.ATK_SPEED);
+        long bowCooldown = (long) (1300 / (1.0 + (totalAtkSpeedBonus / 100.0)));
+        long crossbowCooldown = (long) (2200 / (1.0 + (totalAtkSpeedBonus / 100.0)));
 
-        // 3. TỔNG HỢP TỐC ĐỘ ĐÁNH
-        double totalAtkSpeedBonus = equipAtkSpeed + foodAtkSpeed;
-
-        // 4. ÉP VÀO CÔNG THỨC GIẢM COOLDOWN
-        // Nếu tổng bonus là 50% -> Tốc độ bắn sẽ nhanh gấp rưỡi (1.5 lần)
-        long bowCooldown = (long) (1100 / (1.0 + (totalAtkSpeedBonus / 100.0)));
-        long crossbowCooldown = (long) (1800 / (1.0 + (totalAtkSpeedBonus / 100.0)));
-
-        // Đảm bảo không bắn nhanh như súng máy (Giới hạn cap tối thiểu là 300ms)
         bowCooldown = Math.max(300, bowCooldown);
         crossbowCooldown = Math.max(500, crossbowCooldown);
 
@@ -137,7 +124,6 @@ public class ArcherListener implements Listener {
     private void fireArrow(Player player, String weaponType, String customType) {
         Arrow arrow = player.launchProjectile(Arrow.class);
 
-        // --- XỬ LÝ TỐC ĐỘ VÀ TRỌNG LỰC ---
         if (customType != null && customType.equals("arrow_lightning")) {
             arrow.setVelocity(arrow.getVelocity().normalize().multiply(4.5));
             arrow.setGravity(false);
@@ -154,9 +140,8 @@ public class ArcherListener implements Listener {
 
         player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_ARROW_SHOOT, 1.0f, 1.0f);
 
-        // --- VẼ VỆT ĐUÔI (TRAIL) ĐÃ SỬA ---
         if (customType != null) {
-            Location startLoc = player.getEyeLocation(); // Lấy vị trí mắt người chơi
+            Location startLoc = player.getEyeLocation();
 
             new BukkitRunnable() {
                 @Override
@@ -164,7 +149,6 @@ public class ArcherListener implements Listener {
                     if (arrow.isDead() || arrow.isOnGround()) { this.cancel(); return; }
                     Location loc = arrow.getLocation();
 
-                    // NẾU MŨI TÊN CHƯA BAY XA HƠN 1.5 BLOCK THÌ KHÔNG VẼ (1.5^2 = 2.25)
                     if (loc.distanceSquared(startLoc) < 2.25) return;
 
                     switch (customType) {
@@ -224,7 +208,6 @@ public class ArcherListener implements Listener {
 
         ItemStack weapon = player.getInventory().getItemInMainHand();
 
-        // CHẶN SỬ DỤNG VŨ KHÍ SAI HỆ / THIẾU CẤP ĐỘ
         vn.minecraft.rPGCore.listeners.EquipmentListener eqListener = new vn.minecraft.rPGCore.listeners.EquipmentListener(playerManager);
         if (!eqListener.canPlayerUse(player, weapon)) {
             event.setCancelled(true);
@@ -241,51 +224,52 @@ public class ArcherListener implements Listener {
 
         boolean isCrossbow = weaponType.equals("CROSSBOW");
 
-        // KHAI BÁO CÁC THÔNG SỐ CỘNG THÊM TỪ KỸ NĂNG (Mặc định là 0)
         double dmgMulti = 1.0;
         double extraArmorPen = 0.0;
         double extraLifeSteal = 0.0;
         int durabilityLoss = 1;
 
-        // XỬ LÝ HIỆU ỨNG CỦA 8 LOẠI MŨI TÊN ĐẶC BIỆT
         if (arrow.hasMetadata("CustomArrowType")) {
             String cType = arrow.getMetadata("CustomArrowType").get(0).asString();
-            durabilityLoss = 2; // Bắn tên xịn tốn 2 độ bền
+            durabilityLoss = 2;
 
             if (cType.equals("arrow_ice")) {
                 event.setCancelled(true);
-                target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 20, 10));
+                vn.minecraft.rPGCore.managers.StatusEffectManager.applyEffect(target, PotionEffectType.SLOWNESS, 20, 10);
                 new BukkitRunnable() {
-                    @Override public void run() { if (!target.isDead()) target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40, 0)); }
+                    @Override public void run() {
+                        if (!target.isDead()) vn.minecraft.rPGCore.managers.StatusEffectManager.applyEffect(target, PotionEffectType.SLOWNESS, 40, 0);
+                    }
                 }.runTaskLater(plugin, 20L);
                 return;
             }
             else if (cType.equals("arrow_fire")) { dmgMulti = 1.2; target.setFireTicks(100); }
-            else if (cType.equals("arrow_lightning")) { dmgMulti = 1.5; target.getWorld().strikeLightningEffect(target.getLocation()); target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 30, 10)); }
+            else if (cType.equals("arrow_lightning")) {
+                dmgMulti = 1.5; target.getWorld().strikeLightningEffect(target.getLocation());
+                vn.minecraft.rPGCore.managers.StatusEffectManager.applyEffect(target, PotionEffectType.SLOWNESS, 30, 10);
+            }
             else if (cType.equals("arrow_explosive")) { dmgMulti = 1.35; }
-            else if (cType.equals("arrow_poison")) { dmgMulti = 0.8; target.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 200, 0)); target.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 200, 0)); }
-            else if (cType.equals("arrow_lifesteal")) { extraLifeSteal = 15.0; } // Mũi tên huyết cộng 15% hút máu
+            else if (cType.equals("arrow_poison")) {
+                dmgMulti = 0.8;
+                vn.minecraft.rPGCore.managers.StatusEffectManager.applyEffect(target, PotionEffectType.WEAKNESS, 200, 0);
+                vn.minecraft.rPGCore.managers.StatusEffectManager.applyEffect(target, PotionEffectType.POISON, 200, 0);
+            }
+            else if (cType.equals("arrow_lifesteal")) { extraLifeSteal = 15.0; }
         }
-        // XỬ LÝ SÁT THƯƠNG KỸ NĂNG (Nhị/Tam/Tứ tiễn)
         else if (isCustomSkill) {
             dmgMulti = arrow.getMetadata("Skill_DmgMulti").get(0).asDouble();
             double ignoreChance = arrow.getMetadata("Skill_ArmorPen").get(0).asDouble();
-            if (Math.random() <= ignoreChance) extraArmorPen = 100.0; // Skill có tỷ lệ bỏ qua 100% giáp
-            durabilityLoss = 3; // Dùng skill tốn 3 độ bền
+            if (Math.random() <= ignoreChance) extraArmorPen = 100.0;
+            durabilityLoss = 3;
         }
 
-        // ==============================================================
-        // GỌI COMBAT MANAGER - NHỜ NÓ TÍNH HỘ TOÀN BỘ SÁT THƯƠNG
-        // ==============================================================
         double finalDamage = vn.minecraft.rPGCore.managers.CombatManager.calculateDamage(player, rpgPlayer, target, dmgMulti, extraArmorPen, false, isCrossbow);
 
-        // Đẩy sát thương cuối cùng vào Entity
         event.setDamage(finalDamage);
 
-        // Gọi hàm Hút Máu (Nó sẽ tự động cộng % của Trang bị và extra của mũi tên)
-        vn.minecraft.rPGCore.managers.CombatManager.applyLifeSteal(player, rpgPlayer, finalDamage, extraLifeSteal);
+        // [ĐÃ SỬA LỖI]: Bổ sung thêm tham số "false" (Không phải sát thương phép)
+        vn.minecraft.rPGCore.managers.CombatManager.applyLifeSteal(player, rpgPlayer, finalDamage, extraLifeSteal, false);
 
-        // Trừ độ bền
         DurabilityManager.damageItem(player, rpgPlayer, weapon, durabilityLoss);
 
         removeIFrame(target);
@@ -308,7 +292,6 @@ public class ArcherListener implements Listener {
 
             if (cType.equals("arrow_nature")) {
 
-                // 1. TÌM VỊ TRÍ MẶT ĐẤT CHUẨN XÁC
                 Location exactHitLoc;
                 if (event.getHitEntity() != null) {
                     exactHitLoc = event.getHitEntity().getLocation().clone();
@@ -320,7 +303,6 @@ public class ArcherListener implements Listener {
                     exactHitLoc.setY(exactHitLoc.getBlockY() + 1.05);
                 }
 
-                // 2. TÍNH TOÁN DÂY LEO VÀ RỄ CÂY
                 List<double[]> vines = new java.util.ArrayList<>();
                 int vineCount = 28;
 
@@ -354,7 +336,6 @@ public class ArcherListener implements Listener {
                         org.bukkit.Particle.DustOptions groundVineDust = new org.bukkit.Particle.DustOptions(org.bukkit.Color.fromRGB(34, 139, 34), 0.8f);
                         org.bukkit.Particle.DustOptions bindDust = new org.bukkit.Particle.DustOptions(org.bukkit.Color.fromRGB(50, 205, 50), 0.7f);
 
-                        // 1. VẼ MẶT ĐẤT
                         for (double[] v : vines) {
                             org.bukkit.Particle.DustOptions currentDust = (v[5] == 0.0) ? rootDust : groundVineDust;
 
@@ -367,11 +348,12 @@ public class ArcherListener implements Listener {
                             }
                         }
 
-                        // 2. TRÓI CHÂN BẰNG MA PHÁP
                         for (org.bukkit.entity.Entity e : center.getWorld().getNearbyEntities(center, 4.0, 2.0, 4.0)) {
                             if (e instanceof LivingEntity && e != shooter) {
                                 LivingEntity target = (LivingEntity) e;
-                                target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40, 10));
+
+                                // [ĐÃ SỬA LỖI]: AOE trói chân của tên rễ cây
+                                vn.minecraft.rPGCore.managers.StatusEffectManager.applyEffect(target, PotionEffectType.SLOWNESS, 40, 10);
 
                                 Location entLoc = target.getLocation();
                                 double spinSpeed = ticks * 0.4;
@@ -400,7 +382,6 @@ public class ArcherListener implements Listener {
                 }.runTaskTimer(plugin, 0L, 1L);
             }
             else if (cType.equals("arrow_ice") && event.getHitBlock() != null) {
-                // Bão tuyết diện rộng trong 3 giây
                 Location exactHitLoc = arrow.getLocation();
                 exactHitLoc.getWorld().playSound(exactHitLoc, org.bukkit.Sound.BLOCK_SNOW_BREAK, 1.0f, 0.5f);
 
@@ -420,7 +401,8 @@ public class ArcherListener implements Listener {
                         if (ticks % 10 == 0) {
                             for (org.bukkit.entity.Entity e : exactHitLoc.getWorld().getNearbyEntities(exactHitLoc, 3.0, 2.0, 3.0)) {
                                 if (e instanceof LivingEntity && e != shooter) {
-                                    ((LivingEntity) e).addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40, 0));
+                                    // [ĐÃ SỬA LỖI]: AOE làm chậm của tên băng
+                                    vn.minecraft.rPGCore.managers.StatusEffectManager.applyEffect((LivingEntity) e, PotionEffectType.SLOWNESS, 40, 0);
                                 }
                             }
                         }
@@ -433,16 +415,12 @@ public class ArcherListener implements Listener {
                 hitLoc.getWorld().playSound(hitLoc, org.bukkit.Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.0f);
                 for (org.bukkit.entity.Entity e : hitLoc.getWorld().getNearbyEntities(hitLoc, 4.0, 4.0, 4.0)) {
                     if (e instanceof LivingEntity && e != shooter) {
-                        // Tính toán Vector hướng đẩy
                         Vector knockback = e.getLocation().toVector().subtract(hitLoc.toVector());
 
-                        // KHẮC PHỤC LỖI "x not finite":
-                        // Nếu quái vật trùng chính xác với tâm vụ nổ (Vector = 0), tạo hướng đẩy ngẫu nhiên
                         if (knockback.lengthSquared() < 0.0001) {
                             knockback = new Vector(Math.random() - 0.5, 0, Math.random() - 0.5);
                         }
 
-                        // An toàn để normalize
                         knockback.normalize().multiply(1.5).setY(0.5);
                         e.setVelocity(knockback);
                     }
@@ -499,6 +477,9 @@ public class ArcherListener implements Listener {
                         for (org.bukkit.entity.Entity e : center.getWorld().getNearbyEntities(center, 5.0, 5.0, 5.0)) {
                             if (e instanceof LivingEntity && e != shooter) {
                                 Vector pull = center.toVector().subtract(e.getLocation().toVector()).normalize().multiply(0.15);
+
+                                pull = vn.minecraft.rPGCore.managers.StatusEffectManager.calculateResistedVelocity((LivingEntity)e, pull);
+
                                 e.setVelocity(e.getVelocity().add(pull));
                             }
                         }
@@ -526,7 +507,6 @@ public class ArcherListener implements Listener {
         }.runTaskLater(plugin, 1L);
     }
 
-    // Hàm phụ trợ check block an toàn để đặt băng đè lên
     private boolean isReplaceable(Material mat) {
         return mat.isAir() || mat == Material.WATER || mat == Material.SHORT_GRASS || mat == Material.TALL_GRASS;
     }

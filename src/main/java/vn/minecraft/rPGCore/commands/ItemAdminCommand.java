@@ -59,25 +59,44 @@ public class ItemAdminCommand implements CommandExecutor, TabCompleter {
         }
 
         // ===========================================
-        // LỆNH DROP (Tích hợp chuẩn với MythicMobs)
+        // LỆNH DROP (Tích hợp chuẩn với MythicMobs + Hỗ trợ Scavenger)
         // Cú pháp trong MM: Command{c="ig drop <target.name> food_beef 50.0 2"} ~onDeath
         // ===========================================
         if (args[0].equalsIgnoreCase("drop")) {
             if (args.length < 5) return true;
 
             Player target = Bukkit.getPlayer(args[1]);
-            if (target == null) return true; // Bỏ qua nếu target không phải Player (ví dụ: bị giết bởi lửa)
+            if (target == null) return true; // Bỏ qua nếu target không phải Player
 
             String id = args[2];
-            double chance = Double.parseDouble(args[3]);
+            double baseChance = Double.parseDouble(args[3]);
             int amount = Integer.parseInt(args[4]);
 
-            // Quay xổ số tỉ lệ rớt
-            if (Math.random() * 100.0 <= chance) {
+            // Lấy dữ liệu RPG của người chơi để tính toán % Rớt đồ
+            vn.minecraft.rPGCore.player.RPGPlayer rpgPlayer = vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager().getRPGPlayer(target.getUniqueId());
+
+            double finalChance = baseChance;
+            if (rpgPlayer != null) {
+                // 1. Tính Tỉ lệ rớt đồ (Tăng theo % Multiplier)
+                double dropBonus = rpgPlayer.getTotalStatsMap().getOrDefault("Tỉ lệ rớt đồ", 0.0);
+                finalChance = baseChance * (1.0 + (dropBonus / 100.0));
+
+                // 2. Kiểm tra Nội tại Set 4 SCAVENGER
+                int scavengerCount = rpgPlayer.getStats().setCounts.getOrDefault("scavenger", 0);
+                if (scavengerCount >= 4) {
+                    if (Math.random() * 100.0 <= 5.0) { // 5% cơ hội nhân đôi vật phẩm
+                        amount *= 2;
+                        target.sendMessage("§6§l[SCAVENGER] §eKích hoạt Nội tại: x2 Vật phẩm rơi ra!");
+                    }
+                }
+            }
+
+            // Quay xổ số theo Tỉ lệ đã được buff
+            if (Math.random() * 100.0 <= finalChance) {
                 ItemStack item = ingredientManager.buildItem(id, amount);
                 if (item != null) {
                     Location loc = target.getLocation();
-                    // Vứt item ra ngay vị trí của người chơi
+                    // Vứt item ra ngay vị trí của người chơi (Hoặc quái chết)
                     loc.getWorld().dropItemNaturally(loc, item);
                 }
             }

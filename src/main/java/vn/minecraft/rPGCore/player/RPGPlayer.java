@@ -7,48 +7,45 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import vn.minecraft.rPGCore.classes.RPGClass;
+import vn.minecraft.rPGCore.managers.FoodBuffManager;
 import vn.minecraft.rPGCore.player.data.PlayerAttributeData;
 import vn.minecraft.rPGCore.player.data.PlayerSkillData;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public class RPGPlayer {
     private final Player bukkitPlayer;
     private RPGClass currentClass;
 
-    // Core Stats
     private double currentResource;
     private double currentExp = 0;
     private long lastCombatTime = 0;
-
-    // TÀI KHOẢN NGÂN HÀNG
     private long balance = 0;
 
-    // Các Mô-đun (Components)
     private final PlayerAttributeData attributeData;
     private final PlayerSkillData skillData;
 
-    // --- HỆ THỐNG CHỈ SỐ TRANG BỊ ---
     public static class PlayerStats {
         public double minPhysicalDamage = 0.0; public double maxPhysicalDamage = 0.0;
         public double minMagicalDamage = 0.0; public double maxMagicalDamage = 0.0;
-        public double maxHealth = 0.0; public double armor = 0.0;
-        public double critRate = 5.0; public double critDamage = 50.0;
-        public double armorPen = 0.0; public double lifeSteal = 0.0;
+        public double maxHealth = 0.0; public double hpMultiplier = 1.0;
+
+        public double armor = 0.0; public double armorMultiplier = 1.0;
+        public double magicResistance = 0.0; public double magicResistMultiplier = 1.0;
+
+        public double critRate = 5.0; public double critDamage = 0.0;
+        public double armorPen = 0.0; public double magicArmorPen = 0.0;
+        public double lifeSteal = 0.0; public double magicLifeSteal = 0.0;
+
         public double dodgeRate = 0.0; public double blockRate = 0.0;
         public double regenRate = 0.0; public double attackSpeed = 0.0;
         public double cooldownReduction = 0.0; public double moveSpeed = 0.0;
+        public double effectResistance = 0.0;
 
-        public double hpMultiplier = 1.0;
-        public double armorMultiplier = 1.0;
-
-        // CÁC CHỈ SỐ TỪ DÒNG DÕI
-        public double expBonus = 0.0;
-        public double manaRegen = 0.0;
-        public double dropRate = 0.0;
-
+        public double expBonus = 0.0; public double manaRegen = 0.0; public double dropRate = 0.0;
         public Map<String, Integer> setCounts = new HashMap<>();
     }
 
@@ -58,7 +55,6 @@ public class RPGPlayer {
         this.bukkitPlayer = player;
         this.currentClass = defaultClass;
         this.currentResource = defaultClass.getMaxResource();
-
         this.attributeData = new PlayerAttributeData(this);
         this.skillData = new PlayerSkillData();
     }
@@ -76,38 +72,113 @@ public class RPGPlayer {
     public void setInCombat() { this.lastCombatTime = System.currentTimeMillis(); }
     public boolean isInCombat() { return (System.currentTimeMillis() - this.lastCombatTime) <= 10000; }
 
-    // ==========================================
-    // HỆ THỐNG TIỀN TỆ (NGÂN HÀNG)
-    // ==========================================
-    public long getBalance() {
-        return this.balance;
-    }
-
-    public void setBalance(long amount) {
-        this.balance = Math.max(0, amount); // Không cho phép tiền âm
-    }
-
-    public void addBalance(long amount) {
-        if (amount > 0) {
-            this.balance += amount;
-        }
-    }
-
+    public long getBalance() { return this.balance; }
+    public void setBalance(long amount) { this.balance = Math.max(0, amount); }
+    public void addBalance(long amount) { if (amount > 0) this.balance += amount; }
     public boolean withdraw(long amount) {
         if (amount > 0 && this.balance >= amount) {
             this.balance -= amount;
-            return true; // Rút tiền thành công
+            return true;
         }
-        return false; // Không đủ tiền
+        return false;
     }
 
-    // --- CẬP NHẬT CHỈ SỐ TỪ TRANG BỊ VÀO NHÂN VẬT ---
+    // ==========================================
+    // TÍNH TOÁN TỔNG TẤT CẢ CHỈ SỐ
+    // ==========================================
+    public Map<String, Double> getTotalStatsMap() {
+        Map<String, Double> map = new java.util.LinkedHashMap<>();
+        UUID uuid = bukkitPlayer.getUniqueId();
+        FoodBuffManager foodManager = vn.minecraft.rPGCore.RPGCore.getInstance().getFoodBuffManager();
+
+        boolean isArcher = currentClass != null && currentClass.getId().equalsIgnoreCase("archer");
+        boolean isMage = currentClass != null && currentClass.getId().equalsIgnoreCase("mage");
+        boolean isMagicClass = currentClass != null && currentClass.getResourceType().name().equals("MANA");
+
+        int str = attributeData.getAttribute("STR");
+        int intel = attributeData.getAttribute("INT");
+        int vit = attributeData.getAttribute("VIT");
+        int agi = attributeData.getAttribute("AGI");
+        int luk = attributeData.getAttribute("LUK");
+
+        // 1. SÁT THƯƠNG
+        double strBonus = isMagicClass ? 0 : (str * 2.0);
+        double intBonus = intel * 2.0;
+        double foodDmg = foodManager.getBonus(uuid, FoodBuffManager.StatType.DMG);
+
+        boolean isMagicalWeapon = currentStats.maxMagicalDamage > 0;
+        boolean isPhysicalWeapon = currentStats.maxPhysicalDamage > 0;
+
+        if (isPhysicalWeapon || !isMagicalWeapon) {
+            double minP = (currentStats.minPhysicalDamage > 0 ? currentStats.minPhysicalDamage : 5.0) + strBonus;
+            double maxP = (currentStats.maxPhysicalDamage > 0 ? currentStats.maxPhysicalDamage : 10.0) + strBonus;
+            map.put("Sát thương vật lý (Nhỏ nhất)", minP * (1 + foodDmg/100));
+            map.put("Sát thương vật lý (Lớn nhất)", maxP * (1 + foodDmg/100));
+        }
+
+        if (isMagicalWeapon) {
+            double minM = currentStats.minMagicalDamage + intBonus;
+            double maxM = currentStats.maxMagicalDamage + intBonus;
+            map.put("Sát thương phép thuật (Nhỏ nhất)", minM * (1 + foodDmg/100));
+            map.put("Sát thương phép thuật (Lớn nhất)", maxM * (1 + foodDmg/100));
+        }
+
+        // 2. PHÒNG THỦ & MÁU
+        map.put("Máu tối đa", getTotalMaxHealth());
+        map.put("Giáp", currentStats.armor * currentStats.armorMultiplier);
+        map.put("Kháng phép", currentStats.magicResistance * currentStats.magicResistMultiplier);
+
+        // 3. BẠO KÍCH
+        double critRate = currentStats.critRate + (luk * 0.2) + foodManager.getBonus(uuid, FoodBuffManager.StatType.CRIT_RATE);
+        if (isArcher) critRate += (skillData.getSkillLevel("archer_thien_xa") * 2.0);
+        map.put("Tỉ lệ chí mạng", Math.min(critRate, 100.0));
+        map.put("Sát thương chí mạng", currentStats.critDamage);
+
+        // 4. XUYÊN GIÁP & XUYÊN PHÉP
+        double armorPen = currentStats.armorPen + foodManager.getBonus(uuid, FoodBuffManager.StatType.ARMOR_PEN);
+        if (isArcher) armorPen += 25.0;
+        map.put("Tỉ lệ xuyên giáp", Math.min(armorPen, isArcher ? 80.0 : 50.0));
+
+        double magicArmorPen = currentStats.magicArmorPen;
+        if (isMage) magicArmorPen += 25.0;
+        map.put("Tỉ lệ xuyên kháng phép", Math.min(magicArmorPen, isMage ? 80.0 : 50.0));
+
+        // 5. CHỈ SỐ SINH TỒN
+        double dodgeRate = currentStats.dodgeRate + (agi * 0.1);
+        map.put("Tỉ lệ né tránh", Math.min(dodgeRate, 30.0));
+
+        double lifeSteal = currentStats.lifeSteal + foodManager.getBonus(uuid, FoodBuffManager.StatType.LIFE_STEAL);
+        map.put("Tỉ lệ hút máu", Math.min(lifeSteal, 50.0));
+        map.put("Tỉ lệ hút máu phép", Math.min(currentStats.magicLifeSteal, 50.0));
+
+        double blockRate = currentStats.blockRate + (str * 0.1);
+        map.put("Tỉ lệ đỡ đòn", Math.min(blockRate, 50.0));
+
+        double regenRate = currentStats.regenRate + (vit * 0.1) + foodManager.getBonus(uuid, FoodBuffManager.StatType.REGEN);
+        map.put("Tỉ lệ hồi phục", regenRate);
+        map.put("Kháng hiệu ứng", Math.min(currentStats.effectResistance, 80.0));
+
+        // 6. TỐC ĐỘ VÀ PHỤ TRỢ
+        double atkSpeed = currentStats.attackSpeed + foodManager.getBonus(uuid, FoodBuffManager.StatType.ATK_SPEED);
+        map.put("Tốc độ đánh", Math.min(atkSpeed, 100.0));
+
+        double cdr = currentStats.cooldownReduction + (intel * 0.1) + foodManager.getBonus(uuid, FoodBuffManager.StatType.CDR);
+        map.put("Giảm hồi chiêu", Math.min(cdr, 40.0));
+
+        double moveSpeed = currentStats.moveSpeed + (agi * 0.5) + foodManager.getBonus(uuid, FoodBuffManager.StatType.MOVE_SPEED);
+        map.put("Tốc độ di chuyển", moveSpeed);
+
+        map.put("Nhận Kinh nghiệm", currentStats.expBonus);
+        map.put("Hồi Năng lượng", currentStats.manaRegen);
+        map.put("Tỉ lệ rớt đồ", currentStats.dropRate + (luk * 0.1) + foodManager.getBonus(uuid, FoodBuffManager.StatType.DROP_RATE));
+
+        return map;
+    }
+
     public void updateEquipmentStats() {
         this.currentStats = new PlayerStats();
-
         ItemStack[] armor = bukkitPlayer.getInventory().getArmorContents();
         ItemStack mainHand = bukkitPlayer.getInventory().getItemInMainHand();
-
         ItemStack[] allEquips = new ItemStack[5];
         System.arraycopy(armor, 0, allEquips, 0, 4);
         allEquips[4] = mainHand;
@@ -117,10 +188,7 @@ public class RPGPlayer {
 
         for (ItemStack item : allEquips) {
             if (item == null || !item.hasItemMeta() || !item.getItemMeta().hasLore()) continue;
-
-            if (item.getItemMeta().hasDisplayName() && item.getItemMeta().getDisplayName().startsWith("§8§m")) {
-                continue;
-            }
+            if (item.getItemMeta().hasDisplayName() && item.getItemMeta().getDisplayName().startsWith("§8§m")) continue;
 
             List<String> lore = item.getItemMeta().getLore();
             boolean isWeapon = (item.equals(mainHand));
@@ -152,8 +220,6 @@ public class RPGPlayer {
                     if (parts.length == 2) {
                         String statName = parts[0].trim();
                         boolean isPercent = parts[1].contains("%");
-
-                        // BỘ LỌC CỰC MẠNH: Xóa mọi dấu +, %, ★ và khoảng trắng để Java đọc được số
                         String valStr = parts[1].split("\\(")[0].replaceAll("[+%★\\s]", "");
 
                         try {
@@ -169,22 +235,29 @@ public class RPGPlayer {
                             } else {
                                 if (statName.equals("Độ bền") || statName.equals("Cơ hội bảo vệ")) continue;
                                 double val = Double.parseDouble(valStr);
+
+                                // TOÀN BỘ CÁC CHỈ SỐ ĐÃ ĐƯỢC THÊM VÀO ĐÂY
                                 switch (statName) {
                                     case "Máu tối đa":
                                         if (isPercent) currentStats.hpMultiplier += (val / 100.0);
                                         else currentStats.maxHealth += val; break;
                                     case "Giáp": currentStats.armor += val; break;
-                                    case "Tổng Giáp": currentStats.armorMultiplier += (val / 100.0); break;
+                                    case "Tỉ lệ Giáp": case "Tổng Giáp": currentStats.armorMultiplier += (val / 100.0); break;
+                                    case "Kháng phép": currentStats.magicResistance += val; break;
+                                    case "Tỉ lệ Kháng phép": currentStats.magicResistMultiplier += (val / 100.0); break;
                                     case "Tỉ lệ chí mạng": currentStats.critRate += val; break;
                                     case "Sát thương chí mạng": currentStats.critDamage += val; break;
                                     case "Tỉ lệ xuyên giáp": case "Xuyên giáp": currentStats.armorPen += val; break;
+                                    case "Tỉ lệ xuyên kháng phép": currentStats.magicArmorPen += val; break;
                                     case "Tỉ lệ hút máu": case "Hút máu": currentStats.lifeSteal += val; break;
+                                    case "Tỉ lệ hút máu phép": currentStats.magicLifeSteal += val; break;
                                     case "Tỉ lệ né tránh": currentStats.dodgeRate += val; break;
                                     case "Tỉ lệ đỡ đòn": currentStats.blockRate += val; break;
                                     case "Tỉ lệ hồi phục": currentStats.regenRate += val; break;
                                     case "Tốc độ đánh": currentStats.attackSpeed += val; break;
                                     case "Giảm hồi chiêu": currentStats.cooldownReduction += val; break;
                                     case "Tốc độ di chuyển": case "Tốc độ chạy": currentStats.moveSpeed += val; break;
+                                    case "Kháng hiệu ứng": currentStats.effectResistance += val; break;
                                     case "Nhận Kinh nghiệm": currentStats.expBonus += val; break;
                                     case "Hồi Năng lượng": currentStats.manaRegen += val; break;
                                     case "Tỉ lệ rớt đồ": currentStats.dropRate += val; break;
@@ -195,7 +268,6 @@ public class RPGPlayer {
                 }
             }
         }
-
         applySetBonuses();
         updateSetVisuals();
         updateMaxStats();
@@ -213,24 +285,15 @@ public class RPGPlayer {
         int magical = currentStats.setCounts.getOrDefault("magical", 0);
         int scavenger = currentStats.setCounts.getOrDefault("scavenger", 0);
 
-        if (vampiric >= 3) currentStats.lifeSteal += 12.0;
-        if (hunter >= 3) currentStats.critRate += 8.0;
-        if (hunter >= 4) currentStats.critDamage += 40.0;
-        if (giant >= 3) currentStats.hpMultiplier += 0.25;
-        if (armored >= 3) currentStats.armorMultiplier += 0.25;
-        if (swift >= 3) currentStats.moveSpeed += 15.0;
-        if (shattering >= 3) currentStats.armorPen += 15.0;
-        if (experienced >= 3) currentStats.expBonus += 15.0;
-        if (magical >= 3) currentStats.manaRegen += 20.0;
-        if (scavenger >= 3) currentStats.dropRate += 20.0;
-
-        if (currentStats.critRate > 100.0) currentStats.critRate = 100.0;
-        if (currentStats.armorPen > 80.0) currentStats.armorPen = 80.0;
-        if (currentStats.cooldownReduction > 40.0) currentStats.cooldownReduction = 40.0;
-        if (currentStats.lifeSteal > 50.0) currentStats.lifeSteal = 50.0;
-        if (currentStats.attackSpeed > 100.0) currentStats.attackSpeed = 100.0;
-        if (currentStats.dodgeRate > 50.0) currentStats.dodgeRate = 50.0;
-        if (currentStats.blockRate > 50.0) currentStats.blockRate = 50.0;
+        if (vampiric >= 3) { currentStats.lifeSteal += 15.0; currentStats.magicLifeSteal += 15.0; }
+        if (hunter >= 3) currentStats.critRate += 10.0;
+        if (giant >= 3) currentStats.hpMultiplier += 0.20;
+        if (armored >= 3) { currentStats.armorMultiplier += 0.20; currentStats.magicResistMultiplier += 0.20; }
+        if (swift >= 3) currentStats.effectResistance += 15.0;
+        if (shattering >= 3) { currentStats.armorPen += 15.0; currentStats.magicArmorPen += 15.0; }
+        if (experienced >= 3) currentStats.expBonus += 20.0;
+        if (magical >= 3) currentStats.manaRegen += 25.0;
+        if (scavenger >= 3) currentStats.dropRate += 25.0;
     }
 
     private void updateSetVisuals() {
@@ -285,15 +348,7 @@ public class RPGPlayer {
     public void updateMoveSpeed() {
         AttributeInstance moveSpeedAttr = this.bukkitPlayer.getAttribute(Attribute.MOVEMENT_SPEED);
         if (moveSpeedAttr != null) {
-            double equipSpeed = currentStats != null ? currentStats.moveSpeed : 0.0;
-
-            // [TÍCH HỢP ĐỒ ĂN]
-            double foodMoveSpeed = vn.minecraft.rPGCore.RPGCore.getInstance().getFoodBuffManager().getBonus(this.bukkitPlayer.getUniqueId(), vn.minecraft.rPGCore.managers.FoodBuffManager.StatType.MOVE_SPEED);
-
-            // [TÍCH HỢP ATTRIBUTE]: AGI (Mỗi điểm AGI tăng 0.1% Tốc độ chạy)
-            double agiSpeedBonus = this.attributeData.getAttribute("AGI") * 0.1;
-
-            double totalSpeedBonus = equipSpeed + foodMoveSpeed + agiSpeedBonus;
+            double totalSpeedBonus = getTotalStatsMap().getOrDefault("Tốc độ di chuyển", 0.0);
             moveSpeedAttr.setBaseValue(0.1 * (1.0 + (totalSpeedBonus / 100.0)));
         }
     }
@@ -301,19 +356,13 @@ public class RPGPlayer {
     public double getTotalMaxHealth() {
         double baseHp = this.currentClass != null ? this.currentClass.getMaxHealth() : 20.0;
         double levelBonus = this.bukkitPlayer.getLevel() * 50.0;
-        double vitBonus = this.attributeData.getAttribute("VIT") * 15.0;
+        double vitBonus = this.attributeData.getAttribute("VIT") * 25.0;
 
-        // CHỈ NHÂN HỆ SỐ SET BONUS CHO RIÊNG MÁU CỦA TRANG BỊ
         double equipHp = currentStats != null ? (currentStats.maxHealth * currentStats.hpMultiplier) : 0.0;
-
-        // [TÍCH HỢP FOOD BUFF]: TĂNG MÁU TỐI ĐA (Từ Tinh bột)
-        double foodMaxHp = vn.minecraft.rPGCore.RPGCore.getInstance().getFoodBuffManager().getBonus(this.bukkitPlayer.getUniqueId(), vn.minecraft.rPGCore.managers.FoodBuffManager.StatType.MAX_HP);
-
-        // Lượng máu hồi 1%/s sau này của bạn sẽ tính dựa trên tổng của toàn bộ phép cộng này!
+        double foodMaxHp = vn.minecraft.rPGCore.RPGCore.getInstance().getFoodBuffManager().getBonus(this.bukkitPlayer.getUniqueId(), FoodBuffManager.StatType.MAX_HP);
         return baseHp + levelBonus + vitBonus + equipHp + foodMaxHp;
     }
 
-    // --- CÁC HÀM CŨ GIỮ NGUYÊN BÊN DƯỚI ---
     public double getRequiredExp() {
         int level = this.bukkitPlayer.getLevel();
         return 500 + (level * 100) + Math.pow(level, 3) * level/4;
@@ -361,9 +410,11 @@ public class RPGPlayer {
     public void setCurrentResource(double currentResource) {
         this.currentResource = Math.max(0, Math.min(currentResource, getTotalMaxResource()));
     }
+
     public double getTotalMaxResource() {
-        double baseRes = this.currentClass.getMaxResource();
-        double intBonus = this.attributeData.getAttribute("INT") * 1.0;
-        return baseRes + intBonus;
+        double baseRes = this.currentClass != null ? this.currentClass.getMaxResource() : 100.0;
+        boolean isMana = this.currentClass != null && this.currentClass.getResourceType().name().equals("MANA");
+        double attrBonus = isMana ? (this.attributeData.getAttribute("INT") * 0.5) : (this.attributeData.getAttribute("STR") * 0.5);
+        return baseRes + attrBonus;
     }
 }
