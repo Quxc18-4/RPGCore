@@ -49,6 +49,10 @@ public class PlayerManager {
             double savedResource = config.getDouble(uuid + ".resource");
             double savedExp = config.getDouble(uuid + ".exp", 0.0);
 
+            // Nạp dữ liệu tiền tệ
+            long savedBalance = config.getLong(uuid + ".balance", 0L);
+            rpgPlayer.setBalance(savedBalance);
+
             RPGClass savedClass = classManager.getClassById(classId);
             if (savedClass != null) {
                 rpgPlayer.setClass(savedClass);
@@ -100,6 +104,9 @@ public class PlayerManager {
             config.set(uuid + ".class", rpgPlayer.getCurrentClass().getId());
             config.set(uuid + ".resource", rpgPlayer.getCurrentResource());
             config.set(uuid + ".exp", rpgPlayer.getCurrentExp());
+
+            // Lưu dữ liệu tiền tệ
+            config.set(uuid + ".balance", rpgPlayer.getBalance());
 
             // Lưu dữ liệu Attribute
             config.set(uuid + ".attr.unspent", rpgPlayer.getAttributeData().getUnspentAttrPoints());

@@ -37,3 +37,7 @@ commands:
   ig:
     description: Lệnh lấy đồ ăn RPG
     permission: rpgcore.admin
+  bal:
+    description: "Quan ly tien te va tai khoan Ngan hang."
+    usage: "/bal [top|add|coin|tên_người_chơi]"
+    aliases: [ balance, money, economy ]

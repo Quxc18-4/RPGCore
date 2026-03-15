@@ -23,6 +23,9 @@ public class RPGPlayer {
     private double currentExp = 0;
     private long lastCombatTime = 0;
 
+    // TÀI KHOẢN NGÂN HÀNG
+    private long balance = 0;
+
     // Các Mô-đun (Components)
     private final PlayerAttributeData attributeData;
     private final PlayerSkillData skillData;
@@ -72,6 +75,31 @@ public class RPGPlayer {
 
     public void setInCombat() { this.lastCombatTime = System.currentTimeMillis(); }
     public boolean isInCombat() { return (System.currentTimeMillis() - this.lastCombatTime) <= 10000; }
+
+    // ==========================================
+    // HỆ THỐNG TIỀN TỆ (NGÂN HÀNG)
+    // ==========================================
+    public long getBalance() {
+        return this.balance;
+    }
+
+    public void setBalance(long amount) {
+        this.balance = Math.max(0, amount); // Không cho phép tiền âm
+    }
+
+    public void addBalance(long amount) {
+        if (amount > 0) {
+            this.balance += amount;
+        }
+    }
+
+    public boolean withdraw(long amount) {
+        if (amount > 0 && this.balance >= amount) {
+            this.balance -= amount;
+            return true; // Rút tiền thành công
+        }
+        return false; // Không đủ tiền
+    }
 
     // --- CẬP NHẬT CHỈ SỐ TỪ TRANG BỊ VÀO NHÂN VẬT ---
     public void updateEquipmentStats() {

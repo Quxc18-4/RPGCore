@@ -20,7 +20,6 @@ public final class RPGCore extends JavaPlugin {
     private PlayerManager playerManager;
     private BossBarManager bossBarManager;
 
-    // [ĐÃ SỬA LỖI]: Đưa 2 Manager này ra ngoài làm biến toàn cục của Class
     private BoredomManager boredomManager;
     private FoodBuffManager foodBuffManager;
 
@@ -41,9 +40,14 @@ public final class RPGCore extends JavaPlugin {
         IngredientManager ingredientManager = new IngredientManager(this);
         CookingManager cookingManager = new CookingManager(this, ingredientManager);
 
-        // [ĐÃ SỬA LỖI]: Khởi tạo bằng từ khóa 'this' để lưu vào Class
         this.boredomManager = new BoredomManager(this);
         this.foodBuffManager = new FoodBuffManager(this);
+
+        // [MỚI]: KHỞI TẠO MANAGER CHO NGÂN HÀNG & CỬA HÀNG
+        CurrencyManager currencyManager = new CurrencyManager(this);
+        ShopManager shopManager = new ShopManager(this, currencyManager);
+        // [MỚI]: KHỞI TẠO BANK MANAGER
+        BankManager bankManager = new BankManager(currencyManager);
 
         ArrowRecipeManager arrowRecipeManager = new ArrowRecipeManager(this);
         ArrowCraftingUI arrowCraftingUI = new ArrowCraftingUI(playerManager, arrowRecipeManager);
@@ -51,7 +55,8 @@ public final class RPGCore extends JavaPlugin {
 
         RepairGUI repairGUI = new RepairGUI();
 
-        getServer().getPluginManager().registerEvents(new PlayerListener(playerManager, bossBarManager), this);        getServer().getPluginManager().registerEvents(new ClassGUIListener(playerManager, bossBarManager, classManager), this);
+        getServer().getPluginManager().registerEvents(new PlayerListener(playerManager, bossBarManager), this);
+        getServer().getPluginManager().registerEvents(new ClassGUIListener(playerManager, bossBarManager, classManager), this);
         getServer().getPluginManager().registerEvents(new ArcherListener(this, playerManager, arrowCraftingUI), this);
         getServer().getPluginManager().registerEvents(new EquipmentListener(playerManager), this);
         getServer().getPluginManager().registerEvents(repairGUI, this);
@@ -63,9 +68,12 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.DurabilityListener(playerManager), this);
         getServer().getPluginManager().registerEvents(blacksmithGUI, this);
         getServer().getPluginManager().registerEvents(cookingManager, this);
-
-        // Dùng this.boredomManager và this.foodBuffManager
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.FoodListener(this, this.boredomManager, this.foodBuffManager), this);
+        // [MỚI]: ĐĂNG KÝ BANK LISTENER
+        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.BankListener(this, bankManager, currencyManager, playerManager), this);
+
+        // [MỚI]: ĐĂNG KÝ SỰ KIỆN CHO CỬA HÀNG (SHOP)
+        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.ShopListener(shopManager, currencyManager, playerManager), this);
 
         new RegenTask(playerManager, bossBarManager).runTaskTimer(this, 0L, 20L);
 
@@ -78,6 +86,13 @@ public final class RPGCore extends JavaPlugin {
         getCommand("rpgclassadmin").setExecutor(new RPGClassAdminCommand(adminArrowCraftingUI));
         getCommand("arrow").setExecutor(new ArrowCommand(arrowRecipeManager));
         getCommand("ig").setExecutor(new ItemAdminCommand(ingredientManager));
+
+        // [MỚI]: ĐĂNG KÝ LỆNH NGÂN HÀNG (/bal)
+        if (this.getCommand("bal") != null) {
+            this.getCommand("bal").setExecutor(new BalanceCommand(this, playerManager, currencyManager));
+        } else {
+            getLogger().warning("Khong the tim thay lenh /bal trong plugin.yml!");
+        }
 
         if (this.getCommand("repairadmin") != null) {
             this.getCommand("repairadmin").setExecutor(new RepairAdminCommand());
@@ -110,7 +125,6 @@ public final class RPGCore extends JavaPlugin {
         return instance;
     }
 
-    // [ĐÃ SỬA LỖI]: Hàm Getter đã xuất hiện để các class khác gọi
     public FoodBuffManager getFoodBuffManager() {
         return this.foodBuffManager;
     }
