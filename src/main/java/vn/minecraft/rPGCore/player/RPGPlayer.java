@@ -128,11 +128,26 @@ public class RPGPlayer {
         map.put("Giáp", currentStats.armor * currentStats.armorMultiplier);
         map.put("Kháng phép", currentStats.magicResistance * currentStats.magicResistMultiplier);
 
-        // 3. BẠO KÍCH
+        // 3. BẠO KÍCH (Tích hợp Nội tại Assassin: Dư 1% Crit = +2% Crit Damage)
+        boolean isAssassin = currentClass != null && currentClass.getId().equalsIgnoreCase("assassin");
+
         double critRate = currentStats.critRate + (luk * 0.2) + foodManager.getBonus(uuid, FoodBuffManager.StatType.CRIT_RATE);
         if (isArcher) critRate += (skillData.getSkillLevel("archer_thien_xa") * 2.0);
-        map.put("Tỉ lệ chí mạng", Math.min(critRate, 100.0));
-        map.put("Sát thương chí mạng", currentStats.critDamage);
+        if (isAssassin) critRate += 15.0; // Nội tại 1: +15% Tỉ lệ chí mạng
+
+        double critDamage = currentStats.critDamage;
+
+        // Nội tại 2 Sát thủ: Chuyển hóa chí mạng dư thừa
+        if (isAssassin && critRate > 100.0) {
+            double excessCrit = critRate - 100.0;
+            critDamage += (excessCrit * 2.0);
+            critRate = 100.0; // Đưa về Cap 100%
+        } else {
+            critRate = Math.min(critRate, 100.0);
+        }
+
+        map.put("Tỉ lệ chí mạng", critRate);
+        map.put("Sát thương chí mạng", critDamage);
 
         // 4. XUYÊN GIÁP & XUYÊN PHÉP
         double armorPen = currentStats.armorPen + foodManager.getBonus(uuid, FoodBuffManager.StatType.ARMOR_PEN);
@@ -395,6 +410,11 @@ public class RPGPlayer {
     }
     public void heal(double amount) {
         if (!this.bukkitPlayer.isDead()) {
+            // [THÊM DÒNG NÀY]: CHẶN HỒI MÁU NẾU DÍNH PHI TIÊU SÁT THỦ
+            if (this.bukkitPlayer.hasMetadata("Assassin_AntiHeal")) {
+                long expire = this.bukkitPlayer.getMetadata("Assassin_AntiHeal").get(0).asLong();
+                if (System.currentTimeMillis() < expire) return;
+            }
             AttributeInstance maxAttr = this.bukkitPlayer.getAttribute(Attribute.MAX_HEALTH);
             if (maxAttr == null) return;
             double newHp = Math.min(this.bukkitPlayer.getHealth() + amount, maxAttr.getValue());

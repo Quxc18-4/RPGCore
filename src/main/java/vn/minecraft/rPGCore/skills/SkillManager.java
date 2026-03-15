@@ -2,6 +2,7 @@ package vn.minecraft.rPGCore.skills;
 
 import org.bukkit.plugin.java.JavaPlugin;
 import vn.minecraft.rPGCore.skills.archer.*;
+import vn.minecraft.rPGCore.skills.assassin.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -22,6 +23,10 @@ public class SkillManager {
         registerSkill(new ArrowRainSkill(plugin));
         registerSkill(new HeavyBlowShootSkill(plugin));
         registerSkill(new ArrowCraftingSkill(plugin));
+        registerSkill(new DoubleSlashSkill(plugin));
+        registerSkill(new SmokeBombSkill(plugin));
+        registerSkill(new PoisonDartSkill(plugin));
+        registerSkill(new FatalBlowSkill(plugin));
     }
 
     public void registerSkill(ISkill skill) {

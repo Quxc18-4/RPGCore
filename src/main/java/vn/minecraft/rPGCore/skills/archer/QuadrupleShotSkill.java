@@ -115,8 +115,9 @@ public class QuadrupleShotSkill implements ISkill {
         if (right.lengthSquared() > 0) right.normalize();
         else right = new Vector(1, 0, 0);
 
-        // 4 Vị trí cách tâm: -0.5, -0.25, 0.25, 0.5
-        double[] offsets = {-0.5, -0.25, 0.25, 0.5};
+        // [ĐÃ SỬA]: Bóp hẹp khoảng cách mũi tên để dồn sát thương mục tiêu đơn (Hitbox 0.6)
+        // 4 Vị trí cách tâm: -0.2, -0.06, 0.06, 0.2 (Tổng chiều rộng chỉ 0.4 block)
+        double[] offsets = {-0.2, -0.06, 0.06, 0.2};
 
         for (double offset : offsets) {
             Location spawnLoc = eyeLoc.clone().add(right.clone().multiply(offset));

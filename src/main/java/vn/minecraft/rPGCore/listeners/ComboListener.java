@@ -1,5 +1,6 @@
 package vn.minecraft.rPGCore.listeners;
 
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -25,7 +26,6 @@ public class ComboListener implements Listener {
     private final Map<UUID, String> currentCombos = new HashMap<>();
     private final Map<UUID, BukkitRunnable> resetTasks = new HashMap<>();
 
-    // Đã thay ArcherSkillManager bằng SkillManager tổng
     public ComboListener(JavaPlugin plugin, PlayerManager playerManager, SkillManager skillManager) {
         this.plugin = plugin;
         this.playerManager = playerManager;
@@ -44,19 +44,39 @@ public class ComboListener implements Listener {
         if (rpgPlayer == null) return;
 
         org.bukkit.inventory.ItemStack mainItem = player.getInventory().getItemInMainHand();
-        org.bukkit.Material mainType = mainItem.getType();
+        Material mainType = mainItem.getType();
         String classId = rpgPlayer.getCurrentClass().getId().toLowerCase();
 
+        // KIỂM TRA VŨ KHÍ HỢP LỆ THEO CLASS
         boolean isValidWeapon = false;
-        if (classId.equals("archer") && (mainType == org.bukkit.Material.BOW || mainType == org.bukkit.Material.CROSSBOW)) {
-            isValidWeapon = true;
+        switch (classId) {
+            case "archer":
+                isValidWeapon = (mainType == Material.BOW || mainType == Material.CROSSBOW);
+                break;
+            case "assassin":
+                isValidWeapon = (mainType == Material.SHEARS); // Dao găm
+                break;
+            case "mage":
+                isValidWeapon = (mainType == Material.STICK || mainType == Material.BLAZE_ROD); // Trượng
+                break;
+            case "summoner":
+                isValidWeapon = (mainType == Material.LEAD); // Roi da
+                break;
+            case "reaper":
+                isValidWeapon = mainType.name().endsWith("_HOE"); // Lưỡi hái
+                break;
+            case "warrior":
+            case "guardian":
+            case "commoner":
+            default:
+                isValidWeapon = mainType.name().endsWith("_SWORD") || mainType.name().endsWith("_AXE"); // Kiếm, Rìu
+                break;
         }
 
-        if (!isValidWeapon) return;
+        if (!isValidWeapon) return; // Nếu không cầm đúng vũ khí thì không ghi nhận Combo
 
-        // KHÓA COMBO NẾU ĐANG NIỆM CHÚ (Liên Hoàn Tên)
+        // KHÓA COMBO NẾU ĐANG NIỆM CHÚ (Liên Hoàn Tên / Khống chế)
         if (player.hasMetadata("Is_Casting")) {
-            // Không cho phép bấm nút lưu vào Combo
             return;
         }
 

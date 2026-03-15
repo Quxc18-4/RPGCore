@@ -140,6 +140,9 @@ public class PlayerManager {
     public Set<UUID> getAllPlayerUUIDs() { return activePlayers.keySet(); }
 
     public void saveAllPlayers() {
-        for (UUID uuid : activePlayers.keySet()) { savePlayer(uuid); }
+        // Tạo một ArrayList mới để copy toàn bộ UUID ra, tránh lỗi khi vừa duyệt vừa xóa
+        for (UUID uuid : new java.util.ArrayList<>(activePlayers.keySet())) {
+            savePlayer(uuid);
+        }
     }
 }

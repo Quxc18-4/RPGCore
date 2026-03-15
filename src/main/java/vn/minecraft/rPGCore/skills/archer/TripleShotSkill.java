@@ -59,7 +59,7 @@ public class TripleShotSkill implements ISkill {
 
     @Override
     public long getCooldown(int level) {
-        double cd = 8.8; // Base 8.6s
+        double cd = 8.8; // Base 8.8s
         if (level >= 3) cd -= 0.4;
         if (level >= 6) cd -= 0.4;
         if (level >= 9) cd -= 0.4;
@@ -73,10 +73,10 @@ public class TripleShotSkill implements ISkill {
 
         lore.add("§7Bắn liên tiếp 3 đợt, mỗi đợt 3 mũi tên."); // 3 đợt x 3 mũi = 9 mũi
 
-        // Tính toán hiển thị: Base 30% dmg, 20% pen
+        // Tính toán hiển thị: Base 35% dmg, 20% pen
         double dmg = 35 + (displayLevel - 1) * 5;
         double pen = 20 + (displayLevel - 1) * 1;
-        if (displayLevel >= 10) pen += 2; // Thưởng cấp 10 (+2%)
+        if (displayLevel >= 10) pen += 1; // [ĐÃ SỬA]: Thưởng cấp 10 (+1%) để tròn 30%
 
         lore.add("§7Sát thương: §c" + (int) dmg + "% §7mỗi mũi");
         lore.add("§7Tỉ lệ xuyên giáp: §e" + (int) pen + "%");
@@ -119,7 +119,7 @@ public class TripleShotSkill implements ISkill {
         new BukkitRunnable() {
             @Override
             public void run() { shootTripleArrows(player, level); }
-        }.runTaskLater(plugin, 5L); // Đợt 2 sau 5 ticks (nhanh hơn 1 chút để tạo chuỗi combo mượt)
+        }.runTaskLater(plugin, 5L); // Đợt 2 sau 5 ticks
 
         new BukkitRunnable() {
             @Override
@@ -141,7 +141,6 @@ public class TripleShotSkill implements ISkill {
             right = new Vector(1, 0, 0);
         }
 
-        // KHOẢNG CÁCH NỚI RỘNG THÀNH 0.3
         double offsetDistance = 0.3;
 
         Location rightLoc = eyeLoc.clone().add(right.clone().multiply(offsetDistance));
@@ -161,20 +160,20 @@ public class TripleShotSkill implements ISkill {
         Arrow arrow = player.getWorld().spawnArrow(spawnLoc, velocity, 3.5f, 0f);
         arrow.setShooter(player);
 
-        // ÁP DỤNG CÔNG THỨC MỚI CỦA TAM TIỄN
         double dmgMultiplier = 0.35 + (skillLevel - 1) * 0.05; // Base 35%, tăng 5%
-        double ignoreChance = 0.20 + (skillLevel - 1) * 0.01; // Base 25%, tăng 1%
+        double ignoreChance = 0.20 + (skillLevel - 1) * 0.01; // Base 20%, tăng 1%
 
-        if (skillLevel >= 10) ignoreChance += 0.02; // Thưởng cấp 10: +2% xuyên giáp
+        if (skillLevel >= 10) ignoreChance += 0.01; // [ĐÃ SỬA]: Thưởng cấp 10 (+1%) để tròn 30%
 
         // Giới hạn max level 10: Dmg max = 80%, Pen max = 30%
         dmgMultiplier = Math.min(0.80, dmgMultiplier);
         ignoreChance = Math.min(0.30, ignoreChance);
 
-        // Đóng gói Metadata chuyển cho ArcherListener tính toán
+        // Chuyển % sang Metadata (Nhờ cơ chế Nhân tỷ lệ mới ở CombatManager, không dùng random chance nữa)
         arrow.setMetadata("Is_Custom_Skill", new FixedMetadataValue(plugin, true));
         arrow.setMetadata("Skill_DmgMulti", new FixedMetadataValue(plugin, dmgMultiplier));
-        arrow.setMetadata("Skill_ArmorPen", new FixedMetadataValue(plugin, ignoreChance));
+        // Gán 30.0 thay vì 0.30 để khớp với hệ thống mới
+        arrow.setMetadata("Skill_ArmorPen", new FixedMetadataValue(plugin, ignoreChance * 100.0));
 
         new BukkitRunnable() {
             @Override
@@ -184,7 +183,6 @@ public class TripleShotSkill implements ISkill {
                     this.cancel();
                     return;
                 }
-                // Hạt Crit đồng bộ an toàn
                 arrow.getWorld().spawnParticle(Particle.CRIT, arrow.getLocation(), 1, 0.0, 0.0, 0.0, 0.0);
             }
         }.runTaskTimer(plugin, 0L, 1L);

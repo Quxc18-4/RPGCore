@@ -71,6 +71,8 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.FoodListener(this, this.boredomManager, this.foodBuffManager), this);
         // [MỚI]: ĐĂNG KÝ BANK LISTENER
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.BankListener(this, bankManager, currencyManager, playerManager), this);
+        // [MỚI]: ĐĂNG KÝ LISTENER CHO SÁT THỦ
+        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.AssassinListener(this), this);
 
         // [MỚI]: ĐĂNG KÝ SỰ KIỆN CHO CỬA HÀNG (SHOP)
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.ShopListener(shopManager, currencyManager, playerManager), this);
@@ -104,6 +106,10 @@ public final class RPGCore extends JavaPlugin {
         }
         if (this.getCommand("spawnnpc") != null) {
             this.getCommand("spawnnpc").setExecutor(new SpawnNPCCommand());
+        }
+        // ĐĂNG KÝ LỆNH DUMMY
+        if (this.getCommand("dummy") != null) {
+            this.getCommand("dummy").setExecutor(new vn.minecraft.rPGCore.commands.DummyCommand());
         }
 
         getLogger().info("RPGCore đã được bật thành công!");

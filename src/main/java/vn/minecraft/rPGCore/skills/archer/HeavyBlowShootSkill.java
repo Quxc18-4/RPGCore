@@ -11,6 +11,7 @@ import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
+import vn.minecraft.rPGCore.managers.CombatManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 import vn.minecraft.rPGCore.skills.ISkill;
 
@@ -26,36 +27,34 @@ public class HeavyBlowShootSkill implements ISkill, Listener {
 
     public HeavyBlowShootSkill(JavaPlugin plugin) {
         this.plugin = plugin;
-        // Tự đăng ký Listener cho chính nó để xử lý vụ nổ độc lập
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
 
     @Override public String getId() { return "archer_heavy_blow"; }
     @Override public String getName() { return "Trọng Tiễn"; }
     @Override public String getRequiredClass() { return "archer"; }
-    @Override public Material getIcon() { return Material.MACE; } // Icon chùy xịn xò
-    @Override public int getMaxLevel() { return 3; } // Nâng cấp 2 lần = Max lv 3
-    @Override public int getUpgradeCost(int currentLevel) { return 2; } // Tiêu tốn 2 SP mỗi lần
+    @Override public Material getIcon() { return Material.MACE; }
+    @Override public int getMaxLevel() { return 3; }
+    @Override public int getUpgradeCost(int currentLevel) { return 2; }
 
-    @Override public int getRequiredPlayerLevel() { return 34; } // Yêu cầu người chơi lv 34
+    @Override public int getRequiredPlayerLevel() { return 34; }
 
     @Override
     public Map<String, Integer> getRequiredSkills() {
-        return Collections.singletonMap("archer_triple_shot", 10); // Cần Tam Tiễn lv 10
+        return Collections.singletonMap("archer_triple_shot", 10);
     }
 
     @Override
     public double getManaCost(int level) {
-        return 90.0 + (level - 1) * 15.0; // 90 / 105 / 120
+        return 90.0 + (level - 1) * 15.0;
     }
 
     @Override
     public long getCooldown(int level) {
-        double cd = 20.0 - (level - 1) * 1.5; // 20 / 18.5 / 17
+        double cd = 20.0 - (level - 1) * 1.5;
         return (long) (cd * 1000);
     }
 
-    // --- CÁC THÔNG SỐ SÁT THƯƠNG ---
     private double getDirectDmg(int level) { return (level == 3) ? 22.0 : (level == 2) ? 18.0 : 15.0; }
     private double getHitAoEMulti(int level) { return (level == 3) ? 6.0 : (level == 2) ? 4.8 : 4.0; }
     private double getMissAoEMulti(int level) { return (level == 3) ? 6.5 : (level == 2) ? 5.0 : 4.0; }
@@ -101,50 +100,31 @@ public class HeavyBlowShootSkill implements ISkill, Listener {
 
         player.sendMessage("§c§l[!] TRỌNG TIỄN!");
 
-        // 1. HIỆU ỨNG NHẢY BỔNG VÀ BẬT LÙI (Evasion Style)
         Location currentEyeLoc = player.getEyeLocation();
         Vector lookDir = currentEyeLoc.getDirection();
-
-        // Lấy vector chỉ hướng ngang và đảo ngược nó lại (đẩy lùi về sau)
         Vector backward = new Vector(-lookDir.getX(), 0, -lookDir.getZ());
 
-        // Chống lỗi Toán học (NaN) nếu người chơi nhìn thẳng tắp lên trời/xuống đất
-        if (backward.lengthSquared() > 0) {
-            backward.normalize();
-        } else {
-            backward = new Vector(-1, 0, 0);
-        }
+        if (backward.lengthSquared() > 0) backward.normalize();
+        else backward = new Vector(-1, 0, 0);
 
-        // Lực nảy lên (Y) = 1.25 (Cao khoảng 5 block, nảy cao hơn 2 block so với cũ)
-        // Lực lùi (XZ) = 1.2 (Tạo góc bật lùi khoảng 40-45 độ về phía sau)
         Vector jumpVector = backward.multiply(1.2).setY(1.25);
-
         player.setVelocity(jumpVector);
         player.getWorld().playSound(player.getLocation(), org.bukkit.Sound.ENTITY_WIND_CHARGE_WIND_BURST, 1.0f, 1.0f);
 
-        // 2. DELAY 15 TICKS (0.75s) ĐỂ BAY ĐẾN ĐỈNH TRƯỚC KHI BẮN
-        // Do nảy cao hơn, thời gian đạt đỉnh (Apex) sẽ lâu hơn, phải tăng Delay lên 15 ticks
         new BukkitRunnable() {
             @Override
             public void run() {
-                // Lấy lại vị trí và hướng NHÌN MỚI sau khi đã bị đẩy lùi
                 Location eyeLoc = player.getEyeLocation();
                 Vector dir = eyeLoc.getDirection();
 
-                // Bắn mũi tên với tốc độ cực nhanh (4.5f)
                 Arrow arrow = player.getWorld().spawnArrow(eyeLoc, dir, 4.5f, 0f);
                 arrow.setShooter(player);
 
-                // Dán nhãn cho ArcherListener xử lý Dmg trực tiếp
                 arrow.setMetadata("Is_Custom_Skill", new FixedMetadataValue(plugin, true));
-                arrow.setMetadata("Skill_DmgMulti", new FixedMetadataValue(plugin, getDirectDmg(level)));
-                arrow.setMetadata("Skill_ArmorPen", new FixedMetadataValue(plugin, 0.40));
-
-                // Dán nhãn để xử lý Vụ nổ
                 arrow.setMetadata("HeavyBlow_Level", new FixedMetadataValue(plugin, level));
+
                 activeShooters.put(arrow.getUniqueId(), rpgPlayer);
 
-                // Tạo vệt lửa đen cực ngầu
                 new BukkitRunnable() {
                     @Override
                     public void run() {
@@ -156,73 +136,72 @@ public class HeavyBlowShootSkill implements ISkill, Listener {
                     }
                 }.runTaskTimer(plugin, 0L, 1L);
 
-                // Xóa rác Map dự phòng nếu mũi tên bay vào hư không
                 new BukkitRunnable() {
                     @Override
                     public void run() { activeShooters.remove(arrow.getUniqueId()); }
                 }.runTaskLater(plugin, 200L);
             }
-        }.runTaskLater(plugin, 15L); // <--- Đã sửa Delay thành 15L để khớp với độ cao mới
+        }.runTaskLater(plugin, 15L);
 
         return true;
     }
 
-    // ===============================================
-    // LẮNG NGHE SỰ KIỆN CHẠM ĐÍCH (ĐỂ GÂY NỔ AOE)
-    // ===============================================
     @EventHandler
     public void onHeavyArrowHit(org.bukkit.event.entity.ProjectileHitEvent event) {
         if (!(event.getEntity() instanceof Arrow)) return;
         Arrow arrow = (Arrow) event.getEntity();
 
-        // Kiểm tra xem mũi tên này có phải Trọng Tiễn không
         if (!activeShooters.containsKey(arrow.getUniqueId())) return;
-
-        // Ngăn kích nổ 2 lần
         if (arrow.hasMetadata("HeavyBlow_Exploded")) return;
+
         arrow.setMetadata("HeavyBlow_Exploded", new FixedMetadataValue(plugin, true));
 
         RPGPlayer rpgPlayer = activeShooters.remove(arrow.getUniqueId());
         Player shooter = (Player) arrow.getShooter();
         int level = arrow.getMetadata("HeavyBlow_Level").get(0).asInt();
 
-        // Tạo hiệu ứng nổ hoành tráng
         arrow.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, arrow.getLocation(), 1);
         arrow.getWorld().playSound(arrow.getLocation(), org.bukkit.Sound.ENTITY_GENERIC_EXPLODE, 1.5f, 0.8f);
 
-        // Lấy Sức mạnh thô (Base Dmg + Weapon Dmg) để tính cho vụ nổ
-        double weaponDmg = (shooter.getInventory().getItemInMainHand().getType() == Material.CROSSBOW) ? 25.0 : 15.0;
-        double baseDmg = rpgPlayer.getAttributeData().getAttribute("STR") * 2.0;
-        double rawDmg = baseDmg + weaponDmg;
+        boolean isCrossbow = shooter.getInventory().getItemInMainHand().getType() == Material.CROSSBOW;
 
-        if (event.getHitEntity() != null) {
-            // --- TRƯỜNG HỢP: TRÚNG QUÁI ---
-            double aoeDmg = rawDmg * getHitAoEMulti(level);
-            damageNearby(arrow.getLocation(), shooter, event.getHitEntity(), aoeDmg);
+        if (event.getHitEntity() != null && event.getHitEntity() instanceof org.bukkit.entity.LivingEntity) {
+            org.bukkit.entity.LivingEntity target = (org.bukkit.entity.LivingEntity) event.getHitEntity();
+
+            // [ĐÃ SỬA TỐI ƯU]: Đẩy hệ số tính sát thương vào CombatManager để tận dụng Cơ chế RPG
+            double directMulti = getDirectDmg(level);
+            double extraArmorPen = 40.0; // Trọng Tiễn mặc định có 40% Xuyên giáp
+
+            double finalDirectDmg = CombatManager.calculateDamage(shooter, rpgPlayer, target, directMulti, extraArmorPen, 0.0, 0.0, false, isCrossbow);
+            CombatManager.applySkillDamage(shooter, target, finalDirectDmg);
+
+            // Gây nổ AoE cho đám xung quanh
+            double aoeMulti = getHitAoEMulti(level);
+            damageNearby(arrow.getLocation(), shooter, rpgPlayer, target, aoeMulti, isCrossbow);
 
         } else if (event.getHitBlock() != null) {
-            // --- TRƯỜNG HỢP: BẮN TRƯỢT XUỐNG ĐẤT ---
-            double aoeDmg = rawDmg * getMissAoEMulti(level);
-            damageNearby(arrow.getLocation(), shooter, null, aoeDmg);
 
-            // HOÀN TRẢ MANA
+            // --- TRƯỜNG HỢP: BẮN TRƯỢT XUỐNG ĐẤT ---
+            double aoeMulti = getMissAoEMulti(level);
+            damageNearby(arrow.getLocation(), shooter, rpgPlayer, null, aoeMulti, isCrossbow);
+
             double refund = getManaCost(level) * 0.40;
             double newMana = Math.min(rpgPlayer.getTotalMaxResource(), rpgPlayer.getCurrentResource() + refund);
             rpgPlayer.setCurrentResource(newMana);
             shooter.sendMessage("§b⚡ Đã hoàn lại " + (int)refund + " Mana do bắn trượt!");
         }
 
-        // Dọn dẹp mũi tên ngay lập tức
         arrow.remove();
     }
 
-    // Hàm gây sát thương diện rộng
-    private void damageNearby(Location loc, Player shooter, org.bukkit.entity.Entity ignoreEntity, double damage) {
+    private void damageNearby(Location loc, Player shooter, RPGPlayer rpgPlayer, org.bukkit.entity.Entity ignoreEntity, double dmgMulti, boolean isCrossbow) {
         for (org.bukkit.entity.Entity e : loc.getWorld().getNearbyEntities(loc, 3.0, 3.0, 3.0)) {
             if (e instanceof org.bukkit.entity.LivingEntity && e != shooter && e != ignoreEntity) {
-                // Sát thương này là sát thương vật lý thuần túy bỏ qua I-Frame nhưng vẫn bị cản bởi Giáp
-                ((org.bukkit.entity.LivingEntity) e).setNoDamageTicks(0);
-                ((org.bukkit.entity.LivingEntity) e).damage(damage, shooter);
+                org.bukkit.entity.LivingEntity target = (org.bukkit.entity.LivingEntity) e;
+
+                // Vụ nổ AoE cũng được nhận Chí Mạng, Xuyên Giáp từ Trang Bị
+                double finalDmg = CombatManager.calculateDamage(shooter, rpgPlayer, target, dmgMulti, 40.0, 0.0, 0.0, false, isCrossbow);
+                CombatManager.applySkillDamage(shooter, target, finalDmg);
             }
         }
     }

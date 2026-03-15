@@ -44,3 +44,7 @@ commands:
   spawnnpc:
     description: "Trieu hoi NPC Thuong Nhan / Ngan Hang."
     usage: "/spawnnpc <bank|weapon|food|general>"
+  dummy:
+    description: Triệu hồi bù nhìn thử nghiệm sát thương.
+    usage: /dummy
+    permission: rpgcore.admin
