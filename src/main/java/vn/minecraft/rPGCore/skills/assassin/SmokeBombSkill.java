@@ -46,7 +46,6 @@ public class SmokeBombSkill implements ISkill {
 
     @Override
     public List<String> getDescription(int level) {
-        // [ĐÃ SỬA]: Thời gian tàng hình Base 12s (+2s mỗi cấp) -> 12/14/16/18/20s
         int duration = 10 + (level * 2);
         return Arrays.asList(
                 "§7Ném bom khói xuống chân, lẩn trốn vào bóng đêm.",
@@ -98,14 +97,19 @@ public class SmokeBombSkill implements ISkill {
             }
         }
 
-        // [ĐÃ SỬA]: Thời gian tác dụng logic thực tế
         long durationMillis = (10 + (level * 2)) * 1000L;
         stealthEndTimes.put(player.getUniqueId(), now + durationMillis);
 
         if (activeTasks.containsKey(player.getUniqueId())) {
             player.sendMessage("§8§l[!] Làn khói được làm mới. Khôi phục tàng hình!");
+            // Đảm bảo cờ Synergy luôn tồn tại nếu làm mới
+            player.setMetadata("Assassin_Smoke_Bomb_Active", new FixedMetadataValue(plugin, true));
         } else {
             player.setMetadata("Assassin_Stealth", new FixedMetadataValue(plugin, true));
+            // ==========================================
+            // [MỚI FIX]: GẮN CỜ SYNERGY CHO GIA TỐC BÓNG ĐÊM ĐỌC
+            // ==========================================
+            player.setMetadata("Assassin_Smoke_Bomb_Active", new FixedMetadataValue(plugin, true));
             player.sendMessage("§8§l[!] Bạn đã lẩn khuất vào bóng đêm...");
 
             for (Player p : Bukkit.getOnlinePlayers()) {
@@ -139,8 +143,13 @@ public class SmokeBombSkill implements ISkill {
     }
 
     private void breakStealth(Player player) {
-        if (player.hasMetadata("Assassin_Stealth")) {
+        if (player.hasMetadata("Assassin_Stealth") || player.hasMetadata("Assassin_Smoke_Bomb_Active")) {
             player.removeMetadata("Assassin_Stealth", plugin);
+            // ==========================================
+            // [MỚI FIX]: XÓA CỜ SYNERGY KHI HIỆN HÌNH
+            // ==========================================
+            player.removeMetadata("Assassin_Smoke_Bomb_Active", plugin);
+
             player.sendMessage("§c§l[!] Bạn đã hiện hình!");
             for (Player p : Bukkit.getOnlinePlayers()) {
                 p.showPlayer(plugin, player);

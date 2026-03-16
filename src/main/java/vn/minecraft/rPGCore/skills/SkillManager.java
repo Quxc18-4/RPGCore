@@ -27,6 +27,7 @@ public class SkillManager {
         registerSkill(new SmokeBombSkill(plugin));
         registerSkill(new PoisonDartSkill(plugin));
         registerSkill(new FatalBlowSkill(plugin));
+        registerSkill(new ShadowStepSkill(plugin));
     }
 
     public void registerSkill(ISkill skill) {
