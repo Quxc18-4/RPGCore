@@ -83,7 +83,8 @@ public class ShadowDashSkill implements ISkill {
         lore.add("§7Gây sát thương: §c" + (int)dmg + "% §7dọc đường lướt.");
         lore.add("");
         lore.add("§8[Chuỗi Kết Liễu]:");
-        lore.add("§7Nếu lướt trúng ít nhất 1 mục tiêu, sau §e0.5s");
+        // [ĐÃ SỬA]: Thời gian chờ thành 0.75s
+        lore.add("§7Nếu lướt trúng ít nhất 1 mục tiêu, sau §e0.75s");
         lore.add("§7bạn sẽ tự động lướt thêm 1 lần nữa về");
         lore.add("§7hướng đang nhìn.");
         lore.add("");
@@ -99,7 +100,8 @@ public class ShadowDashSkill implements ISkill {
             lore.add("");
             lore.add("§6§l✦ ĐỘT PHÁ TỐI THƯỢNG ✦");
             lore.add("§eNếu lần lướt thứ 2 vẫn trúng mục tiêu,");
-            lore.add("§esau 0.5s sẽ kích hoạt Lướt lần 3 với");
+            // [ĐÃ SỬA]: Thời gian chờ thành 0.75s
+            lore.add("§esau 0.75s sẽ kích hoạt Lướt lần 3 với");
             lore.add("§esát thương được x2 (Nhân đôi)!");
         }
         return lore;
@@ -169,12 +171,18 @@ public class ShadowDashSkill implements ISkill {
             boolean hitAny = false;
             final Set<UUID> hitTargets = new HashSet<>();
 
-            // Cài đặt hạt bụi màu tím rực rỡ cho dải lướt
             final Particle.DustOptions purpleDust = new Particle.DustOptions(Color.fromRGB(138, 43, 226), 1.5f);
 
             @Override
             public void run() {
-                if (ticks > 5 || player.isDead() || !player.isOnline()) {
+                Location currentLoc = player.getLocation();
+
+                // ==========================================
+                // [MỚI FIX]: KHÓA KHOẢNG CÁCH CỐ ĐỊNH (10 BLOCKS)
+                // Khoảng cách >= 10 blocks (100.0 distance squared) sẽ thắng gấp
+                // Ticks > 3 (0.2s) đóng vai trò bộ đếm thời gian tối đa để chống kẹt tường
+                // ==========================================
+                if (currentLoc.distanceSquared(startLoc) >= 100.0 || ticks > 3 || player.isDead() || !player.isOnline()) {
                     player.setVelocity(new Vector(0, 0, 0));
                     player.setFallDistance(0);
                     this.cancel();
@@ -182,15 +190,13 @@ public class ShadowDashSkill implements ISkill {
                     return;
                 }
 
-                // [ĐÃ GIẢM KHOẢNG CÁCH]: Giảm Velocity từ 2.6 xuống 2.1
-                player.setVelocity(dir.clone().multiply(2.1).setY(0.05));
-                Location currentLoc = player.getLocation();
+                // [MỚI FIX]: Tăng tốc độ bay từ 2.1 lên 3.2 (Cực kỳ chớp nhoáng)
+                player.setVelocity(dir.clone().multiply(3.2).setY(0.05));
 
-                // [HIỆU ỨNG MỚI]: Nhả khói tím liên tục trong lúc lướt
                 currentLoc.getWorld().spawnParticle(Particle.DUST, currentLoc.clone().add(0, 1, 0), 6, 0.2, 0.2, 0.2, purpleDust);
                 currentLoc.getWorld().spawnParticle(Particle.WITCH, currentLoc.clone().add(0, 1, 0), 4, 0.2, 0.2, 0.2, 0.05);
 
-                if (currentLoc.distance(lastShadowLoc) >= 4.0) {
+                if (currentLoc.distanceSquared(lastShadowLoc) >= 16.0) { // Đạt đủ 4 block sẽ thả 1 bóng
                     spawnShadowTrail(lastShadowLoc);
                     lastShadowLoc = currentLoc.clone();
                 }
@@ -206,7 +212,6 @@ public class ShadowDashSkill implements ISkill {
                         double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, finalDmgMulti, 0.0, extraCrit, 0.0, false, false);
                         CombatManager.applySkillDamage(player, target, finalDmg);
 
-                        // Hiệu ứng khi chém trúng địch (Thêm tia lửa tím)
                         target.getWorld().spawnParticle(Particle.SWEEP_ATTACK, target.getLocation().add(0, 1, 0), 1);
                         target.getWorld().spawnParticle(Particle.FIREWORK, target.getLocation().add(0, 1, 0), 5, 0.2, 0.2, 0.2, 0.1);
                         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_ATTACK_SWEEP, 1.0f, 1.2f);
@@ -248,13 +253,14 @@ public class ShadowDashSkill implements ISkill {
     }
 
     // ==========================================
-    // BỘ ĐẾM 0.5S CHUẨN BỊ CHO LƯỚT TIẾP THEO
+    // BỘ ĐẾM 0.75S CHUẨN BỊ CHO LƯỚT TIẾP THEO
     // ==========================================
     private void scheduleNextDash(final Player player, final RPGPlayer rpgPlayer, final int level, final int nextPhase) {
-        player.sendMessage("§e§l[!] Nhắm mục tiêu! Lướt lần " + nextPhase + " sau 0.5s...");
+        player.sendMessage("§e§l[!] Nhắm mục tiêu! Lướt lần " + nextPhase + " sau 0.6s...");
 
         new BukkitRunnable() {
-            int timer = 10;
+            // [MỚI FIX]: 12 ticks = 0.6 giây
+            int timer = 12;
 
             @Override
             public void run() {
@@ -285,7 +291,6 @@ public class ShadowDashSkill implements ISkill {
         Particle.DustOptions darkPurple = new Particle.DustOptions(Color.fromRGB(75, 0, 130), 1.0f);
 
         for (double y = 0.2; y <= 1.8; y += 0.4) {
-            // [HIỆU ỨNG MỚI]: Tàng ảnh kết hợp giữa Mực đen và Bụi tím đậm
             loc.getWorld().spawnParticle(Particle.SQUID_INK, loc.clone().add(0, y, 0), 1, 0.15, 0.1, 0.15, 0.01);
             loc.getWorld().spawnParticle(Particle.DUST, loc.clone().add(0, y, 0), 2, 0.15, 0.1, 0.15, darkPurple);
         }
