@@ -93,7 +93,6 @@ public class RPGPlayer {
 
         boolean isArcher = currentClass != null && currentClass.getId().equalsIgnoreCase("archer");
         boolean isMage = currentClass != null && currentClass.getId().equalsIgnoreCase("mage");
-        boolean isMagicClass = currentClass != null && currentClass.getResourceType().name().equals("MANA");
 
         int str = attributeData.getAttribute("STR");
         int intel = attributeData.getAttribute("INT");
@@ -101,26 +100,32 @@ public class RPGPlayer {
         int agi = attributeData.getAttribute("AGI");
         int luk = attributeData.getAttribute("LUK");
 
-        // 1. SÁT THƯƠNG
-        double strBonus = isMagicClass ? 0 : (str * 2.0);
-        double intBonus = intel * 2.0;
-        double foodDmg = foodManager.getBonus(uuid, FoodBuffManager.StatType.DMG);
+        // ==========================================
+        // 1. SÁT THƯƠNG [ĐÃ CHỈNH SỬA SCALE THEO %]
+        // Mỗi điểm STR = +0.5% Sát thương vật lý (Dmg Multiplier)
+        // Mỗi điểm INT = +0.5% Sát thương phép thuật (Dmg Multiplier)
+        // ==========================================
+        double strMultiplier = 1.0 + (str * 0.005);
+        double intMultiplier = 1.0 + (intel * 0.005);
+        double foodMultiplier = 1.0 + (foodManager.getBonus(uuid, FoodBuffManager.StatType.DMG) / 100.0);
 
         boolean isMagicalWeapon = currentStats.maxMagicalDamage > 0;
         boolean isPhysicalWeapon = currentStats.maxPhysicalDamage > 0;
 
         if (isPhysicalWeapon || !isMagicalWeapon) {
-            double minP = (currentStats.minPhysicalDamage > 0 ? currentStats.minPhysicalDamage : 5.0) + strBonus;
-            double maxP = (currentStats.maxPhysicalDamage > 0 ? currentStats.maxPhysicalDamage : 10.0) + strBonus;
-            map.put("Sát thương vật lý (Nhỏ nhất)", minP * (1 + foodDmg/100));
-            map.put("Sát thương vật lý (Lớn nhất)", maxP * (1 + foodDmg/100));
+            double minP = currentStats.minPhysicalDamage > 0 ? currentStats.minPhysicalDamage : 5.0;
+            double maxP = currentStats.maxPhysicalDamage > 0 ? currentStats.maxPhysicalDamage : 10.0;
+
+            map.put("Sát thương vật lý (Nhỏ nhất)", minP * strMultiplier * foodMultiplier);
+            map.put("Sát thương vật lý (Lớn nhất)", maxP * strMultiplier * foodMultiplier);
         }
 
         if (isMagicalWeapon) {
-            double minM = currentStats.minMagicalDamage + intBonus;
-            double maxM = currentStats.maxMagicalDamage + intBonus;
-            map.put("Sát thương phép thuật (Nhỏ nhất)", minM * (1 + foodDmg/100));
-            map.put("Sát thương phép thuật (Lớn nhất)", maxM * (1 + foodDmg/100));
+            double minM = currentStats.minMagicalDamage > 0 ? currentStats.minMagicalDamage : 5.0;
+            double maxM = currentStats.maxMagicalDamage > 0 ? currentStats.maxMagicalDamage : 10.0;
+
+            map.put("Sát thương phép thuật (Nhỏ nhất)", minM * intMultiplier * foodMultiplier);
+            map.put("Sát thương phép thuật (Lớn nhất)", maxM * intMultiplier * foodMultiplier);
         }
 
         // 2. PHÒNG THỦ & MÁU
@@ -180,9 +185,6 @@ public class RPGPlayer {
         double cdr = currentStats.cooldownReduction + (intel * 0.1) + foodManager.getBonus(uuid, FoodBuffManager.StatType.CDR);
         map.put("Giảm hồi chiêu", Math.min(cdr, 40.0));
 
-        // ==========================================
-        // [MỚI CẬP NHẬT]: THU THẬP BUFF TỐC CHẠY TỪ SKILL
-        // ==========================================
         double moveSpeed = currentStats.moveSpeed + (agi * 0.5) + foodManager.getBonus(uuid, FoodBuffManager.StatType.MOVE_SPEED);
 
         // Đọc buff từ các kỹ năng tăng tốc (VD: Khinh Công Ám Ảnh)
@@ -191,9 +193,8 @@ public class RPGPlayer {
         }
 
         // GIỚI HẠN TỐC ĐỘ CHẠY (CAP) - Tránh bị scale quá mức
-        moveSpeed = Math.min(moveSpeed, 400.0); // Ví dụ: Max +150% tốc độ
+        moveSpeed = Math.min(moveSpeed, 400.0); // Ví dụ: Max +400% tốc độ
         map.put("Tốc độ di chuyển", moveSpeed);
-        // ==========================================
 
         map.put("Nhận Kinh nghiệm", currentStats.expBonus);
         map.put("Hồi Năng lượng", currentStats.manaRegen);
@@ -263,7 +264,6 @@ public class RPGPlayer {
                                 if (statName.equals("Độ bền") || statName.equals("Cơ hội bảo vệ")) continue;
                                 double val = Double.parseDouble(valStr);
 
-                                // TOÀN BỘ CÁC CHỈ SỐ ĐÃ ĐƯỢC THÊM VÀO ĐÂY
                                 switch (statName) {
                                     case "Máu tối đa":
                                         if (isPercent) currentStats.hpMultiplier += (val / 100.0);
@@ -400,7 +400,10 @@ public class RPGPlayer {
             this.currentExp -= getRequiredExp();
             int newLevel = this.bukkitPlayer.getLevel() + 1;
             this.bukkitPlayer.setLevel(newLevel);
-            this.attributeData.addUnspentAttrPoints(3);
+            // ==========================================
+            // [ĐÃ CHỈNH SỬA] Tăng điểm cộng AP từ 3 lên 4
+            // ==========================================
+            this.attributeData.addUnspentAttrPoints(4);
             this.skillData.addSkillPoints(1);
             updateMaxStats();
             this.bukkitPlayer.sendMessage("§b§lLEVEL UP! §fBạn đã đạt cấp độ §e" + newLevel);
@@ -422,7 +425,6 @@ public class RPGPlayer {
     }
     public void heal(double amount) {
         if (!this.bukkitPlayer.isDead()) {
-            // [THÊM DÒNG NÀY]: CHẶN HỒI MÁU NẾU DÍNH PHI TIÊU SÁT THỦ
             if (this.bukkitPlayer.hasMetadata("Assassin_AntiHeal")) {
                 long expire = this.bukkitPlayer.getMetadata("Assassin_AntiHeal").get(0).asLong();
                 if (System.currentTimeMillis() < expire) return;
@@ -443,10 +445,13 @@ public class RPGPlayer {
         this.currentResource = Math.max(0, Math.min(currentResource, getTotalMaxResource()));
     }
 
+    // ==========================================
+    // [ĐÃ CHỈNH SỬA] Tăng điểm Mana/Stamina từ 0.5 lên 1.0 cho mỗi STR / INT
+    // ==========================================
     public double getTotalMaxResource() {
         double baseRes = this.currentClass != null ? this.currentClass.getMaxResource() : 100.0;
         boolean isMana = this.currentClass != null && this.currentClass.getResourceType().name().equals("MANA");
-        double attrBonus = isMana ? (this.attributeData.getAttribute("INT") * 0.5) : (this.attributeData.getAttribute("STR") * 0.5);
+        double attrBonus = isMana ? (this.attributeData.getAttribute("INT") * 1.0) : (this.attributeData.getAttribute("STR") * 1.0);
         return baseRes + attrBonus;
     }
 }
