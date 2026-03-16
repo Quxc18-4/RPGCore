@@ -94,23 +94,13 @@ public class PlayerListener implements Listener {
     @EventHandler
     public void onDealDamage(EntityDamageByEntityEvent event) {
 
-        // 1. KHI NGƯỜI CHƠI TẤN CÔNG (ĐÁNH THƯỜNG MELEE)
         if (event.getDamager() instanceof Player && event.getEntity() instanceof LivingEntity) {
             Player attacker = (Player) event.getDamager();
             LivingEntity target = (LivingEntity) event.getEntity();
 
-            // ==========================================
-            // [CHỐNG LỖI 1]: KHÓA SÁT THƯƠNG ẢO DO KỸ NĂNG GÂY RA
-            // Khi Kỹ năng gọi target.damage(), Bukkit sinh ra sự kiện đánh tay ảo. Ta phải chặn nó.
-            // ==========================================
             if (attacker.hasMetadata("Skill_Damage_Lock")) {
                 return;
             }
-
-            // ==========================================
-            // [CHỐNG LỖI 2]: KHÓA ĐÁNH TAY TRONG LÚC ĐANG COMBO RRRR
-            // Ngăn việc click chuột vô tình va trúng quái sinh ra đòn đánh tay
-            // ==========================================
             if (attacker.hasMetadata("Skill_Just_Cast") || attacker.hasMetadata("Is_Casting")) {
                 event.setCancelled(true);
                 return;
@@ -118,6 +108,53 @@ public class PlayerListener implements Listener {
 
             RPGPlayer rpgAttacker = playerManager.getRPGPlayer(attacker.getUniqueId());
             if (rpgAttacker != null) {
+
+                // ==========================================
+                // BẮT ĐẦU CHECK VŨ KHÍ TẠI ĐÂY
+                // ==========================================
+                org.bukkit.inventory.ItemStack mainItem = attacker.getInventory().getItemInMainHand();
+                org.bukkit.Material mainType = mainItem.getType();
+                String classId = rpgAttacker.getCurrentClass().getId().toLowerCase();
+
+                String requiredClass = null;
+                boolean isWeapon = false;
+
+                if (mainType == org.bukkit.Material.BOW || mainType == org.bukkit.Material.CROSSBOW) {
+                    isWeapon = true;
+                    if (!classId.equals("archer")) requiredClass = "Cung Thủ (Archer)";
+                } else if (mainType == org.bukkit.Material.SHEARS) {
+                    isWeapon = true;
+                    if (!classId.equals("assassin")) requiredClass = "Sát Thủ (Assassin)";
+                } else if (mainType == org.bukkit.Material.STICK || mainType == org.bukkit.Material.BLAZE_ROD) {
+                    isWeapon = true;
+                    if (!classId.equals("mage")) requiredClass = "Pháp Sư (Mage)";
+                } else if (mainType == org.bukkit.Material.LEAD) {
+                    isWeapon = true;
+                    if (!classId.equals("summoner")) requiredClass = "Triệu Hồi Sư (Summoner)";
+                } else if (mainType.name().endsWith("_HOE")) {
+                    isWeapon = true;
+                    if (!classId.equals("reaper")) requiredClass = "Tử Thần (Reaper)";
+                } else if (mainType.name().endsWith("_SWORD") || mainType.name().endsWith("_AXE")) {
+                    isWeapon = true;
+                    if (!classId.equals("warrior") && !classId.equals("guardian") && !classId.equals("commoner")) {
+                        requiredClass = "Chiến Binh / Vệ Binh";
+                    }
+                }
+
+                // Nếu cầm vũ khí (không phải tay không/block) mà sai phái -> chặn
+                if (isWeapon && requiredClass != null) {
+                    event.setCancelled(true);
+                    attacker.sendMessage("§c§l[!] §cVũ khí này chỉ dành cho hệ phái " + requiredClass + "!");
+                    return;
+                }
+
+                // Gọi EquipmentListener kiểm tra Lore (Level)
+                EquipmentListener eqListener = new EquipmentListener(playerManager);
+                if (!eqListener.canPlayerUse(attacker, mainItem)) {
+                    event.setCancelled(true);
+                    return;
+                }
+
                 rpgAttacker.setInCombat();
 
                 if (event.getCause() == EntityDamageEvent.DamageCause.ENTITY_ATTACK || event.getCause() == EntityDamageEvent.DamageCause.ENTITY_SWEEP_ATTACK) {
@@ -132,8 +169,6 @@ public class PlayerListener implements Listener {
                         extraCritDmg = 300.0 + ((fbLevel - 1) * 20.0);
 
                         attacker.removeMetadata("Assassin_FatalBlow_Level", vn.minecraft.rPGCore.RPGCore.getInstance());
-
-                        // Đổi sang CRIT_MAGIC để chống Crash
                         attacker.getWorld().spawnParticle(Particle.ENCHANTED_HIT, target.getLocation().add(0, 1, 0), 20, 0.3, 0.3, 0.3, 0.1);
                         attacker.sendMessage("§c§l[!] §fĐòn đánh thường được Cường hóa!");
                     }
@@ -144,12 +179,11 @@ public class PlayerListener implements Listener {
 
                     event.setDamage(finalDamage);
                     vn.minecraft.rPGCore.managers.CombatManager.applyLifeSteal(attacker, rpgAttacker, finalDamage, 0.0, isMagicWeapon);
-                    vn.minecraft.rPGCore.managers.DurabilityManager.damageItem(attacker, rpgAttacker, attacker.getInventory().getItemInMainHand(), 1);
+                    vn.minecraft.rPGCore.managers.DurabilityManager.damageItem(attacker, rpgAttacker, mainItem, 1);
                 }
             }
         }
 
-        // 2. KHI NGƯỜI CHƠI BỊ TẤN CÔNG (BỊ QUÁI ĐÁNH)
         if (event.getEntity() instanceof Player) {
             Player victim = (Player) event.getEntity();
             RPGPlayer rpgVictim = playerManager.getRPGPlayer(victim.getUniqueId());

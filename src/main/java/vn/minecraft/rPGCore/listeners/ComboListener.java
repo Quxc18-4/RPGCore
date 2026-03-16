@@ -47,38 +47,48 @@ public class ComboListener implements Listener {
         Material mainType = mainItem.getType();
         String classId = rpgPlayer.getCurrentClass().getId().toLowerCase();
 
-        // KIỂM TRA VŨ KHÍ HỢP LỆ THEO CLASS
-        boolean isValidWeapon = false;
-        switch (classId) {
-            case "archer":
-                isValidWeapon = (mainType == Material.BOW || mainType == Material.CROSSBOW);
-                break;
-            case "assassin":
-                isValidWeapon = (mainType == Material.SHEARS); // Dao găm
-                break;
-            case "mage":
-                isValidWeapon = (mainType == Material.STICK || mainType == Material.BLAZE_ROD); // Trượng
-                break;
-            case "summoner":
-                isValidWeapon = (mainType == Material.LEAD); // Roi da
-                break;
-            case "reaper":
-                isValidWeapon = mainType.name().endsWith("_HOE"); // Lưỡi hái
-                break;
-            case "warrior":
-            case "guardian":
-            case "commoner":
-            default:
-                isValidWeapon = mainType.name().endsWith("_SWORD") || mainType.name().endsWith("_AXE"); // Kiếm, Rìu
-                break;
+        // 1. NHẬN DIỆN VŨ KHÍ NÀY LÀ CỦA PHÁI NÀO
+        String requiredClass = null;
+        boolean isWeapon = false;
+
+        if (mainType == Material.BOW || mainType == Material.CROSSBOW) {
+            isWeapon = true;
+            if (!classId.equals("archer")) requiredClass = "Cung Thủ (Archer)";
+        } else if (mainType == Material.SHEARS) {
+            isWeapon = true;
+            if (!classId.equals("assassin")) requiredClass = "Sát Thủ (Assassin)";
+        } else if (mainType == Material.STICK || mainType == Material.BLAZE_ROD) {
+            isWeapon = true;
+            if (!classId.equals("mage")) requiredClass = "Pháp Sư (Mage)";
+        } else if (mainType == Material.LEAD) {
+            isWeapon = true;
+            if (!classId.equals("summoner")) requiredClass = "Triệu Hồi Sư (Summoner)";
+        } else if (mainType.name().endsWith("_HOE")) {
+            isWeapon = true;
+            if (!classId.equals("reaper")) requiredClass = "Tử Thần (Reaper)";
+        } else if (mainType.name().endsWith("_SWORD") || mainType.name().endsWith("_AXE")) {
+            isWeapon = true;
+            if (!classId.equals("warrior") && !classId.equals("guardian") && !classId.equals("commoner")) {
+                requiredClass = "Chiến Binh / Vệ Binh";
+            }
         }
 
-        if (!isValidWeapon) return; // Nếu không cầm đúng vũ khí thì không ghi nhận Combo
+        // Nếu cầm cục đất, lúa mì... thì không phải vũ khí -> Bỏ qua combo
+        if (!isWeapon) return;
 
-        // KHÓA COMBO NẾU ĐANG NIỆM CHÚ (Liên Hoàn Tên / Khống chế)
-        if (player.hasMetadata("Is_Casting")) {
+        // BÁO LỖI: VŨ KHÍ KHÔNG PHẢI CỦA MÌNH
+        if (requiredClass != null) {
+            player.sendMessage("§c§l[!] §cVũ khí này chỉ dành cho hệ phái " + requiredClass + "!");
             return;
         }
+
+        // 2. VŨ KHÍ ĐÚNG PHÁI -> GỌI EQUIPMENT LISTENER ĐỂ KIỂM TRA LORE (LEVEL)
+        EquipmentListener eqListener = new EquipmentListener(playerManager);
+        if (!eqListener.canPlayerUse(player, mainItem)) {
+            return; // Hàm canPlayerUse của bạn đã tự động gửi tin nhắn báo Level, cấm vận chiêu!
+        }
+
+        if (player.hasMetadata("Is_Casting")) return;
 
         String click = (action.name().contains("LEFT")) ? "L" : "R";
         UUID uuid = player.getUniqueId();
@@ -106,7 +116,6 @@ public class ComboListener implements Listener {
         resetTask.runTaskLater(plugin, 20L);
         resetTasks.put(uuid, resetTask);
 
-        // KIỂM TRA SKILL TỪ INTERFACE
         if (combo.length() == 4) {
             String mappedSkillId = rpgPlayer.getSkillData().getSkillByCombo(combo);
             if (mappedSkillId != null) {
@@ -114,9 +123,16 @@ public class ComboListener implements Listener {
                 if (skill != null) {
                     int level = rpgPlayer.getSkillData().getSkillLevel(mappedSkillId);
 
-                    // Gọi hàm execute() của Interface
                     if (skill.execute(player, rpgPlayer, level)) {
                         player.sendActionBar("§a§l✔ Kích hoạt thành công!");
+
+                        player.setMetadata("Skill_Just_Cast", new org.bukkit.metadata.FixedMetadataValue(plugin, true));
+                        new BukkitRunnable() {
+                            @Override
+                            public void run() {
+                                if (player.hasMetadata("Skill_Just_Cast")) player.removeMetadata("Skill_Just_Cast", plugin);
+                            }
+                        }.runTaskLater(plugin, 10L);
                     }
                 }
             } else {
