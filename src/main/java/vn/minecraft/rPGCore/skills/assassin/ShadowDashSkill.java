@@ -9,6 +9,7 @@ import org.bukkit.Sound;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
@@ -76,15 +77,14 @@ public class ShadowDashSkill implements ISkill {
         List<String> lore = new ArrayList<>();
         int displayLevel = Math.max(1, level);
 
-        double dmg = getDamageMultiplier(displayLevel) * 100;
+        int dmg = (int) Math.round(getDamageMultiplier(displayLevel) * 100);
 
         lore.add("§7Lao vút đi về phía trước, cứ mỗi 4m");
         lore.add("§7sẽ để lại một Tàng ảnh của bản thân.");
-        lore.add("§7Gây sát thương: §c" + (int)dmg + "% §7dọc đường lướt.");
+        lore.add("§7Gây sát thương: §c" + dmg + "% §7dọc đường lướt.");
         lore.add("");
         lore.add("§8[Chuỗi Kết Liễu]:");
-        // [ĐÃ SỬA]: Thời gian chờ thành 0.75s
-        lore.add("§7Nếu lướt trúng ít nhất 1 mục tiêu, sau §e0.75s");
+        lore.add("§7Nếu lướt trúng ít nhất 1 mục tiêu, sau §e0.6s");
         lore.add("§7bạn sẽ tự động lướt thêm 1 lần nữa về");
         lore.add("§7hướng đang nhìn.");
         lore.add("");
@@ -100,8 +100,7 @@ public class ShadowDashSkill implements ISkill {
             lore.add("");
             lore.add("§6§l✦ ĐỘT PHÁ TỐI THƯỢNG ✦");
             lore.add("§eNếu lần lướt thứ 2 vẫn trúng mục tiêu,");
-            // [ĐÃ SỬA]: Thời gian chờ thành 0.75s
-            lore.add("§esau 0.75s sẽ kích hoạt Lướt lần 3 với");
+            lore.add("§esau 0.6s sẽ kích hoạt Lướt lần 3 với");
             lore.add("§esát thương được x2 (Nhân đôi)!");
         }
         return lore;
@@ -136,20 +135,38 @@ public class ShadowDashSkill implements ISkill {
             for (Player p : Bukkit.getOnlinePlayers()) p.showPlayer(plugin, player);
         }
 
+        // ==========================================
+        // BƯỚC 1: LẤY BUFF fbLevel TỪ NGƯỜI CHƠI
+        // ==========================================
+        int fbLevel = 0;
+        if (player.hasMetadata("Assassin_FatalBlow_Level")) {
+            fbLevel = player.getMetadata("Assassin_FatalBlow_Level").get(0).asInt();
+            player.removeMetadata("Assassin_FatalBlow_Level", plugin);
+            player.getWorld().spawnParticle(Particle.ENCHANTED_HIT, player.getLocation().add(0, 1, 0), 20, 0.3, 0.3, 0.3, 0.1);
+            player.sendMessage("§c§l[!] §fLướt Bóng Đêm được Cường hóa!");
+        }
+
         player.sendMessage("§8§l[!] LƯỚT BÓNG ĐÊM!");
 
-        performDash(player, rpgPlayer, level, 1, fromStealth);
+        // Chuyền fbLevel vào lần lướt ĐẦU TIÊN
+        performDash(player, rpgPlayer, level, 1, fromStealth, fbLevel);
 
         return true;
     }
 
     // ==========================================
-    // LOGIC LƯỚT VÀ GÂY SÁT THƯƠNG
+    // BƯỚC 2: HÀM LƯỚT (Nhận fbLevel)
     // ==========================================
-    private void performDash(final Player player, final RPGPlayer rpgPlayer, final int level, final int dashPhase, final boolean fromStealth) {
+    private void performDash(final Player player, final RPGPlayer rpgPlayer, final int level, final int dashPhase, final boolean fromStealth, final int fbLevel) {
         if (!player.isOnline() || player.isDead()) return;
 
         double baseMulti = getDamageMultiplier(level);
+
+        // ÁP DỤNG BUFF SÁT THƯƠNG
+        if (fbLevel > 0) {
+            baseMulti += 2.00 + ((fbLevel - 1) * 0.15); // Cộng từ 200% -> 275%
+        }
+
         final double finalDmgMulti = (dashPhase == 3) ? baseMulti * 2.0 : baseMulti;
 
         final Location startLoc = player.getLocation();
@@ -177,26 +194,21 @@ public class ShadowDashSkill implements ISkill {
             public void run() {
                 Location currentLoc = player.getLocation();
 
-                // ==========================================
-                // [MỚI FIX]: KHÓA KHOẢNG CÁCH CỐ ĐỊNH (10 BLOCKS)
-                // Khoảng cách >= 10 blocks (100.0 distance squared) sẽ thắng gấp
-                // Ticks > 3 (0.2s) đóng vai trò bộ đếm thời gian tối đa để chống kẹt tường
-                // ==========================================
                 if (currentLoc.distanceSquared(startLoc) >= 100.0 || ticks > 3 || player.isDead() || !player.isOnline()) {
                     player.setVelocity(new Vector(0, 0, 0));
                     player.setFallDistance(0);
                     this.cancel();
-                    handleDashEnd(player, rpgPlayer, level, dashPhase, hitAny);
+                    // Lướt xong -> Chuyền fbLevel sang khâu xử lý Hậu quả
+                    handleDashEnd(player, rpgPlayer, level, dashPhase, hitAny, fbLevel);
                     return;
                 }
 
-                // [MỚI FIX]: Tăng tốc độ bay từ 2.1 lên 3.2 (Cực kỳ chớp nhoáng)
                 player.setVelocity(dir.clone().multiply(3.2).setY(0.05));
 
                 currentLoc.getWorld().spawnParticle(Particle.DUST, currentLoc.clone().add(0, 1, 0), 6, 0.2, 0.2, 0.2, purpleDust);
                 currentLoc.getWorld().spawnParticle(Particle.WITCH, currentLoc.clone().add(0, 1, 0), 4, 0.2, 0.2, 0.2, 0.05);
 
-                if (currentLoc.distanceSquared(lastShadowLoc) >= 16.0) { // Đạt đủ 4 block sẽ thả 1 bóng
+                if (currentLoc.distanceSquared(lastShadowLoc) >= 16.0) {
                     spawnShadowTrail(lastShadowLoc);
                     lastShadowLoc = currentLoc.clone();
                 }
@@ -224,9 +236,9 @@ public class ShadowDashSkill implements ISkill {
     }
 
     // ==========================================
-    // XỬ LÝ HẬU QUẢ SAU MỖI LẦN LƯỚT
+    // BƯỚC 3: XỬ LÝ HẬU QUẢ (Nhận và chuyền fbLevel đi tiếp)
     // ==========================================
-    private void handleDashEnd(Player player, RPGPlayer rpgPlayer, int level, int dashPhase, boolean hitAny) {
+    private void handleDashEnd(Player player, RPGPlayer rpgPlayer, int level, int dashPhase, boolean hitAny, int fbLevel) {
 
         if (dashPhase == 1 && !hitAny) {
             double refundMana = getManaCost(level) * 0.40;
@@ -245,22 +257,23 @@ public class ShadowDashSkill implements ISkill {
 
         if (hitAny) {
             if (dashPhase == 1) {
-                scheduleNextDash(player, rpgPlayer, level, 2);
+                // Chuyền fbLevel cho bộ đếm lần 2
+                scheduleNextDash(player, rpgPlayer, level, 2, fbLevel);
             } else if (dashPhase == 2 && level == 8) {
-                scheduleNextDash(player, rpgPlayer, level, 3);
+                // Chuyền fbLevel cho bộ đếm lần 3
+                scheduleNextDash(player, rpgPlayer, level, 3, fbLevel);
             }
         }
     }
 
     // ==========================================
-    // BỘ ĐẾM 0.75S CHUẨN BỊ CHO LƯỚT TIẾP THEO
+    // BƯỚC 4: BỘ ĐẾM THỜI GIAN (Giữ fbLevel và ném lại vào Bước 2)
     // ==========================================
-    private void scheduleNextDash(final Player player, final RPGPlayer rpgPlayer, final int level, final int nextPhase) {
+    private void scheduleNextDash(final Player player, final RPGPlayer rpgPlayer, final int level, final int nextPhase, final int fbLevel) {
         player.sendMessage("§e§l[!] Nhắm mục tiêu! Lướt lần " + nextPhase + " sau 0.6s...");
 
         new BukkitRunnable() {
-            // [MỚI FIX]: 12 ticks = 0.6 giây
-            int timer = 12;
+            int timer = 12; // 0.6 giây
 
             @Override
             public void run() {
@@ -274,7 +287,8 @@ public class ShadowDashSkill implements ISkill {
                 }
 
                 if (timer <= 0) {
-                    performDash(player, rpgPlayer, level, nextPhase, false);
+                    // Đếm xong -> Lướt lần tiếp theo -> Ném fbLevel vào lại Hàm lướt
+                    performDash(player, rpgPlayer, level, nextPhase, false, fbLevel);
                     this.cancel();
                 }
                 timer--;

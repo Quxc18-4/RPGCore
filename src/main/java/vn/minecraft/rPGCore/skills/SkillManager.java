@@ -29,6 +29,9 @@ public class SkillManager {
         registerSkill(new FatalBlowSkill(plugin));
         registerSkill(new ShadowStepSkill(plugin));
         registerSkill(new ShadowDashSkill(plugin));
+        registerSkill(new PhantomBladesSkill(plugin));
+        registerSkill(new BloodlustStrikeSkill(plugin));
+        registerSkill(new ShadowDecoySkill(plugin));
     }
 
     public void registerSkill(ISkill skill) {

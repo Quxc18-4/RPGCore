@@ -110,9 +110,25 @@ public class CombatManager {
             if (System.currentTimeMillis() < expire) return;
         }
 
+        double finalExtraLifesteal = extraLifeStealPct;
+
+        // ==========================================
+        // [MỚI CẬP NHẬT]: KÍCH HOẠT ĐÒN KHÁT MÁU (CHỈ DÙNG 1 LẦN)
+        // ==========================================
+        if (attacker.hasMetadata("Assassin_Bloodlust_Value")) {
+            finalExtraLifesteal += attacker.getMetadata("Assassin_Bloodlust_Value").get(0).asDouble();
+
+            // Xóa ngay lập tức để không bị lặp lại ở đòn thứ 2
+            attacker.removeMetadata("Assassin_Bloodlust_Value", vn.minecraft.rPGCore.RPGCore.getInstance());
+
+            attacker.sendMessage("§c§l[!] §fĐòn Khát Máu chạm đích! Hồi phục sinh lực!");
+            attacker.getWorld().playSound(attacker.getLocation(), Sound.ENTITY_WITCH_DRINK, 1.0f, 0.8f);
+            attacker.getWorld().spawnParticle(Particle.HEART, attacker.getLocation().add(0, 2, 0), 7, 0.5, 0.5, 0.5, 0.1);
+        }
+
         Map<String, Double> totalStats = rpgPlayer.getTotalStatsMap();
         String stealType = isMagic ? "Tỉ lệ hút máu phép" : "Tỉ lệ hút máu";
-        double totalLifeSteal = totalStats.getOrDefault(stealType, 0.0) + extraLifeStealPct;
+        double totalLifeSteal = totalStats.getOrDefault(stealType, 0.0) + finalExtraLifesteal;
 
         if (totalLifeSteal <= 0) return;
 
