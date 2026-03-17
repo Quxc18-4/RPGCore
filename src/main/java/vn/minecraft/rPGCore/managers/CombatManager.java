@@ -34,6 +34,20 @@ public class CombatManager {
         double critRate = totalStats.getOrDefault("Tỉ lệ chí mạng", 5.0) + extraCritRate;
         double critDamage = totalStats.getOrDefault("Sát thương chí mạng", 50.0) + extraCritDamage;
 
+        // ==========================================
+        // [NỘI TẠI SÁT THỦ]: XỬ LÝ CHUYỂN HÓA CHÍ MẠNG DƯ THỪA
+        // ==========================================
+        boolean isAssassin = rpgPlayer.getCurrentClass() != null && rpgPlayer.getCurrentClass().getId().equalsIgnoreCase("assassin");
+
+        if (isAssassin && critRate > 100.0) {
+            double excessCrit = critRate - 100.0;
+            // Chuyển hóa: 1% tỉ lệ dư = 2% sát thương chí mạng cộng thêm
+            critDamage += (excessCrit * 2.0);
+            critRate = 100.0; // Khóa tỉ lệ ở mốc 100%
+        } else {
+            critRate = Math.min(critRate, 100.0);
+        }
+
         if ((Math.random() * 100) <= critRate) {
             rawDamage = rawDamage * (1.0 + (critDamage / 100.0));
             target.getWorld().spawnParticle(Particle.CRIT, target.getLocation().add(0, 1, 0), 15, 0.5, 0.5, 0.5, 0.1);

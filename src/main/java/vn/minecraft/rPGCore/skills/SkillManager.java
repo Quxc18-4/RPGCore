@@ -32,6 +32,7 @@ public class SkillManager {
         registerSkill(new PhantomBladesSkill(plugin));
         registerSkill(new BloodlustStrikeSkill(plugin));
         registerSkill(new ShadowDecoySkill(plugin));
+        registerSkill(new KillingIntentSkill(plugin));
     }
 
     public void registerSkill(ISkill skill) {
