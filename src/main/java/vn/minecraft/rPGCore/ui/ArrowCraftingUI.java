@@ -248,4 +248,22 @@ public class ArrowCraftingUI implements Listener {
             }
         }
     }
+
+    // =========================================
+    // MỞ GIAO DIỆN CHẾ TẠO MŨI TÊN
+    // =========================================
+    @EventHandler
+    public void onFletchingTableClick(org.bukkit.event.player.PlayerInteractEvent event) {
+        if (event.getHand() != org.bukkit.inventory.EquipmentSlot.HAND) return;
+        if (event.getAction() != org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK) return;
+        if (event.getClickedBlock() == null || event.getClickedBlock().getType() != Material.FLETCHING_TABLE) return;
+
+        Player player = event.getPlayer();
+        RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
+
+        if (rpgPlayer != null && rpgPlayer.getCurrentClass().getId().equalsIgnoreCase("archer")) {
+            event.setCancelled(true);
+            openCraftingGUI(player, 0); // Mở trang 0
+        }
+    }
 }

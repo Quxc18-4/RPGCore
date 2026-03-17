@@ -59,25 +59,16 @@ public class PoisonDartSkill implements ISkill, Listener {
         return (long) (cd * 1000);
     }
 
-    private long getPoisonDuration(int level) {
-        double dur = 5.0;
-        if (level >= 3) dur += 0.5;
-        if (level >= 6) dur += 0.5;
-        if (level >= 9) dur += 0.5;
-        return (long) (dur * 1000);
-    }
-
     @Override
     public List<String> getDescription(int level) {
-        double dmg = 150 + ((level - 1) * 10);
-        double poisonSecs = getPoisonDuration(level) / 1000.0;
+        double dmg = 150 + ((level - 1) * 20); // Cấp 10 = 330%
 
         List<String> lore = new ArrayList<>();
         lore.add("§7Ném một phi tiêu tẩm kịch độc về phía trước.");
         lore.add("§7Gây sát thương: §c" + (int)dmg + "% §7Sát thương vũ khí.");
         lore.add("");
         lore.add("§8[Hiệu ứng Trúng Đích]:");
-        lore.add("§7- Gây §2Độc I §7trong §a" + String.format("%.1f", poisonSecs) + "s§7.");
+        lore.add("§7- Gây §2Độc I §7trong §a7.0s§7.");
         lore.add("§7- §cCấm Hồi Phục: §7Chặn hoàn toàn khả năng");
         lore.add("§7  hồi máu của mục tiêu trong thời gian trúng độc.");
 
@@ -88,10 +79,12 @@ public class PoisonDartSkill implements ISkill, Listener {
         } else {
             lore.add("");
             lore.add("§6§l✦ ĐỘT PHÁ TỐI THƯỢNG ✦");
-            lore.add("§e- Trúng đích gây §cChoáng (Trói chân) 2s§e.");
-            lore.add("§e- Phi tiêu để lại một Bãi Độc (Bán kính 3m)");
-            lore.add("§e  trên mặt đất trong 4s. Kẻ địch dẫm vào sẽ bị");
-            lore.add("§e  nhiễm độc và tái tạo lại thời gian Cấm Hồi Phục.");
+            lore.add("§e- Trúng mục tiêu gây §cChoáng 3s§e.");
+            lore.add("§e- Bãi độc phát nổ với Bán kính 4m (Duy trì 3.5s):");
+            lore.add("§e  + Mục tiêu đứng bên trong mỗi giây có tỉ lệ");
+            lore.add("§e    10/20/30% tiến hóa độc thành §2Độc II (4s)§e.");
+            lore.add("§e  + Kẻ địch bước vào từ bên ngoài có tỉ lệ");
+            lore.add("§e    20/40/60% lây nhiễm §2Độc I§e.");
         }
         return lore;
     }
@@ -127,11 +120,15 @@ public class PoisonDartSkill implements ISkill, Listener {
         dart.setMetadata("Assassin_Dart", new FixedMetadataValue(plugin, true));
         dart.setMetadata("Dart_Level", new FixedMetadataValue(plugin, level));
 
-        // Rút thẻ Buff và nhét vào thân Phi Tiêu
+        if (player.hasMetadata("Assassin_Stealth") || player.hasMetadata("Assassin_Smoke_Bomb_Active")) {
+            player.removeMetadata("Assassin_Stealth", plugin);
+            player.removeMetadata("Assassin_Smoke_Bomb_Active", plugin);
+            for (Player p : org.bukkit.Bukkit.getOnlinePlayers()) p.showPlayer(plugin, player);
+        }
+
         if (player.hasMetadata("Assassin_FatalBlow_Level")) {
             int fbLevel = player.getMetadata("Assassin_FatalBlow_Level").get(0).asInt();
             dart.setMetadata("Dart_BonusLevel", new FixedMetadataValue(plugin, fbLevel));
-
             player.removeMetadata("Assassin_FatalBlow_Level", plugin);
             player.getWorld().spawnParticle(Particle.ENCHANTED_HIT, player.getLocation().add(0, 1, 0), 20, 0.3, 0.3, 0.3, 0.1);
             player.sendMessage("§c§l[!] §fPhi Tiêu Ám Sát được Cường hóa!");
@@ -171,7 +168,6 @@ public class PoisonDartSkill implements ISkill, Listener {
         Arrow dart = (Arrow) event.getEntity();
         if (!dart.hasMetadata("Assassin_Dart")) return;
 
-        // [CHỐNG NHÂN ĐÔI]: Mũi tên chỉ được nổ 1 lần duy nhất
         if (dart.hasMetadata("Damage_Calculated")) return;
         dart.setMetadata("Damage_Calculated", new FixedMetadataValue(plugin, true));
 
@@ -180,12 +176,10 @@ public class PoisonDartSkill implements ISkill, Listener {
         RPGPlayer rpgPlayer = vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager().getRPGPlayer(shooter.getUniqueId());
         if (rpgPlayer == null) return;
 
-        long poisonDurationMs = getPoisonDuration(level);
-
         if (event.getHitEntity() instanceof LivingEntity && event.getHitEntity() != shooter) {
             LivingEntity target = (LivingEntity) event.getHitEntity();
 
-            double dmgMulti = 1.50 + ((level - 1) * 0.10);
+            double dmgMulti = 1.50 + ((level - 1) * 0.20);
             if (dart.hasMetadata("Dart_BonusLevel")) {
                 int fbLevel = dart.getMetadata("Dart_BonusLevel").get(0).asInt();
                 dmgMulti += 2.00 + ((fbLevel - 1) * 0.15);
@@ -198,14 +192,14 @@ public class PoisonDartSkill implements ISkill, Listener {
             if (extraCrit > 0) target.getWorld().spawnParticle(Particle.ENCHANTED_HIT, target.getLocation().add(0, 1, 0), 10);
 
             double finalDmg = CombatManager.calculateDamage(shooter, rpgPlayer, target, dmgMulti, 0.0, extraCrit, 0.0, false, false);
-
-            // [KẾT NỐI VỚI CLASS CHA ĐỂ XUYÊN I-FRAME VÀ KHÓA ĐÁNH TAY ẢO]
             CombatManager.applySkillDamage(shooter, target, finalDmg);
 
-            applyPoisonAndAntiHeal(target, poisonDurationMs);
+            applyPoisonAndAntiHeal(target, 7000); // Cứng 7 giây
 
             if (level == 10) {
-                StatusEffectManager.applyEffect(target, PotionEffectType.SLOWNESS, 40, 10);
+                StatusEffectManager.applyEffect(target, PotionEffectType.NAUSEA, 60, 0); // Choáng 3s
+                StatusEffectManager.applyEffect(target, PotionEffectType.DARKNESS, 60, 0);
+                StatusEffectManager.applyEffect(target, PotionEffectType.SLOWNESS, 60, 10);
                 target.getWorld().playSound(target.getLocation(), org.bukkit.Sound.BLOCK_GLASS_BREAK, 1.0f, 0.5f);
             }
         }
@@ -213,40 +207,59 @@ public class PoisonDartSkill implements ISkill, Listener {
         if (level == 10) {
             Location hitLoc = event.getHitBlock() != null ? event.getHitBlock().getLocation().add(0.5, 1.05, 0.5) :
                     (event.getHitEntity() != null ? event.getHitEntity().getLocation() : dart.getLocation());
-            createPoisonPuddle(hitLoc, shooter, poisonDurationMs);
+            createPoisonPuddle(hitLoc, shooter);
         }
 
         dart.remove();
     }
 
-    private void createPoisonPuddle(Location loc, Player shooter, long poisonDurationMs) {
+    private void createPoisonPuddle(Location loc, Player shooter) {
+        Map<UUID, Integer> targetTicks = new HashMap<>();
+        Particle.DustOptions poisonColor = new Particle.DustOptions(Color.fromRGB(34, 139, 34), 1.2f);
+
         loc.getWorld().playSound(loc, org.bukkit.Sound.ENTITY_SPLASH_POTION_BREAK, 1.0f, 0.5f);
 
         new BukkitRunnable() {
             int ticks = 0;
             @Override
             public void run() {
-                if (ticks >= 80) { this.cancel(); return; }
+                if (ticks >= 70) { this.cancel(); return; } // Tồn tại 70 tick (3.5 giây)
 
-                if (ticks % 10 == 0) {
-                    for (org.bukkit.entity.Entity e : loc.getWorld().getNearbyEntities(loc, 3.0, 2.0, 3.0)) {
+                if (ticks % 20 == 0) { // Quét mỗi giây
+                    for (org.bukkit.entity.Entity e : loc.getWorld().getNearbyEntities(loc, 4.0, 2.0, 4.0)) {
                         if (e instanceof LivingEntity && e != shooter) {
-                            applyPoisonAndAntiHeal((LivingEntity) e, poisonDurationMs);
+                            LivingEntity target = (LivingEntity) e;
+                            int timeInside = targetTicks.getOrDefault(target.getUniqueId(), 0) + 1;
+                            targetTicks.put(target.getUniqueId(), timeInside);
+
+                            if (target.hasPotionEffect(PotionEffectType.POISON)) {
+                                if (target.getPotionEffect(PotionEffectType.POISON).getAmplifier() == 0) {
+                                    double evolveChance = Math.min(0.30, timeInside * 0.10);
+                                    if (Math.random() <= evolveChance) {
+                                        StatusEffectManager.applyEffect(target, PotionEffectType.POISON, 80, 1); // Độc 2 trong 4s
+                                        target.getWorld().spawnParticle(Particle.ANGRY_VILLAGER, target.getEyeLocation(), 3);
+                                    }
+                                }
+                            } else {
+                                double infectChance = Math.min(0.60, timeInside * 0.20);
+                                if (Math.random() <= infectChance) {
+                                    applyPoisonAndAntiHeal(target, 7000);
+                                }
+                            }
                         }
                     }
                 }
 
                 if (ticks % 5 == 0) {
-                    Particle.DustOptions poisonColor = new Particle.DustOptions(Color.fromRGB(34, 139, 34), 1.2f);
-                    for (int i = 0; i < 15; i++) {
+                    for (int i = 0; i < 20; i++) {
                         double angle = 2 * Math.PI * Math.random();
-                        double r = 3.0 * Math.sqrt(Math.random());
+                        double r = 4.0 * Math.sqrt(Math.random());
                         Location pLoc = loc.clone().add(r * Math.cos(angle), 0.1, r * Math.sin(angle));
                         loc.getWorld().spawnParticle(Particle.DUST, pLoc, 1, 0, 0.2, 0, poisonColor);
                     }
-                    for (int i = 0; i < 30; i++) {
-                        double angle = 2 * Math.PI * i / 30;
-                        Location pLoc = loc.clone().add(3.0 * Math.cos(angle), 0.1, 3.0 * Math.sin(angle));
+                    for (int i = 0; i < 40; i++) { // Viền 4m
+                        double angle = 2 * Math.PI * i / 40;
+                        Location pLoc = loc.clone().add(4.0 * Math.cos(angle), 0.1, 4.0 * Math.sin(angle));
                         loc.getWorld().spawnParticle(Particle.DUST, pLoc, 1, 0, 0, 0, poisonColor);
                     }
                 }

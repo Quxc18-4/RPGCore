@@ -5,6 +5,9 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
+import vn.minecraft.rPGCore.classes.impl.ArcherClass;
+import vn.minecraft.rPGCore.classes.impl.AssassinClass;
+import vn.minecraft.rPGCore.classes.impl.DefaultClass;
 
 import java.io.File;
 import java.util.HashMap;
@@ -24,7 +27,6 @@ public class ClassManager {
         classMap.clear();
         File file = new File(plugin.getDataFolder(), "classes.yml");
 
-        // Nếu file chưa tồn tại, copy từ trong thư mục resources ra ngoài
         if (!file.exists()) {
             plugin.saveResource("classes.yml", false);
         }
@@ -34,7 +36,6 @@ public class ClassManager {
 
         if (section == null) return;
 
-        // Quét tất cả các class trong file yaml
         for (String key : section.getKeys(false)) {
             String displayName = section.getString(key + ".display-name", key);
             Material icon = Material.valueOf(section.getString(key + ".icon", "STONE"));
@@ -45,10 +46,27 @@ public class ClassManager {
             double regen = section.getDouble(key + ".regen-rate", 1.0);
             boolean enchanted = section.getBoolean(key + ".enchanted", false);
 
-            RPGClass rpgClass = new RPGClass(key, displayName, icon, desc, maxHp, maxRes, resType, regen, enchanted);
+            RPGClass rpgClass;
+
+            // ==========================================
+            // FACTORY LOGIC: KHỞI TẠO ĐÚNG HỆ PHÁI
+            // ==========================================
+            switch (key.toLowerCase()) {
+                case "archer":
+                    rpgClass = new ArcherClass(key, displayName, icon, desc, maxHp, maxRes, resType, regen, enchanted);
+                    break;
+                case "assassin":
+                    rpgClass = new AssassinClass(key, displayName, icon, desc, maxHp, maxRes, resType, regen, enchanted);
+                    break;
+                default:
+                    // Các phái chưa code riêng sẽ xài khung mặc định
+                    rpgClass = new DefaultClass(key, displayName, icon, desc, maxHp, maxRes, resType, regen, enchanted);
+                    break;
+            }
+
             classMap.put(key, rpgClass);
         }
-        plugin.getLogger().info("Da tai thanh cong " + classMap.size() + " class!");
+        plugin.getLogger().info("Đã tải thành công " + classMap.size() + " class bằng Factory!");
     }
 
     public Map<String, RPGClass> getClasses() {

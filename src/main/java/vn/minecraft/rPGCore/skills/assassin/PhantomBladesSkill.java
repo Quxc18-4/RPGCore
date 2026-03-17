@@ -50,7 +50,7 @@ public class PhantomBladesSkill implements ISkill {
     }
 
     private double getDamagePerBlade(int level) {
-        return 1.20 + ((level - 1) * 0.10);
+        return 0.80 + ((level - 1) * 0.15); // [Đã chỉnh lại Damage theo đúng công thức mới: 0.8 + 0.15/lv]
     }
 
     private int getBladeCount(int level) {
@@ -71,11 +71,12 @@ public class PhantomBladesSkill implements ISkill {
         lore.add("§7theo hình quạt về phía trước (Tầm xa 12m).");
         lore.add("");
         lore.add("§7Sát thương: §c" + dmg + "% §7(Mỗi phi tiêu)");
-        lore.add("§7Hiệu ứng: Xuyên qua kẻ địch trên đường bay.");
+        lore.add("§8[Nội tại - Xuyên thấu]:");
+        lore.add("§7Xuyên qua mọi kẻ địch trên đường bay.");
         lore.add("");
-        lore.add("§8[Chiến thuật Shotgun]:");
-        lore.add("§7Áp sát mục tiêu để chúng hứng chịu");
-        lore.add("§7sát thương cộng dồn của tất cả Ám Khí.");
+        lore.add("§8[Nội tại - Suy Giảm]:");
+        lore.add("§7Mỗi Ám Khí trúng trùng lặp trên cùng 1 kẻ địch");
+        lore.add("§7sẽ bị giảm §c8% §7Sát thương/lần trúng.");
 
         if (level < 10) {
             lore.add("");
@@ -85,7 +86,7 @@ public class PhantomBladesSkill implements ISkill {
             lore.add("");
             lore.add("§6§l✦ ĐỘT PHÁ TỐI THƯỢNG ✦");
             lore.add("§e- Số lượng Ám Khí tăng lên §c7§e.");
-            lore.add("§e- Kẻ địch trúng chiêu bị Gảy Xương, giảm");
+            lore.add("§e- Kẻ địch trúng chiêu bị Gãy Xương, giảm");
             lore.add("§e  20% Tốc chạy trong 3 giây.");
         }
         return lore;
@@ -93,6 +94,8 @@ public class PhantomBladesSkill implements ISkill {
 
     @Override
     public boolean execute(Player player, RPGPlayer rpgPlayer, int level) {
+        Map<UUID, Integer> hitCounts = new HashMap<>();
+
         if (level <= 0) return false;
 
         double cost = getManaCost(level);
@@ -112,10 +115,9 @@ public class PhantomBladesSkill implements ISkill {
         rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - cost);
         cooldowns.put(player.getUniqueId(), currentTime);
 
-        boolean fromStealth = false;
-        if (player.hasMetadata("Assassin_Stealth")) {
-            fromStealth = true;
+        if (player.hasMetadata("Assassin_Stealth") || player.hasMetadata("Assassin_Smoke_Bomb_Active")) {
             player.removeMetadata("Assassin_Stealth", plugin);
+            player.removeMetadata("Assassin_Smoke_Bomb_Active", plugin);
             player.sendMessage("§c§l[!] Bão Ám Khí bất ngờ! Hiện hình!");
             for (Player p : org.bukkit.Bukkit.getOnlinePlayers()) p.showPlayer(plugin, player);
         }
@@ -142,7 +144,7 @@ public class PhantomBladesSkill implements ISkill {
         for (int i = 0; i < count; i++) {
             double angle = startAngle + (i * spreadAngle);
             Vector bladeDir = rotateVectorY(centerDir.clone(), angle);
-            launchBlade(player, rpgPlayer, level, startLoc.clone(), bladeDir, fromStealth, fbLevel);
+            launchBlade(player, rpgPlayer, level, startLoc.clone(), bladeDir, fbLevel, hitCounts);
         }
 
         return true;
@@ -157,7 +159,7 @@ public class PhantomBladesSkill implements ISkill {
         return new Vector((cosine * currentX) - (sine * currentZ), v.getY(), (sine * currentX) + (cosine * currentZ)).normalize();
     }
 
-    private void launchBlade(final Player player, final RPGPlayer rpgPlayer, final int level, Location origin, Vector direction, boolean fromStealth, int fbLevel) {
+    private void launchBlade(Player player, RPGPlayer rpgPlayer, int level, Location origin, Vector direction, int fbLevel, Map<UUID, Integer> hitCounts) {
 
         double baseDmgMulti = getDamagePerBlade(level);
         if (fbLevel > 0) {
@@ -172,13 +174,11 @@ public class PhantomBladesSkill implements ISkill {
 
             @Override
             public void run() {
-                // [ĐÃ SỬA TỐC ĐỘ]: Giảm số nhịp từ 24 xuống 8 (Vì mỗi nhịp bay 1.5 blocks = 12 blocks)
                 if (distanceTravelled >= 8 || !player.isOnline()) {
                     this.cancel();
                     return;
                 }
 
-                // [ĐÃ SỬA TỐC ĐỘ]: Tăng gia tốc từ 0.5 lên 1.5 (Gấp 3 lần)
                 currentLoc.add(direction.clone().multiply(1.5));
 
                 currentLoc.getWorld().spawnParticle(Particle.CRIT, currentLoc, 1, 0, 0, 0, 0.05);
@@ -191,15 +191,19 @@ public class PhantomBladesSkill implements ISkill {
                     return;
                 }
 
-                // [ĐÃ SỬA HITBOX]: Tăng hitbox từ 0.8 lên 1.2 để đạn bay nhanh vẫn càn quét trúng quái
                 for (Entity e : currentLoc.getWorld().getNearbyEntities(currentLoc, 1.2, 1.2, 1.2)) {
                     if (e instanceof LivingEntity && e != player && !hitTargets.contains(e.getUniqueId())) {
                         LivingEntity target = (LivingEntity) e;
                         hitTargets.add(target.getUniqueId());
 
-                        double extraCrit = (fromStealth) ? 100.0 : 0.0;
+                        // Cơ chế Fall-off 8% mỗi hit
+                        int timesHit = hitCounts.getOrDefault(target.getUniqueId(), 0);
+                        double reduction = Math.min(0.80, timesHit * 0.08);
+                        double currentDmgMulti = finalDmgMulti * (1.0 - reduction);
+                        hitCounts.put(target.getUniqueId(), timesHit + 1);
 
-                        double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, finalDmgMulti, 0.0, extraCrit, 0.0, false, false);
+                        // Đã xóa cơ chế cộng thêm Crit vô lý
+                        double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, currentDmgMulti, 0.0, 0.0, 0.0, false, false);
                         CombatManager.applySkillDamage(player, target, finalDmg);
 
                         target.getWorld().spawnParticle(Particle.SWEEP_ATTACK, target.getLocation().add(0, 1, 0), 1);

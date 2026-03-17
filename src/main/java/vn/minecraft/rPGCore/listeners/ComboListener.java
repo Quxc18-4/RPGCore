@@ -1,11 +1,11 @@
 package vn.minecraft.rPGCore.listeners;
 
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import vn.minecraft.rPGCore.player.PlayerManager;
@@ -34,6 +34,7 @@ public class ComboListener implements Listener {
 
     @EventHandler
     public void onPlayerClick(PlayerInteractEvent event) {
+        // Bỏ qua nếu dùng tay trái hoặc dẫm đạp vật lý
         if (event.getHand() == org.bukkit.inventory.EquipmentSlot.OFF_HAND) return;
 
         Player player = event.getPlayer();
@@ -43,57 +44,29 @@ public class ComboListener implements Listener {
         RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
         if (rpgPlayer == null) return;
 
-        org.bukkit.inventory.ItemStack mainItem = player.getInventory().getItemInMainHand();
-        Material mainType = mainItem.getType();
-        String classId = rpgPlayer.getCurrentClass().getId().toLowerCase();
+        ItemStack mainItem = player.getInventory().getItemInMainHand();
+        String classId = rpgPlayer.getCurrentClass().getId();
 
-        // 1. NHẬN DIỆN VŨ KHÍ NÀY LÀ CỦA PHÁI NÀO
-        String requiredClass = null;
-        boolean isWeapon = false;
-
-        if (mainType == Material.BOW || mainType == Material.CROSSBOW) {
-            isWeapon = true;
-            if (!classId.equals("archer")) requiredClass = "Cung Thủ (Archer)";
-        } else if (mainType == Material.SHEARS) {
-            isWeapon = true;
-            if (!classId.equals("assassin")) requiredClass = "Sát Thủ (Assassin)";
-        } else if (mainType == Material.STICK || mainType == Material.BLAZE_ROD) {
-            isWeapon = true;
-            if (!classId.equals("mage")) requiredClass = "Pháp Sư (Mage)";
-        } else if (mainType == Material.LEAD) {
-            isWeapon = true;
-            if (!classId.equals("summoner")) requiredClass = "Triệu Hồi Sư (Summoner)";
-        } else if (mainType.name().endsWith("_HOE")) {
-            isWeapon = true;
-            if (!classId.equals("reaper")) requiredClass = "Tử Thần (Reaper)";
-        } else if (mainType.name().endsWith("_SWORD") || mainType.name().endsWith("_AXE")) {
-            isWeapon = true;
-            if (!classId.equals("warrior") && !classId.equals("guardian") && !classId.equals("commoner")) {
-                requiredClass = "Chiến Binh / Vệ Binh";
-            }
+        // ==========================================
+        // 1. LỌC RÁC: DÙNG HÀM CỦA LỄ TÂN (PLAYER LISTENER)
+        // ==========================================
+        if (!PlayerListener.isValidWeaponForClass(mainItem, classId)) {
+            return; // Cầm sai vũ khí hoặc cầm đất đá -> Không cho bấm Combo
         }
 
-        // Nếu cầm cục đất, lúa mì... thì không phải vũ khí -> Bỏ qua combo
-        if (!isWeapon) return;
-
-        // BÁO LỖI: VŨ KHÍ KHÔNG PHẢI CỦA MÌNH
-        if (requiredClass != null) {
-            player.sendMessage("§c§l[!] §cVũ khí này chỉ dành cho hệ phái " + requiredClass + "!");
-            return;
-        }
-
-        // 2. VŨ KHÍ ĐÚNG PHÁI -> GỌI EQUIPMENT LISTENER ĐỂ KIỂM TRA LORE (LEVEL)
+        // 2. KIỂM TRA ĐIỀU KIỆN LEVEL VÀ TRẠNG THÁI
         EquipmentListener eqListener = new EquipmentListener(playerManager);
-        if (!eqListener.canPlayerUse(player, mainItem)) {
-            return; // Hàm canPlayerUse của bạn đã tự động gửi tin nhắn báo Level, cấm vận chiêu!
-        }
-
+        if (!eqListener.canPlayerUse(player, mainItem)) return;
         if (player.hasMetadata("Is_Casting")) return;
 
+        // ==========================================
+        // 3. LOGIC GHI NHẬN CHUỖI COMBO
+        // ==========================================
         String click = (action.name().contains("LEFT")) ? "L" : "R";
         UUID uuid = player.getUniqueId();
         String current = currentCombos.getOrDefault(uuid, "");
 
+        // Chữ cái đầu tiên luôn phải là R (Chuột phải)
         if (current.isEmpty() && click.equals("L")) return;
 
         String combo = current + click;
@@ -113,9 +86,12 @@ public class ComboListener implements Listener {
                 player.sendActionBar(" ");
             }
         };
-        resetTask.runTaskLater(plugin, 20L);
+        resetTask.runTaskLater(plugin, 20L); // Có 1 giây để bấm phím tiếp theo
         resetTasks.put(uuid, resetTask);
 
+        // ==========================================
+        // 4. KÍCH HOẠT KỸ NĂNG KHI ĐỦ 4 PHÍM
+        // ==========================================
         if (combo.length() == 4) {
             String mappedSkillId = rpgPlayer.getSkillData().getSkillByCombo(combo);
             if (mappedSkillId != null) {
@@ -124,8 +100,22 @@ public class ComboListener implements Listener {
                     int level = rpgPlayer.getSkillData().getSkillLevel(mappedSkillId);
 
                     if (skill.execute(player, rpgPlayer, level)) {
+                        // [MỚI]: Phá tàng hình khi xài chiêu
+                        if (!mappedSkillId.equals("assassin_smoke_bomb") &&
+                                !mappedSkillId.equals("assassin_shadow_decoy") &&
+                                !mappedSkillId.equals("assassin_shadow_step")) {
+
+                            if (player.hasMetadata("Assassin_Stealth") || player.hasMetadata("Assassin_Smoke_Bomb_Active")) {
+                                player.removeMetadata("Assassin_Stealth", plugin);
+                                player.removeMetadata("Assassin_Smoke_Bomb_Active", plugin);
+                                player.sendMessage("§c§l[!] Bạn đã lộ diện do sử dụng kỹ năng!");
+                                for (Player p : org.bukkit.Bukkit.getOnlinePlayers()) p.showPlayer(plugin, player);
+                            }
+                        }
+
                         player.sendActionBar("§a§l✔ Kích hoạt thành công!");
 
+                        // Cắm cờ chống kẹt sát thương tay khi vừa ra chiêu
                         player.setMetadata("Skill_Just_Cast", new org.bukkit.metadata.FixedMetadataValue(plugin, true));
                         new BukkitRunnable() {
                             @Override

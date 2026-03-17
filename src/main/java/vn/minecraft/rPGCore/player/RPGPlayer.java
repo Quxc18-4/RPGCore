@@ -133,35 +133,18 @@ public class RPGPlayer {
         map.put("Giáp", currentStats.armor * currentStats.armorMultiplier);
         map.put("Kháng phép", currentStats.magicResistance * currentStats.magicResistMultiplier);
 
-        // 3. BẠO KÍCH (Tích hợp Nội tại Assassin: Dư 1% Crit = +2% Crit Damage)
-        boolean isAssassin = currentClass != null && currentClass.getId().equalsIgnoreCase("assassin");
-
+        // 3. BẠO KÍCH (Không còn code Assassin ở đây)
         double critRate = currentStats.critRate + (luk * 0.2) + foodManager.getBonus(uuid, FoodBuffManager.StatType.CRIT_RATE);
-        if (isArcher) critRate += (skillData.getSkillLevel("archer_thien_xa") * 2.0);
-        if (isAssassin) critRate += 15.0; // Nội tại 1: +15% Tỉ lệ chí mạng
-
         double critDamage = currentStats.critDamage;
-
-        // Nội tại 2 Sát thủ: Chuyển hóa chí mạng dư thừa
-        if (isAssassin && critRate > 100.0) {
-            double excessCrit = critRate - 100.0;
-            critDamage += (excessCrit * 2.0);
-            critRate = 100.0; // Đưa về Cap 100%
-        } else {
-            critRate = Math.min(critRate, 100.0);
-        }
-
         map.put("Tỉ lệ chí mạng", critRate);
         map.put("Sát thương chí mạng", critDamage);
 
-        // 4. XUYÊN GIÁP & XUYÊN PHÉP
+        // 4. XUYÊN GIÁP & XUYÊN PHÉP (Không còn code Archer/Mage ở đây)
         double armorPen = currentStats.armorPen + foodManager.getBonus(uuid, FoodBuffManager.StatType.ARMOR_PEN);
-        if (isArcher) armorPen += 25.0;
-        map.put("Tỉ lệ xuyên giáp", Math.min(armorPen, isArcher ? 80.0 : 50.0));
+        map.put("Tỉ lệ xuyên giáp", armorPen);
 
         double magicArmorPen = currentStats.magicArmorPen;
-        if (isMage) magicArmorPen += 25.0;
-        map.put("Tỉ lệ xuyên kháng phép", Math.min(magicArmorPen, isMage ? 80.0 : 50.0));
+        map.put("Tỉ lệ xuyên kháng phép", magicArmorPen);
 
         // 5. CHỈ SỐ SINH TỒN
         double dodgeRate = currentStats.dodgeRate + (agi * 0.1);
@@ -199,6 +182,11 @@ public class RPGPlayer {
         map.put("Nhận Kinh nghiệm", currentStats.expBonus);
         map.put("Hồi Năng lượng", currentStats.manaRegen);
         map.put("Tỉ lệ rớt đồ", currentStats.dropRate + (luk * 0.1) + foodManager.getBonus(uuid, FoodBuffManager.StatType.DROP_RATE));
+
+        // [TRƯỚC KHI RETURN MAP]: GỌI CLASS ĐỂ CỘNG THÊM NỘI TẠI TĨNH
+        if (currentClass != null) {
+            currentClass.applyPassiveBonusStats(this, map);
+        }
 
         return map;
     }

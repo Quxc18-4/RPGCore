@@ -54,7 +54,8 @@ public class DoubleSlashSkill implements ISkill {
                 "§7Vung đao chém 2 nhát chéo càn quét phía trước.",
                 "§7Gây sát thương: §c" + (int)dmg + "% §7mỗi nhát.",
                 "",
-                "§8[Nội tại]: §7Nếu tấn công từ phía sau (Backstab),",
+                "§8[Nội tại - Ám sát]: ",
+                "§7Nếu tấn công từ phía sau đối thủ,",
                 "§7Chiêu thức được cộng thêm §e30% Tỉ lệ Chí mạng§7."
         );
     }
@@ -83,7 +84,6 @@ public class DoubleSlashSkill implements ISkill {
         if (player.hasMetadata("Assassin_FatalBlow_Level")) {
             fbLevel = player.getMetadata("Assassin_FatalBlow_Level").get(0).asInt();
             player.removeMetadata("Assassin_FatalBlow_Level", plugin);
-            // Đã đổi hạt để an toàn không crash
             player.getWorld().spawnParticle(Particle.ENCHANTED_HIT, player.getLocation().add(0, 1, 0), 20, 0.3, 0.3, 0.3, 0.1);
             player.sendMessage("§c§l[!] §fĐoạt Mệnh Song Đao được Cường hóa!");
         }
@@ -129,19 +129,18 @@ public class DoubleSlashSkill implements ISkill {
         for (Entity e : loc.getWorld().getNearbyEntities(spawnLoc, 1.5, 1.5, 1.5)) {
             if (e instanceof LivingEntity && e != player) {
                 LivingEntity target = (LivingEntity) e;
-
                 Vector targetDir = target.getLocation().getDirection().setY(0).normalize();
                 double dot = dir.dot(targetDir);
 
-                double extraCrit = 0;
                 if (dot > 0.5) {
-                    extraCrit = 30.0;
+                    player.setMetadata("DoubleSlash_Backstab", new org.bukkit.metadata.FixedMetadataValue(plugin, true));
                     target.getWorld().spawnParticle(Particle.ENCHANTED_HIT, target.getLocation().add(0, 1, 0), 10);
                 }
 
-                double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, dmgMulti, 0.0, extraCrit, 0.0, false, false);
+                // [ĐÃ SỬA]: Không truyền 30.0 vào extraCrit nữa, cờ Metadata sẽ lo việc đó.
+                double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, dmgMulti, 0.0, 0.0, 0.0, false, false);
+                if (player.hasMetadata("DoubleSlash_Backstab")) player.removeMetadata("DoubleSlash_Backstab", plugin);
 
-                // [KẾT NỐI VỚI CLASS CHA ĐỂ XUYÊN I-FRAME VÀ KHÓA ĐÁNH TAY ẢO]
                 CombatManager.applySkillDamage(player, target, finalDmg);
 
                 target.getWorld().spawnParticle(Particle.BLOCK_CRUMBLE, target.getLocation().add(0, 1, 0), 10, org.bukkit.Material.REDSTONE_BLOCK.createBlockData());

@@ -57,12 +57,11 @@ public class BloodlustStrikeSkill extends AbstractEnhancementSkill {
         lore.add("§7Tế máu vào vũ khí, cường hóa cực độ");
         lore.add("§7bản năng sinh tồn trong §e6 giây§7 tiếp theo.");
         lore.add("");
-        lore.add("§8[Nội tại - Hấp Huyết]:");
+        lore.add("§8[Nội tại - Khát máu]:");
         lore.add("§7§nĐòn đánh thường§7 tiếp theo sẽ chắc chắn");
-        lore.add("§7Hút lại §c" + lifesteal + "%§7 máu dựa trên sát thương.");
+        lore.add("§7hồi phục bằng §a" + lifesteal + "% §7Sát thương gây ra.");
         lore.add("");
-        lore.add("§c*Lưu ý: Kích hoạt sẽ ghi đè các Cường hóa vũ");
-        lore.add("§ckhí khác (VD: Đòn Chí Mạng).");
+        lore.add("§c*Lưu ý: Kích hoạt sẽ ghi đè các Cường hóa khác.");
 
         return lore;
     }

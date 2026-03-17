@@ -1,15 +1,19 @@
 package vn.minecraft.rPGCore.listeners;
 
+import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityRegainHealthEvent;
+import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.ItemStack;
 import vn.minecraft.rPGCore.player.PlayerManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 import vn.minecraft.rPGCore.ui.BossBarManager;
@@ -25,130 +29,108 @@ public class PlayerListener implements Listener {
         this.bossBarManager = bossBarManager;
     }
 
-    @EventHandler
-    public void onPlayerJoin(PlayerJoinEvent event) {
-        Player player = event.getPlayer();
-        RPGPlayer rpgPlayer = playerManager.loadPlayer(player);
-        bossBarManager.createBars(player, rpgPlayer);
+    // ==========================================
+    // 1. HÀM KIỂM TRA VŨ KHÍ DÙNG CHUNG (Cực kỳ quan trọng cho Phase 3)
+    // ==========================================
+    public static boolean isValidWeaponForClass(ItemStack weapon, String classId) {
+        if (weapon == null || weapon.getType() == Material.AIR) return false;
+        Material mainType = weapon.getType();
+        String cId = classId.toLowerCase();
+
+        if (mainType == Material.BOW || mainType == Material.CROSSBOW) return cId.equals("archer");
+        if (mainType == Material.SHEARS) return cId.equals("assassin");
+        if (mainType == Material.STICK || mainType == Material.BLAZE_ROD) return cId.equals("mage");
+        if (mainType == Material.LEAD) return cId.equals("summoner");
+        if (mainType.name().endsWith("_HOE")) return cId.equals("reaper");
+        if (mainType.name().endsWith("_SWORD") || mainType.name().endsWith("_AXE")) {
+            return cId.equals("warrior") || cId.equals("guardian") || cId.equals("commoner");
+        }
+        return false; // Cầm đất, đá, lúa mì... không tính là vũ khí
     }
 
+    // ==========================================
+    // 2. CỔNG ĐIỀU PHỐI CLICK CHUỘT (Delegation)
+    // ==========================================
     @EventHandler
-    public void onPlayerQuit(PlayerQuitEvent event) {
+    public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
-        bossBarManager.removeBars(player);
-        playerManager.savePlayer(player.getUniqueId());
-    }
+        if (event.getHand() == org.bukkit.inventory.EquipmentSlot.OFF_HAND) return;
+        if (player.hasMetadata("Is_Casting")) return;
 
-    @EventHandler
-    public void onEnvironmentDamage(EntityDamageEvent event) {
-        if (event.getEntity() instanceof LivingEntity) {
-            LivingEntity entity = (LivingEntity) event.getEntity();
-            EntityDamageEvent.DamageCause cause = event.getCause();
+        RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
+        if (rpgPlayer == null) return;
 
-            boolean isCustomDoT = false;
+        ItemStack weapon = player.getInventory().getItemInMainHand();
 
-            if (cause == EntityDamageEvent.DamageCause.FIRE || cause == EntityDamageEvent.DamageCause.FIRE_TICK) {
-                long now = System.currentTimeMillis();
-                long lastDmgTime = lastFireDamageTimers.getOrDefault(entity.getUniqueId(), 0L);
-                if (now - lastDmgTime < 500) { event.setCancelled(true); return; }
-                lastFireDamageTimers.put(entity.getUniqueId(), now);
-                event.setDamage(75.0);
-                isCustomDoT = true;
-            }
-            else if (cause == EntityDamageEvent.DamageCause.POISON || cause == EntityDamageEvent.DamageCause.WITHER) {
-                org.bukkit.potion.PotionEffectType type = (cause == EntityDamageEvent.DamageCause.POISON) ?
-                        org.bukkit.potion.PotionEffectType.POISON : org.bukkit.potion.PotionEffectType.WITHER;
-                org.bukkit.potion.PotionEffect effect = entity.getPotionEffect(type);
-                if (effect != null) event.setDamage(50.0 * Math.pow(2, effect.getAmplifier()));
-                else event.setDamage(50.0);
-                isCustomDoT = true;
-            }
-
-            if (isCustomDoT) {
-                new org.bukkit.scheduler.BukkitRunnable() {
-                    @Override public void run() { if (entity.isValid() && !entity.isDead()) entity.setNoDamageTicks(0); }
-                }.runTaskLater(vn.minecraft.rPGCore.RPGCore.getInstance(), 1L);
+        // Chỉ chuyển giao cho Class nếu đang cầm đúng vũ khí phái mình
+        if (isValidWeaponForClass(weapon, rpgPlayer.getCurrentClass().getId())) {
+            if (event.getAction().name().contains("LEFT")) {
+                rpgPlayer.getCurrentClass().onLeftClick(player, rpgPlayer, weapon);
+            } else if (event.getAction().name().contains("RIGHT")) {
+                rpgPlayer.getCurrentClass().onRightClick(player, rpgPlayer, weapon);
             }
         }
+    }
 
+    // ==========================================
+    // CỔNG ĐIỀU PHỐI ĐÒN ĐÁNH XA (PROJECTILES)
+    // ==========================================
+    @EventHandler
+    public void onProjectileHit(org.bukkit.event.entity.ProjectileHitEvent event) {
+        if (event.getEntity().getShooter() instanceof Player) {
+            Player shooter = (Player) event.getEntity().getShooter();
+            RPGPlayer rpgShooter = playerManager.getRPGPlayer(shooter.getUniqueId());
+
+            if (rpgShooter != null && rpgShooter.getCurrentClass() != null) {
+                // Gọi Trưởng phòng tự xử lý mũi tên của mình
+                rpgShooter.getCurrentClass().onProjectileHit(shooter, rpgShooter, event.getEntity(), event);
+            }
+        }
+    }
+
+    // KHÓA SÁT THƯƠNG VẬT LÝ GỐC CỦA MŨI TÊN (Chống lỗi dame ảo)
+    @EventHandler
+    public void onVanillaArrowDamage(EntityDamageByEntityEvent event) {
+        if (event.getDamager() instanceof org.bukkit.entity.Arrow) {
+            org.bukkit.entity.Arrow arrow = (org.bukkit.entity.Arrow) event.getDamager();
+            if (arrow.hasMetadata("WeaponType") || arrow.hasMetadata("Is_Custom_Skill") || arrow.hasMetadata("CustomArrowType")) {
+                event.setCancelled(true);
+            }
+        }
+    }
+
+    // CHẶN KÉO CUNG VANILLA (Bắt buộc click chuột theo cơ chế RPG)
+    @EventHandler
+    public void onVanillaShoot(org.bukkit.event.entity.EntityShootBowEvent event) {
         if (event.getEntity() instanceof Player) {
-            Player player = (Player) event.getEntity();
-            RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
-            if (rpgPlayer == null) return;
-            rpgPlayer.setInCombat();
-
-            EntityDamageEvent.DamageCause cause = event.getCause();
-            double multiplier = rpgPlayer.getTotalMaxHealth() / 20.0;
-            if (cause == EntityDamageEvent.DamageCause.FALL || cause == EntityDamageEvent.DamageCause.LAVA ||
-                    cause == EntityDamageEvent.DamageCause.DROWNING || cause == EntityDamageEvent.DamageCause.STARVATION ||
-                    cause == EntityDamageEvent.DamageCause.SUFFOCATION || cause == EntityDamageEvent.DamageCause.FREEZE) {
-                event.setDamage(event.getDamage() * multiplier);
-            }
-
-            new org.bukkit.scheduler.BukkitRunnable() {
-                @Override public void run() { bossBarManager.updateBars(player, rpgPlayer); }
-            }.runTaskLater(vn.minecraft.rPGCore.RPGCore.getInstance(), 1L);
+            event.setCancelled(true);
         }
     }
 
+    // ==========================================
+    // 3. CỔNG ĐIỀU PHỐI SÁT THƯƠNG
+    // ==========================================
     @EventHandler
     public void onDealDamage(EntityDamageByEntityEvent event) {
-
         if (event.getDamager() instanceof Player && event.getEntity() instanceof LivingEntity) {
             Player attacker = (Player) event.getDamager();
             LivingEntity target = (LivingEntity) event.getEntity();
 
-            if (attacker.hasMetadata("Skill_Damage_Lock")) {
-                return;
-            }
-            if (attacker.hasMetadata("Skill_Just_Cast") || attacker.hasMetadata("Is_Casting")) {
-                event.setCancelled(true);
+            if (attacker.hasMetadata("Skill_Damage_Lock") || attacker.hasMetadata("Skill_Just_Cast") || attacker.hasMetadata("Is_Casting")) {
+                if (!attacker.hasMetadata("Skill_Damage_Lock")) event.setCancelled(true);
                 return;
             }
 
             RPGPlayer rpgAttacker = playerManager.getRPGPlayer(attacker.getUniqueId());
             if (rpgAttacker != null) {
+                ItemStack mainItem = attacker.getInventory().getItemInMainHand();
 
-                // ==========================================
-                // BẮT ĐẦU CHECK VŨ KHÍ TẠI ĐÂY
-                // ==========================================
-                org.bukkit.inventory.ItemStack mainItem = attacker.getInventory().getItemInMainHand();
-                org.bukkit.Material mainType = mainItem.getType();
-                String classId = rpgAttacker.getCurrentClass().getId().toLowerCase();
-
-                String requiredClass = null;
-                boolean isWeapon = false;
-
-                if (mainType == org.bukkit.Material.BOW || mainType == org.bukkit.Material.CROSSBOW) {
-                    isWeapon = true;
-                    if (!classId.equals("archer")) requiredClass = "Cung Thủ (Archer)";
-                } else if (mainType == org.bukkit.Material.SHEARS) {
-                    isWeapon = true;
-                    if (!classId.equals("assassin")) requiredClass = "Sát Thủ (Assassin)";
-                } else if (mainType == org.bukkit.Material.STICK || mainType == org.bukkit.Material.BLAZE_ROD) {
-                    isWeapon = true;
-                    if (!classId.equals("mage")) requiredClass = "Pháp Sư (Mage)";
-                } else if (mainType == org.bukkit.Material.LEAD) {
-                    isWeapon = true;
-                    if (!classId.equals("summoner")) requiredClass = "Triệu Hồi Sư (Summoner)";
-                } else if (mainType.name().endsWith("_HOE")) {
-                    isWeapon = true;
-                    if (!classId.equals("reaper")) requiredClass = "Tử Thần (Reaper)";
-                } else if (mainType.name().endsWith("_SWORD") || mainType.name().endsWith("_AXE")) {
-                    isWeapon = true;
-                    if (!classId.equals("warrior") && !classId.equals("guardian") && !classId.equals("commoner")) {
-                        requiredClass = "Chiến Binh / Vệ Binh";
-                    }
-                }
-
-                // Nếu cầm vũ khí (không phải tay không/block) mà sai phái -> chặn
-                if (isWeapon && requiredClass != null) {
+                // Lọc rác vũ khí (Không cho Chiến binh dùng Cung đập quái)
+                if (!isValidWeaponForClass(mainItem, rpgAttacker.getCurrentClass().getId())) {
                     event.setCancelled(true);
-                    attacker.sendMessage("§c§l[!] §cVũ khí này chỉ dành cho hệ phái " + requiredClass + "!");
                     return;
                 }
 
-                // Gọi EquipmentListener kiểm tra Lore (Level)
                 EquipmentListener eqListener = new EquipmentListener(playerManager);
                 if (!eqListener.canPlayerUse(attacker, mainItem)) {
                     event.setCancelled(true);
@@ -159,10 +141,16 @@ public class PlayerListener implements Listener {
 
                 if (event.getCause() == EntityDamageEvent.DamageCause.ENTITY_ATTACK || event.getCause() == EntityDamageEvent.DamageCause.ENTITY_SWEEP_ATTACK) {
 
+                    // ==========================================
+                    // TRƯỞNG PHÒNG NHÚNG TAY: Lấy hệ số nhân sát thương từ Class (Đa hình)
+                    // ==========================================
+                    double classDmgMultiplier = rpgAttacker.getCurrentClass().onMeleeHit(attacker, rpgAttacker, target, 1.0);
+
                     boolean isMagicWeapon = rpgAttacker.getStats().maxMagicalDamage > 0;
                     double extraCritRate = 0.0;
                     double extraCritDmg = 0.0;
 
+                    // Fatal Blow (Cường hóa)
                     if (attacker.hasMetadata("Assassin_FatalBlow_Level")) {
                         int fbLevel = attacker.getMetadata("Assassin_FatalBlow_Level").get(0).asInt();
                         extraCritRate = 50.0 + ((fbLevel - 1) * 10.0);
@@ -173,8 +161,9 @@ public class PlayerListener implements Listener {
                         attacker.sendMessage("§c§l[!] §fĐòn đánh thường được Cường hóa!");
                     }
 
+                    // TÍNH SÁT THƯƠNG TỔNG (Đưa classDmgMultiplier vào CombatManager)
                     double finalDamage = vn.minecraft.rPGCore.managers.CombatManager.calculateDamage(
-                            attacker, rpgAttacker, target, 1.0, 0.0, extraCritRate, extraCritDmg, isMagicWeapon, false
+                            attacker, rpgAttacker, target, classDmgMultiplier, 0.0, extraCritRate, extraCritDmg, isMagicWeapon, false
                     );
 
                     event.setDamage(finalDamage);
@@ -184,14 +173,21 @@ public class PlayerListener implements Listener {
             }
         }
 
+        // --- XỬ LÝ KHI NGƯỜI CHƠI BỊ ĐÁNH TRÚNG ---
         if (event.getEntity() instanceof Player) {
             Player victim = (Player) event.getEntity();
             RPGPlayer rpgVictim = playerManager.getRPGPlayer(victim.getUniqueId());
 
             if (rpgVictim != null) {
                 rpgVictim.setInCombat();
-                double incomingDamage = event.getDamage();
-                double finalDamage = vn.minecraft.rPGCore.managers.CombatManager.calculateDamageTaken(victim, rpgVictim, incomingDamage);
+
+                LivingEntity attackerEntity = event.getDamager() instanceof LivingEntity ? (LivingEntity) event.getDamager() : null;
+
+                // Trưởng phòng nhúng tay (Giảm thương, phản sát thương...)
+                double initialDamage = event.getDamage();
+                double modifiedDamage = rpgVictim.getCurrentClass().onTakeDamage(victim, rpgVictim, attackerEntity, initialDamage);
+
+                double finalDamage = vn.minecraft.rPGCore.managers.CombatManager.calculateDamageTaken(victim, rpgVictim, modifiedDamage);
 
                 if (finalDamage <= 0) event.setCancelled(true);
                 else event.setDamage(finalDamage);
@@ -199,43 +195,86 @@ public class PlayerListener implements Listener {
         }
     }
 
+    // ==========================================
+    // 4. QUÁI MẤT MỤC TIÊU KHI TÀNG HÌNH (Dời từ AssassinListener)
+    // ==========================================
     @EventHandler
-    public void onVanillaRegen(EntityRegainHealthEvent event) {
-        if (event.getEntity() instanceof Player) {
-            if (event.getRegainReason() == EntityRegainHealthEvent.RegainReason.SATIATED ||
-                    event.getRegainReason() == EntityRegainHealthEvent.RegainReason.REGEN) {
+    public void onEntityTarget(EntityTargetLivingEntityEvent event) {
+        if (event.getTarget() instanceof Player) {
+            Player player = (Player) event.getTarget();
+            if (player.hasMetadata("Assassin_Stealth")) {
                 event.setCancelled(true);
             }
         }
     }
 
-    @EventHandler
-    public void onExpGain(org.bukkit.event.player.PlayerExpChangeEvent event) {
+    // --- CÁC SỰ KIỆN CŨ GIỮ NGUYÊN (Không đổi) ---
+    @EventHandler public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
-        if (rpgPlayer != null) {
-            int amount = event.getAmount();
-            event.setAmount(0);
-            rpgPlayer.addExp(amount);
+        RPGPlayer rpgPlayer = playerManager.loadPlayer(player);
+        bossBarManager.createBars(player, rpgPlayer);
+    }
+    @EventHandler public void onPlayerQuit(PlayerQuitEvent event) {
+        bossBarManager.removeBars(event.getPlayer());
+        playerManager.savePlayer(event.getPlayer().getUniqueId());
+    }
+    @EventHandler public void onVanillaRegen(EntityRegainHealthEvent event) {
+        if (event.getEntity() instanceof Player && (event.getRegainReason() == EntityRegainHealthEvent.RegainReason.SATIATED || event.getRegainReason() == EntityRegainHealthEvent.RegainReason.REGEN)) {
+            event.setCancelled(true);
         }
     }
-
-    @EventHandler
-    public void onLevelChange(org.bukkit.event.player.PlayerLevelChangeEvent event) {
-        Player player = event.getPlayer();
-        RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
-        if (rpgPlayer != null) {
-            rpgPlayer.updateMaxStats();
-            bossBarManager.updateBars(player, rpgPlayer);
-        }
+    @EventHandler public void onExpGain(org.bukkit.event.player.PlayerExpChangeEvent event) {
+        RPGPlayer rpgPlayer = playerManager.getRPGPlayer(event.getPlayer().getUniqueId());
+        if (rpgPlayer != null) { rpgPlayer.addExp(event.getAmount()); event.setAmount(0); }
     }
-
-    @EventHandler
-    public void onPlayerDeath(org.bukkit.event.entity.PlayerDeathEvent event) {
-        Player player = event.getEntity();
-        RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
-        if (rpgPlayer != null && player.getLevel() > 20) {
-            rpgPlayer.loseDeathExp(0.3);
+    @EventHandler public void onLevelChange(org.bukkit.event.player.PlayerLevelChangeEvent event) {
+        RPGPlayer rpgPlayer = playerManager.getRPGPlayer(event.getPlayer().getUniqueId());
+        if (rpgPlayer != null) { rpgPlayer.updateMaxStats(); bossBarManager.updateBars(event.getPlayer(), rpgPlayer); }
+    }
+    @EventHandler public void onPlayerDeath(org.bukkit.event.entity.PlayerDeathEvent event) {
+        RPGPlayer rpgPlayer = playerManager.getRPGPlayer(event.getEntity().getUniqueId());
+        if (rpgPlayer != null && event.getEntity().getLevel() > 20) rpgPlayer.loseDeathExp(0.3);
+    }
+    @EventHandler public void onEnvironmentDamage(EntityDamageEvent event) {
+        // [Toàn bộ logic môi trường lửa/độc/rơi của bạn giữ nguyên, tôi không sửa gì thêm ở đây]
+        if (event.getEntity() instanceof LivingEntity) {
+            LivingEntity entity = (LivingEntity) event.getEntity();
+            EntityDamageEvent.DamageCause cause = event.getCause();
+            boolean isCustomDoT = false;
+            if (cause == EntityDamageEvent.DamageCause.FIRE || cause == EntityDamageEvent.DamageCause.FIRE_TICK) {
+                long now = System.currentTimeMillis();
+                long lastDmgTime = lastFireDamageTimers.getOrDefault(entity.getUniqueId(), 0L);
+                if (now - lastDmgTime < 500) { event.setCancelled(true); return; }
+                lastFireDamageTimers.put(entity.getUniqueId(), now);
+                event.setDamage(75.0);
+                isCustomDoT = true;
+            }
+            else if (cause == EntityDamageEvent.DamageCause.POISON || cause == EntityDamageEvent.DamageCause.WITHER) {
+                org.bukkit.potion.PotionEffectType type = (cause == EntityDamageEvent.DamageCause.POISON) ? org.bukkit.potion.PotionEffectType.POISON : org.bukkit.potion.PotionEffectType.WITHER;
+                org.bukkit.potion.PotionEffect effect = entity.getPotionEffect(type);
+                if (effect != null) event.setDamage(50.0 * Math.pow(2, effect.getAmplifier()));
+                else event.setDamage(50.0);
+                isCustomDoT = true;
+            }
+            if (isCustomDoT) {
+                new org.bukkit.scheduler.BukkitRunnable() {
+                    @Override public void run() { if (entity.isValid() && !entity.isDead()) entity.setNoDamageTicks(0); }
+                }.runTaskLater(vn.minecraft.rPGCore.RPGCore.getInstance(), 1L);
+            }
+        }
+        if (event.getEntity() instanceof Player) {
+            Player player = (Player) event.getEntity();
+            RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
+            if (rpgPlayer == null) return;
+            rpgPlayer.setInCombat();
+            EntityDamageEvent.DamageCause cause = event.getCause();
+            double multiplier = rpgPlayer.getTotalMaxHealth() / 20.0;
+            if (cause == EntityDamageEvent.DamageCause.FALL || cause == EntityDamageEvent.DamageCause.LAVA || cause == EntityDamageEvent.DamageCause.DROWNING || cause == EntityDamageEvent.DamageCause.STARVATION || cause == EntityDamageEvent.DamageCause.SUFFOCATION || cause == EntityDamageEvent.DamageCause.FREEZE) {
+                event.setDamage(event.getDamage() * multiplier);
+            }
+            new org.bukkit.scheduler.BukkitRunnable() {
+                @Override public void run() { bossBarManager.updateBars(player, rpgPlayer); }
+            }.runTaskLater(vn.minecraft.rPGCore.RPGCore.getInstance(), 1L);
         }
     }
 }

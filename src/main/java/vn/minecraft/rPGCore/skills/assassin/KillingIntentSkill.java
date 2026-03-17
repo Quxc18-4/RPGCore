@@ -33,34 +33,35 @@ public class KillingIntentSkill implements ISkill {
     public Map<String, Integer> getRequiredSkills() { return Collections.emptyMap(); }
 
     @Override
-    public double getManaCost(int level) {
-        return 30.0; // Mana rất rẻ để mở combat
-    }
+    public double getManaCost(int level) { return 40.0; } // Tăng Mana từ 30 -> 40
 
     @Override
     public long getCooldown(int level) {
-        return 30000; // 30s Hồi chiêu
+        return 22000; // 22s Hồi chiêu
     }
 
     @Override
     public List<String> getDescription(int level) {
         List<String> lore = new ArrayList<>();
-        double ratePerStack = 1.0 + (level * 0.5); // Lv1: +1.5%, Lv5: +3.5%
-        double dmgPerStack = 2.0 + (level * 1.0);  // Lv1: +3.0%, Lv5: +7.0%
+        double ratePerStack = 0.5 + (level * 0.4); // Lv1: 0.9%, Lv5: 2.5%
+        double dmgPerStack = 1.0 + (level * 1.0);  // Lv1: 2.0%, Lv5: 6.0%
+        int maxDur = 10 + level; // Lv1: 11s, Lv5: 15s
 
-        lore.add("§7Giải phóng sát ý, tiến vào trạng thái");
-        lore.add("§7Cuồng Nộ trong vòng §e15 giây§7.");
+        lore.add("§7Giải phóng sát ý, yêu cầu người chơi phải");
+        lore.add("§7đang trong §cTrạng thái Chiến đấu§7.");
         lore.add("");
-        lore.add("§8[Nội tại - Tích Lũy Sát Ý]:");
-        lore.add("§7Mỗi khi gây sát thương lên kẻ địch (Đánh");
-        lore.add("§7thường hoặc Kỹ năng), nhận 1 Stack Sát Ý.");
-        lore.add("§7Mỗi Stack cung cấp:");
+        lore.add("§8[Nội tại - Cuồng bạo]:");
+        lore.add("§7Mỗi đòn đánh/kỹ năng tích §e1/3 Stack§7.");
+        lore.add("§7Mỗi 1 Stack thật (3 hit) cung cấp:");
         lore.add("§7- §a+" + String.format("%.1f", ratePerStack) + "% §7Tỉ lệ Chí mạng.");
         lore.add("§7- §c+" + String.format("%.1f", dmgPerStack) + "% §7Sát thương Chí mạng.");
+        lore.add("§7Khi nhận Stack sẽ §alàm mới§7 lại thời");
+        lore.add("§7gian tồn tại về §e7 giây§7.");
         lore.add("");
-        lore.add("§7Tối đa tích lũy: §e10 Stacks§7.");
-        lore.add("§7Mỗi lần nhận Stack sẽ §alàm mới§7 lại");
-        lore.add("§7thời gian 15 giây tồn tại của Sát Ý.");
+        lore.add("§8[Nội tại - Sát ý tối đa]:");
+        lore.add("§7Đạt mốc tối đa sẽ không thể làm mới nữa.");
+        lore.add("§7Sát ý sẽ khóa cứng và duy trì trạng thái");
+        lore.add("§7Cuồng Nộ trong §e" + maxDur + " giây§7.");
 
         return lore;
     }
@@ -68,6 +69,11 @@ public class KillingIntentSkill implements ISkill {
     @Override
     public boolean execute(Player player, RPGPlayer rpgPlayer, int level) {
         if (level <= 0) return false;
+
+        if (!rpgPlayer.isInCombat()) {
+            player.sendMessage("§cChỉ có thể kích hoạt khi đang trong Trạng thái Chiến đấu!");
+            return false;
+        }
 
         double cost = getManaCost(level);
         if (rpgPlayer.getCurrentResource() < cost) {
@@ -86,15 +92,15 @@ public class KillingIntentSkill implements ISkill {
         rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - cost);
         cooldowns.put(player.getUniqueId(), now);
 
-        // Đặt Metadata để CombatManager bắt đầu tính Stack
-        player.setMetadata("Assassin_KillingIntent_Active", new FixedMetadataValue(plugin, System.currentTimeMillis() + 15000));
-        player.setMetadata("Assassin_KillingIntent_Stacks", new FixedMetadataValue(plugin, 0)); // Bắt đầu ở 0 Stack
-        player.setMetadata("Assassin_KillingIntent_Level", new FixedMetadataValue(plugin, level)); // Lưu Level để tính chỉ số
+        // Khởi tạo ở 0 SubStacks và đúng 7 giây
+        player.setMetadata("Assassin_KillingIntent_SubStacks", new FixedMetadataValue(plugin, 0));
+        player.setMetadata("Assassin_KillingIntent_Active", new FixedMetadataValue(plugin, System.currentTimeMillis() + 7000));
+        player.setMetadata("Assassin_KillingIntent_Level", new FixedMetadataValue(plugin, level));
 
         player.sendMessage("§4§l[!] SÁT Ý LĨNH VỰC KÍCH HOẠT!");
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_WARDEN_ROAR, 0.5f, 1.5f);
         player.getWorld().spawnParticle(Particle.DUST, player.getLocation().add(0, 1, 0), 30, 0.5, 0.5, 0.5, new Particle.DustOptions(org.bukkit.Color.MAROON, 1.5f));
-        // Vòng lặp kiểm tra hết hạn
+
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -106,7 +112,7 @@ public class KillingIntentSkill implements ISkill {
                     long expire = player.getMetadata("Assassin_KillingIntent_Active").get(0).asLong();
                     if (System.currentTimeMillis() > expire) {
                         player.removeMetadata("Assassin_KillingIntent_Active", plugin);
-                        player.removeMetadata("Assassin_KillingIntent_Stacks", plugin);
+                        player.removeMetadata("Assassin_KillingIntent_SubStacks", plugin);
                         player.sendMessage("§8§o(Sát ý đã dần tản đi, nhịp độ trở lại bình thường...)");
                         this.cancel();
                     }
@@ -114,7 +120,7 @@ public class KillingIntentSkill implements ISkill {
                     this.cancel();
                 }
             }
-        }.runTaskTimer(plugin, 20L, 10L); // Check mỗi nửa giây
+        }.runTaskTimer(plugin, 20L, 10L);
 
         return true;
     }

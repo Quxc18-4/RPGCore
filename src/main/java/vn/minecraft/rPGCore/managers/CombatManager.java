@@ -23,33 +23,95 @@ public class CombatManager {
     }
 
     public static double calculateDamage(Player attacker, RPGPlayer rpgPlayer, LivingEntity target, double dmgMultiplier, double extraArmorPen, double extraCritRate, double extraCritDamage, boolean isMagic, boolean isCrossbow) {
-        Map<String, Double> totalStats = rpgPlayer.getTotalStatsMap();
 
-        double minDmg = totalStats.getOrDefault(isMagic ? "Sát thương phép thuật (Nhỏ nhất)" : "Sát thương vật lý (Nhỏ nhất)", 5.0);
-        double maxDmg = totalStats.getOrDefault(isMagic ? "Sát thương phép thuật (Lớn nhất)" : "Sát thương vật lý (Lớn nhất)", 10.0);
+        // ==========================================
+        // 1. TÍCH LŨY STACK SÁT Ý LĨNH VỰC (Cơ chế 1/3 Stack)
+        // ==========================================
+        if (attacker.hasMetadata("Assassin_KillingIntent_Active")) {
+            long expire = attacker.getMetadata("Assassin_KillingIntent_Active").get(0).asLong();
+            if (System.currentTimeMillis() <= expire) {
+                // SỬ DỤNG SUBSTACKS (1/3)
+                int subStacks = attacker.hasMetadata("Assassin_KillingIntent_SubStacks") ? attacker.getMetadata("Assassin_KillingIntent_SubStacks").get(0).asInt() : 0;
+
+                if (subStacks < 30) { // 30 Sub = 10 Stack thật
+                    subStacks++;
+                    attacker.setMetadata("Assassin_KillingIntent_SubStacks", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), subStacks));
+
+                    int realStacks = subStacks / 3;
+                    if (subStacks % 3 == 0) { // Cứ đủ 3 hit thì kêu một tiếng "Ping"
+                        attacker.playSound(attacker.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.4f, 1.0f + (realStacks * 0.1f));
+                    }
+
+                    if (subStacks < 30) {
+                        // Làm mới lại 7s
+                        attacker.setMetadata("Assassin_KillingIntent_Active", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), System.currentTimeMillis() + 7000));
+                    } else {
+                        // Max 10 Stack -> Đặt thời gian (Scaling theo level) và Khóa làm mới
+                        int kiLevel = attacker.hasMetadata("Assassin_KillingIntent_Level") ? attacker.getMetadata("Assassin_KillingIntent_Level").get(0).asInt() : 1;
+                        long maxDur = (10 + kiLevel) * 1000L;
+                        attacker.setMetadata("Assassin_KillingIntent_Active", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), System.currentTimeMillis() + maxDur));
+                        attacker.sendMessage("§4§l[!] TỤ SÁT Ý TỐI ĐA! (Cuồng nộ trong " + (10+kiLevel) + "s)");
+                    }
+                }
+            }
+        }
+
+        Map<String, Double> combatStats = new java.util.HashMap<>(rpgPlayer.getTotalStatsMap());
+
+        // CHUẨN BỊ BÙ CRIT TỪ ĐÁNH LÉN TÀNG HÌNH (Bảo đảm 100% không tính dư)
+        if (attacker.hasMetadata("Basic_Stealth_Attack")) {
+            attacker.removeMetadata("Basic_Stealth_Attack", vn.minecraft.rPGCore.RPGCore.getInstance());
+            double currentBaseCrit = combatStats.getOrDefault("Tỉ lệ chí mạng", 5.0);
+            if (currentBaseCrit < 100.0) {
+                extraCritRate += (100.0 - currentBaseCrit);
+            }
+        }
+
+        double dynamicCritRate = combatStats.getOrDefault("Tỉ lệ chí mạng", 5.0) + extraCritRate;
+        double dynamicCritDamage = combatStats.getOrDefault("Sát thương chí mạng", 50.0) + extraCritDamage;
+        double dynamicArmorPen = combatStats.getOrDefault("Tỉ lệ xuyên giáp", 0.0) + extraArmorPen;
+
+        if (attacker.hasMetadata("Assassin_KillingIntent_SubStacks")) {
+            int realStacks = attacker.getMetadata("Assassin_KillingIntent_SubStacks").get(0).asInt() / 3;
+            int level = attacker.hasMetadata("Assassin_KillingIntent_Level") ? attacker.getMetadata("Assassin_KillingIntent_Level").get(0).asInt() : 1;
+
+            // [GIẢM SỨC MẠNH SÁT Ý]: 2.5% Crit và 6% DMG ở max level
+            dynamicCritRate += (realStacks * (0.5 + (level * 0.4)));
+            dynamicCritDamage += (realStacks * (1.0 + (level * 1.0)));
+        }
+
+        combatStats.put("Tỉ lệ chí mạng", dynamicCritRate);
+        combatStats.put("Sát thương chí mạng", dynamicCritDamage);
+        combatStats.put("Tỉ lệ xuyên giáp", dynamicArmorPen);
+
+        // NỘI TẠI CLASS CHUYỂN HÓA CRIT
+        if (rpgPlayer.getCurrentClass() != null) {
+            rpgPlayer.getCurrentClass().applyOffensivePassives(combatStats);
+        }
+
+        // BÙ CRIT CHO CHIÊU CHÉM ĐÔI (Backstab 30% - Không bị tính dư)
+        if (attacker.hasMetadata("DoubleSlash_Backstab")) {
+            double finalCrit = combatStats.getOrDefault("Tỉ lệ chí mạng", 5.0) + 30.0;
+            combatStats.put("Tỉ lệ chí mạng", Math.min(finalCrit, 100.0));
+        }
+
+        // Lấy lại dữ liệu "Thành phẩm" sau khi Class đã nhào nặn xong
+        double finalCritRate = combatStats.getOrDefault("Tỉ lệ chí mạng", 5.0);
+        double finalCritDamage = combatStats.getOrDefault("Sát thương chí mạng", 50.0);
+        double finalArmorPen = combatStats.getOrDefault("Tỉ lệ xuyên giáp", 0.0);
+        double finalMagicPen = combatStats.getOrDefault("Tỉ lệ xuyên kháng phép", 0.0);
+
+        // ==========================================
+        // 5. TÍNH TOÁN SÁT THƯƠNG THỰC TẾ
+        // ==========================================
+        double minDmg = combatStats.getOrDefault(isMagic ? "Sát thương phép thuật (Nhỏ nhất)" : "Sát thương vật lý (Nhỏ nhất)", 5.0);
+        double maxDmg = combatStats.getOrDefault(isMagic ? "Sát thương phép thuật (Lớn nhất)" : "Sát thương vật lý (Lớn nhất)", 10.0);
 
         double rawDamage = minDmg + (Math.random() * (maxDmg - minDmg));
         if (isCrossbow) rawDamage *= 1.55;
 
-        double critRate = totalStats.getOrDefault("Tỉ lệ chí mạng", 5.0) + extraCritRate;
-        double critDamage = totalStats.getOrDefault("Sát thương chí mạng", 50.0) + extraCritDamage;
-
-        // ==========================================
-        // [NỘI TẠI SÁT THỦ]: XỬ LÝ CHUYỂN HÓA CHÍ MẠNG DƯ THỪA
-        // ==========================================
-        boolean isAssassin = rpgPlayer.getCurrentClass() != null && rpgPlayer.getCurrentClass().getId().equalsIgnoreCase("assassin");
-
-        if (isAssassin && critRate > 100.0) {
-            double excessCrit = critRate - 100.0;
-            // Chuyển hóa: 1% tỉ lệ dư = 2% sát thương chí mạng cộng thêm
-            critDamage += (excessCrit * 2.0);
-            critRate = 100.0; // Khóa tỉ lệ ở mốc 100%
-        } else {
-            critRate = Math.min(critRate, 100.0);
-        }
-
-        if ((Math.random() * 100) <= critRate) {
-            rawDamage = rawDamage * (1.0 + (critDamage / 100.0));
+        if ((Math.random() * 100) <= finalCritRate) {
+            rawDamage *= (1.0 + (finalCritDamage / 100.0));
             target.getWorld().spawnParticle(Particle.CRIT, target.getLocation().add(0, 1, 0), 15, 0.5, 0.5, 0.5, 0.1);
             attacker.playSound(attacker.getLocation(), Sound.ENTITY_PLAYER_ATTACK_CRIT, 1.0f, 1.2f);
         }
@@ -63,22 +125,18 @@ public class CombatManager {
             if (armorAttr != null) targetDefense = armorAttr.getValue();
         }
 
-        double statPen = totalStats.getOrDefault(isMagic ? "Tỉ lệ xuyên kháng phép" : "Tỉ lệ xuyên giáp", 0.0);
-        statPen = Math.min(100.0, Math.max(0.0, statPen));
-        double skillPen = Math.min(100.0, Math.max(0.0, extraArmorPen));
-
-        double finalDefenseMulti = (1.0 - (statPen / 100.0)) * (1.0 - (skillPen / 100.0));
-        targetDefense = targetDefense * finalDefenseMulti;
+        // Xuyên giáp giờ lấy thẳng từ finalArmorPen (Đã được mở Gap 80% nếu là Archer)
+        double penToUse = isMagic ? finalMagicPen : finalArmorPen;
+        double finalDefenseMulti = 1.0 - (penToUse / 100.0);
+        targetDefense *= finalDefenseMulti;
 
         double finalDamage = Math.max(1.0, (rawDamage - targetDefense) * dmgMultiplier);
 
-        // ===========================================
-        // [MỚI]: HỆ THỐNG MÁY QUÉT DUMMY TEST SÁT THƯƠNG
-        // ===========================================
+        // Code Dummy Test giữ nguyên
         if (target.getCustomName() != null && ChatColor.stripColor(target.getCustomName()).contains("Dummy")) {
-            attacker.sendMessage("§e§l[DUMMY] §fSát thương nhận vào: §c" + String.format("%.1f", finalDamage) + " ⚔");
+            int currentStacks = attacker.hasMetadata("Assassin_KillingIntent_Stacks") ? attacker.getMetadata("Assassin_KillingIntent_Stacks").get(0).asInt() : 0;
+            attacker.sendMessage("§e§l[DUMMY] §8[Stack: " + currentStacks + "] §fSát thương: §c" + String.format("%.1f", finalDamage) + " ⚔");
 
-            // Hồi đầy máu và dập tắt lửa để Dummy không bao giờ chết
             new BukkitRunnable() {
                 @Override
                 public void run() {

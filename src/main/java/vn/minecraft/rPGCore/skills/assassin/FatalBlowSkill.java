@@ -32,29 +32,28 @@ public class FatalBlowSkill extends AbstractEnhancementSkill {
 
     @Override
     public long getCooldown(int level) {
-        return 12000;
+        return 12000 - (level * 500L);
     }
 
     @Override
     public List<String> getDescription(int level) {
         double critRate = 50.0 + ((level - 1) * 10.0);
-        double critDmg = 300.0 + ((level - 1) * 20.0);
-        double skillDmg = 200.0 + ((level - 1) * 15.0);
+        double critDmg = 200.0 + ((level - 1) * 20.0); // Lv 6 = 300%
+        double skillDmg = 150.0 + ((level - 1) * 10.0); // Lv 6 = 200%
 
         return Arrays.asList(
                 "§7Tụ lực sát khí, cường hóa đòn tấn công tiếp theo",
                 "§7trong vòng §e8 giây§7.",
                 "",
-                "§8[Nếu dùng Đánh Thường]:",
+                "§8[Nội tại - Tụ lực]:",
                 "§7- Tăng §a" + (int)critRate + "% §7Tỉ lệ Chí mạng.",
                 "§7- Tăng §c" + (int)critDmg + "% §7Sát thương Bạo kích.",
                 "",
-                "§8[Nếu dùng Kỹ Năng]:",
+                "§8[Nội tại - Sắc bén]:",
                 "§7- Kỹ năng sát thương tiếp theo được cộng",
                 "§7  thêm §e" + (int)skillDmg + "% §7Sát thương gốc.",
                 "",
-                "§c*Lưu ý: Kích hoạt sẽ ghi đè các Cường hóa vũ",
-                "§ckhí khác (VD: Đòn Khát Máu)."
+                "§c*Lưu ý: Kích hoạt sẽ ghi đè các Cường hóa khác."
         );
     }
 

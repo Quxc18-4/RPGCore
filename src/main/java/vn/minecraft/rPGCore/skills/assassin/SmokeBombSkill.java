@@ -50,10 +50,15 @@ public class SmokeBombSkill implements ISkill {
         return Arrays.asList(
                 "§7Ném bom khói xuống chân, lẩn trốn vào bóng đêm.",
                 "§7- Trở nên §fTàng Hình Hoàn Toàn §7trong §a" + duration + "s§7.",
-                "§7- Có thể kích hoạt lại để §eLàm Mới §7thời gian.",
-                "§7- Kẻ địch trong vùng khói bị Bóng tối (Darkness) tạm thời.",
-                "§7- Đòn đánh tiếp theo sẽ §cChí Mạng 100%§7 và giải trừ tàng hình.",
-                "§c*Lưu ý: Nếu di chuyển, bạn sẽ để lại vết khói trên đầu."
+                "§7- Kích hoạt lại sẽ §eLàm Mới §7thời gian duy trì.",
+                "§7- Kẻ địch trong vùng khói bị che mắt tạm thời.",
+                "",
+                "§8[Nội tại - Đột Kích]:",
+                "§7§nĐòn Đánh Thường§7 tiếp theo trong trạng thái này",
+                "§7sẽ chắc chắn nổ sát thương chí mạng.",
+                "",
+                "§c*Lưu ý: Việc tung Kỹ năng hoặc đánh trúng mục",
+                "§ctiêu sẽ lập tức làm mất trạng thái Tàng hình."
         );
     }
 
@@ -80,6 +85,7 @@ public class SmokeBombSkill implements ISkill {
         Location castLoc = player.getLocation();
         player.getWorld().playSound(castLoc, Sound.ENTITY_DRAGON_FIREBALL_EXPLODE, 1f, 1.5f);
         player.getWorld().spawnParticle(Particle.CAMPFIRE_COSY_SMOKE, castLoc, 100, 2.0, 1.0, 2.0, 0.05);
+        player.getWorld().spawnParticle(Particle.SQUID_INK, castLoc, 80, 2.0, 1.5, 2.0, 0.1);
 
         for (org.bukkit.entity.Entity e : player.getWorld().getNearbyEntities(castLoc, 4.0, 3.0, 4.0)) {
             if (e instanceof LivingEntity && e != player) {

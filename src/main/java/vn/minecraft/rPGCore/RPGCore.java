@@ -3,7 +3,6 @@ package vn.minecraft.rPGCore;
 import org.bukkit.plugin.java.JavaPlugin;
 import vn.minecraft.rPGCore.classes.ClassManager;
 import vn.minecraft.rPGCore.commands.*;
-import vn.minecraft.rPGCore.listeners.ArcherListener;
 import vn.minecraft.rPGCore.listeners.ComboListener;
 import vn.minecraft.rPGCore.listeners.EquipmentListener;
 import vn.minecraft.rPGCore.listeners.PlayerListener;
@@ -57,7 +56,6 @@ public final class RPGCore extends JavaPlugin {
 
         getServer().getPluginManager().registerEvents(new PlayerListener(playerManager, bossBarManager), this);
         getServer().getPluginManager().registerEvents(new ClassGUIListener(playerManager, bossBarManager, classManager), this);
-        getServer().getPluginManager().registerEvents(new ArcherListener(this, playerManager, arrowCraftingUI), this);
         getServer().getPluginManager().registerEvents(new EquipmentListener(playerManager), this);
         getServer().getPluginManager().registerEvents(repairGUI, this);
         getServer().getPluginManager().registerEvents(attrGUI, this);
@@ -71,9 +69,6 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.FoodListener(this, this.boredomManager, this.foodBuffManager), this);
         // [MỚI]: ĐĂNG KÝ BANK LISTENER
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.BankListener(this, bankManager, currencyManager, playerManager), this);
-        // [MỚI]: ĐĂNG KÝ LISTENER CHO SÁT THỦ
-        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.AssassinListener(this), this);
-
         // [MỚI]: ĐĂNG KÝ SỰ KIỆN CHO CỬA HÀNG (SHOP)
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.ShopListener(shopManager, currencyManager, playerManager), this);
 

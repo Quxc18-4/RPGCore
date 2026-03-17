@@ -79,17 +79,15 @@ public class ShadowDashSkill implements ISkill {
 
         int dmg = (int) Math.round(getDamageMultiplier(displayLevel) * 100);
 
-        lore.add("§7Lao vút đi về phía trước, cứ mỗi 4m");
-        lore.add("§7sẽ để lại một Tàng ảnh của bản thân.");
+        lore.add("§7Lướt nhanh về phía trước");
         lore.add("§7Gây sát thương: §c" + dmg + "% §7dọc đường lướt.");
         lore.add("");
-        lore.add("§8[Chuỗi Kết Liễu]:");
+        lore.add("§8[Nội tại - Chuỗi]:");
         lore.add("§7Nếu lướt trúng ít nhất 1 mục tiêu, sau §e0.6s");
-        lore.add("§7bạn sẽ tự động lướt thêm 1 lần nữa về");
-        lore.add("§7hướng đang nhìn.");
+        lore.add("§7tái kích hoạt khả năng lướt.");
         lore.add("");
-        lore.add("§8[Hoàn Trả Điểm Yếu]:");
-        lore.add("§7Nếu lần lướt đầu tiên §cKhông trúng ai§7,");
+        lore.add("§8[Nội tại - Làm mới]:");
+        lore.add("§7Nếu lần lướt đầu tiên §cKhông trúng mục tiêu§7,");
         lore.add("§7hoàn lại §b40% Mana §7và §aGiảm 40% Hồi chiêu§7.");
 
         if (level < 8) {
@@ -100,8 +98,8 @@ public class ShadowDashSkill implements ISkill {
             lore.add("");
             lore.add("§6§l✦ ĐỘT PHÁ TỐI THƯỢNG ✦");
             lore.add("§eNếu lần lướt thứ 2 vẫn trúng mục tiêu,");
-            lore.add("§esau 0.6s sẽ kích hoạt Lướt lần 3 với");
-            lore.add("§esát thương được x2 (Nhân đôi)!");
+            lore.add("§esau 0.6s sẽ kích hoạt Lướt lần 3 gây");
+            lore.add("§esát thương §c" + dmg*2 + "%§7.");
         }
         return lore;
     }
@@ -127,17 +125,14 @@ public class ShadowDashSkill implements ISkill {
         rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - cost);
         cooldowns.put(player.getUniqueId(), currentTime);
 
-        boolean fromStealth = false;
-        if (player.hasMetadata("Assassin_Stealth")) {
-            fromStealth = true;
+        // [ĐÃ SỬA]: Kỹ năng kích hoạt sẽ luôn phá Tàng hình (Bom Khói)
+        if (player.hasMetadata("Assassin_Stealth") || player.hasMetadata("Assassin_Smoke_Bomb_Active")) {
             player.removeMetadata("Assassin_Stealth", plugin);
-            player.sendMessage("§c§l[!] Đột kích từ bóng tối! Hiện hình!");
+            player.removeMetadata("Assassin_Smoke_Bomb_Active", plugin);
+            player.sendMessage("§c§l[!] Bạn đã hiện hình do tung kỹ năng!");
             for (Player p : Bukkit.getOnlinePlayers()) p.showPlayer(plugin, player);
         }
 
-        // ==========================================
-        // BƯỚC 1: LẤY BUFF fbLevel TỪ NGƯỜI CHƠI
-        // ==========================================
         int fbLevel = 0;
         if (player.hasMetadata("Assassin_FatalBlow_Level")) {
             fbLevel = player.getMetadata("Assassin_FatalBlow_Level").get(0).asInt();
@@ -148,23 +143,18 @@ public class ShadowDashSkill implements ISkill {
 
         player.sendMessage("§8§l[!] LƯỚT BÓNG ĐÊM!");
 
-        // Chuyền fbLevel vào lần lướt ĐẦU TIÊN
-        performDash(player, rpgPlayer, level, 1, fromStealth, fbLevel);
+        performDash(player, rpgPlayer, level, 1, fbLevel);
 
         return true;
     }
 
-    // ==========================================
-    // BƯỚC 2: HÀM LƯỚT (Nhận fbLevel)
-    // ==========================================
-    private void performDash(final Player player, final RPGPlayer rpgPlayer, final int level, final int dashPhase, final boolean fromStealth, final int fbLevel) {
+    private void performDash(final Player player, final RPGPlayer rpgPlayer, final int level, final int dashPhase, final int fbLevel) {
         if (!player.isOnline() || player.isDead()) return;
 
         double baseMulti = getDamageMultiplier(level);
 
-        // ÁP DỤNG BUFF SÁT THƯƠNG
         if (fbLevel > 0) {
-            baseMulti += 2.00 + ((fbLevel - 1) * 0.15); // Cộng từ 200% -> 275%
+            baseMulti += 2.00 + ((fbLevel - 1) * 0.15);
         }
 
         final double finalDmgMulti = (dashPhase == 3) ? baseMulti * 2.0 : baseMulti;
@@ -198,7 +188,6 @@ public class ShadowDashSkill implements ISkill {
                     player.setVelocity(new Vector(0, 0, 0));
                     player.setFallDistance(0);
                     this.cancel();
-                    // Lướt xong -> Chuyền fbLevel sang khâu xử lý Hậu quả
                     handleDashEnd(player, rpgPlayer, level, dashPhase, hitAny, fbLevel);
                     return;
                 }
@@ -219,9 +208,8 @@ public class ShadowDashSkill implements ISkill {
                         hitTargets.add(target.getUniqueId());
                         hitAny = true;
 
-                        double extraCrit = (fromStealth) ? 100.0 : 0.0;
-
-                        double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, finalDmgMulti, 0.0, extraCrit, 0.0, false, false);
+                        // [ĐÃ XÓA BUG 100K DAME]: Không truyền extraCrit 100.0 nữa.
+                        double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, finalDmgMulti, 0.0, 0.0, 0.0, false, false);
                         CombatManager.applySkillDamage(player, target, finalDmg);
 
                         target.getWorld().spawnParticle(Particle.SWEEP_ATTACK, target.getLocation().add(0, 1, 0), 1);
@@ -229,17 +217,12 @@ public class ShadowDashSkill implements ISkill {
                         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_ATTACK_SWEEP, 1.0f, 1.2f);
                     }
                 }
-
                 ticks++;
             }
         }.runTaskTimer(plugin, 0L, 1L);
     }
 
-    // ==========================================
-    // BƯỚC 3: XỬ LÝ HẬU QUẢ (Nhận và chuyền fbLevel đi tiếp)
-    // ==========================================
     private void handleDashEnd(Player player, RPGPlayer rpgPlayer, int level, int dashPhase, boolean hitAny, int fbLevel) {
-
         if (dashPhase == 1 && !hitAny) {
             double refundMana = getManaCost(level) * 0.40;
             double newMana = Math.min(rpgPlayer.getTotalMaxResource(), rpgPlayer.getCurrentResource() + refundMana);
@@ -257,38 +240,29 @@ public class ShadowDashSkill implements ISkill {
 
         if (hitAny) {
             if (dashPhase == 1) {
-                // Chuyền fbLevel cho bộ đếm lần 2
                 scheduleNextDash(player, rpgPlayer, level, 2, fbLevel);
             } else if (dashPhase == 2 && level == 8) {
-                // Chuyền fbLevel cho bộ đếm lần 3
                 scheduleNextDash(player, rpgPlayer, level, 3, fbLevel);
             }
         }
     }
 
-    // ==========================================
-    // BƯỚC 4: BỘ ĐẾM THỜI GIAN (Giữ fbLevel và ném lại vào Bước 2)
-    // ==========================================
     private void scheduleNextDash(final Player player, final RPGPlayer rpgPlayer, final int level, final int nextPhase, final int fbLevel) {
         player.sendMessage("§e§l[!] Nhắm mục tiêu! Lướt lần " + nextPhase + " sau 0.6s...");
 
         new BukkitRunnable() {
             int timer = 12; // 0.6 giây
-
             @Override
             public void run() {
                 if (!player.isOnline() || player.isDead()) {
                     this.cancel();
                     return;
                 }
-
                 if (timer % 5 == 0) {
                     player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, 1.0f, 2.0f);
                 }
-
                 if (timer <= 0) {
-                    // Đếm xong -> Lướt lần tiếp theo -> Ném fbLevel vào lại Hàm lướt
-                    performDash(player, rpgPlayer, level, nextPhase, false, fbLevel);
+                    performDash(player, rpgPlayer, level, nextPhase, fbLevel);
                     this.cancel();
                 }
                 timer--;
@@ -296,14 +270,9 @@ public class ShadowDashSkill implements ISkill {
         }.runTaskTimer(plugin, 0L, 1L);
     }
 
-    // ==========================================
-    // VẼ TÀNG ẢNH (SHADOW TRAIL)
-    // ==========================================
     private void spawnShadowTrail(Location loc) {
         loc.getWorld().playSound(loc, Sound.ENTITY_ILLUSIONER_CAST_SPELL, 0.5f, 1.5f);
-
         Particle.DustOptions darkPurple = new Particle.DustOptions(Color.fromRGB(75, 0, 130), 1.0f);
-
         for (double y = 0.2; y <= 1.8; y += 0.4) {
             loc.getWorld().spawnParticle(Particle.SQUID_INK, loc.clone().add(0, y, 0), 1, 0.15, 0.1, 0.15, 0.01);
             loc.getWorld().spawnParticle(Particle.DUST, loc.clone().add(0, y, 0), 2, 0.15, 0.1, 0.15, darkPurple);

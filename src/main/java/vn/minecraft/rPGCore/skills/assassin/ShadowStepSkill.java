@@ -76,7 +76,7 @@ public class ShadowStepSkill implements ISkill {
         lore.add("");
         lore.add("§7Tốc độ di chuyển: §b+" + (int)speed + "%");
         lore.add("§7Sức bật nhảy: §a+" + (int)jump + "%");
-        lore.add("§7Hiệu ứng thêm: §fTự động vượt địa hình 1 block"); // [ĐÃ BỔ SUNG LORE MỚI]
+        lore.add("§7Hiệu ứng thêm: §fTự động vượt địa hình 1 block");
         lore.add("§7Thời gian hiệu lực: §e" + duration + " giây");
         lore.add("");
         lore.add("§8[Nội tại - Tương tác Ảo Ảnh]:");
