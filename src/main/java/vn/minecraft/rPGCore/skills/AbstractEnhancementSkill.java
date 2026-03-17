@@ -2,8 +2,11 @@ package vn.minecraft.rPGCore.skills;
 
 import org.bukkit.entity.Player;
 import org.bukkit.metadata.FixedMetadataValue;
+import org.bukkit.metadata.MetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+
+import java.util.List;
 
 public abstract class AbstractEnhancementSkill implements ISkill {
 
@@ -30,15 +33,23 @@ public abstract class AbstractEnhancementSkill implements ISkill {
         // 1. KIỂM TRA VÀ GHI ĐÈ BUFF CŨ (TOÀN CỤC)
         // ==========================================
         if (player.hasMetadata("Active_Weapon_Enhancement")) {
-            String oldBuffKey = player.getMetadata("Active_Weapon_Enhancement").get(0).asString();
+            List<MetadataValue> metaList = player.getMetadata("Active_Weapon_Enhancement");
 
-            // Nếu phát hiện đang có 1 Buff khác với Buff chuẩn bị dùng
-            if (!oldBuffKey.equals(buffKey)) {
-                // Kiểm tra xem Buff cũ đó chưa bị xài mất thì mới xóa và báo Ghi đè
-                if (player.hasMetadata(oldBuffKey)) {
-                    player.removeMetadata(oldBuffKey, plugin);
-                    player.sendMessage("§8§o(Cường hóa vũ khí trước đó đã bị ghi đè...)");
+            // [FIX]: Kiểm tra an toàn xem List có bị rỗng không trước khi get(0)
+            if (!metaList.isEmpty()) {
+                String oldBuffKey = metaList.get(0).asString();
+
+                // Nếu phát hiện đang có 1 Buff khác với Buff chuẩn bị dùng
+                if (!oldBuffKey.equals(buffKey)) {
+                    // Kiểm tra xem Buff cũ đó chưa bị xài mất thì mới xóa và báo Ghi đè
+                    if (player.hasMetadata(oldBuffKey)) {
+                        player.removeMetadata(oldBuffKey, plugin);
+                        player.sendMessage("§8§o(Cường hóa vũ khí trước đó đã bị ghi đè...)");
+                    }
                 }
+            } else {
+                // Dọn rác nếu key tồn tại nhưng list rỗng
+                player.removeMetadata("Active_Weapon_Enhancement", plugin);
             }
         }
 
@@ -65,19 +76,27 @@ public abstract class AbstractEnhancementSkill implements ISkill {
                 // Nếu người chơi online và Buff vẫn còn tồn tại (chưa bị đánh mất)
                 if (player.isOnline() && player.hasMetadata(buffKey)) {
 
-                    // Chỉ hủy nếu đây đúng là cái Buff do chính Task này sinh ra
-                    if (player.hasMetadata(buffKey + "_Time") && player.getMetadata(buffKey + "_Time").get(0).asLong() == applyTime) {
+                    // [FIX]: Kiểm tra an toàn List Time
+                    if (player.hasMetadata(buffKey + "_Time")) {
+                        List<MetadataValue> timeMeta = player.getMetadata(buffKey + "_Time");
 
-                        player.removeMetadata(buffKey, plugin);
-                        player.removeMetadata(buffKey + "_Time", plugin);
+                        // Chỉ hủy nếu đây đúng là cái Buff do chính Task này sinh ra
+                        if (!timeMeta.isEmpty() && timeMeta.get(0).asLong() == applyTime) {
 
-                        // Xóa luôn con trỏ Active để làm sạch dữ liệu
-                        if (player.hasMetadata("Active_Weapon_Enhancement") && player.getMetadata("Active_Weapon_Enhancement").get(0).asString().equals(buffKey)) {
-                            player.removeMetadata("Active_Weapon_Enhancement", plugin);
-                        }
+                            player.removeMetadata(buffKey, plugin);
+                            player.removeMetadata(buffKey + "_Time", plugin);
 
-                        if (expireMessage != null && !expireMessage.isEmpty()) {
-                            player.sendMessage(expireMessage);
+                            // [FIX]: Kiểm tra an toàn List Active trước khi xóa con trỏ
+                            if (player.hasMetadata("Active_Weapon_Enhancement")) {
+                                List<MetadataValue> activeMeta = player.getMetadata("Active_Weapon_Enhancement");
+                                if (!activeMeta.isEmpty() && activeMeta.get(0).asString().equals(buffKey)) {
+                                    player.removeMetadata("Active_Weapon_Enhancement", plugin);
+                                }
+                            }
+
+                            if (expireMessage != null && !expireMessage.isEmpty()) {
+                                player.sendMessage(expireMessage);
+                            }
                         }
                     }
                 }

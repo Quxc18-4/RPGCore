@@ -51,8 +51,8 @@ public class KillingIntentSkill implements ISkill {
         lore.add("§7đang trong §cTrạng thái Chiến đấu§7.");
         lore.add("");
         lore.add("§8[Nội tại - Cuồng bạo]:");
-        lore.add("§7Mỗi đòn đánh/kỹ năng tích §e1/3 Stack§7.");
-        lore.add("§7Mỗi 1 Stack thật (3 hit) cung cấp:");
+        lore.add("§7Mỗi 3 đòn đánh/1 kỹ năng tích §e1 Stack§7.");
+        lore.add("§7Mỗi 1 Stack cung cấp:");
         lore.add("§7- §a+" + String.format("%.1f", ratePerStack) + "% §7Tỉ lệ Chí mạng.");
         lore.add("§7- §c+" + String.format("%.1f", dmgPerStack) + "% §7Sát thương Chí mạng.");
         lore.add("§7Khi nhận Stack sẽ §alàm mới§7 lại thời");
