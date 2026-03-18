@@ -30,7 +30,16 @@ public class KillingIntentSkill implements ISkill {
     @Override public int getUpgradeCost(int currentLevel) { return 1; }
 
     @Override
-    public Map<String, Integer> getRequiredSkills() { return Collections.emptyMap(); }
+    public Map<String, Integer> getRequiredSkills() {
+        Map<String, Integer> req = new HashMap<>();
+        req.put("assassin_fatal_blow", 4);
+        return req;
+    }
+
+    @Override
+    public int getRequiredPlayerLevel() {
+        return 18; // Yêu cầu Level 18
+    }
 
     @Override
     public double getManaCost(int level) { return 40.0; } // Tăng Mana từ 30 -> 40

@@ -42,7 +42,15 @@ public class ShadowDecoySkill implements ISkill {
 
     @Override
     public Map<String, Integer> getRequiredSkills() {
-        return Collections.emptyMap();
+        Map<String, Integer> req = new HashMap<>();
+        req.put("assassin_smoke_bomb", 5);
+        req.put("assassin_shadow_step",6);
+        return req;
+    }
+
+    @Override
+    public int getRequiredPlayerLevel() {
+        return 18; // Yêu cầu Level 18
     }
 
     @Override

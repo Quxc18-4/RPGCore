@@ -93,5 +93,15 @@ public class FatalBlowSkill extends AbstractEnhancementSkill {
     }
 
     @Override public int getUpgradeCost(int currentLevel) { return 1; }
-    @Override public Map<String, Integer> getRequiredSkills() { return Collections.emptyMap(); }
+    @Override
+    public Map<String, Integer> getRequiredSkills() {
+        Map<String, Integer> req = new HashMap<>();
+        req.put("assassin_double_slash", 10);
+        return req;
+    }
+
+    @Override
+    public int getRequiredPlayerLevel() {
+        return 12; // Yêu cầu Level 12
+    }
 }
