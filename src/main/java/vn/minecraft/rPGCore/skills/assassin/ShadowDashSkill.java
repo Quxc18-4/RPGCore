@@ -42,7 +42,15 @@ public class ShadowDashSkill implements ISkill {
 
     @Override
     public Map<String, Integer> getRequiredSkills() {
-        return Collections.emptyMap();
+        Map<String, Integer> req = new HashMap<>();
+        req.put("assassin_shadow_decoy", 6);
+        req.put("assassin_phantom_blades",10);
+        return req;
+    }
+
+    @Override
+    public int getRequiredPlayerLevel() {
+        return 32; // Yêu cầu Level 18
     }
 
     @Override

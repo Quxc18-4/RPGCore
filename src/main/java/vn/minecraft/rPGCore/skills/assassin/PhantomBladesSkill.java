@@ -35,7 +35,15 @@ public class PhantomBladesSkill implements ISkill {
 
     @Override
     public Map<String, Integer> getRequiredSkills() {
-        return Collections.singletonMap("assassin_poison_dart", 3);
+        Map<String, Integer> req = new HashMap<>();
+        req.put("assassin_double_slash", 10);
+        req.put("assassin_poison_dart",9);
+        return req;
+    }
+
+    @Override
+    public int getRequiredPlayerLevel() {
+        return 20; // Yêu cầu Level 18
     }
 
     @Override

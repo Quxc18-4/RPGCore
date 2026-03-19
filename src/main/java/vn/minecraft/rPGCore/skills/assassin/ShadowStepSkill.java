@@ -34,7 +34,14 @@ public class ShadowStepSkill implements ISkill {
 
     @Override
     public Map<String, Integer> getRequiredSkills() {
-        return Collections.emptyMap();
+        Map<String, Integer> req = new HashMap<>();
+        req.put("assassin_smoke_bomb", 4);
+        return req;
+    }
+
+    @Override
+    public int getRequiredPlayerLevel() {
+        return 8; // Yêu cầu Level 35
     }
 
     @Override

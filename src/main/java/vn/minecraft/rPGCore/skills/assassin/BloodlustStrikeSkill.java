@@ -29,7 +29,15 @@ public class BloodlustStrikeSkill extends AbstractEnhancementSkill {
 
     @Override
     public Map<String, Integer> getRequiredSkills() {
-        return Collections.emptyMap();
+        Map<String, Integer> req = new HashMap<>();
+        req.put("assassin_double_slash", 10);
+        req.put("assassin_poison_dart",5);
+        return req;
+    }
+
+    @Override
+    public int getRequiredPlayerLevel() {
+        return 18; // Yêu cầu Level 18
     }
 
     @Override

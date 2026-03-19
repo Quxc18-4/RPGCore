@@ -287,4 +287,9 @@ public class PoisonDartSkill implements ISkill, Listener {
             }
         }
     }
+
+    @Override
+    public int getRequiredPlayerLevel() {
+        return 6; // Yêu cầu Level 6
+    }
 }
