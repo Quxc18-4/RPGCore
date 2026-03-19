@@ -169,7 +169,7 @@ public class ItemManager {
     }
 
     // =========================================
-    // 4. GIAO DIỆN UI ĐẸP MẮT
+    // GIAO DIỆN UI: MÔ TẢ NẰM DƯỚI CÙNG
     // =========================================
     public ItemStack buildItem(String id, int amount) {
         ItemData data = registry.get(id.toLowerCase());
@@ -178,41 +178,46 @@ public class ItemManager {
         ItemStack item = new ItemStack(data.material, amount);
         ItemMeta meta = item.getItemMeta();
 
-        // Tên vật phẩm có màu theo Phẩm chất
+        // Tên có màu theo Rarity
         meta.setDisplayName(data.rarity.color + "§l" + data.name);
 
         List<String> lore = new ArrayList<>();
 
-        // Phân loại
+        // Dòng 1: Phân loại
         lore.add("§8[ Phân loại: " + data.category.type.displayName + " - " + data.category.displayName + " ]");
-        lore.add("§8§m                                ");
 
-        // Mô tả
-        if (data.description != null && !data.description.isEmpty()) {
-            lore.add("§7Mô tả:");
-            for (String line : data.description) {
-                lore.add("§7" + line);
+        boolean hasAttributes = (data.points > 0) || (data.effect != null && !data.effect.isEmpty());
+        if (hasAttributes) lore.add(""); // Tạo 1 dòng trống cho thoáng nếu có thuộc tính
+
+        // Khối Thuộc tính & Hiệu ứng
+        if (hasAttributes) {
+            // Điểm nấu ăn
+            if (data.points > 0) {
+                lore.add("§f✦ Thuộc tính Nguyên liệu:");
+                lore.add("§f ➥ §e+" + data.points + " §7Điểm " + data.category.displayName);
             }
-            lore.add("");
+
+            // Khoảng trống giữa 2 thuộc tính
+            if (data.points > 0 && data.effect != null && !data.effect.isEmpty()) {
+                lore.add("");
+            }
+
+            // Hiệu ứng
+            if (data.effect != null && !data.effect.isEmpty()) {
+                lore.add("§f✦ Hiệu quả Đặc biệt:");
+                lore.add("§f ➥ §a" + data.effect);
+            }
         }
 
-        // Điểm nấu ăn (Chỉ hiện nếu có điểm)
-        if (data.points > 0) {
-            lore.add("§f✦ Thuộc tính Nguyên liệu:");
-            lore.add("§f ➥ §e+" + data.points + " §7Điểm " + data.category.displayName);
-            lore.add("");
-        }
-
-        // Hiệu quả đặc biệt
-        if (data.effect != null && !data.effect.isEmpty()) {
-            lore.add("§f✦ Hiệu quả Đặc biệt:");
-            lore.add("§f ➥ §a" + data.effect);
-            lore.add("");
-        }
-
-        // Độ hiếm (Tiếng Anh)
+        // Đường kẻ chốt sổ phần kỹ thuật
         lore.add("§8§m                                ");
-        lore.add("Độ hiếm: " + data.rarity.color + "[" + data.rarity.name + "]");
+
+        // Mô tả cốt truyện (Flavor text) nằm dưới cùng
+        if (data.description != null && !data.description.isEmpty()) {
+            for (String line : data.description) {
+                lore.add("§7" + line); // Màu xám nhẹ cho giống text cốt truyện
+            }
+        }
 
         meta.setLore(lore);
         meta.getPersistentDataContainer().set(ITEM_KEY, PersistentDataType.STRING, data.id);

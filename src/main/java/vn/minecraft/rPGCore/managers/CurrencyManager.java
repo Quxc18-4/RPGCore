@@ -21,55 +21,44 @@ public class CurrencyManager {
     }
 
     // ==========================================
-    // UI TIỀN TỆ ĐỒNG BỘ
+    // UI TIỀN TỆ: MÔ TẢ NẰM DƯỚI ĐƯỜNG KẺ
     // ==========================================
     public ItemStack getCurrencyItem(String type, int amount) {
         Material mat;
         String name;
         String desc;
         String rarityColor;
-        String rarityName;
 
         if (type.equals("gold")) {
             mat = Material.GOLD_NUGGET;
             name = "Xu Vàng";
             desc = "Loại tiền có mệnh giá cao nhất.";
             rarityColor = "§b"; // RARE
-            rarityName = "Rare";
         } else if (type.equals("iron")) {
             mat = Material.IRON_NUGGET;
             name = "Xu Bạc";
             desc = "Loại tiền tương đối quý giá.";
             rarityColor = "§a"; // UNCOMMON
-            rarityName = "Uncommon";
         } else {
             mat = Material.COPPER_NUGGET;
             name = "Xu Đồng";
             desc = "Loại tiền cơ bản dùng để giao dịch.";
             rarityColor = "§7"; // COMMON
-            rarityName = "Common";
         }
 
         ItemStack item = new ItemStack(mat, amount);
         ItemMeta meta = item.getItemMeta();
 
-        // Tên có màu theo Rarity
         meta.setDisplayName(rarityColor + "§l" + name);
 
         List<String> lore = new ArrayList<>();
-
-        // Phân loại
         lore.add("§8[ Phân loại: Tiền tệ - Tiền kim loại ]");
+
+        // Đường kẻ
         lore.add("§8§m                                ");
 
-        // Mô tả
-        lore.add("§7Mô tả:");
+        // Mô tả nằm dưới cùng
         lore.add("§7" + desc);
-        lore.add("");
-
-        // Rarity Footer
-        lore.add("§8§m                                ");
-        lore.add("Độ hiếm: " + rarityColor + "[" + rarityName + "]");
 
         meta.setLore(lore);
         meta.getPersistentDataContainer().set(CURRENCY_KEY, PersistentDataType.STRING, type);
