@@ -1,12 +1,12 @@
 package vn.minecraft.rPGCore.cooking;
 
-import vn.minecraft.rPGCore.managers.ItemManager.IngredientData;
+import vn.minecraft.rPGCore.managers.ItemManager.ItemData;
 import java.util.List;
 import java.util.Map;
 
 public class CookingEngine {
 
-    public FoodItemData evaluate(List<IngredientData> ingredients) {
+    public FoodItemData evaluate(List<ItemData> ingredients) {
         FoodItemData result = new FoodItemData();
         NutritionStats stats = new NutritionStats(ingredients);
 

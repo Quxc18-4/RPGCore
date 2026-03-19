@@ -63,41 +63,85 @@ public class ItemAdminCommand implements CommandExecutor, TabCompleter {
         // Cú pháp trong MM: Command{c="ig drop <target.name> food_beef 50.0 2"} ~onDeath
         // ===========================================
         if (args[0].equalsIgnoreCase("drop")) {
-            if (args.length < 5) return true;
+            // 1. Kiểm tra đủ số lượng tham số tối thiểu
+            if (args.length < 5) {
+                sender.sendMessage("§cSai cú pháp! Dùng: /ig drop <người_chơi> <id> <tỉ_lệ_%> <số_lượng> [x] [y] [z] [world]");
+                return true;
+            }
 
-            Player target = Bukkit.getPlayer(args[1]);
-            if (target == null) return true; // Bỏ qua nếu target không phải Player
+            // 2. Lấy người chơi (Bỏ qua êm ái nếu người chơi offline, tránh rác console)
+            org.bukkit.entity.Player target = org.bukkit.Bukkit.getPlayer(args[1]);
+            if (target == null) return true;
 
             String id = args[2];
-            double baseChance = Double.parseDouble(args[3]);
-            int amount = Integer.parseInt(args[4]);
+            double baseChance;
+            int amount;
 
-            // Lấy dữ liệu RPG của người chơi để tính toán % Rớt đồ
-            vn.minecraft.rPGCore.player.RPGPlayer rpgPlayer = vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager().getRPGPlayer(target.getUniqueId());
+            // 3. Chống lỗi (Try-Catch) khi ép kiểu dữ liệu
+            try {
+                baseChance = Double.parseDouble(args[3]);
+                amount = Integer.parseInt(args[4]);
+            } catch (NumberFormatException e) {
+                sender.sendMessage("§cLỗi: Tỉ lệ hoặc số lượng không phải là số hợp lệ!");
+                return true;
+            }
 
             double finalChance = baseChance;
+
+            // 4. Lấy dữ liệu RPG và tính toán Buff
+            vn.minecraft.rPGCore.player.RPGPlayer rpgPlayer = vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager().getRPGPlayer(target.getUniqueId());
+
             if (rpgPlayer != null) {
-                // 1. Tính Tỉ lệ rớt đồ (Tăng theo % Multiplier)
+                // - Tính Tỉ lệ rớt đồ tổng
                 double dropBonus = rpgPlayer.getTotalStatsMap().getOrDefault("Tỉ lệ rớt đồ", 0.0);
                 finalChance = baseChance * (1.0 + (dropBonus / 100.0));
 
-                // 2. Kiểm tra Nội tại Set 4 SCAVENGER
-                int scavengerCount = rpgPlayer.getStats().setCounts.getOrDefault("scavenger", 0);
-                if (scavengerCount >= 4) {
-                    if (Math.random() * 100.0 <= 5.0) { // 5% cơ hội nhân đôi vật phẩm
-                        amount *= 2;
-                        target.sendMessage("§6§l[SCAVENGER] §eKích hoạt Nội tại: x2 Vật phẩm rơi ra!");
+                // - Kiểm tra Nội tại Set 4 SCAVENGER (Bọc try-catch để an toàn tuyệt đối)
+                try {
+                    // Chú ý: Đảm bảo rpgPlayer.getStats() và setCounts của bạn đã được khởi tạo
+                    if (rpgPlayer.getStats() != null && rpgPlayer.getStats().setCounts != null) {
+                        int scavengerCount = rpgPlayer.getStats().setCounts.getOrDefault("scavenger", 0);
+
+                        if (scavengerCount >= 4) {
+                            // Theo mô tả của bạn ở file Equipment, Scavenger 4 món có 10% cơ hội x2
+                            if (Math.random() * 100.0 <= 10.0) {
+                                amount *= 2;
+                                target.sendMessage("§6§l[SCAVENGER] §eKích hoạt Nội tại: x2 Số lượng vật phẩm!");
+                            }
+                        }
                     }
+                } catch (Exception ignored) {
+                    // Nếu hệ thống Set chưa hoàn thiện thì sẽ âm thầm bỏ qua, không gây sập lệnh
                 }
             }
 
-            // Quay xổ số theo Tỉ lệ đã được buff
-            if (Math.random() * 100.0 <= finalChance) {
-                ItemStack item = ingredientManager.buildItem(id, amount);
+            // 5. Quay xổ số quyết định rơi đồ
+            // (Nếu finalChance vượt quá 100% thì chắc chắn rơi luôn không cần random)
+            if (finalChance >= 100.0 || (Math.random() * 100.0) <= finalChance) {
+
+                org.bukkit.inventory.ItemStack item = ingredientManager.buildItem(id, amount);
+
                 if (item != null) {
-                    Location loc = target.getLocation();
-                    // Vứt item ra ngay vị trí của người chơi (Hoặc quái chết)
-                    loc.getWorld().dropItemNaturally(loc, item);
+                    org.bukkit.Location dropLoc = target.getLocation(); // Mặc định là chân người chơi
+
+                    // 6. Xử lý tọa độ rớt đồ ưu tiên (Từ xác quái MythicMobs)
+                    if (args.length >= 9) {
+                        try {
+                            double x = Double.parseDouble(args[5]);
+                            double y = Double.parseDouble(args[6]);
+                            double z = Double.parseDouble(args[7]);
+                            org.bukkit.World world = org.bukkit.Bukkit.getWorld(args[8]);
+
+                            if (world != null) {
+                                dropLoc = new org.bukkit.Location(world, x, y, z);
+                            }
+                        } catch (Exception e) {
+                            // Nếu truyền sai tọa độ, nó sẽ rớt tạm ở chân người chơi thay vì không rớt
+                        }
+                    }
+
+                    // 7. Thực hiện rớt đồ ra đất
+                    dropLoc.getWorld().dropItemNaturally(dropLoc, item);
                 }
             }
             return true;

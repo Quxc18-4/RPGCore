@@ -1,6 +1,6 @@
 package vn.minecraft.rPGCore.cooking;
 
-import vn.minecraft.rPGCore.managers.ItemManager.IngredientData;
+import vn.minecraft.rPGCore.managers.ItemManager.ItemData;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,8 +13,8 @@ public class NutritionStats {
     // BỘ ĐẾM RIÊNG BIỆT CHO CÁC VẬT PHẨM ĐẶC THÙ (MAGIC)
     public Map<String, Integer> itemCounts = new HashMap<>();
 
-    public NutritionStats(List<IngredientData> ingredients) {
-        for (IngredientData data : ingredients) {
+    public NutritionStats(List<ItemData> ingredients) {
+        for (ItemData data : ingredients) {
             String id = data.id.toLowerCase();
 
             // Ghi nhận số lượng từng ID

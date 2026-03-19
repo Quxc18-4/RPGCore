@@ -21,43 +21,62 @@ public class CurrencyManager {
     }
 
     // ==========================================
-    // HÀM TẠO VẬT PHẨM TIỀN TỆ (CÓ LORE TÙY CHỈNH)
+    // UI TIỀN TỆ ĐỒNG BỘ
     // ==========================================
     public ItemStack getCurrencyItem(String type, int amount) {
         Material mat;
         String name;
         String desc;
+        String rarityColor;
+        String rarityName;
 
         if (type.equals("gold")) {
             mat = Material.GOLD_NUGGET;
-            name = "§eXu Vàng";
-            desc = "§7Loại tiền có mệnh giá cao nhất.";
+            name = "Xu Vàng";
+            desc = "Loại tiền có mệnh giá cao nhất.";
+            rarityColor = "§b"; // RARE
+            rarityName = "Rare";
         } else if (type.equals("iron")) {
             mat = Material.IRON_NUGGET;
-            name = "§fXu Bạc";
-            desc = "§7Loại tiền tương đối quý giá.";
+            name = "Xu Bạc";
+            desc = "Loại tiền tương đối quý giá.";
+            rarityColor = "§a"; // UNCOMMON
+            rarityName = "Uncommon";
         } else {
-            mat = Material.COPPER_NUGGET; // Dùng Raw Copper để tránh lỗi không tồn tại
-            name = "§6Xu Đồng";
-            desc = "§7Loại tiền cơ bản dùng để giao dịch.";
+            mat = Material.COPPER_NUGGET;
+            name = "Xu Đồng";
+            desc = "Loại tiền cơ bản dùng để giao dịch.";
+            rarityColor = "§7"; // COMMON
+            rarityName = "Common";
         }
 
         ItemStack item = new ItemStack(mat, amount);
         ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName(name);
+
+        // Tên có màu theo Rarity
+        meta.setDisplayName(rarityColor + "§l" + name);
 
         List<String> lore = new ArrayList<>();
-        lore.add("§f[§a+§f] §fPhân loại: §eTiền tệ.");
-        lore.add("§f[§a+§f] §fMô tả: " + desc);
-        meta.setLore(lore);
 
-        // Gắn NBT Tag chống làm giả
+        // Phân loại
+        lore.add("§8[ Phân loại: Tiền tệ - Tiền kim loại ]");
+        lore.add("§8§m                                ");
+
+        // Mô tả
+        lore.add("§7Mô tả:");
+        lore.add("§7" + desc);
+        lore.add("");
+
+        // Rarity Footer
+        lore.add("§8§m                                ");
+        lore.add("Độ hiếm: " + rarityColor + "[" + rarityName + "]");
+
+        meta.setLore(lore);
         meta.getPersistentDataContainer().set(CURRENCY_KEY, PersistentDataType.STRING, type);
         item.setItemMeta(meta);
         return item;
     }
 
-    // Lấy giá trị của một ItemStack tiền tệ
     public long getCurrencyValue(ItemStack item) {
         if (item == null || item.getType() == Material.AIR || !item.hasItemMeta()) return 0;
         String type = item.getItemMeta().getPersistentDataContainer().get(CURRENCY_KEY, PersistentDataType.STRING);
@@ -67,7 +86,6 @@ public class CurrencyManager {
         return item.getAmount() * multiplier;
     }
 
-    // Chuyển đổi con số ảo thành chuỗi hiển thị đẹp mắt
     public String formatCurrency(long amount) {
         if (amount <= 0) return "0 Đồng";
 
@@ -83,15 +101,10 @@ public class CurrencyManager {
         return sb.toString().trim();
     }
 
-    // ==========================================
-    // HÀM TỰ ĐỘNG GỘP TIỀN LẺ TRONG TÚI ĐỒ
-    // (64 Đồng -> 1 Bạc, 64 Bạc -> 1 Vàng)
-    // ==========================================
     public void compressCurrency(org.bukkit.entity.Player player) {
         org.bukkit.inventory.Inventory inv = player.getInventory();
         long totalValue = 0;
 
-        // Quét toàn bộ túi đồ, gom tổng giá trị và xóa item tiền lẻ
         for (int i = 0; i < inv.getSize(); i++) {
             ItemStack item = inv.getItem(i);
             long val = getCurrencyValue(item);
@@ -103,7 +116,6 @@ public class CurrencyManager {
 
         if (totalValue == 0) return;
 
-        // Trả lại túi đồ với cấu trúc tối ưu nhất
         long gold = totalValue / 4096;
         long iron = (totalValue % 4096) / 64;
         long copper = totalValue % 64;
@@ -113,9 +125,6 @@ public class CurrencyManager {
         giveCurrencySafe(player, "copper", copper);
     }
 
-    // ==========================================
-    // HÀM NẠP TOÀN BỘ TIỀN VÀO TÀI KHOẢN (DEPOSIT ALL)
-    // ==========================================
     public void depositAll(org.bukkit.entity.Player player, vn.minecraft.rPGCore.player.RPGPlayer rpgPlayer) {
         org.bukkit.inventory.Inventory inv = player.getInventory();
         long totalValue = 0;
@@ -138,12 +147,10 @@ public class CurrencyManager {
         }
     }
 
-    // Hàm an toàn để add Item số lượng lớn (tránh lỗi stack > 64)
     public void giveCurrencySafe(org.bukkit.entity.Player player, String type, long amount) {
         while (amount > 0) {
             int toGive = (int) Math.min(64, amount);
             java.util.HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(getCurrencyItem(type, toGive));
-            // Nếu túi đầy, rớt ra đất
             for (ItemStack drop : leftover.values()) {
                 player.getWorld().dropItemNaturally(player.getLocation(), drop);
             }
@@ -151,13 +158,9 @@ public class CurrencyManager {
         }
     }
 
-    // ==========================================
-    // HÀM DỊCH NGƯỢC GIÁ TRỊ THÀNH VẬT PHẨM (DÙNG CHO ADMIN GUI)
-    // ==========================================
     public ItemStack createCurrencyStackFromValue(long value) {
         if (value <= 0) return null;
 
-        // Vì Admin chỉ có 1 ô để đặt giá (tối đa 64 item), ta có thể dịch ngược lại chính xác đồng tiền họ đã đặt
         if (value % 4096 == 0 && (value / 4096) <= 64) {
             return getCurrencyItem("gold", (int) (value / 4096));
         }
@@ -167,15 +170,9 @@ public class CurrencyManager {
         else if (value <= 64) {
             return getCurrencyItem("copper", (int) value);
         }
-
-        return null; // Trả về null nếu không xác định được
+        return null;
     }
 
-    // ==========================================
-    // CÁC HÀM XỬ LÝ GIAO DỊCH BẰNG TIỀN MẶT
-    // ==========================================
-
-    // 1. Lấy tổng số tiền vật lý đang có trong túi đồ
     public long getTotalPhysicalCurrency(org.bukkit.entity.Player player) {
         long total = 0;
         for (org.bukkit.inventory.ItemStack item : player.getInventory().getContents()) {
@@ -184,7 +181,6 @@ public class CurrencyManager {
         return total;
     }
 
-    // 2. Trả tiền vật lý trực tiếp vào túi (Tự chia ra Vàng/Bạc/Đồng)
     public void givePhysicalCurrency(org.bukkit.entity.Player player, long amount) {
         if (amount <= 0) return;
         long gold = amount / 4096;
@@ -196,12 +192,10 @@ public class CurrencyManager {
         if (copper > 0) giveCurrencySafe(player, "copper", copper);
     }
 
-    // 3. Thanh toán tiền mặt (Tự động tính toán và thối lại tiền thừa)
     public boolean takePhysicalCurrency(org.bukkit.entity.Player player, long amount) {
         long total = getTotalPhysicalCurrency(player);
-        if (total < amount) return false; // Không đủ tiền mặt
+        if (total < amount) return false;
 
-        // Xóa sạch toàn bộ tiền cũ trong túi
         org.bukkit.inventory.Inventory inv = player.getInventory();
         for (int i = 0; i < inv.getSize(); i++) {
             if (getCurrencyValue(inv.getItem(i)) > 0) {
@@ -209,10 +203,9 @@ public class CurrencyManager {
             }
         }
 
-        // Tính tiền thừa và trả lại vào túi
         long remaining = total - amount;
         givePhysicalCurrency(player, remaining);
 
-        return true; // Thanh toán thành công
+        return true;
     }
 }
