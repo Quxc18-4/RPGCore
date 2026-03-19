@@ -30,7 +30,7 @@ import java.util.*;
 public class CookingManager implements Listener {
 
     private final JavaPlugin plugin;
-    private final IngredientManager ingredientManager;
+    private final ItemManager ingredientManager;
     private final CookingEngine cookingEngine;
 
     private final Map<Location, FinishedPot> activePots = new HashMap<>();
@@ -47,7 +47,7 @@ public class CookingManager implements Listener {
     public final NamespacedKey FAT_DEBUFF_KEY;
     public final NamespacedKey STAT_LS, STAT_CRIT, STAT_DROP, POTION_EFFECTS_KEY;
 
-    public CookingManager(JavaPlugin plugin, IngredientManager ingredientManager) {
+    public CookingManager(JavaPlugin plugin, ItemManager ingredientManager) {
         this.plugin = plugin;
         this.ingredientManager = ingredientManager;
         this.cookingEngine = new CookingEngine();
@@ -257,11 +257,11 @@ public class CookingManager implements Listener {
         cookingPots.remove(loc);
 
         // Chuẩn bị dữ liệu Đầu vào cho Engine
-        List<IngredientManager.IngredientData> recipeData = new ArrayList<>();
+        List<ItemManager.IngredientData> recipeData = new ArrayList<>();
         for (Item item : ingredients) {
             String id = ingredientManager.getIngredientId(item.getItemStack());
             if (id != null) {
-                IngredientManager.IngredientData data = ingredientManager.getIngredientData(id);
+                ItemManager.IngredientData data = ingredientManager.getIngredientData(id);
                 if (data != null) {
                     // [MỚI]: Add dữ liệu vào mảng ứng với số lượng (Amount) của vật phẩm
                     int amount = item.getItemStack().getAmount();

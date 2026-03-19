@@ -9,7 +9,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.*;
 
-public class IngredientManager {
+public class ItemManager {
 
     private final JavaPlugin plugin;
     public final NamespacedKey INGREDIENT_KEY;
@@ -43,7 +43,7 @@ public class IngredientManager {
 
     private final Map<String, IngredientData> registry = new HashMap<>();
 
-    public IngredientManager(JavaPlugin plugin) {
+    public ItemManager(JavaPlugin plugin) {
         this.plugin = plugin;
         this.INGREDIENT_KEY = new NamespacedKey(plugin, "rpg_ingredient_id");
         registerAllIngredients();
@@ -97,6 +97,7 @@ public class IngredientManager {
         register(new IngredientData("fat_egg", Category.FAT, 0.5, Material.EGG, "§fTrứng Gà Tươi"));
         register(new IngredientData("fat_sniffer", Category.FAT, 0.75, Material.SNIFFER_EGG, "§2Trứng Kì Dị"));
         register(new IngredientData("fat_milk", Category.FAT, 1.0, Material.MILK_BUCKET, "§fXô Sữa Bò Dinh Dưỡng"));
+        register(new IngredientData("fat_lard", Category.FAT, 0.5, Material.RABBIT_FOOT, "§fMỡ Lợn", "§8Dùng để chiên xào cực kỳ thơm"));
 
         // 7. NHÓM QUÁI VẬT (MONSTER)
         register(new IngredientData("monster_flesh", Category.MONSTER, 1.0, Material.ROTTEN_FLESH, "§2Thịt Thối Rữa", "§cNguy cơ làm hỏng món ăn rất cao!"));
@@ -109,6 +110,27 @@ public class IngredientManager {
         register(new IngredientData("magic_spider_eye", Category.MAGIC, 0.75, Material.SPIDER_EYE, "§4Mắt Nhện", "§8(Hiệu ứng: Độc Tố Tuyệt Đối)"));
         register(new IngredientData("magic_bat_wing", Category.MAGIC, 0.75, Material.POTION, "§cHuyết Tinh", "§8(Hiệu ứng: Hút Máu)"));
         register(new IngredientData("magic_glowstone", Category.MAGIC, 0.75, Material.GLOWSTONE_DUST, "§eBột Tiên", "§8(Hiệu ứng: Chí Mạng & May Mắn)"));
+        register(new IngredientData("magic_goblin_ear", Category.MAGIC, 0.75, Material.TURTLE_SCUTE, "§2Tai Goblin", "§8(Hiệu ứng: +15% Tỉ lệ rớt đồ)"));
+
+        // =========================================
+        // NHÓM VẬT PHẨM TỪ QUÁI VẬT & NGUYÊN LIỆU RÈN (MISC)
+        // =========================================
+        // Heo & Bò
+        register(new IngredientData("misc_leather", Category.MISC, 0.0, Material.LEATHER, "§fDa Thuộc", "§8Nguyên liệu may mặc cơ bản"));
+
+        // Nhóm Gà
+        register(new IngredientData("misc_feather", Category.MISC, 0.0, Material.FEATHER, "§fLông Vũ Cơ Bản"));
+        register(new IngredientData("misc_electric_feather", Category.MISC, 0.0, Material.FEATHER, "§eLông Vũ Nhiễm Điện", "§8Vẫn còn phát ra những tia lửa lách tách..."));
+
+        // Quái Đột biến
+        register(new IngredientData("misc_weird_leather", Category.MISC, 0.0, Material.RABBIT_HIDE, "§2Da Thuộc Kì Lạ", "§8Bốc mùi thối rữa và rỉ dịch xanh"));
+        register(new IngredientData("misc_pollen", Category.MISC, 0.0, Material.YELLOW_DYE, "§ePhấn Hoa Tự Nhiên"));
+        register(new IngredientData("misc_poison_stinger", Category.MISC, 0.0, Material.ARROW, "§2Ngòi Ong Độc", "§8Cực kỳ sắc bén"));
+
+        // Quái Ác tính (Goblin & Nhện)
+        register(new IngredientData("misc_armor_shard", Category.MISC, 0.0, Material.IRON_NUGGET, "§7Mảnh Giáp Vụn", "§8Có thể nung chảy để tái chế"));
+        register(new IngredientData("misc_soft_string", Category.MISC, 0.0, Material.STRING, "§fSợi Tơ Mềm"));
+        register(new IngredientData("misc_steel_string", Category.MISC, 0.0, Material.IRON_BARS, "§7Sợi Tơ Thép", "§8Cứng cáp lạ thường"));
     }
 
     private void register(IngredientData data) {

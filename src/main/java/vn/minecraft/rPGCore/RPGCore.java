@@ -36,7 +36,7 @@ public final class RPGCore extends JavaPlugin {
         SkillUIManager skillUI = new SkillUIManager(playerManager, skillManager);
         BlacksmithGUI blacksmithGUI = new BlacksmithGUI();
 
-        IngredientManager ingredientManager = new IngredientManager(this);
+        ItemManager ingredientManager = new ItemManager(this);
         CookingManager cookingManager = new CookingManager(this, ingredientManager);
 
         this.boredomManager = new BoredomManager(this);

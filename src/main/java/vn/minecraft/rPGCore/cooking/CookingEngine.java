@@ -1,6 +1,6 @@
 package vn.minecraft.rPGCore.cooking;
 
-import vn.minecraft.rPGCore.managers.IngredientManager.IngredientData;
+import vn.minecraft.rPGCore.managers.ItemManager.IngredientData;
 import java.util.List;
 import java.util.Map;
 

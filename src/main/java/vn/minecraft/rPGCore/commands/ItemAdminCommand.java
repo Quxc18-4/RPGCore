@@ -8,16 +8,16 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import vn.minecraft.rPGCore.managers.IngredientManager;
+import vn.minecraft.rPGCore.managers.ItemManager;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class ItemAdminCommand implements CommandExecutor, TabCompleter {
 
-    private final IngredientManager ingredientManager;
+    private final ItemManager ingredientManager;
 
-    public ItemAdminCommand(IngredientManager ingredientManager) {
+    public ItemAdminCommand(ItemManager ingredientManager) {
         this.ingredientManager = ingredientManager;
     }
 
