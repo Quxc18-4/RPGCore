@@ -19,6 +19,9 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
             {"§d", "mythical", 2.2}, {"§6", "heroic", 2.8}, {"§c", "legendary", 3.5}, {"§e", "divine", 5.0}
     };
 
+    // Trọng số rớt Tier: Common(5000), Uncommon(2500), Rare(1000), Epic(400), Mythical(150), Heroic(50), Legendary(10), Divine(5)
+    private static final int[] TIER_WEIGHTS = { 5000, 2500, 1000, 400, 150, 50, 10, 5 };
+
     private static final Object[][] QUALITY_DB = {
             {new String[]{"Rusty", "Broken", "Ruined", "Chipped"}, 0.40, 0.70, 100},
             {new String[]{"Old", "Worn", "Dull", "Faded"}, 0.60, 0.85, 80},
@@ -94,7 +97,22 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
         boolean isWeapon = type.equals("weapon");
 
         String rpgClass = inputClass != null ? inputClass : VALID_CLASSES.get(rand.nextInt(VALID_CLASSES.size()));
-        int tierIndex = inputTier != -1 ? inputTier : rand.nextInt(TIERS.length);
+        // --- FIX: Random Tier theo Trọng số ---
+        int tierIndex = inputTier;
+        if (tierIndex == -1) {
+            int totalWeight = 0;
+            for (int w : TIER_WEIGHTS) totalWeight += w;
+            int roll = rand.nextInt(totalWeight);
+            int currentWeightRoll = 0;
+            for (int i = 0; i < TIER_WEIGHTS.length; i++) {
+                currentWeightRoll += TIER_WEIGHTS[i];
+                if (roll < currentWeightRoll) {
+                    tierIndex = i;
+                    break;
+                }
+            }
+            if (tierIndex == -1) tierIndex = 0; // Dự phòng
+        }
         int subStats = inputSubStats != -1 ? inputSubStats : rand.nextInt(4) + 1;
         int armorPiece = inputArmorPiece != -1 ? inputArmorPiece : rand.nextInt(4) + 1;
 
