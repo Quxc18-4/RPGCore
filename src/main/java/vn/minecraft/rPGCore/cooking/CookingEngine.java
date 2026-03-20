@@ -103,7 +103,7 @@ public class CookingEngine {
                     }
                     break;
                 case "magic_fermented_eye":
-                    double regen = 20.0 * magicMult;
+                    double regen = 10.0 * magicMult;
                     if (!isReversed) result.regenRate += regen;
                     else result.potionEffects.add("POISON:" + (int) Math.min(4, magicMult/2)); // Bị độc càng nặng
                     break;
@@ -131,7 +131,7 @@ public class CookingEngine {
                         result.flavorTags.add("§c[Kịch Độc] §7- Tứ chi hoại tử!");
                     } else {
                         // Đảo ngược lời nguyền: Biến thành "Sôi Máu" - Buff lượng sát thương khổng lồ
-                        result.bonusDmg += 30.0 * magicMult;
+                        result.bonusDmg += 10.0 * magicMult;
                         result.flavorTags.add("§4[Sôi Máu] §7- Sức mạnh cuồng nộ!");
                     }
                     break;
@@ -141,7 +141,7 @@ public class CookingEngine {
                     result.lifeSteal += isReversed ? -ls : ls;
                     break;
                 case "magic_goblin_ear":
-                    double dropBonus = 15.0 * magicMult;
+                    double dropBonus = 10.0 * magicMult;
                     if (!isReversed) {
                         result.dropRate += dropBonus;
                     } else {
@@ -153,13 +153,10 @@ public class CookingEngine {
                     break;
                 case "magic_glowstone":
                     double crit = 10.0 * magicMult;
-                    double drop = 15.0 * magicMult;
                     if (!isReversed) {
                         result.critRate += crit;
-                        result.dropRate += drop;
                     } else {
                         result.critRate -= crit;
-                        result.dropRate -= drop;
                         result.potionEffects.add("GLOWING:0");
                     }
                     break;

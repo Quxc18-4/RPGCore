@@ -149,10 +149,10 @@ public class ItemManager {
         register(new ItemData("magic_fermented_eye", Rarity.RARE, Category.MAGIC, 0.75, Material.FERMENTED_SPIDER_EYE, "Mắt Nhện Lên Men", "Cung cấp hiệu ứng Hồi Phục Cao", "Mùi vị cực kỳ kinh tởm."));
         register(new ItemData("magic_pufferfish", Rarity.RARE, Category.MAGIC, 0.75, Material.PUFFERFISH, "Cá Nóc Kịch Độc", "Cung cấp hiệu ứng Thở Dưới Nước", "Phải biết cách sơ chế mới dùng được."));
         register(new ItemData("magic_spider_eye", Rarity.UNCOMMON, Category.MAGIC, 0.75, Material.SPIDER_EYE, "Mắt Nhện Tinh Anh", "Dùng để hạ độc thức ăn.", "Trông khá tởm, nhưng chứa đầy chất độc.")); // Rớt từ: Nhện Con
-        register(new ItemData("magic_bat_wing", Rarity.RARE, Category.MAGIC, 0.75, Material.POTION, "Huyết Tinh", "Cung cấp thêm tỉ lệ Hút Máu", "Máu của sinh vật bóng tối."));
-        register(new ItemData("magic_glowstone", Rarity.RARE, Category.MAGIC, 0.75, Material.GLOWSTONE_DUST, "Bột Tiên", "Cung cấp tỉ lệ Chí Mạng", "Bột phát sáng lấp lánh."));
-        register(new ItemData("magic_goblin_ear", Rarity.RARE, Category.MAGIC, 0.75, Material.TURTLE_SCUTE, "Tai Goblin", "Cung cấp +15% Tỉ lệ rớt đồ", "Một chiếc tai còn rỏ máu của Goblin.")); // Rớt từ: Goblin
-        register(new ItemData("magic_toxic_blood", Rarity.UNCOMMON, Category.MAGIC, 0.0, Material.SLIME_BALL, "Máu Kịch Độc", "Dùng để hạ độc thức ăn?", "Thứ chất lỏng đặc sệt, bốc mùi hôi thối", "rút ra từ xác chết đột biến.")); // Rớt từ: Xác Sống
+        register(new ItemData("magic_bat_wing", Rarity.RARE, Category.MAGIC, 0.75, Material.POTION, "Huyết Tinh", "Cung cấp thêm 10% tỉ lệ Hút Máu", "Máu của sinh vật bóng tối."));
+        register(new ItemData("magic_glowstone", Rarity.RARE, Category.MAGIC, 0.75, Material.GLOWSTONE_DUST, "Bột Tiên", "Cung cấp 10% tỉ lệ Chí Mạng", "Bột phát sáng lấp lánh."));
+        register(new ItemData("magic_goblin_ear", Rarity.RARE, Category.MAGIC, 0.75, Material.TURTLE_SCUTE, "Tai Goblin", "Cung cấp +10% Tỉ lệ rớt đồ", "Một chiếc tai còn rỏ máu của Goblin.")); // Rớt từ: Goblin
+        register(new ItemData("magic_toxic_blood", Rarity.UNCOMMON, Category.MAGIC, 0.75, Material.SLIME_BALL, "Máu Kịch Độc", "Dùng để hạ độc thức ăn?", "Thứ chất lỏng đặc sệt, bốc mùi hôi thối", "rút ra từ xác chết đột biến.")); // Rớt từ: Xác Sống
 
         // --- 9. NHÓM KHÁC (MISC) ---
         register(new ItemData("misc_leather", Rarity.COMMON, Category.MISC, 0.0, Material.LEATHER, "Da Thuộc", null, "Nguyên liệu may mặc cơ bản.")); // Rớt từ: Bò Hoang Dã, Heo Hoang Dã, Heo Nhiễm Bệnh
