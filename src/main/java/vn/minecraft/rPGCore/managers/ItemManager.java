@@ -98,6 +98,7 @@ public class ItemManager {
         register(new ItemData("meat_mutton", Rarity.COMMON, Category.MEAT, 1.0, Material.MUTTON, "Thịt Cừu Non", null, "Mềm mại, thơm mùi cỏ non."));
         register(new ItemData("meat_chicken", Rarity.COMMON, Category.MEAT, 0.5, Material.CHICKEN, "Thịt Gà Ta", null, "Dai ngon và rất dễ chế biến.")); // Rớt từ: Gà Hoang Dã, Gà Lôi
         register(new ItemData("meat_rabbit", Rarity.COMMON, Category.MEAT, 0.25, Material.RABBIT, "Thịt Thỏ Đồng", null, "Thịt nạc, ít mỡ."));
+        register(new ItemData("meat_wolf_bone", Rarity.COMMON, Category.MEAT, 0.25, Material.BONE, "Xương Sói", "Cung cấp thêm 0.25 Điểm Gia vị", "Đoạn xương chứa rất nhiều tủy,", "Chắc là đem nấu được nhỉ?")); // Rớt từ: Sói Hoang
 
         // --- 2. NHÓM HẢI SẢN (FISH) ---
         register(new ItemData("fish_cod_small", Rarity.COMMON, Category.FISH, 0.25, Material.COD, "Cá Tuyết Nhỏ", null, "Một con cá tuyết bé xíu."));
@@ -147,10 +148,10 @@ public class ItemManager {
         register(new ItemData("magic_blaze_powder", Rarity.RARE, Category.MAGIC, 0.75, Material.BLAZE_POWDER, "Mảnh Quỷ Lửa", "Cung cấp hiệu ứng Kháng Lửa", "Nóng rực trên tay."));
         register(new ItemData("magic_fermented_eye", Rarity.RARE, Category.MAGIC, 0.75, Material.FERMENTED_SPIDER_EYE, "Mắt Nhện Lên Men", "Cung cấp hiệu ứng Hồi Phục Cao", "Mùi vị cực kỳ kinh tởm."));
         register(new ItemData("magic_pufferfish", Rarity.RARE, Category.MAGIC, 0.75, Material.PUFFERFISH, "Cá Nóc Kịch Độc", "Cung cấp hiệu ứng Thở Dưới Nước", "Phải biết cách sơ chế mới dùng được."));
-        register(new ItemData("magic_spider_eye", Rarity.UNCOMMON, Category.MAGIC, 0.75, Material.SPIDER_EYE, "Mắt Nhện Tinh Anh", "33% cơ hội gây Độc I khi tấn công", "Trông khá tởm, nhưng chứa đầy chất độc.")); // Rớt từ: Nhện Con
-        register(new ItemData("magic_bat_wing", Rarity.RARE, Category.MAGIC, 0.75, Material.POTION, "Huyết Tinh", "Cung cấp hiệu ứng Hút Máu", "Máu của sinh vật bóng tối."));
-        register(new ItemData("magic_glowstone", Rarity.RARE, Category.MAGIC, 0.75, Material.GLOWSTONE_DUST, "Bột Tiên", "Cung cấp Chí Mạng & May Mắn", "Bột phát sáng lấp lánh."));
-        register(new ItemData("magic_goblin_ear", Rarity.RARE, Category.MAGIC, 0.75, Material.TURTLE_SCUTE, "Tai Goblin", "Mang theo người nhận +15% Tỉ lệ rớt đồ", "Một chiếc tai còn rỏ máu của Goblin.")); // Rớt từ: Goblin
+        register(new ItemData("magic_spider_eye", Rarity.UNCOMMON, Category.MAGIC, 0.75, Material.SPIDER_EYE, "Mắt Nhện Tinh Anh", "Dùng để hạ độc thức ăn.", "Trông khá tởm, nhưng chứa đầy chất độc.")); // Rớt từ: Nhện Con
+        register(new ItemData("magic_bat_wing", Rarity.RARE, Category.MAGIC, 0.75, Material.POTION, "Huyết Tinh", "Cung cấp thêm tỉ lệ Hút Máu", "Máu của sinh vật bóng tối."));
+        register(new ItemData("magic_glowstone", Rarity.RARE, Category.MAGIC, 0.75, Material.GLOWSTONE_DUST, "Bột Tiên", "Cung cấp tỉ lệ Chí Mạng", "Bột phát sáng lấp lánh."));
+        register(new ItemData("magic_goblin_ear", Rarity.RARE, Category.MAGIC, 0.75, Material.TURTLE_SCUTE, "Tai Goblin", "Cung cấp +15% Tỉ lệ rớt đồ", "Một chiếc tai còn rỏ máu của Goblin.")); // Rớt từ: Goblin
 
         // --- 9. NHÓM KHÁC (MISC) ---
         register(new ItemData("misc_leather", Rarity.COMMON, Category.MISC, 0.0, Material.LEATHER, "Da Thuộc", null, "Nguyên liệu may mặc cơ bản.")); // Rớt từ: Bò Hoang Dã, Heo Hoang Dã, Heo Nhiễm Bệnh
@@ -161,7 +162,8 @@ public class ItemManager {
         register(new ItemData("misc_poison_stinger", Rarity.RARE, Category.MISC, 0.0, Material.ARROW, "Ngòi Ong Độc", "Tấn công gây Độc I trong 5s", "Cực kỳ sắc bén, cẩn thận kẻo đứt tay.")); // Rớt từ: Ong Độc
         register(new ItemData("misc_armor_shard", Rarity.UNCOMMON, Category.MISC, 0.0, Material.IRON_NUGGET, "Mảnh Giáp Vụn", null, "Có thể nung chảy để tái chế tại Lò Rèn.")); // Rớt từ: Goblin
         register(new ItemData("misc_soft_string", Rarity.COMMON, Category.MISC, 0.0, Material.STRING, "Sợi Tơ Mềm", null, "Một cuộn tơ tằm mềm mại.")); // Rớt từ: Nhện Con
-        register(new ItemData("misc_steel_string", Rarity.UNCOMMON, Category.MISC, 0.0, Material.IRON_BARS, "Sợi Tơ Thép", null, "Cứng cáp lạ thường, cực kỳ bền bỉ.")); // Rớt từ: Nhện Con
+        register(new ItemData("misc_steel_string", Rarity.UNCOMMON, Category.MISC, 0.0, Material.STRING, "Sợi Tơ Thép", null, "Cứng cáp lạ thường, cực kỳ bền bỉ.")); // Rớt từ: Nhện Con
+        register(new ItemData("misc_wolf_fang", Rarity.UNCOMMON, Category.MISC, 0.0, Material.IRON_NUGGET, "Nanh Sói", null, "Một chiếc nanh vô cùng sắc nhọn,", "thường được dùng để chế tạo vũ khí.")); // Rớt từ: Sói Hoang
     }
 
     private void register(ItemData data) {

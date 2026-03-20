@@ -123,6 +123,17 @@ public class CookingEngine {
                     double ls = 10.0 * magicMult;
                     result.lifeSteal += isReversed ? -ls : ls;
                     break;
+                case "magic_goblin_ear":
+                    double dropBonus = 15.0 * magicMult;
+                    if (!isReversed) {
+                        result.dropRate += dropBonus;
+                    } else {
+                        // Nếu bỏ quá nhiều đồ Magic gây Đảo ngược Lời nguyền
+                        result.dropRate -= dropBonus;
+                        result.potionEffects.add("UNLUCK:0"); // Hiệu ứng Xui xẻo của Vanilla
+                        result.flavorTags.add("§c[Đen Đủi] §7- Đụng đâu hỏng đó!");
+                    }
+                    break;
                 case "magic_glowstone":
                     double crit = 10.0 * magicMult;
                     double drop = 15.0 * magicMult;
