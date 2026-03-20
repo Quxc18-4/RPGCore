@@ -119,6 +119,23 @@ public class CookingEngine {
                     // Luôn luôn bị độc (Ám sát)
                     result.potionEffects.add("POISON:" + (isReversed ? 2 : 1));
                     break;
+
+                // ==========================================
+                // BỔ SUNG MÁU KỊCH ĐỘC TỪ XÁC SỐNG
+                // ==========================================
+                case "magic_toxic_blood":
+                    if (!isReversed) {
+                        // Nấu bình thường: Món ăn thành thuốc độc hạng nặng (Poison + Wither)
+                        result.potionEffects.add("POISON:" + (int) Math.min(4, magicMult));
+                        result.potionEffects.add("WITHER:0");
+                        result.flavorTags.add("§c[Kịch Độc] §7- Tứ chi hoại tử!");
+                    } else {
+                        // Đảo ngược lời nguyền: Biến thành "Sôi Máu" - Buff lượng sát thương khổng lồ
+                        result.bonusDmg += 30.0 * magicMult;
+                        result.flavorTags.add("§4[Sôi Máu] §7- Sức mạnh cuồng nộ!");
+                    }
+                    break;
+
                 case "magic_bat_wing":
                     double ls = 10.0 * magicMult;
                     result.lifeSteal += isReversed ? -ls : ls;
