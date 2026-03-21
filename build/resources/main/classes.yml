@@ -65,7 +65,7 @@ classes:
     resource-type: MANA
     enchanted: true
 
-  tamer:
+  summoner:
     display-name: "&eTriệu hồi sư"
     icon: LEAD
     description:
