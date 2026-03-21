@@ -23,9 +23,11 @@ public class AssassinClass extends RPGClass {
 
     @Override
     public void applyPassiveBonusStats(RPGPlayer rpgPlayer, java.util.Map<String, Double> stats) {
-        // Nội tại Sát thủ: +15% Tỉ lệ chí mạng cơ bản
         double currentCrit = stats.getOrDefault("Tỉ lệ chí mạng", 5.0);
         stats.put("Tỉ lệ chí mạng", currentCrit + 15.0);
+
+        // [THÊM MỚI]: Gọi hàm cha để ép Xuyên giáp về 50%
+        super.applyPassiveBonusStats(rpgPlayer, stats);
     }
 
     @Override

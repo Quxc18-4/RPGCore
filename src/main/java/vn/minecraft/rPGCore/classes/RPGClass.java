@@ -44,10 +44,16 @@ public abstract class RPGClass {
     public double getRegenRate() { return regenRate; }
     public boolean isEnchanted() { return isEnchanted; }
 
-    // Thêm 3 dòng này vào phần khai báo biến (Dưới biến isEnchanted)
+    // Khai báo các mốc giới hạn (Cap) mặc định
     protected double critRateCap = 100.0;
     protected double armorPenCap = 50.0;
     protected double magicPenCap = 50.0;
+    protected double cdrPenCap = 40.0;
+    protected double dodgeCap = 30.0;
+    protected double blockCap = 30.0;
+    protected double lifeStealCap = 50.0;
+    protected double effectResistCap = 80.0;
+    protected double moveSpeedCap = 400.0;
 
     // ==========================================
     // CÁC HÀM SỰ KIỆN (HOOKS) CHO PHÉP OVERRIDE
@@ -71,25 +77,35 @@ public abstract class RPGClass {
     // HÀM 1: CỘNG CHỈ SỐ TĨNH (GỌI TỪ RPGPlayer)
     // Cho phép Class tự cộng thêm % nội tại vào Status của nhân vật
     // ==========================================
-    public void applyPassiveBonusStats(RPGPlayer rpgPlayer, java.util.Map<String, Double> stats) {}
+    public void applyPassiveBonusStats(RPGPlayer rpgPlayer, java.util.Map<String, Double> stats) {
+        // Sau khi Class con cộng xong nội tại, hàm cha sẽ ép tất cả về đúng Cap
+        applyOffensivePassives(stats);
+    }
 
     // ==========================================
     // HÀM 2: MỞ GAP VÀ XỬ LÝ CHỈ SỐ ĐỘNG (GỌI TỪ CombatManager)
     // Khóa các chỉ số lại theo đúng Giới hạn (Cap) đặc trưng của Class
     // ==========================================
+    // HÀM 2: THỰC THI "THIẾT QUÂN LUẬT" (CAPPING LOGIC)
     public void applyOffensivePassives(java.util.Map<String, Double> combatStats) {
-        double armorPen = combatStats.getOrDefault("Tỉ lệ xuyên giáp", 0.0);
-        double magicPen = combatStats.getOrDefault("Tỉ lệ xuyên kháng phép", 0.0);
+        // Nhóm Xuyên thấu
+        combatStats.put("Tỉ lệ xuyên giáp", Math.min(combatStats.getOrDefault("Tỉ lệ xuyên giáp", 0.0), armorPenCap));
+        combatStats.put("Tỉ lệ xuyên kháng phép", Math.min(combatStats.getOrDefault("Tỉ lệ xuyên kháng phép", 0.0), magicPenCap));
 
-        // Ép giới hạn theo Cap của từng phái
-        combatStats.put("Tỉ lệ xuyên giáp", Math.min(armorPen, armorPenCap));
-        combatStats.put("Tỉ lệ xuyên kháng phép", Math.min(magicPen, magicPenCap));
+        // Nhóm Đa dụng & Sinh tồn (Chuyển từ RPGPlayer sang)
+        combatStats.put("Giảm hồi chiêu", Math.min(combatStats.getOrDefault("Giảm hồi chiêu", 0.0), cdrPenCap));
+        combatStats.put("Tỉ lệ né tránh", Math.min(combatStats.getOrDefault("Tỉ lệ né tránh", 0.0), dodgeCap));
+        combatStats.put("Tỉ lệ đỡ đòn", Math.min(combatStats.getOrDefault("Tỉ lệ đỡ đòn", 0.0), blockCap));
+        combatStats.put("Kháng hiệu ứng", Math.min(combatStats.getOrDefault("Kháng hiệu ứng", 0.0), effectResistCap));
+        combatStats.put("Tỉ lệ hút máu", Math.min(combatStats.getOrDefault("Tỉ lệ hút máu", 0.0), lifeStealCap));
+        combatStats.put("Tỉ lệ hút máu phép", Math.min(combatStats.getOrDefault("Tỉ lệ hút máu phép", 0.0), lifeStealCap));
+        combatStats.put("Tốc độ đánh", Math.min(combatStats.getOrDefault("Tốc độ đánh", 0.0), 100.0));
+        combatStats.put("Tốc độ di chuyển", Math.min(combatStats.getOrDefault("Tốc độ di chuyển", 0.0), moveSpeedCap));
 
-        // Đẩy Crit cho hàm processCrit tự xử lý
+        // Nhóm Chí mạng
         processCrit(combatStats, combatStats.getOrDefault("Tỉ lệ chí mạng", 5.0));
     }
 
-    // Hàm con cho phép Sát Thủ ghi đè để bắt lấy phần Crit dư thừa
     protected void processCrit(java.util.Map<String, Double> combatStats, double critRate) {
         combatStats.put("Tỉ lệ chí mạng", Math.min(critRate, critRateCap));
     }

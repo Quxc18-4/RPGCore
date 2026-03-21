@@ -18,12 +18,15 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public class SummonWolfSkill implements ISkill {
 
     private final JavaPlugin plugin;
 
-    // Thêm Constructor nhận plugin
+    // [ĐỒNG BỘ]: Dùng Map để lưu thời gian chính xác giống Assassin
+    private final Map<UUID, Long> cooldowns = new HashMap<>();
+
     public SummonWolfSkill(JavaPlugin plugin) {
         this.plugin = plugin;
     }
@@ -45,22 +48,22 @@ public class SummonWolfSkill implements ISkill {
 
     @Override
     public double getManaCost(int level) {
-        return 30.0 + (level * 5.0); // Cấp càng cao tốn càng nhiều Mana
+        return 30.0 + (level * 5.0);
     }
 
     @Override
     public long getCooldown(int level) {
-        return 15000L; // 15 giây (tính bằng milliseconds)
+        return 15000L; // 15 giây
     }
 
     @Override
     public int getUpgradeCost(int currentLevel) {
-        return 1; // Tốn 1 SP để nâng cấp
+        return 1;
     }
 
     @Override
     public Map<String, Integer> getRequiredSkills() {
-        return new HashMap<>(); // Không yêu cầu kỹ năng tiền đề
+        return new HashMap<>();
     }
 
     @Override
@@ -78,65 +81,62 @@ public class SummonWolfSkill implements ISkill {
 
     @Override
     public boolean execute(Player player, RPGPlayer rpgPlayer, int level) {
-        double manaCost = getManaCost(level);
+        double cost = getManaCost(level);
 
-        // 1. Kiểm tra Năng lượng
-        if (rpgPlayer.getCurrentResource() < manaCost) {
-            player.sendActionBar("§c§l✖ Không đủ Năng lượng!");
+        // 1. Kiểm tra Năng lượng (Đồng bộ Chat)
+        if (rpgPlayer.getCurrentResource() < cost) {
+            player.sendMessage("§cKhông đủ Năng lượng (Mana)!");
             return false;
         }
 
-        // 2. Kiểm tra Cooldown
-        if (player.hasMetadata("CD_Summon_Wolf")) {
-            player.sendActionBar("§c§l✖ Kỹ năng đang hồi phục!");
+        // 2. Kiểm tra Cooldown (Tính từng số thập phân giây)
+        long now = System.currentTimeMillis();
+        long cd = getCooldown(level);
+        if (now - cooldowns.getOrDefault(player.getUniqueId(), 0L) < cd) {
+            double timeLeft = (cd - (now - cooldowns.get(player.getUniqueId()))) / 1000.0;
+            player.sendMessage("§cKỹ năng đang hồi chiêu (" + String.format("%.1f", timeLeft) + "s)");
             return false;
         }
 
-        // 3. Trừ Mana & Khóa Cooldown
-        rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - manaCost);
-        player.setMetadata("CD_Summon_Wolf", new FixedMetadataValue(RPGCore.getInstance(), true));
+        // 3. Trừ Mana & Cập nhật thời gian
+        rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - cost);
+        cooldowns.put(player.getUniqueId(), now);
 
-        long cooldownTicks = getCooldown(level) / 50L; // Chuyển từ ms sang ticks (1 tick = 50ms)
+        // Task báo hồi chiêu xong cho mượt
         new org.bukkit.scheduler.BukkitRunnable() {
             @Override
             public void run() {
-                if (player.hasMetadata("CD_Summon_Wolf")) {
-                    player.removeMetadata("CD_Summon_Wolf", RPGCore.getInstance());
+                if (player.isOnline()) {
                     player.sendMessage("§a§l[!] §fKỹ năng §eLinh Lang §fđã sẵn sàng!");
                 }
             }
-        }.runTaskLater(RPGCore.getInstance(), cooldownTicks);
+        }.runTaskLater(plugin, cd / 50L);
 
-        // 4. TRIỆU HỒI MYTHICMOB VÀ NHÚNG DỮ LIỆU
-        Location spawnLoc = player.getLocation().add(player.getLocation().getDirection().multiply(1.5));
+        // ==========================================
+        // 4. TRIỆU HỒI MYTHICMOB (FIX TỌA ĐỘ Y)
+        // ==========================================
+        // Dịch lên 0.5 block để Sói không bị chôn chân dưới đất
+        Location spawnLoc = player.getLocation().add(player.getLocation().getDirection().multiply(1.5)).add(0, 0.5, 0);
 
         try {
-            // Gọi con quái có tên nội bộ là "SpiritWolf"
             ActiveMob wolf = MythicBukkit.inst().getMobManager().spawnMob("SpiritWolf", spawnLoc);
 
             if (wolf != null) {
-                // A. Kêu MythicMobs nhận diện chủ nhân (Cơ chế setowner của Wiki)
                 wolf.setOwnerUUID(player.getUniqueId());
-
                 Entity bukkitEntity = wolf.getEntity().getBukkitEntity();
 
-                // B. Fix riêng cho các loài có thể "Ngồi" trong Vanilla (Chó, Mèo, Vẹt)
                 if (bukkitEntity instanceof org.bukkit.entity.Tameable) {
                     ((org.bukkit.entity.Tameable) bukkitEntity).setTamed(true);
                     ((org.bukkit.entity.Tameable) bukkitEntity).setOwner(player);
                 }
 
-                // CẤM NGỒI (Chỉ áp dụng nếu là Sói/Mèo/Vẹt)
                 if (bukkitEntity instanceof org.bukkit.entity.Sittable) {
                     ((org.bukkit.entity.Sittable) bukkitEntity).setSitting(false);
                 }
 
-                bukkitEntity.setMetadata("Summoner_Pet", new FixedMetadataValue(RPGCore.getInstance(), player.getUniqueId().toString()));
+                bukkitEntity.setMetadata("Summoner_Pet", new FixedMetadataValue(plugin, player.getUniqueId().toString()));
+                bukkitEntity.setMetadata("Summon_Level", new FixedMetadataValue(plugin, level));
 
-                // Nhúng thêm Level của skill để sau này CombatManager dùng để scale sức mạnh nếu cần
-                bukkitEntity.setMetadata("Summon_Level", new FixedMetadataValue(RPGCore.getInstance(), level));
-
-                // C. Hiệu ứng Visual cực ngầu
                 player.getWorld().spawnParticle(Particle.SOUL, spawnLoc, 50, 0.5, 0.5, 0.5, 0.1);
                 player.getWorld().spawnParticle(Particle.ENCHANT, spawnLoc.add(0, 1, 0), 30, 0.5, 0.5, 0.5, 0.1);
                 player.getWorld().playSound(spawnLoc, Sound.ENTITY_WOLF_GROWL, 1.0f, 0.8f);

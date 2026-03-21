@@ -124,6 +124,10 @@ public class PlayerListener implements Listener {
                 LivingEntity target = (LivingEntity) event.getEntity();
                 Player owner = rpgOwner.getBukkitPlayer();
 
+                // [MỚI CẬP NHẬT]: Ép Vanilla Minecraft công nhận Chủ Nhân là người ra đòn
+                // Khi quái chết, hàm getKiller() sẽ trả về tên bạn -> Bạn sẽ nhận 100% EXP và Loot!
+                target.setKiller(owner);
+
                 // Lấy lượng sát thương gốc của MythicMobs (10 DMG trong file YML)
                 double basePetDamage = event.getDamage();
 

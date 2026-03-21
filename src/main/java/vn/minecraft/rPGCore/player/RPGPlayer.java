@@ -148,36 +148,31 @@ public class RPGPlayer {
 
         // 5. CHỈ SỐ SINH TỒN
         double dodgeRate = currentStats.dodgeRate + (agi * 0.1);
-        map.put("Tỉ lệ né tránh", Math.min(dodgeRate, 30.0));
+        map.put("Tỉ lệ né tránh", dodgeRate); // Truyền Raw
 
         double lifeSteal = currentStats.lifeSteal + foodManager.getBonus(uuid, FoodBuffManager.StatType.LIFE_STEAL);
-        map.put("Tỉ lệ hút máu", Math.min(lifeSteal, 50.0));
-        map.put("Tỉ lệ hút máu phép", Math.min(currentStats.magicLifeSteal, 50.0));
+        map.put("Tỉ lệ hút máu", lifeSteal);
+        map.put("Tỉ lệ hút máu phép", currentStats.magicLifeSteal);
 
         double blockRate = currentStats.blockRate + (str * 0.1);
-        map.put("Tỉ lệ đỡ đòn", Math.min(blockRate, 30.0));
+        map.put("Tỉ lệ đỡ đòn", blockRate);
 
         double regenRate = currentStats.regenRate + (vit * 0.1) + foodManager.getBonus(uuid, FoodBuffManager.StatType.REGEN);
         map.put("Tỉ lệ hồi phục", regenRate);
-        map.put("Kháng hiệu ứng", Math.min(currentStats.effectResistance, 80.0));
+        map.put("Kháng hiệu ứng", currentStats.effectResistance); // Truyền Raw
 
         // 6. TỐC ĐỘ VÀ PHỤ TRỢ
         double atkSpeed = currentStats.attackSpeed + foodManager.getBonus(uuid, FoodBuffManager.StatType.ATK_SPEED);
-        map.put("Tốc độ đánh", Math.min(atkSpeed, 100.0));
+        map.put("Tốc độ đánh", atkSpeed);
 
         double cdr = currentStats.cooldownReduction + (intel * 0.1) + foodManager.getBonus(uuid, FoodBuffManager.StatType.CDR);
-        map.put("Giảm hồi chiêu", Math.min(cdr, 40.0));
+        map.put("Giảm hồi chiêu", cdr); // Truyền Raw
 
         double moveSpeed = currentStats.moveSpeed + (agi * 0.5) + foodManager.getBonus(uuid, FoodBuffManager.StatType.MOVE_SPEED);
-
-        // Đọc buff từ các kỹ năng tăng tốc (VD: Khinh Công Ám Ảnh)
         if (bukkitPlayer.hasMetadata("Skill_MoveSpeed_Bonus")) {
             moveSpeed += bukkitPlayer.getMetadata("Skill_MoveSpeed_Bonus").get(0).asDouble();
         }
-
-        // GIỚI HẠN TỐC ĐỘ CHẠY (CAP) - Tránh bị scale quá mức
-        moveSpeed = Math.min(moveSpeed, 400.0); // Ví dụ: Max +400% tốc độ
-        map.put("Tốc độ di chuyển", moveSpeed);
+        map.put("Tốc độ di chuyển", moveSpeed); // Truyền Raw
 
         map.put("Nhận Kinh nghiệm", currentStats.expBonus);
         map.put("Hồi Năng lượng", currentStats.manaRegen);
@@ -467,6 +462,10 @@ public class RPGPlayer {
         double baseRes = this.currentClass != null ? this.currentClass.getMaxResource() : 100.0;
         boolean isMana = this.currentClass != null && this.currentClass.getResourceType().name().equals("MANA");
         double attrBonus = isMana ? (this.attributeData.getAttribute("INT") * 1.0) : (this.attributeData.getAttribute("STR") * 1.0);
-        return baseRes + attrBonus;
+
+        // [MỚI]: Cộng thêm lượng Năng lượng bonus từ nội tại Class
+        double bonusFromPassives = getTotalStatsMap().getOrDefault("Năng lượng tối đa", 0.0);
+
+        return baseRes + attrBonus + bonusFromPassives;
     }
 }

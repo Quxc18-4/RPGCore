@@ -40,13 +40,25 @@ public class SummonerClass extends RPGClass {
 
     @Override
     public void applyPassiveBonusStats(RPGPlayer rpgPlayer, Map<String, Double> currentStats) {
-        double maxMana = rpgPlayer.getTotalMaxResource();
-        double summonDamageBonus = Math.floor(maxMana / 100.0) * 5.0;
-        currentStats.put("Sát thương Triệu hồi", summonDamageBonus);
-    }
+        // 1. Cộng 8% CDR cơ bản
+        double totalCdr = currentStats.getOrDefault("Giảm hồi chiêu", 0.0) + 8.0;
 
-    @Override
-    public void applyOffensivePassives(Map<String, Double> combatStats) { }
+        // 2. Tính Mana dư (Vẫn tính trên con số thực tế chưa bị Cap)
+        if (totalCdr > 40.0) {
+            double bonusMana = (totalCdr - 40.0) * 5.0;
+            currentStats.put("Năng lượng tối đa", currentStats.getOrDefault("Năng lượng tối đa", 0.0) + bonusMana);
+        }
+
+        // Cập nhật lại CDR vào Map để lát nữa hàm cha applyOffensivePassives khóa nó lại
+        currentStats.put("Giảm hồi chiêu", totalCdr);
+
+        // 3. Tính Damage Triệu hồi (Như cũ)
+        double finalMaxMana = this.getMaxResource() + (rpgPlayer.getAttributeData().getAttribute("INT") * 1.0) + currentStats.getOrDefault("Năng lượng tối đa", 0.0);
+        currentStats.put("Sát thương Triệu hồi", Math.floor(finalMaxMana / 100.0) * 5.0);
+
+        // QUAN TRỌNG: Gọi super để nó chạy hàm khóa Cap (Xuyên giáp, Crit, CDR...)
+        super.applyPassiveBonusStats(rpgPlayer, currentStats);
+    }
 
     @Override
     public void onLeftClick(Player player, RPGPlayer rpgPlayer, ItemStack weapon) {
@@ -171,7 +183,7 @@ public class SummonerClass extends RPGClass {
         }
 
         // C. Giới hạn trí nhớ: Bầy thú chỉ nhớ tối đa 6 mục tiêu gần nhất
-        while (targetStack.size() > 6) {
+        while (targetStack.size() > 8) {
             targetStack.removeLast();
         }
 
