@@ -115,18 +115,20 @@ public class SummonWolfSkill implements ISkill {
             ActiveMob wolf = MythicBukkit.inst().getMobManager().spawnMob("SpiritWolf", spawnLoc);
 
             if (wolf != null) {
-                // A. Kêu MythicMobs nhận diện đây là thú cưng của Player
+                // A. Kêu MythicMobs nhận diện chủ nhân (Cơ chế setowner của Wiki)
                 wolf.setOwnerUUID(player.getUniqueId());
 
-                // B. Cắm cờ của RPGCore để nhận diện lúc tính sát thương
                 Entity bukkitEntity = wolf.getEntity().getBukkitEntity();
 
-                // ==========================================
-                // [MỚI]: ÉP THUẦN HÓA SÓI TRONG VANILLA BUKKIT
-                // ==========================================
+                // B. Fix riêng cho các loài có thể "Ngồi" trong Vanilla (Chó, Mèo, Vẹt)
                 if (bukkitEntity instanceof org.bukkit.entity.Tameable) {
                     ((org.bukkit.entity.Tameable) bukkitEntity).setTamed(true);
                     ((org.bukkit.entity.Tameable) bukkitEntity).setOwner(player);
+                }
+
+                // CẤM NGỒI (Chỉ áp dụng nếu là Sói/Mèo/Vẹt)
+                if (bukkitEntity instanceof org.bukkit.entity.Sittable) {
+                    ((org.bukkit.entity.Sittable) bukkitEntity).setSitting(false);
                 }
 
                 bukkitEntity.setMetadata("Summoner_Pet", new FixedMetadataValue(RPGCore.getInstance(), player.getUniqueId().toString()));

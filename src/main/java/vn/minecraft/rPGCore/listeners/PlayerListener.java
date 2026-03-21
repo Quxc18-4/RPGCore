@@ -149,6 +149,8 @@ public class PlayerListener implements Listener {
 
             RPGPlayer rpgAttacker = playerManager.getRPGPlayer(attacker.getUniqueId());
             if (rpgAttacker != null) {
+                String classId = rpgAttacker.getCurrentClass().getId();
+                ItemStack mainItem = attacker.getInventory().getItemInMainHand();
 
                 // ==========================================
                 // [MỚI]: KHÓA ĐÁNH THƯỜNG KHI ĐANG BẤM COMBO
@@ -158,31 +160,15 @@ public class PlayerListener implements Listener {
                     return; // Im lặng hủy sát thương để không làm hỏng chuỗi phím
                 }
 
+                // Lọc rác vũ khí (Không cho Chiến binh dùng Cung đập quái)
+                if (!isValidWeaponForClass(mainItem, classId)) {
+                    event.setCancelled(true);
+                    return;
+                }
+
                 // ==========================================
                 // [MỚI]: CLASS BẮN XA -> VÔ HIỆU HÓA HOÀN TOÀN CẬN CHIẾN
                 // ==========================================
-                String classId = rpgAttacker.getCurrentClass().getId();
-                if (classId.equals("archer") || classId.equals("mage") || classId.equals("tamer")) {
-                    event.setCancelled(true);
-
-                    // Chống spam tin nhắn liên tục khi click nhầm (báo mỗi 2 giây)
-                    if (!attacker.hasMetadata("Ranged_Warning_Cooldown")) {
-                        attacker.sendMessage("§c§l[!] §fHệ phái của bạn không thể tấn công cận chiến!");
-                        attacker.setMetadata("Ranged_Warning_Cooldown", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), true));
-
-                        new org.bukkit.scheduler.BukkitRunnable() {
-                            @Override
-                            public void run() {
-                                if (attacker.hasMetadata("Ranged_Warning_Cooldown")) {
-                                    attacker.removeMetadata("Ranged_Warning_Cooldown", vn.minecraft.rPGCore.RPGCore.getInstance());
-                                }
-                            }
-                        }.runTaskLater(vn.minecraft.rPGCore.RPGCore.getInstance(), 40L);
-                    }
-                    return; // Chặn đứng tại đây, không tính toán sát thương bên dưới nữa
-                }
-
-                ItemStack mainItem = attacker.getInventory().getItemInMainHand();
                 if (classId.equals("archer") || classId.equals("mage") || classId.equals("summoner")) {
                     event.setCancelled(true); // Cấm gây sát thương đấm tay vật lý gốc
 
@@ -207,12 +193,6 @@ public class PlayerListener implements Listener {
                         }.runTaskLater(vn.minecraft.rPGCore.RPGCore.getInstance(), 40L);
                     }
                     return; // Chặn đứng tại đây
-                }
-
-                // Lọc rác vũ khí (Không cho Chiến binh dùng Cung đập quái)
-                if (!isValidWeaponForClass(mainItem, classId)) {
-                    event.setCancelled(true);
-                    return;
                 }
 
                 EquipmentListener eqListener = new EquipmentListener(playerManager);
