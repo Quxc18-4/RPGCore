@@ -230,4 +230,69 @@ public class CombatManager {
         // 4. Rút cờ Khóa Sát Thương ra
         attacker.removeMetadata("Skill_Damage_Lock", vn.minecraft.rPGCore.RPGCore.getInstance());
     }
+
+    // ==========================================
+    // HỆ THỐNG TÍNH TOÁN SÁT THƯƠNG CHO THÚ TRIỆU HỒI
+    // ==========================================
+    public static double calculatePetDamage(Player owner, RPGPlayer rpgOwner, org.bukkit.entity.Entity pet, LivingEntity target, double basePetDamage) {
+        Map<String, Double> totalStats = rpgOwner.getTotalStatsMap();
+
+        // 1. Kế thừa chỉ số: Lấy sức mạnh Mana của Tamer (Nội tại Cộng Hưởng Ma Lực)
+        double summonDmgBonusPct = totalStats.getOrDefault("Sát thương Triệu hồi", 0.0);
+        double multiplier = 1.0 + (summonDmgBonusPct / 100.0);
+
+        // Kế thừa 50% Xuyên giáp và Chí mạng từ Chủ nhân
+        double armorPen = totalStats.getOrDefault("Tỉ lệ xuyên giáp", 0.0) * 0.5;
+        double critRate = totalStats.getOrDefault("Tỉ lệ chí mạng", 5.0) * 0.5;
+        double critDamage = totalStats.getOrDefault("Sát thương chí mạng", 50.0);
+
+        // ==========================================
+        // 2. CƠ CHẾ: DẤU SĂN MỒI (HUNTER'S MARK)
+        // ==========================================
+        String markKey = "Summoner_Mark_" + owner.getUniqueId().toString();
+        boolean hasMark = target.hasMetadata(markKey);
+
+        if (hasMark) {
+            // Mục tiêu bị trúng đòn Roi của chủ -> Thú cưng nổi điên!
+            multiplier *= 1.3; // +30% Tổng sát thương
+            critRate += 20.0;  // +20% Tỉ lệ bạo kích
+
+            // Hiệu ứng Visual khi đệ cắn trúng mục tiêu bị đánh dấu
+            target.getWorld().spawnParticle(Particle.ENCHANTED_HIT, target.getLocation().add(0, 1, 0), 10, 0.3, 0.3, 0.3, 0.1);
+            target.getWorld().spawnParticle(
+                    Particle.DUST,
+                    target.getLocation().add(0, 1, 0),
+                    5, 0.3, 0.3, 0.3, 0.1,
+                    new Particle.DustOptions(org.bukkit.Color.PURPLE, 1.5f)
+            );
+        }
+
+        // 3. Tính sát thương thô
+        double rawDamage = basePetDamage * multiplier;
+
+        // 4. Bạo kích (Critical Hit)
+        if ((Math.random() * 100) <= critRate) {
+            rawDamage *= (1.0 + (critDamage / 100.0));
+            target.getWorld().spawnParticle(Particle.CRIT, target.getLocation().add(0, 1, 0), 15, 0.5, 0.5, 0.5, 0.1);
+            owner.playSound(owner.getLocation(), Sound.ENTITY_WOLF_GROWL, 0.5f, 1.5f);
+        }
+
+        // 5. Trừ Giáp mục tiêu (Vật lý)
+        double targetDefense = 0;
+        AttributeInstance armorAttr = target.getAttribute(Attribute.ARMOR);
+        if (armorAttr != null) targetDefense = armorAttr.getValue();
+
+        double finalDefenseMulti = 1.0 - (armorPen / 100.0);
+        targetDefense *= finalDefenseMulti;
+
+        double finalDamage = Math.max(1.0, rawDamage - targetDefense);
+
+        // 6. Test Dummy
+        if (target.getCustomName() != null && ChatColor.stripColor(target.getCustomName()).contains("Dummy")) {
+            String prefix = hasMark ? "§d[Linh Lang - Cuồng Nộ]" : "§b[Linh Lang]";
+            owner.sendMessage("§e§l[DUMMY] " + prefix + " §fSát thương: §c" + String.format("%.1f", finalDamage) + " ⚔");
+        }
+
+        return finalDamage;
+    }
 }

@@ -112,6 +112,30 @@ public class PlayerListener implements Listener {
     // ==========================================
     @EventHandler
     public void onDealDamage(EntityDamageByEntityEvent event) {
+        // ==========================================
+        // [MỚI]: XỬ LÝ SÁT THƯƠNG TỪ THÚ TRIỆU HỒI (SUMMONER)
+        // ==========================================
+        if (event.getDamager().hasMetadata("Summoner_Pet")) {
+            String ownerUuidStr = event.getDamager().getMetadata("Summoner_Pet").get(0).asString();
+            java.util.UUID ownerUuid = java.util.UUID.fromString(ownerUuidStr);
+            RPGPlayer rpgOwner = playerManager.getRPGPlayer(ownerUuid);
+
+            if (rpgOwner != null && event.getEntity() instanceof LivingEntity) {
+                LivingEntity target = (LivingEntity) event.getEntity();
+                Player owner = rpgOwner.getBukkitPlayer();
+
+                // Lấy lượng sát thương gốc của MythicMobs (10 DMG trong file YML)
+                double basePetDamage = event.getDamage();
+
+                // Ném vào CombatManager để tính toán khuếch đại sát thương
+                double finalPetDamage = vn.minecraft.rPGCore.managers.CombatManager.calculatePetDamage(
+                        owner, rpgOwner, event.getDamager(), target, basePetDamage
+                );
+
+                event.setDamage(finalPetDamage); // Ghi đè sát thương gốc của MythicMobs
+            }
+            return; // Đã xử lý xong sát thương của đệ, return luôn để chống lỗi
+        }
         // Chỉ kích hoạt khi Damager trực tiếp là Player (Đánh cận chiến)
         if (event.getDamager() instanceof Player && event.getEntity() instanceof LivingEntity) {
             Player attacker = (Player) event.getDamager();
@@ -159,6 +183,31 @@ public class PlayerListener implements Listener {
                 }
 
                 ItemStack mainItem = attacker.getInventory().getItemInMainHand();
+                if (classId.equals("archer") || classId.equals("mage") || classId.equals("summoner")) {
+                    event.setCancelled(true); // Cấm gây sát thương đấm tay vật lý gốc
+
+                    // 1. XỬ LÝ RIÊNG CHO SUMMONER: Bẻ lái sang quất roi AoE và KHÔNG báo lỗi
+                    if (classId.equals("summoner")) {
+                        rpgAttacker.getCurrentClass().onLeftClick(attacker, rpgAttacker, mainItem);
+                        return; // Ngừng chạy code tính toán bên dưới
+                    }
+
+                    // 2. VỚI ARCHER VÀ MAGE: Chặn và cảnh báo
+                    if (!attacker.hasMetadata("Ranged_Warning_Cooldown")) {
+                        attacker.sendMessage("§c§l[!] §fHệ phái của bạn không thể tấn công cận chiến!");
+                        attacker.setMetadata("Ranged_Warning_Cooldown", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), true));
+
+                        new org.bukkit.scheduler.BukkitRunnable() {
+                            @Override
+                            public void run() {
+                                if (attacker.hasMetadata("Ranged_Warning_Cooldown")) {
+                                    attacker.removeMetadata("Ranged_Warning_Cooldown", vn.minecraft.rPGCore.RPGCore.getInstance());
+                                }
+                            }
+                        }.runTaskLater(vn.minecraft.rPGCore.RPGCore.getInstance(), 40L);
+                    }
+                    return; // Chặn đứng tại đây
+                }
 
                 // Lọc rác vũ khí (Không cho Chiến binh dùng Cung đập quái)
                 if (!isValidWeaponForClass(mainItem, classId)) {
