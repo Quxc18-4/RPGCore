@@ -63,7 +63,7 @@ public class ClassGUIListener implements Listener {
             RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
             if (rpgPlayer != null) {
                 // Cập nhật dữ liệu
-                rpgPlayer.setClass(selectedClass);
+                rpgPlayer.changeClass(selectedClass);
 
                 // Cập nhật UI BossBar
                 bossBarManager.updateBars(player, rpgPlayer);

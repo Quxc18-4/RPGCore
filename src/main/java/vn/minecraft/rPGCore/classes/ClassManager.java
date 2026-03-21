@@ -8,6 +8,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import vn.minecraft.rPGCore.classes.impl.ArcherClass;
 import vn.minecraft.rPGCore.classes.impl.AssassinClass;
 import vn.minecraft.rPGCore.classes.impl.DefaultClass;
+import vn.minecraft.rPGCore.classes.impl.SummonerClass;
 
 import java.io.File;
 import java.util.HashMap;
@@ -57,6 +58,9 @@ public class ClassManager {
                     break;
                 case "assassin":
                     rpgClass = new AssassinClass(key, displayName, icon, desc, maxHp, maxRes, resType, regen, enchanted);
+                    break;
+                case "summoner":
+                    rpgClass = new SummonerClass(key, displayName, icon, desc, maxHp, maxRes, resType, regen, enchanted);
                     break;
                 default:
                     // Các phái chưa code riêng sẽ xài khung mặc định

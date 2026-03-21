@@ -423,12 +423,39 @@ public class RPGPlayer {
             this.bukkitPlayer.setHealth(newHp);
         }
     }
+    // ==========================================
+    // 1. HỆ THỐNG ĐỔI CLASS (Chỉ gọi khi người chơi BẤM CHỌN CLASS ở Menu GUI)
+    // ==========================================
+    public void changeClass(RPGClass newClass) {
+        if (this.currentClass != null && !this.currentClass.getId().equalsIgnoreCase(newClass.getId())) {
+
+            // Dọn dẹp tàn dư của Class cũ
+            this.skillData.clearAllSkills();
+            this.skillData.clearAllBinds();
+
+            // Backup SP
+            int currentLevel = this.bukkitPlayer.getLevel();
+            this.skillData.setSkillPoints(currentLevel);
+
+            // Bắn thông báo
+            this.bukkitPlayer.sendMessage("§a§l[!] §fBạn đã chuyển sang hệ phái: §e" + newClass.getDisplayName());
+            this.bukkitPlayer.sendMessage("§b⟳ Toàn bộ Kỹ năng và Phím tắt đã được reset! Hoàn trả §e" + currentLevel + " SP§b.");
+        }
+
+        // Sau khi reset xong thì gọi hàm Gán Class bên dưới
+        setClass(newClass);
+    }
+
+    // ==========================================
+    // 2. HỆ THỐNG GÁN CLASS (Chạy im lặng khi vào game / Load Data)
+    // ==========================================
     public void setClass(RPGClass newClass) {
         this.currentClass = newClass;
         this.currentResource = getTotalMaxResource();
         updateMaxStats();
         this.bukkitPlayer.setHealth(getTotalMaxHealth());
     }
+
     public void setCurrentResource(double currentResource) {
         this.currentResource = Math.max(0, Math.min(currentResource, getTotalMaxResource()));
     }

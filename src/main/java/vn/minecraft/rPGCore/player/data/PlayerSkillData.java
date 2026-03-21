@@ -22,4 +22,15 @@ public class PlayerSkillData {
     public void bindCombo(String combo, String skillId) { binds.put(combo, skillId); }
     public void unbindCombo(String combo) { binds.remove(combo); }
     public Map<String, String> getBinds() { return binds; }
+
+    // ==========================================
+    // CÁC HÀM DỌN DẸP DỮ LIỆU KHI ĐỔI CLASS
+    // ==========================================
+    public void clearAllSkills() {
+        this.skills.clear();
+    }
+
+    public void clearAllBinds() {
+        this.binds.clear();
+    }
 }
