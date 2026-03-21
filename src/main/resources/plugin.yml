@@ -1,0 +1,50 @@
+name: RPGCore
+version: '1.0-SNAPSHOT'
+main: vn.minecraft.rPGCore.RPGCore
+api-version: '1.21'
+commands:
+  class:
+    description: Mở menu chọn lớp nhân vật
+  profile:
+    description: Xem thông tin chi tiết nhân vật và trang bị.
+    aliases: [ tt, info ]
+  rpgadmin:
+    description: Lệnh quản trị hệ thống RPG
+    permission: rpgcore.admin
+    usage: /rpgadmin <giveexp|levelup> <player> [amount]
+  attr:
+    description: Mở menu nâng cấp chỉ số nhân vật (STR, INT, VIT...)
+    aliases: [ stats, chiso ]
+  skill:
+    description: Mở menu kỹ năng của class
+  binds:
+    description: Mở menu gán nút cho kỹ năng
+  rpgclassadmin:
+    description: Lệnh quản lý class cho Admin
+    permission: rpgcore.admin
+  arrow:
+    description: Lấy danh sách các mũi tên custom
+    permission: rpgcore.admin
+  eq:
+    description: Sinh trang bị RPG ngẫu nhiên (Dành cho Admin)
+    usage: /<command> roll <weapon|armor> <tier(1-8)> <level> [lineage] [extra_stats]
+    permission: rpgcore.admin
+    permission-message: §cBạn không đủ quyền hạn để tạo trang bị!
+  repairadmin:
+    description: Lấy bộ dụng cụ sửa chữa và Đá mài
+    permission: rpgcore.admin
+    usage: /repairadmin <kit|stone> [loại/số_lần] [số_lượng]
+  ig:
+    description: Lệnh lấy đồ ăn RPG
+    permission: rpgcore.admin
+  bal:
+    description: "Quan ly tien te va tai khoan Ngan hang."
+    usage: "/bal [top|add|coin|tên_người_chơi]"
+    aliases: [ balance, money, economy ]
+  spawnnpc:
+    description: "Trieu hoi NPC Thuong Nhan / Ngan Hang."
+    usage: "/spawnnpc <bank|weapon|food|general>"
+  dummy:
+    description: Triệu hồi bù nhìn thử nghiệm sát thương.
+    usage: /dummy
+    permission: rpgcore.admin
