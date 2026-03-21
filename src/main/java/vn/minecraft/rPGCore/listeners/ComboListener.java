@@ -2,8 +2,10 @@ package vn.minecraft.rPGCore.listeners;
 
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.metadata.FixedMetadataValue;
@@ -33,37 +35,53 @@ public class ComboListener implements Listener {
         this.skillManager = skillManager;
     }
 
+    // ==========================================
+    // 1. LẮNG NGHE CLICK CHUỘT TRÁI/PHẢI VÀO KHÔNG KHÍ HOẶC BLOCK
+    // ==========================================
     @EventHandler
     public void onPlayerClick(PlayerInteractEvent event) {
-        // Bỏ qua nếu dùng tay trái hoặc dẫm đạp vật lý
         if (event.getHand() == org.bukkit.inventory.EquipmentSlot.OFF_HAND) return;
 
-        Player player = event.getPlayer();
         Action action = event.getAction();
         if (action == Action.PHYSICAL) return;
 
+        String click = (action.name().contains("LEFT")) ? "L" : "R";
+        processInput(event.getPlayer(), click);
+    }
+
+    // ==========================================
+    // 2. LẮNG NGHE CLICK CHUỘT TRÁI (L) VÀO QUÁI VẬT
+    // Priority LOWEST: Chạy trước khi bị PlayerListener chặn sát thương!
+    // ==========================================
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onEntityHit(EntityDamageByEntityEvent event) {
+        if (!(event.getDamager() instanceof Player)) return;
+        Player player = (Player) event.getDamager();
+
+        // Nếu sát thương này do Kỹ năng gây ra thì không tính là bấm chuột
+        if (player.hasMetadata("Skill_Damage_Lock")) return;
+
+        // Đánh vào quái vật mặc định luôn luôn là Left Click (L)
+        processInput(player, "L");
+    }
+
+    // ==========================================
+    // 3. BỘ XỬ LÝ LÕI COMBO (DÙNG CHUNG CHO CẢ 2 EVENT)
+    // ==========================================
+    private void processInput(Player player, String click) {
         RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
         if (rpgPlayer == null) return;
 
         ItemStack mainItem = player.getInventory().getItemInMainHand();
         String classId = rpgPlayer.getCurrentClass().getId();
 
-        // ==========================================
-        // 1. LỌC RÁC: DÙNG HÀM CỦA LỄ TÂN (PLAYER LISTENER)
-        // ==========================================
-        if (!PlayerListener.isValidWeaponForClass(mainItem, classId)) {
-            return;
-        }
+        // Lọc rác: Cầm sai vũ khí
+        if (!PlayerListener.isValidWeaponForClass(mainItem, classId)) return;
 
-        // 2. KIỂM TRA ĐIỀU KIỆN LEVEL VÀ TRẠNG THÁI
         EquipmentListener eqListener = new EquipmentListener(playerManager);
         if (!eqListener.canPlayerUse(player, mainItem)) return;
         if (player.hasMetadata("Is_Casting")) return;
 
-        // ==========================================
-        // 3. LOGIC GHI NHẬN CHUỖI COMBO
-        // ==========================================
-        String click = (action.name().contains("LEFT")) ? "L" : "R";
         UUID uuid = player.getUniqueId();
         String current = currentCombos.getOrDefault(uuid, "");
 
@@ -77,9 +95,7 @@ public class ComboListener implements Listener {
         currentCombos.put(uuid, combo);
         player.sendActionBar("§e⚡ Đang niệm chú: §b§l" + combo + "...");
 
-        // ==========================================
-        // [MỚI]: KHÓA ĐÁNH THƯỜNG KHI ĐANG NIỆM COMBO
-        // ==========================================
+        // Khóa đánh thường ngay khi bắt đầu chuỗi
         player.setMetadata("Is_Combo_Casting", new FixedMetadataValue(plugin, true));
 
         if (resetTasks.containsKey(uuid)) resetTasks.get(uuid).cancel();
@@ -90,7 +106,7 @@ public class ComboListener implements Listener {
                 currentCombos.remove(uuid);
                 resetTasks.remove(uuid);
                 player.sendActionBar(" ");
-                // Mở khóa đánh thường khi hết giờ bấm combo
+                // Mở khóa đánh thường khi hết thời gian bấm combo
                 if (player.hasMetadata("Is_Combo_Casting")) player.removeMetadata("Is_Combo_Casting", plugin);
             }
         };
@@ -108,6 +124,7 @@ public class ComboListener implements Listener {
                     int level = rpgPlayer.getSkillData().getSkillLevel(mappedSkillId);
 
                     if (skill.execute(player, rpgPlayer, level)) {
+                        // Phá tàng hình khi xài chiêu
                         if (!mappedSkillId.equals("assassin_smoke_bomb") &&
                                 !mappedSkillId.equals("assassin_shadow_decoy") &&
                                 !mappedSkillId.equals("assassin_shadow_step")) {
@@ -123,7 +140,7 @@ public class ComboListener implements Listener {
                         player.sendActionBar("§a§l✔ Kích hoạt thành công!");
 
                         // Cắm cờ chống kẹt sát thương tay khi vừa ra chiêu
-                        player.setMetadata("Skill_Just_Cast", new org.bukkit.metadata.FixedMetadataValue(plugin, true));
+                        player.setMetadata("Skill_Just_Cast", new FixedMetadataValue(plugin, true));
                         new BukkitRunnable() {
                             @Override
                             public void run() {
