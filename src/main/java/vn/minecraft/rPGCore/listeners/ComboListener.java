@@ -6,6 +6,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import vn.minecraft.rPGCore.player.PlayerManager;
@@ -51,7 +52,7 @@ public class ComboListener implements Listener {
         // 1. LỌC RÁC: DÙNG HÀM CỦA LỄ TÂN (PLAYER LISTENER)
         // ==========================================
         if (!PlayerListener.isValidWeaponForClass(mainItem, classId)) {
-            return; // Cầm sai vũ khí hoặc cầm đất đá -> Không cho bấm Combo
+            return;
         }
 
         // 2. KIỂM TRA ĐIỀU KIỆN LEVEL VÀ TRẠNG THÁI
@@ -76,6 +77,11 @@ public class ComboListener implements Listener {
         currentCombos.put(uuid, combo);
         player.sendActionBar("§e⚡ Đang niệm chú: §b§l" + combo + "...");
 
+        // ==========================================
+        // [MỚI]: KHÓA ĐÁNH THƯỜNG KHI ĐANG NIỆM COMBO
+        // ==========================================
+        player.setMetadata("Is_Combo_Casting", new FixedMetadataValue(plugin, true));
+
         if (resetTasks.containsKey(uuid)) resetTasks.get(uuid).cancel();
 
         BukkitRunnable resetTask = new BukkitRunnable() {
@@ -84,6 +90,8 @@ public class ComboListener implements Listener {
                 currentCombos.remove(uuid);
                 resetTasks.remove(uuid);
                 player.sendActionBar(" ");
+                // Mở khóa đánh thường khi hết giờ bấm combo
+                if (player.hasMetadata("Is_Combo_Casting")) player.removeMetadata("Is_Combo_Casting", plugin);
             }
         };
         resetTask.runTaskLater(plugin, 20L); // Có 1 giây để bấm phím tiếp theo
@@ -100,7 +108,6 @@ public class ComboListener implements Listener {
                     int level = rpgPlayer.getSkillData().getSkillLevel(mappedSkillId);
 
                     if (skill.execute(player, rpgPlayer, level)) {
-                        // [MỚI]: Phá tàng hình khi xài chiêu
                         if (!mappedSkillId.equals("assassin_smoke_bomb") &&
                                 !mappedSkillId.equals("assassin_shadow_decoy") &&
                                 !mappedSkillId.equals("assassin_shadow_step")) {
@@ -131,6 +138,8 @@ public class ComboListener implements Listener {
 
             currentCombos.remove(uuid);
             resetTask.cancel();
+            // Mở khóa đánh thường khi hoàn thành chuỗi (dù đúng hay sai)
+            if (player.hasMetadata("Is_Combo_Casting")) player.removeMetadata("Is_Combo_Casting", plugin);
         }
     }
 }

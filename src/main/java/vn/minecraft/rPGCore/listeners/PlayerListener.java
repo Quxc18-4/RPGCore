@@ -112,10 +112,12 @@ public class PlayerListener implements Listener {
     // ==========================================
     @EventHandler
     public void onDealDamage(EntityDamageByEntityEvent event) {
+        // Chỉ kích hoạt khi Damager trực tiếp là Player (Đánh cận chiến)
         if (event.getDamager() instanceof Player && event.getEntity() instanceof LivingEntity) {
             Player attacker = (Player) event.getDamager();
             LivingEntity target = (LivingEntity) event.getEntity();
 
+            // Ngoại lệ: Cho phép sát thương từ Kỹ năng (Skill) được đi qua
             if (attacker.hasMetadata("Skill_Damage_Lock") || attacker.hasMetadata("Skill_Just_Cast") || attacker.hasMetadata("Is_Casting")) {
                 if (!attacker.hasMetadata("Skill_Damage_Lock")) event.setCancelled(true);
                 return;
@@ -123,10 +125,43 @@ public class PlayerListener implements Listener {
 
             RPGPlayer rpgAttacker = playerManager.getRPGPlayer(attacker.getUniqueId());
             if (rpgAttacker != null) {
+
+                // ==========================================
+                // [MỚI]: KHÓA ĐÁNH THƯỜNG KHI ĐANG BẤM COMBO
+                // ==========================================
+                if (attacker.hasMetadata("Is_Combo_Casting")) {
+                    event.setCancelled(true);
+                    return; // Im lặng hủy sát thương để không làm hỏng chuỗi phím
+                }
+
+                // ==========================================
+                // [MỚI]: CLASS BẮN XA -> VÔ HIỆU HÓA HOÀN TOÀN CẬN CHIẾN
+                // ==========================================
+                String classId = rpgAttacker.getCurrentClass().getId();
+                if (classId.equals("archer") || classId.equals("mage") || classId.equals("tamer")) {
+                    event.setCancelled(true);
+
+                    // Chống spam tin nhắn liên tục khi click nhầm (báo mỗi 2 giây)
+                    if (!attacker.hasMetadata("Ranged_Warning_Cooldown")) {
+                        attacker.sendMessage("§c§l[!] §fHệ phái của bạn không thể tấn công cận chiến!");
+                        attacker.setMetadata("Ranged_Warning_Cooldown", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), true));
+
+                        new org.bukkit.scheduler.BukkitRunnable() {
+                            @Override
+                            public void run() {
+                                if (attacker.hasMetadata("Ranged_Warning_Cooldown")) {
+                                    attacker.removeMetadata("Ranged_Warning_Cooldown", vn.minecraft.rPGCore.RPGCore.getInstance());
+                                }
+                            }
+                        }.runTaskLater(vn.minecraft.rPGCore.RPGCore.getInstance(), 40L);
+                    }
+                    return; // Chặn đứng tại đây, không tính toán sát thương bên dưới nữa
+                }
+
                 ItemStack mainItem = attacker.getInventory().getItemInMainHand();
 
                 // Lọc rác vũ khí (Không cho Chiến binh dùng Cung đập quái)
-                if (!isValidWeaponForClass(mainItem, rpgAttacker.getCurrentClass().getId())) {
+                if (!isValidWeaponForClass(mainItem, classId)) {
                     event.setCancelled(true);
                     return;
                 }
@@ -161,7 +196,7 @@ public class PlayerListener implements Listener {
                         attacker.sendMessage("§c§l[!] §fĐòn đánh thường được Cường hóa!");
                     }
 
-                    // TÍNH SÁT THƯƠNG TỔNG (Đưa classDmgMultiplier vào CombatManager)
+                    // TÍNH SÁT THƯƠNG TỔNG
                     double finalDamage = vn.minecraft.rPGCore.managers.CombatManager.calculateDamage(
                             attacker, rpgAttacker, target, classDmgMultiplier, 0.0, extraCritRate, extraCritDmg, isMagicWeapon, false
                     );
@@ -174,6 +209,7 @@ public class PlayerListener implements Listener {
         }
 
         // --- XỬ LÝ KHI NGƯỜI CHƠI BỊ ĐÁNH TRÚNG ---
+        // (Phần này giữ nguyên không đổi)
         if (event.getEntity() instanceof Player) {
             Player victim = (Player) event.getEntity();
             RPGPlayer rpgVictim = playerManager.getRPGPlayer(victim.getUniqueId());
@@ -183,7 +219,6 @@ public class PlayerListener implements Listener {
 
                 LivingEntity attackerEntity = event.getDamager() instanceof LivingEntity ? (LivingEntity) event.getDamager() : null;
 
-                // Trưởng phòng nhúng tay (Giảm thương, phản sát thương...)
                 double initialDamage = event.getDamage();
                 double modifiedDamage = rpgVictim.getCurrentClass().onTakeDamage(victim, rpgVictim, attackerEntity, initialDamage);
 
