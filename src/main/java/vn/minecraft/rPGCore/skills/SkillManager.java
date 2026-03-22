@@ -3,6 +3,7 @@ package vn.minecraft.rPGCore.skills;
 import org.bukkit.plugin.java.JavaPlugin;
 import vn.minecraft.rPGCore.skills.archer.*;
 import vn.minecraft.rPGCore.skills.assassin.*;
+import vn.minecraft.rPGCore.skills.summoner.SummonFusionSkill;
 import vn.minecraft.rPGCore.skills.summoner.SummonWolfSkill;
 
 import java.util.ArrayList;
@@ -35,6 +36,7 @@ public class SkillManager {
         registerSkill(new ShadowDecoySkill(plugin));
         registerSkill(new KillingIntentSkill(plugin));
         registerSkill(new SummonWolfSkill(plugin));
+        registerSkill(new SummonFusionSkill(plugin));
     }
 
     public void registerSkill(ISkill skill) {
