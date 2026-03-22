@@ -44,16 +44,24 @@ public class SummonWolfSkill implements ISkill {
     public Material getIcon() { return Material.BONE; }
 
     @Override
-    public int getMaxLevel() { return 5; }
+    public int getMaxLevel() {
+        return 10; // [ĐÃ SỬA]: Mở khóa cấp độ 10
+    }
 
     @Override
     public double getManaCost(int level) {
-        return 30.0 + (level * 5.0);
+        // Công thức: Cấp 1 tốn 30, cấp 2 tốn 35... (Mỗi cấp tăng 5 Mana)
+        return 55.0 + (level * 5.0);
     }
 
     @Override
     public long getCooldown(int level) {
-        return 15000L; // 15 giây
+        // [ĐÃ SỬA]: Mốc giảm hồi chiêu
+        // Cấp 1-3: 15s | Cấp 4-6: 14s | Cấp 7-9: 13s | Cấp 10: 12s
+        if (level >= 10) return 12000L;
+        if (level >= 7) return 13000L;
+        if (level >= 4) return 14000L;
+        return 15000L;
     }
 
     @Override
@@ -109,17 +117,40 @@ public class SummonWolfSkill implements ISkill {
         startCooldownNotifier(player, finalCd);
 
         // ==========================================
-        // 4. TRIỆU HỒI MYTHICMOB (FIX TỌA ĐỘ Y)
+        // 4. TRIỆU HỒI MYTHICMOB
         // ==========================================
-        // Dịch lên 0.5 block để Sói không bị chôn chân dưới đất
         Location spawnLoc = player.getLocation().add(player.getLocation().getDirection().multiply(1.5)).add(0, 0.5, 0);
 
         try {
             ActiveMob wolf = MythicBukkit.inst().getMobManager().spawnMob("SpiritWolf", spawnLoc);
 
             if (wolf != null) {
+                // [QUAN TRỌNG NHẤT]: Truyền cấp độ Kỹ năng sang cho MythicMobs
+                // MythicMobs sẽ tự lấy số Level này áp vào biến <mob.level>
+                // và tự động cộng thêm Máu/Dame theo LevelModifiers.
+                wolf.setLevel(level);
+
                 wolf.setOwnerUUID(player.getUniqueId());
                 Entity bukkitEntity = wolf.getEntity().getBukkitEntity();
+
+                // ==========================================
+                // [FIX]: BƠM ĐẦY MÁU SAU KHI SET LEVEL
+                // MythicMobs cập nhật MaxHP nhưng quên hồi máu, ta phải tự bơm!
+                // ==========================================
+                if (bukkitEntity instanceof org.bukkit.entity.LivingEntity) {
+                    org.bukkit.entity.LivingEntity livingPet = (org.bukkit.entity.LivingEntity) bukkitEntity;
+                    new org.bukkit.scheduler.BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            if (livingPet.isValid()) {
+                                org.bukkit.attribute.AttributeInstance maxHpAttr = livingPet.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+                                if (maxHpAttr != null) {
+                                    livingPet.setHealth(maxHpAttr.getValue());
+                                }
+                            }
+                        }
+                    }.runTaskLater(plugin, 2L); // Chờ 2 tick để MythicMobs load xong thông số mới
+                }
 
                 if (bukkitEntity instanceof org.bukkit.entity.Tameable) {
                     ((org.bukkit.entity.Tameable) bukkitEntity).setTamed(true);
@@ -132,6 +163,12 @@ public class SummonWolfSkill implements ISkill {
 
                 bukkitEntity.setMetadata("Summoner_Pet", new FixedMetadataValue(plugin, player.getUniqueId().toString()));
                 bukkitEntity.setMetadata("Summon_Level", new FixedMetadataValue(plugin, level));
+
+                // Gọi vào Sổ Nam Tào
+                if (rpgPlayer.getCurrentClass() instanceof vn.minecraft.rPGCore.classes.impl.SummonerClass) {
+                    ((vn.minecraft.rPGCore.classes.impl.SummonerClass) rpgPlayer.getCurrentClass())
+                            .registerPet(bukkitEntity.getUniqueId(), cost, rpgPlayer, "Linh Lang");
+                }
 
                 player.getWorld().spawnParticle(Particle.SOUL, spawnLoc, 50, 0.5, 0.5, 0.5, 0.1);
                 player.getWorld().spawnParticle(Particle.ENCHANT, spawnLoc.add(0, 1, 0), 30, 0.5, 0.5, 0.5, 0.1);

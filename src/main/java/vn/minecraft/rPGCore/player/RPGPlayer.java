@@ -25,6 +25,9 @@ public class RPGPlayer {
     private long lastCombatTime = 0;
     private long balance = 0;
 
+    // [MỚI]: Biến lưu trữ tổng số Năng lượng đang bị thế chấp bởi thú triệu hồi
+    private double reservedResource = 0;
+
     private final PlayerAttributeData attributeData;
     private final PlayerSkillData skillData;
 
@@ -454,7 +457,8 @@ public class RPGPlayer {
     }
 
     public void setCurrentResource(double currentResource) {
-        this.currentResource = Math.max(0, Math.min(currentResource, getTotalMaxResource()));
+        // [ĐÃ SỬA]: Giới hạn tối đa không còn là Tổng Mana, mà là (Tổng - Thế chấp)
+        this.currentResource = Math.max(0, Math.min(currentResource, getUsableMaxResource()));
     }
 
     // ==========================================
@@ -469,5 +473,25 @@ public class RPGPlayer {
         double bonusFromPassives = getTotalStatsMap().getOrDefault("Năng lượng tối đa", 0.0);
 
         return baseRes + attrBonus + bonusFromPassives;
+    }
+
+    // ==========================================
+    // QUẢN LÝ NĂNG LƯỢNG THẾ CHẤP (MANA RESERVATION)
+    // ==========================================
+    public double getReservedResource() { return this.reservedResource; }
+
+    public void addReservedResource(double amount) {
+        this.reservedResource += amount;
+        // Nếu Mana hiện tại đang cao hơn mức cho phép sau khi thế chấp thì ép nó xuống
+        setCurrentResource(this.currentResource);
+    }
+
+    public void freeReservedResource(double amount) {
+        this.reservedResource = Math.max(0, this.reservedResource - amount);
+    }
+
+    // Hàm lấy Max Mana thực tế được phép sử dụng
+    public double getUsableMaxResource() {
+        return Math.max(0, getTotalMaxResource() - this.reservedResource);
     }
 }

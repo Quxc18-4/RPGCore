@@ -20,7 +20,6 @@ import vn.minecraft.rPGCore.managers.CombatManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -28,14 +27,70 @@ import java.util.LinkedList;
 
 public class SummonerClass extends RPGClass {
 
+    // ==========================================
+    // CONSTRUCTOR & TASK QUÉT RÁC 8 GIÂY
+    // ==========================================
     public SummonerClass(String id, String displayName, Material icon, java.util.List<String> description, double maxHealth, double maxResource, ResourceType resourceType, double regenRate, boolean enchanted) {
         super(id, displayName, icon, description, maxHealth, maxResource, resourceType, regenRate, enchanted);
+
+        // CHUYỂN TASK DỌN RÁC (GARBAGE COLLECTOR) VÀO ĐÂY
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                if (reservedPets.isEmpty()) return;
+                vn.minecraft.rPGCore.player.PlayerManager pm = vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager();
+
+                for (Map.Entry<java.util.UUID, PetInfo> entry : reservedPets.entrySet()) {
+                    Entity pet = org.bukkit.Bukkit.getEntity(entry.getKey());
+
+                    // Nếu Entity không tồn tại hoặc đã chết do kẹt chunk/clear lag
+                    if (pet == null || !pet.isValid() || pet.isDead()) {
+                        RPGPlayer owner = pm.getRPGPlayer(entry.getValue().ownerId);
+                        if (owner != null) {
+                            unregisterPet(entry.getKey(), owner);
+                        } else {
+                            reservedPets.remove(entry.getKey()); // Tránh kẹt RAM nếu chủ nhân offline
+                        }
+                    }
+                }
+            }
+        }.runTaskTimer(vn.minecraft.rPGCore.RPGCore.getInstance(), 160L, 160L);
     }
 
-    public SummonerClass() {
-        super("summoner", "§dTriệu Hồi Sư", Material.LEAD,
-                Arrays.asList("§7Điều khiển bầy thú cưng", "§7và hỗ trợ đồng đội."),
-                100.0, 100.0, ResourceType.MANA, 1.0, true);
+    private final Map<java.util.UUID, PetInfo> reservedPets = new java.util.concurrent.ConcurrentHashMap<>();
+
+    // ==========================================
+    // CLASS LƯU TRỮ THÔNG TIN KHẾ ƯỚC (NÂNG CẤP)
+    // ==========================================
+    public static class PetInfo {
+        public final java.util.UUID ownerId;
+        public final double manaReserved;
+        public final String petName; // [MỚI]: Lưu thêm tên của đệ tử
+
+        public PetInfo(java.util.UUID ownerId, double manaReserved, String petName) {
+            this.ownerId = ownerId;
+            this.manaReserved = manaReserved;
+            this.petName = petName;
+        }
+    }
+
+    // [CẬP NHẬT]: Thêm tham số petName vào hàm đăng ký
+    public void registerPet(java.util.UUID petId, double manaReserved, RPGPlayer owner, String petName) {
+        reservedPets.put(petId, new PetInfo(owner.getBukkitPlayer().getUniqueId(), manaReserved, petName));
+        owner.addReservedResource(manaReserved);
+    }
+
+    // [CẬP NHẬT]: Gọi tên động (Dynamic Name) thay vì cứng chữ "Linh Lang"
+    public void unregisterPet(java.util.UUID petId, RPGPlayer owner) {
+        PetInfo info = reservedPets.remove(petId);
+        if (info != null) {
+            owner.freeReservedResource(info.manaReserved);
+            owner.setCurrentResource(owner.getCurrentResource() + info.manaReserved);
+            if (owner.getBukkitPlayer().isOnline()) {
+                // Sử dụng info.petName để báo tên chính xác
+                owner.getBukkitPlayer().sendMessage("§b§l[!] §f" + info.petName + " đã biến mất. Hoàn trả §b" + (int)info.manaReserved + " Mana§f!");
+            }
+        }
     }
 
     @Override
@@ -239,8 +294,51 @@ public class SummonerClass extends RPGClass {
         return false; // Hủy đòn chém tay vật lý gốc của Minecraft
     }
 
+    // ==========================================
+    // TÍNH NĂNG SHIFT + CLICK PHẢI (GIẢI TRỪ KHẾ ƯỚC NÂNG CẤP)
+    // ==========================================
     @Override
-    public void onRightClick(Player player, RPGPlayer rpgPlayer, ItemStack weapon) { }
+    public void onRightClick(Player player, RPGPlayer rpgPlayer, ItemStack weapon) {
+        if (player.isSneaking()) {
+            Entity targetPet = null;
+
+            // 1. Phóng tia nhìn (RayTrace) 10 block xem chủ nhân có đang nhìn thẳng vào con đệ nào không
+            org.bukkit.util.RayTraceResult result = player.getWorld().rayTraceEntities(
+                    player.getEyeLocation(), player.getEyeLocation().getDirection(), 10.0,
+                    entity -> entity.hasMetadata("Summoner_Pet") && reservedPets.containsKey(entity.getUniqueId())
+            );
+
+            // Nếu nhìn trúng 1 con thú triệu hồi
+            if (result != null && result.getHitEntity() != null) {
+                targetPet = result.getHitEntity();
+            } else {
+                // 2. Nếu không nhìn ai, tự động bắt 1 con bất kỳ trong Sổ Nam Tào
+                for (Map.Entry<java.util.UUID, PetInfo> entry : reservedPets.entrySet()) {
+                    if (entry.getValue().ownerId.equals(player.getUniqueId())) {
+                        targetPet = org.bukkit.Bukkit.getEntity(entry.getKey());
+                        if (targetPet == null) {
+                            // Mob kẹt chunk (null) -> Thu hồi giải phóng Mana luôn rồi thoát
+                            unregisterPet(entry.getKey(), rpgPlayer);
+                            return;
+                        }
+                        break; // [QUAN TRỌNG]: Lấy 1 con xong là break ngay, không xóa toàn bộ nữa!
+                    }
+                }
+            }
+
+            // 3. Tiến hành giải trừ mục tiêu đã chọn
+            if (targetPet != null && reservedPets.containsKey(targetPet.getUniqueId())) {
+                PetInfo info = reservedPets.get(targetPet.getUniqueId());
+                if (info.ownerId.equals(player.getUniqueId())) {
+                    targetPet.remove(); // Xóa xác vật lý
+
+                    // Gọi hàm unregisterPet để trả Mana (Hàm này đã có sẵn thông báo Chat)
+                    unregisterPet(targetPet.getUniqueId(), rpgPlayer);
+                    player.getWorld().playSound(player.getLocation(), org.bukkit.Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 0.5f);
+                }
+            }
+        }
+    }
 
     @Override
     public double onMeleeHit(Player attacker, RPGPlayer rpgPlayer, LivingEntity target, double baseMultiplier) {

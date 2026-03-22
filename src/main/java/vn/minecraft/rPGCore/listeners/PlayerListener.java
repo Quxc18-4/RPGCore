@@ -62,7 +62,13 @@ public class PlayerListener implements Listener {
         if (player.hasMetadata("Is_Casting")) return;
 
         // [MỚI THÊM]: Chặn tuyệt đối việc gọi đòn đánh cơ bản (như Bắn cung, Quất roi) khi đang múa Combo
-        if (player.hasMetadata("Is_Combo_Casting")) return;
+        // [ĐÃ SỬA]: Chặn tuyệt đối đòn đánh cơ bản (LEFT CLICK) khi đang múa Combo.
+        // Nhưng CHO PHÉP Chuột Phải đi qua để dùng các kỹ năng đặc biệt của Class (như Unsummon).
+        if (player.hasMetadata("Is_Combo_Casting")) {
+            if (event.getAction().name().contains("LEFT")) {
+                return;
+            }
+        }
 
         RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
         if (rpgPlayer == null) return;
@@ -152,7 +158,19 @@ public class PlayerListener implements Listener {
 
                     double basePetDamage = event.getDamage();
 
-                    double finalPetDamage = CombatManager.calculatePetDamage(
+                    // ==========================================
+                    // [FIX]: LẤY SÁT THƯƠNG THỰC TẾ TỪ MYTHICMOBS
+                    // Bỏ qua giới hạn của Bukkit để lấy đúng Sát thương đã cộng LevelModifiers
+                    // ==========================================
+                    try {
+                        io.lumine.mythic.core.mobs.ActiveMob am = io.lumine.mythic.bukkit.MythicBukkit.inst().getMobManager().getActiveMob(event.getDamager().getUniqueId()).orElse(null);
+                        if (am != null) {
+                            basePetDamage = am.getDamage();
+                        }
+                    } catch (Exception ignored) {}
+
+                    // Tính toán qua CombatManager như bình thường
+                    double finalPetDamage = vn.minecraft.rPGCore.managers.CombatManager.calculatePetDamage(
                             owner, rpgOwner, event.getDamager(), target, basePetDamage
                     );
 
@@ -371,9 +389,36 @@ public class PlayerListener implements Listener {
 
         // Nếu đang cầm vũ khí của hệ phái (VD: Summoner cầm Dây dắt)
         if (isValidWeaponForClass(weapon, classId)) {
-            // HỦY SỰ KIỆN: Chặn vĩnh viễn việc buộc dây dắt vào heo bò,
-            // chặn cả việc lỡ tay click phải lên Dân làng mở giao diện trade khi đang combat.
+            // HỦY SỰ KIỆN: Chặn vĩnh viễn việc buộc dây dắt vào heo bò...
             event.setCancelled(true);
+
+            // [MỚI THÊM]: Vẫn phải báo cáo thao tác Chuột Phải này về cho hệ phái xử lý!
+            // Nhờ dòng này, Shift + Chuột phải thẳng vào mặt con Sói vẫn sẽ thu hồi được nó.
+            rpgPlayer.getCurrentClass().onRightClick(player, rpgPlayer, weapon);
+        }
+    }
+
+    // ==========================================
+    // CƠ CHẾ: HOÀN TRẢ MANA TỨC THÌ KHI THÚ TRIỆU HỒI TỬ TRẬN
+    // ==========================================
+    @EventHandler
+    public void onPetDeath(org.bukkit.event.entity.EntityDeathEvent event) {
+        if (event.getEntity().hasMetadata("Summoner_Pet")) {
+            // Kiểm tra an toàn
+            java.util.List<org.bukkit.metadata.MetadataValue> metaList = event.getEntity().getMetadata("Summoner_Pet");
+            if (metaList == null || metaList.isEmpty()) return;
+
+            String ownerUuidStr = metaList.get(0).asString();
+            try {
+                java.util.UUID ownerUuid = java.util.UUID.fromString(ownerUuidStr);
+                RPGPlayer rpgOwner = playerManager.getRPGPlayer(ownerUuid);
+
+                // Trả Mana ngay lập tức (0 giây delay)
+                if (rpgOwner != null && rpgOwner.getCurrentClass() instanceof vn.minecraft.rPGCore.classes.impl.SummonerClass) {
+                    ((vn.minecraft.rPGCore.classes.impl.SummonerClass) rpgOwner.getCurrentClass())
+                            .unregisterPet(event.getEntity().getUniqueId(), rpgOwner);
+                }
+            } catch (Exception ignored) {}
         }
     }
 }

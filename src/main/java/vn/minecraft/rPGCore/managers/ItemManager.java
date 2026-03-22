@@ -161,7 +161,7 @@ public class ItemManager {
         register(new ItemData("misc_poison_stinger", Rarity.RARE, Category.MISC, 0.0, Material.ARROW, "Ngòi Ong Độc", "Tấn công gây Độc I trong 5s", "Cực kỳ sắc bén, cẩn thận kẻo đứt tay.")); // Rớt từ: Ong Độc
         register(new ItemData("misc_armor_shard", Rarity.UNCOMMON, Category.MISC, 0.0, Material.IRON_NUGGET, "Mảnh Giáp Vụn", null, "Có thể nung chảy để tái chế tại Lò Rèn.")); // Rớt từ: Goblin
         register(new ItemData("misc_soft_string", Rarity.COMMON, Category.MISC, 0.0, Material.STRING, "Sợi Tơ Mềm", null, "Một cuộn tơ tằm mềm mại.")); // Rớt từ: Nhện Con
-        register(new ItemData("misc_steel_string", Rarity.UNCOMMON, Category.MISC, 0.0, Material.IRON_BARS, "Sợi Tơ Thép", null, "Cứng cáp lạ thường, cực kỳ bền bỉ.")); // Rớt từ: Nhện Con
+        register(new ItemData("misc_steel_string", Rarity.UNCOMMON, Category.MISC, 0.0, Material.STRING, "Sợi Tơ Thép", null, "Cứng cáp lạ thường, cực kỳ bền bỉ.")); // Rớt từ: Nhện Con
     }
 
     private void register(ItemData data) {
