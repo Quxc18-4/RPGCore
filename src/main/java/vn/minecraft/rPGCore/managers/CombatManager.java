@@ -236,12 +236,21 @@ public class CombatManager {
     // ==========================================
     public static double calculatePetDamage(Player owner, RPGPlayer rpgOwner, org.bukkit.entity.Entity pet, LivingEntity target, double eventDamage) {
 
-        // [ĐÃ XÓA CODE LÁCH LUẬT] - Sử dụng trực tiếp eventDamage cực kỳ chính xác
-        double finalBasePetDamage = eventDamage;
+        // Đây chính xác là lượng sát thương ta đã bơm vào GENERIC_ATTACK_DAMAGE
+        double baseDamage = eventDamage;
+        double skillMultiplier = 1.0;
 
+        // 1. GỌI PROFILE TỰ XỬ LÝ KỸ NĂNG (CHUẨN SOLID)
+        String petType = pet.hasMetadata("Pet_Type") ? pet.getMetadata("Pet_Type").get(0).asString() : "Unknown";
+        vn.minecraft.rPGCore.skills.summoner.pets.IPetProfile profile = vn.minecraft.rPGCore.skills.summoner.pets.SummonPetManager.getProfile(petType);
+
+        if (profile != null && pet instanceof LivingEntity) {
+            skillMultiplier = profile.onAttack(owner, (LivingEntity) pet, target, baseDamage);
+        }
+
+        // 2. TÍNH TOÁN CÁC CHỈ SỐ NHẬP VAI (RPG) TỪ PLAYER
         Map<String, Double> totalStats = rpgOwner.getTotalStatsMap();
 
-        // 1. Kế thừa chỉ số: Sức mạnh Mana của Tamer
         double summonDmgBonusPct = totalStats.getOrDefault("Sát thương Triệu hồi", 0.0);
         double multiplier = 1.0 + (summonDmgBonusPct / 100.0);
 
@@ -249,28 +258,25 @@ public class CombatManager {
         double critRate = totalStats.getOrDefault("Tỉ lệ chí mạng", 5.0) * 0.5;
         double critDamage = totalStats.getOrDefault("Sát thương chí mạng", 50.0);
 
-        // 2. DẤU SĂN MỒI (HUNTER'S MARK)
+        // Cờ Săn Mồi
         String markKey = "Summoner_Mark_" + owner.getUniqueId().toString();
         boolean hasMark = target.hasMetadata(markKey);
 
         if (hasMark) {
-            multiplier *= 1.3; // +30% Tổng sát thương
-            critRate += 20.0;  // +20% Tỉ lệ bạo kích
-
+            multiplier *= 1.3;
+            critRate += 20.0;
             target.getWorld().spawnParticle(Particle.ENCHANTED_HIT, target.getLocation().add(0, 1, 0), 10, 0.3, 0.3, 0.3, 0.1);
         }
 
-        // 3. Tính sát thương thô
-        double rawDamage = finalBasePetDamage * multiplier;
+        // 3. TÍNH SÁT THƯƠNG THỰC TẾ
+        double rawDamage = baseDamage * skillMultiplier * multiplier;
 
-        // 4. Bạo kích (Critical Hit)
         if ((Math.random() * 100) <= critRate) {
             rawDamage *= (1.0 + (critDamage / 100.0));
             target.getWorld().spawnParticle(Particle.CRIT, target.getLocation().add(0, 1, 0), 15, 0.5, 0.5, 0.5, 0.1);
             owner.playSound(owner.getLocation(), Sound.ENTITY_WOLF_GROWL, 0.5f, 1.5f);
         }
 
-        // 5. Trừ Giáp mục tiêu
         double targetDefense = 0;
         AttributeInstance armorAttr = target.getAttribute(Attribute.ARMOR);
         if (armorAttr != null) targetDefense = armorAttr.getValue();
@@ -280,10 +286,18 @@ public class CombatManager {
 
         double finalDamage = Math.max(1.0, rawDamage - targetDefense);
 
-        // 6. Test Dummy
+        // In lên Dummy
         if (target.getCustomName() != null && ChatColor.stripColor(target.getCustomName()).contains("Dummy")) {
-            String prefix = hasMark ? "§d[Linh Lang - Cuồng Nộ]" : "§b[Linh Lang]";
-            owner.sendMessage("§e§l[DUMMY] " + prefix + " §fSát thương: §c" + String.format("%.1f", finalDamage) + " ⚔");
+            String petNameRaw = pet.getCustomName() != null ? ChatColor.stripColor(pet.getCustomName()).replaceAll("\\[.*?\\]", "").trim() : "Linh Lang";
+            String prefix = hasMark ? "§d[" + petNameRaw + " - Cuồng Nộ]" : "§b[" + petNameRaw + "]";
+
+            String skillName = "";
+            if (profile != null && skillMultiplier > 1.0) {
+                if (skillMultiplier >= 2.0) skillName = " §e[Sét]";
+                else skillName = " §6[Đuôi]";
+            }
+
+            owner.sendMessage("§e§l[DUMMY] " + prefix + skillName + " §fSát thương: §c" + String.format("%.1f", finalDamage) + " ⚔");
         }
 
         return finalDamage;

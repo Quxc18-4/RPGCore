@@ -5,6 +5,7 @@ import vn.minecraft.rPGCore.skills.archer.*;
 import vn.minecraft.rPGCore.skills.assassin.*;
 import vn.minecraft.rPGCore.skills.summoner.SummonFusionSkill;
 import vn.minecraft.rPGCore.skills.summoner.SummonWolfSkill;
+import vn.minecraft.rPGCore.skills.summoner.pets.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,6 +18,12 @@ public class SkillManager {
 
     public SkillManager(JavaPlugin plugin) {
         this.plugin = plugin;
+        // ==========================================
+        // ĐĂNG KÝ HỒ SƠ THÚ TRIỆU HỒI (PET PROFILES)
+        // ==========================================
+        SummonPetManager.register(new SpiritWolfProfile());
+        SummonPetManager.register(new AlphaWolfProfile());
+
         // Nơi đăng ký mọi kỹ năng của Server
         registerSkill(new DoubleShotSkill(plugin));
         registerSkill(new TripleShotSkill(plugin));

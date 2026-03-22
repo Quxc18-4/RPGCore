@@ -146,7 +146,7 @@ public class PlayerListener implements Listener {
         }
 
         // ==========================================
-        // XỬ LÝ SÁT THƯƠNG TỪ THÚ TRIỆU HỒI GÂY RA (CỰC KỲ GỌN GÀNG)
+        // XỬ LÝ SÁT THƯƠNG TỪ THÚ TRIỆU HỒI GÂY RA
         // ==========================================
         if (event.getDamager().hasMetadata("Summoner_Pet")) {
             java.util.List<org.bukkit.metadata.MetadataValue> metaList = event.getDamager().getMetadata("Summoner_Pet");
@@ -163,14 +163,16 @@ public class PlayerListener implements Listener {
                     LivingEntity target = (LivingEntity) event.getEntity();
                     Player owner = rpgOwner.getBukkitPlayer();
 
-                    // Đẩy toàn bộ trách nhiệm Lách luật và Tính toán cho CombatManager
                     double finalPetDamage = vn.minecraft.rPGCore.managers.CombatManager.calculatePetDamage(
                             owner, rpgOwner, event.getDamager(), target, event.getDamage()
                     );
 
-                    owner.setMetadata("Ghost_L_Blocker", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), true));
-                    CombatManager.applySkillDamage(owner, target, finalPetDamage);
-                    owner.removeMetadata("Ghost_L_Blocker", vn.minecraft.rPGCore.RPGCore.getInstance());
+                    // [CHỐNG ĐÁNH ĐÔI]: Chỉ gây sát thương nếu > 0
+                    if (finalPetDamage > 0) {
+                        owner.setMetadata("Ghost_L_Blocker", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), true));
+                        CombatManager.applySkillDamage(owner, target, finalPetDamage);
+                        owner.removeMetadata("Ghost_L_Blocker", vn.minecraft.rPGCore.RPGCore.getInstance());
+                    }
                 }
             } catch (IllegalArgumentException e) { return; }
             return;
@@ -256,7 +258,6 @@ public class PlayerListener implements Listener {
         }
 
         // --- XỬ LÝ KHI NGƯỜI CHƠI BỊ ĐÁNH TRÚNG ---
-        // (Phần này giữ nguyên không đổi)
         if (event.getEntity() instanceof Player) {
             Player victim = (Player) event.getEntity();
             RPGPlayer rpgVictim = playerManager.getRPGPlayer(victim.getUniqueId());
@@ -266,10 +267,28 @@ public class PlayerListener implements Listener {
 
                 LivingEntity attackerEntity = event.getDamager() instanceof LivingEntity ? (LivingEntity) event.getDamager() : null;
 
+                // Mặc định lấy sát thương từ Vanilla (Dành cho quái thường, ngã, lửa...)
                 double initialDamage = event.getDamage();
+
+                // ==========================================
+                // [FIX BUG]: ÉP LẤY SÁT THƯƠNG ĐÃ SCALE TỪ MYTHICMOBS
+                // ==========================================
+                if (attackerEntity != null) {
+                    try {
+                        io.lumine.mythic.core.mobs.ActiveMob am = io.lumine.mythic.bukkit.MythicBukkit.inst().getMobManager().getActiveMob(attackerEntity.getUniqueId()).orElse(null);
+                        if (am != null) {
+                            // Hàm am.getDamage() sẽ trả về Sát thương gốc + (Level * LevelModifiers)
+                            // Sau đó chia 2 theo đúng công thức chịu sát thương của Server
+                            initialDamage = am.getDamage() / 2.0;
+                        }
+                    } catch (Exception ignored) {}
+                }
+
+                // Chuyển mức sát thương (đã sửa) vào cho Class xử lý (Khiên, Buff...)
                 double modifiedDamage = rpgVictim.getCurrentClass().onTakeDamage(victim, rpgVictim, attackerEntity, initialDamage);
 
-                double finalDamage = CombatManager.calculateDamageTaken(victim, rpgVictim, modifiedDamage);
+                // Đi qua CombatManager để tính Né Tránh / Đỡ đòn
+                double finalDamage = vn.minecraft.rPGCore.managers.CombatManager.calculateDamageTaken(victim, rpgVictim, modifiedDamage);
 
                 if (finalDamage <= 0) event.setCancelled(true);
                 else event.setDamage(finalDamage);
@@ -382,13 +401,29 @@ public class PlayerListener implements Listener {
     }
 
     // ==========================================
-    // CƠ CHẾ: HOÀN TRẢ MANA TỨC THÌ KHI THÚ TRIỆU HỒI TỬ TRẬN
+    // CƠ CHẾ: HOÀN TRẢ MANA & KÍCH HOẠT HIỆU ỨNG CHẾT
     // ==========================================
     @EventHandler
     public void onPetDeath(org.bukkit.event.entity.EntityDeathEvent event) {
         if (event.getEntity().hasMetadata("Summoner_Pet")) {
-            // Kiểm tra an toàn
-            java.util.List<org.bukkit.metadata.MetadataValue> metaList = event.getEntity().getMetadata("Summoner_Pet");
+            LivingEntity pet = event.getEntity();
+
+            // 1. GỌI PROFILE ĐỂ XỬ LÝ HIỆU ỨNG NỔ/CHẾT (CHUẨN SOLID)
+            if (pet.hasMetadata("Pet_Type")) {
+                String petType = pet.getMetadata("Pet_Type").get(0).asString();
+                vn.minecraft.rPGCore.skills.summoner.pets.IPetProfile profile = vn.minecraft.rPGCore.skills.summoner.pets.SummonPetManager.getProfile(petType);
+
+                if (profile != null) {
+                    try {
+                        java.util.UUID ownerUuid = java.util.UUID.fromString(pet.getMetadata("Summoner_Pet").get(0).asString());
+                        Player owner = org.bukkit.Bukkit.getPlayer(ownerUuid);
+                        if (owner != null) profile.onDeath(owner, pet); // Gọi quái tự nổ!
+                    } catch (Exception ignored) {}
+                }
+            }
+
+            // 2. HOÀN TRẢ MANA THẾ CHẤP CHO CHỦ NHÂN
+            java.util.List<org.bukkit.metadata.MetadataValue> metaList = pet.getMetadata("Summoner_Pet");
             if (metaList == null || metaList.isEmpty()) return;
 
             String ownerUuidStr = metaList.get(0).asString();
@@ -396,10 +431,9 @@ public class PlayerListener implements Listener {
                 java.util.UUID ownerUuid = java.util.UUID.fromString(ownerUuidStr);
                 RPGPlayer rpgOwner = playerManager.getRPGPlayer(ownerUuid);
 
-                // Trả Mana ngay lập tức (0 giây delay)
                 if (rpgOwner != null && rpgOwner.getCurrentClass() instanceof vn.minecraft.rPGCore.classes.impl.SummonerClass) {
                     ((vn.minecraft.rPGCore.classes.impl.SummonerClass) rpgOwner.getCurrentClass())
-                            .unregisterPet(event.getEntity().getUniqueId(), rpgOwner);
+                            .unregisterPet(pet.getUniqueId(), rpgOwner);
                 }
             } catch (Exception ignored) {}
         }

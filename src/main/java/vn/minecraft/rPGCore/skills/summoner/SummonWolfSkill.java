@@ -91,18 +91,16 @@ public class SummonWolfSkill implements ISkill {
     public boolean execute(Player player, RPGPlayer rpgPlayer, int level) {
         double cost = getManaCost(level);
 
-        // 1. Kiểm tra Năng lượng (Đồng bộ Chat)
+        // 1. Kiểm tra tài chính (Mana)
         if (rpgPlayer.getCurrentResource() < cost) {
-            player.sendMessage("§cKhông đủ Năng lượng (Mana)!");
+            player.sendMessage("§cKhông đủ Năng lượng (Cần " + cost + " Mana)!");
             return false;
         }
 
-        // 2. KIỂM TRA HỒI CHIÊU (Áp dụng ý tưởng của bạn)
+        // 2. Kiểm tra hồi chiêu
         long currentTime = System.currentTimeMillis();
         long lastUsed = cooldowns.getOrDefault(player.getUniqueId(), 0L);
-
-        long baseCd = getCooldown(level); // Lấy thời gian gốc
-        long finalCd = getFinalCooldown(rpgPlayer, baseCd); // Đưa qua máy ép CDR
+        long finalCd = getFinalCooldown(rpgPlayer, getCooldown(level));
 
         if (currentTime - lastUsed < finalCd) {
             double timeLeft = (finalCd - (currentTime - lastUsed)) / 1000.0;
@@ -110,47 +108,28 @@ public class SummonWolfSkill implements ISkill {
             return false;
         }
 
-        // 3. TRỪ NĂNG LƯỢNG VÀ LƯU COOLDOWN
-        rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - cost);
-        cooldowns.put(player.getUniqueId(), currentTime);
-
-        startCooldownNotifier(player, finalCd);
-
-        // ==========================================
-        // 4. TRIỆU HỒI MYTHICMOB
-        // ==========================================
         Location spawnLoc = player.getLocation().add(player.getLocation().getDirection().multiply(1.5)).add(0, 0.5, 0);
 
         try {
+            // THỬ GIAO HÀNG TRƯỚC
             ActiveMob wolf = MythicBukkit.inst().getMobManager().spawnMob("SpiritWolf", spawnLoc);
 
             if (wolf != null) {
-                // [QUAN TRỌNG NHẤT]: Truyền cấp độ Kỹ năng sang cho MythicMobs
-                // MythicMobs sẽ tự lấy số Level này áp vào biến <mob.level>
-                // và tự động cộng thêm Máu/Dame theo LevelModifiers.
-                wolf.setLevel(level);
+                // ==========================================
+                // [BẢO MẬT]: TẠO QUÁI THÀNH CÔNG MỚI TRỪ MANA!
+                // ==========================================
+                rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - cost);
+                cooldowns.put(player.getUniqueId(), currentTime);
+                startCooldownNotifier(player, finalCd);
 
+                wolf.setLevel(level);
                 wolf.setOwnerUUID(player.getUniqueId());
                 Entity bukkitEntity = wolf.getEntity().getBukkitEntity();
 
-                // ==========================================
-                // [FIX]: BƠM MÁU VÀ SÁT THƯƠNG VÀO NÃO VANILLA
-                // ==========================================
                 if (bukkitEntity instanceof org.bukkit.entity.LivingEntity) {
-                    org.bukkit.entity.LivingEntity livingPet = (org.bukkit.entity.LivingEntity) bukkitEntity;
-
-                    double baseHp = 1000 + (level * 120);
-                    double baseDmg = 50 + (level * 15);
-
-                    // Bơm Máu
-                    if (livingPet.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH) != null) {
-                        livingPet.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).setBaseValue(baseHp);
-                        livingPet.setHealth(baseHp); // Hồi đầy máu
-                    }
-
-                    // Bơm Sát thương (Sẽ sửa lỗi cắn 4.3 DMG)
-                    if (livingPet.getAttribute(org.bukkit.attribute.Attribute.ATTACK_DAMAGE) != null) {
-                        livingPet.getAttribute(org.bukkit.attribute.Attribute.ATTACK_DAMAGE).setBaseValue(baseDmg);
+                    vn.minecraft.rPGCore.skills.summoner.pets.IPetProfile profile = vn.minecraft.rPGCore.skills.summoner.pets.SummonPetManager.getProfile("SpiritWolf");
+                    if (profile != null) {
+                        profile.onSpawn(player, (org.bukkit.entity.LivingEntity) bukkitEntity, level);
                     }
                 }
 
@@ -158,15 +137,16 @@ public class SummonWolfSkill implements ISkill {
                     ((org.bukkit.entity.Tameable) bukkitEntity).setTamed(true);
                     ((org.bukkit.entity.Tameable) bukkitEntity).setOwner(player);
                 }
-
                 if (bukkitEntity instanceof org.bukkit.entity.Sittable) {
                     ((org.bukkit.entity.Sittable) bukkitEntity).setSitting(false);
                 }
 
+                // Đóng dấu kiểm định
                 bukkitEntity.setMetadata("Summoner_Pet", new FixedMetadataValue(plugin, player.getUniqueId().toString()));
+                bukkitEntity.setMetadata("Pet_Type", new FixedMetadataValue(plugin, "SpiritWolf"));
                 bukkitEntity.setMetadata("Summon_Level", new FixedMetadataValue(plugin, level));
 
-                // Gọi vào Sổ Nam Tào
+                // Lưu vào sổ nợ (Thế chấp Mana)
                 if (rpgPlayer.getCurrentClass() instanceof vn.minecraft.rPGCore.classes.impl.SummonerClass) {
                     ((vn.minecraft.rPGCore.classes.impl.SummonerClass) rpgPlayer.getCurrentClass())
                             .registerPet(bukkitEntity.getUniqueId(), cost, rpgPlayer, "Linh Lang");
@@ -178,9 +158,12 @@ public class SummonWolfSkill implements ISkill {
 
                 player.sendMessage("§d§l[Triệu Hồi] §fMột Linh Lang đã đáp lại lời gọi của bạn!");
                 return true;
+            } else {
+                // Nếu MythicMobs thất bại -> Báo lỗi, KHÔNG TRỪ MANA!
+                player.sendMessage("§c[!] Lỗi Hệ Thống: MythicMobs không tìm thấy Thú 'SpiritWolf'. Vui lòng kiểm tra lại file cấu hình!");
             }
         } catch (Exception e) {
-            player.sendMessage("§c[!] Lỗi: Không tìm thấy quái vật SpiritWolf trong thư mục MythicMobs!");
+            player.sendMessage("§c[!] Lỗi Ngoại lệ: Quá trình tạo quái bị gián đoạn!");
             e.printStackTrace();
         }
 
