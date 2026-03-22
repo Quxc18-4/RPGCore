@@ -103,10 +103,15 @@ public class ShadowStepSkill implements ISkill {
             return false;
         }
 
+        // 2. KIỂM TRA HỒI CHIÊU (Áp dụng ý tưởng của bạn)
         long currentTime = System.currentTimeMillis();
         long lastUsed = cooldowns.getOrDefault(player.getUniqueId(), 0L);
-        if (currentTime - lastUsed < getCooldown(level)) {
-            double timeLeft = (getCooldown(level) - (currentTime - lastUsed)) / 1000.0;
+
+        long baseCd = getCooldown(level); // Lấy thời gian gốc
+        long finalCd = getFinalCooldown(rpgPlayer, baseCd); // Đưa qua máy ép CDR
+
+        if (currentTime - lastUsed < finalCd) {
+            double timeLeft = (finalCd - (currentTime - lastUsed)) / 1000.0;
             player.sendMessage("§cKỹ năng đang hồi chiêu (" + String.format("%.1f", timeLeft) + "s)");
             return false;
         }
@@ -119,8 +124,11 @@ public class ShadowStepSkill implements ISkill {
             player.sendMessage("§8§l[!] §7Gia tốc ẩn vào màn khói... §e(+3s)");
         }
 
+        // 3. TRỪ NĂNG LƯỢNG VÀ LƯU COOLDOWN
         rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - cost);
         cooldowns.put(player.getUniqueId(), currentTime);
+
+        startCooldownNotifier(player, finalCd);
 
         player.sendMessage("§b§l[!] GIA TỐC BÓNG ĐÊM!");
         player.playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_MIRROR_MOVE, 1.0f, 1.5f);

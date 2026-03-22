@@ -66,16 +66,24 @@ public class FatalBlowSkill extends AbstractEnhancementSkill {
             return false;
         }
 
-        long now = System.currentTimeMillis();
-        long cd = getCooldown(level);
-        if (now - cooldowns.getOrDefault(player.getUniqueId(), 0L) < cd) {
-            double timeLeft = (cd - (now - cooldowns.get(player.getUniqueId()))) / 1000.0;
+        // 2. KIỂM TRA HỒI CHIÊU (Áp dụng ý tưởng của bạn)
+        long currentTime = System.currentTimeMillis();
+        long lastUsed = cooldowns.getOrDefault(player.getUniqueId(), 0L);
+
+        long baseCd = getCooldown(level); // Lấy thời gian gốc
+        long finalCd = getFinalCooldown(rpgPlayer, baseCd); // Đưa qua máy ép CDR
+
+        if (currentTime - lastUsed < finalCd) {
+            double timeLeft = (finalCd - (currentTime - lastUsed)) / 1000.0;
             player.sendMessage("§cKỹ năng đang hồi chiêu (" + String.format("%.1f", timeLeft) + "s)");
             return false;
         }
 
+        // 3. TRỪ NĂNG LƯỢNG VÀ LƯU COOLDOWN
         rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - cost);
-        cooldowns.put(player.getUniqueId(), now);
+        cooldowns.put(player.getUniqueId(), currentTime);
+
+        startCooldownNotifier(player, finalCd);
 
         // ==========================================
         // [REFACTOR]: Code giờ đã tối giản chỉ còn đúng 1 dòng này!

@@ -41,11 +41,8 @@ public class ArcherClass extends RPGClass {
         double currentPen = stats.getOrDefault("Tỉ lệ xuyên giáp", 0.0);
         stats.put("Tỉ lệ xuyên giáp", currentPen + 25.0);
 
-//        int thienXaLevel = rpgPlayer.getSkillData().getSkillLevel("archer_thien_xa");
-//        if (thienXaLevel > 0) {
-//            double currentCrit = stats.getOrDefault("Tỉ lệ chí mạng", 5.0);
-//            stats.put("Tỉ lệ chí mạng", currentCrit + (thienXaLevel * 2.0));
-//        }
+        // [THÊM MỚI]: Gọi hàm cha để khóa Cap 80%
+        super.applyPassiveBonusStats(rpgPlayer, stats);
     }
 
     @Override
@@ -420,5 +417,23 @@ public class ArcherClass extends RPGClass {
         }
 
         arrow.remove();
+    }
+
+    @Override
+    public boolean performMeleeAttack(Player attacker, RPGPlayer rpgAttacker, LivingEntity target, ItemStack weapon) {
+        if (!attacker.hasMetadata("Ranged_Warning_Cooldown")) {
+            attacker.sendMessage("§c§l[!] §fHệ phái của bạn không thể tấn công cận chiến!");
+            attacker.setMetadata("Ranged_Warning_Cooldown", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), true));
+
+            new org.bukkit.scheduler.BukkitRunnable() {
+                @Override
+                public void run() {
+                    if (attacker.hasMetadata("Ranged_Warning_Cooldown")) {
+                        attacker.removeMetadata("Ranged_Warning_Cooldown", vn.minecraft.rPGCore.RPGCore.getInstance());
+                    }
+                }
+            }.runTaskLater(vn.minecraft.rPGCore.RPGCore.getInstance(), 40L);
+        }
+        return false; // Trả về false để PlayerListener tự động hủy sát thương
     }
 }

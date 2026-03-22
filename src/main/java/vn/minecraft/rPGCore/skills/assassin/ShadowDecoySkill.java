@@ -110,16 +110,24 @@ public class ShadowDecoySkill implements ISkill {
             return false;
         }
 
+        // 2. KIỂM TRA HỒI CHIÊU (Áp dụng ý tưởng của bạn)
         long currentTime = System.currentTimeMillis();
-        long cd = getCooldown(level);
-        if (currentTime - cooldowns.getOrDefault(player.getUniqueId(), 0L) < cd) {
-            double timeLeft = (cd - (currentTime - cooldowns.get(player.getUniqueId()))) / 1000.0;
+        long lastUsed = cooldowns.getOrDefault(player.getUniqueId(), 0L);
+
+        long baseCd = getCooldown(level); // Lấy thời gian gốc
+        long finalCd = getFinalCooldown(rpgPlayer, baseCd); // Đưa qua máy ép CDR
+
+        if (currentTime - lastUsed < finalCd) {
+            double timeLeft = (finalCd - (currentTime - lastUsed)) / 1000.0;
             player.sendMessage("§cKỹ năng đang hồi chiêu (" + String.format("%.1f", timeLeft) + "s)");
             return false;
         }
 
+        // 3. TRỪ NĂNG LƯỢNG VÀ LƯU COOLDOWN
         rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - cost);
         cooldowns.put(player.getUniqueId(), currentTime);
+
+        startCooldownNotifier(player, finalCd);
 
         int fbLevel = 0;
         if (player.hasMetadata("Assassin_FatalBlow_Level")) {

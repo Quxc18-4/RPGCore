@@ -94,14 +94,19 @@ public class RapidFireSkill implements ISkill {
 
         long currentTime = System.currentTimeMillis();
         long lastUsed = cooldowns.getOrDefault(player.getUniqueId(), 0L);
-        if (currentTime - lastUsed < getCooldown(level)) {
-            double timeLeft = (getCooldown(level) - (currentTime - lastUsed)) / 1000.0;
+
+        long baseCd = getCooldown(level); // Lấy thời gian gốc
+        long finalCd = getFinalCooldown(rpgPlayer, baseCd); // Đưa qua máy ép CDR
+
+        if (currentTime - lastUsed < finalCd) {
+            double timeLeft = (finalCd - (currentTime - lastUsed)) / 1000.0;
             player.sendMessage("§cKỹ năng đang hồi chiêu (" + String.format("%.1f", timeLeft) + "s)");
             return false;
         }
-
         rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - cost);
         cooldowns.put(player.getUniqueId(), currentTime);
+
+        startCooldownNotifier(player, finalCd);
 
         player.sendMessage("§a§l[!] LIÊN HOÀN TÊN!");
 

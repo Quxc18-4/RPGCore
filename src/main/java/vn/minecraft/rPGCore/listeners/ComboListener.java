@@ -28,6 +28,7 @@ public class ComboListener implements Listener {
 
     private final Map<UUID, String> currentCombos = new HashMap<>();
     private final Map<UUID, BukkitRunnable> resetTasks = new HashMap<>();
+    private final Map<UUID, Long> lastClickTime = new HashMap<>();
 
     public ComboListener(JavaPlugin plugin, PlayerManager playerManager, SkillManager skillManager) {
         this.plugin = plugin;
@@ -36,56 +37,89 @@ public class ComboListener implements Listener {
     }
 
     // ==========================================
-    // 1. LẮNG NGHE CLICK CHUỘT TRÁI/PHẢI VÀO KHÔNG KHÍ HOẶC BLOCK
+    // 1. BẮT SỰ KIỆN CLICK KHÔNG KHÍ / BLOCK
     // ==========================================
     @EventHandler
     public void onPlayerClick(PlayerInteractEvent event) {
         if (event.getHand() == org.bukkit.inventory.EquipmentSlot.OFF_HAND) return;
-
+        Player player = event.getPlayer();
         Action action = event.getAction();
         if (action == Action.PHYSICAL) return;
 
         String click = (action.name().contains("LEFT")) ? "L" : "R";
-        processInput(event.getPlayer(), click);
+        processComboInput(player, click);
     }
 
     // ==========================================
-    // 2. LẮNG NGHE CLICK CHUỘT TRÁI (L) VÀO QUÁI VẬT
-    // Priority LOWEST: Chạy trước khi bị PlayerListener chặn sát thương!
+    // 2. BẮT SỰ KIỆN CLICK TRÚNG QUÁI VẬT (MỚI)
     // ==========================================
-    @EventHandler(priority = EventPriority.LOWEST)
+    @EventHandler
     public void onEntityHit(EntityDamageByEntityEvent event) {
-        if (!(event.getDamager() instanceof Player)) return;
-        Player player = (Player) event.getDamager();
+        if (event.getDamager() instanceof Player) {
+            Player player = (Player) event.getDamager();
 
-        // Nếu sát thương này do Kỹ năng gây ra thì không tính là bấm chuột
-        if (player.hasMetadata("Skill_Damage_Lock")) return;
+            // [MỚI THÊM]: Khóa mõm L ma do Summoner Pet gây ra
+            if (player.hasMetadata("Ghost_L_Blocker")) {
+                return;
+            }
 
-        // Đánh vào quái vật mặc định luôn luôn là Left Click (L)
-        processInput(player, "L");
+            // [MỚI THÊM - CHẶN "L" MA CỦA SUMMONER]:
+            // Bỏ qua hoàn toàn nếu đây là đòn sát thương ảo do Pet hoặc Skill gây ra!
+            if (event.getEntity().hasMetadata("Skill_Damage_Lock")) {
+                return;
+            }
+
+            // Nếu đang múa Combo mà lỡ tay chém trúng quái
+            // Đòn này đã bị chặn sát thương ở PlayerListener, nhưng ta vẫn phải thu thập chữ "L"
+            if (player.hasMetadata("Is_Combo_Casting")) {
+                processComboInput(player, "L");
+            }
+        }
     }
 
     // ==========================================
-    // 3. BỘ XỬ LÝ LÕI COMBO (DÙNG CHUNG CHO CẢ 2 EVENT)
+    // BẮT SỰ KIỆN CLICK PHẢI TRÚNG QUÁI VẬT / ENTITY
     // ==========================================
-    private void processInput(Player player, String click) {
-        RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
+    @EventHandler
+    public void onEntityRightClick(org.bukkit.event.player.PlayerInteractEntityEvent event) {
+        if (event.getHand() == org.bukkit.inventory.EquipmentSlot.OFF_HAND) return;
+        Player player = event.getPlayer();
+
+        // Bất kể là click vào ai, cứ click phải trúng Entity là ném chữ "R" vào bộ lọc
+        processComboInput(player, "R");
+    }
+
+    // ==========================================
+    // 3. LÕI XỬ LÝ CHUỖI COMBO (DÙNG CHUNG)
+    // ==========================================
+    private void processComboInput(Player player, String click) {
+        UUID uuid = player.getUniqueId();
+        long now = System.currentTimeMillis();
+
+        // ==========================================
+        // [BỘ LỌC CHỐNG NHIỄU]: Bỏ qua nếu 2 tín hiệu cách nhau < 50ms
+        // ==========================================
+        if (now - lastClickTime.getOrDefault(uuid, 0L) < 50) {
+            return;
+        }
+        lastClickTime.put(uuid, now);
+        // ==========================================
+
+        RPGPlayer rpgPlayer = playerManager.getRPGPlayer(uuid);
         if (rpgPlayer == null) return;
 
         ItemStack mainItem = player.getInventory().getItemInMainHand();
         String classId = rpgPlayer.getCurrentClass().getId();
 
-        // Lọc rác: Cầm sai vũ khí
         if (!PlayerListener.isValidWeaponForClass(mainItem, classId)) return;
 
         EquipmentListener eqListener = new EquipmentListener(playerManager);
         if (!eqListener.canPlayerUse(player, mainItem)) return;
         if (player.hasMetadata("Is_Casting")) return;
 
-        UUID uuid = player.getUniqueId();
         String current = currentCombos.getOrDefault(uuid, "");
 
-        // Chữ cái đầu tiên luôn phải là R (Chuột phải)
+        // Chữ cái đầu tiên luôn phải là R
         if (current.isEmpty() && click.equals("L")) return;
 
         String combo = current + click;
@@ -95,8 +129,8 @@ public class ComboListener implements Listener {
         currentCombos.put(uuid, combo);
         player.sendActionBar("§e⚡ Đang niệm chú: §b§l" + combo + "...");
 
-        // Khóa đánh thường ngay khi bắt đầu chuỗi
-        player.setMetadata("Is_Combo_Casting", new FixedMetadataValue(plugin, true));
+        // [KHÓA ĐÁNH THƯỜNG]: Gắn cờ ngay khi bắt đầu bấm
+        player.setMetadata("Is_Combo_Casting", new org.bukkit.metadata.FixedMetadataValue(plugin, true));
 
         if (resetTasks.containsKey(uuid)) resetTasks.get(uuid).cancel();
 
@@ -106,16 +140,14 @@ public class ComboListener implements Listener {
                 currentCombos.remove(uuid);
                 resetTasks.remove(uuid);
                 player.sendActionBar(" ");
-                // Mở khóa đánh thường khi hết thời gian bấm combo
+                // [MỞ KHÓA]: Khi hết 1 giây (Timeout)
                 if (player.hasMetadata("Is_Combo_Casting")) player.removeMetadata("Is_Combo_Casting", plugin);
             }
         };
         resetTask.runTaskLater(plugin, 20L); // Có 1 giây để bấm phím tiếp theo
         resetTasks.put(uuid, resetTask);
 
-        // ==========================================
-        // 4. KÍCH HOẠT KỸ NĂNG KHI ĐỦ 4 PHÍM
-        // ==========================================
+        // KÍCH HOẠT CHIÊU
         if (combo.length() == 4) {
             String mappedSkillId = rpgPlayer.getSkillData().getSkillByCombo(combo);
             if (mappedSkillId != null) {
@@ -124,7 +156,6 @@ public class ComboListener implements Listener {
                     int level = rpgPlayer.getSkillData().getSkillLevel(mappedSkillId);
 
                     if (skill.execute(player, rpgPlayer, level)) {
-                        // Phá tàng hình khi xài chiêu
                         if (!mappedSkillId.equals("assassin_smoke_bomb") &&
                                 !mappedSkillId.equals("assassin_shadow_decoy") &&
                                 !mappedSkillId.equals("assassin_shadow_step")) {
@@ -139,8 +170,7 @@ public class ComboListener implements Listener {
 
                         player.sendActionBar("§a§l✔ Kích hoạt thành công!");
 
-                        // Cắm cờ chống kẹt sát thương tay khi vừa ra chiêu
-                        player.setMetadata("Skill_Just_Cast", new FixedMetadataValue(plugin, true));
+                        player.setMetadata("Skill_Just_Cast", new org.bukkit.metadata.FixedMetadataValue(plugin, true));
                         new BukkitRunnable() {
                             @Override
                             public void run() {
@@ -155,7 +185,7 @@ public class ComboListener implements Listener {
 
             currentCombos.remove(uuid);
             resetTask.cancel();
-            // Mở khóa đánh thường khi hoàn thành chuỗi (dù đúng hay sai)
+            // [MỞ KHÓA]: Khi đã nhập xong 4 phím
             if (player.hasMetadata("Is_Combo_Casting")) player.removeMetadata("Is_Combo_Casting", plugin);
         }
     }

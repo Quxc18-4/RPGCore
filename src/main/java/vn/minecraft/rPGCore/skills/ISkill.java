@@ -17,6 +17,29 @@ public interface ISkill {
     double getManaCost(int level);
     long getCooldown(int level);  // Trả về Milliseconds
 
+    // ==========================================
+    // [MỚI THÊM]: HÀM TỰ ĐỘNG TÍNH TOÁN COOLDOWN THỰC TẾ
+    // ==========================================
+    default long getFinalCooldown(RPGPlayer rpgPlayer, long baseCd) {
+        double cdrPct = rpgPlayer.getTotalStatsMap().getOrDefault("Giảm hồi chiêu", 0.0);
+        return (long) (baseCd * (1.0 - (cdrPct / 100.0)));
+    }
+
+    // ==========================================
+    // [MỚI THÊM]: TASK BÁO HỒI CHIÊU XONG (DÙNG CHUNG)
+    // ==========================================
+    default void startCooldownNotifier(Player player, long finalCdMillis) {
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                if (player.isOnline()) {
+                    // Tự động gọi getName() của class hiện tại để thông báo tên chiêu
+                    player.sendMessage("§a§l[!] §fKỹ năng §e" + getName() + " §fđã sẵn sàng!");
+                }
+            }
+        }.runTaskLater(vn.minecraft.rPGCore.RPGCore.getInstance(), finalCdMillis / 50L);
+    }
+
     // Tự động sinh mô tả dựa trên cấp độ hiện tại
     List<String> getDescription(int level);
 
@@ -28,4 +51,5 @@ public interface ISkill {
     Map<String, Integer> getRequiredSkills();
     // Thêm hàm để quy định cấp độ tối thiểu của người chơi (Mặc định là 1 nếu không cài đặt)
     default int getRequiredPlayerLevel() { return 1; }
+
 }
