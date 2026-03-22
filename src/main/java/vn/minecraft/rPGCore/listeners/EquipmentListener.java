@@ -2,6 +2,7 @@ package vn.minecraft.rPGCore.listeners;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -12,6 +13,8 @@ import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.metadata.FixedMetadataValue;
+import org.bukkit.scheduler.BukkitRunnable;
 import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.player.PlayerManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
@@ -125,16 +128,37 @@ public class EquipmentListener implements Listener {
         }
 
         if (hasClassReq && !classMatch) {
-            player.sendMessage("§cBạn không thể sử dụng trang bị của Hệ phái khác!");
+            sendWarning(player, "§c§l[!] §fBạn không thể sử dụng trang bị của Hệ phái khác!");
             return false;
         }
 
         if (pLevel < reqLevel) {
-            player.sendMessage("§cTrình độ của bạn chưa đủ! (Yêu cầu cấp " + reqLevel + ")");
+            sendWarning(player, "§c§l[!] §fTrình độ của bạn chưa đủ! (Yêu cầu cấp " + reqLevel + ")");
             return false;
         }
 
         return true;
+    }
+
+    // ==============================================
+    // [MỚI]: HÀM GỬI CẢNH BÁO CHỐNG SPAM (2 TICK)
+    // ==============================================
+    private void sendWarning(Player player, String message) {
+        if (!player.hasMetadata("Eq_Warn_Cooldown")) {
+            player.sendMessage(message);
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+
+            // Khóa mõm tin nhắn trong 2 Tick (Khoảng 100ms)
+            player.setMetadata("Eq_Warn_Cooldown", new FixedMetadataValue(RPGCore.getInstance(), true));
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    if (player.hasMetadata("Eq_Warn_Cooldown")) {
+                        player.removeMetadata("Eq_Warn_Cooldown", RPGCore.getInstance());
+                    }
+                }
+            }.runTaskLater(RPGCore.getInstance(), 2L);
+        }
     }
 
     private boolean isArmor(Material m) {

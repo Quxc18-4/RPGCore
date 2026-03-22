@@ -77,14 +77,15 @@ public class PlayerListener implements Listener {
 
         // Chỉ chuyển giao cho Class nếu đang cầm đúng vũ khí phái mình
         if (isValidWeaponForClass(weapon, rpgPlayer.getCurrentClass().getId())) {
-            // [MỚI]: Chặn Dây dắt (Lead) buộc vào Hàng rào hoặc các block tương tác khác
+            // Đã dọn dẹp hàm check Equipment ở đây vì Phễu lọc đã lo!
+
             if (event.getAction() == org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK) {
                 event.setCancelled(true);
             }
             if (event.getAction().name().contains("LEFT")) {
-                rpgPlayer.getCurrentClass().onLeftClick(player, rpgPlayer, weapon);
+                rpgPlayer.getCurrentClass().executeLeftClick(player, rpgPlayer, weapon); // Gọi qua execute
             } else if (event.getAction().name().contains("RIGHT")) {
-                rpgPlayer.getCurrentClass().onRightClick(player, rpgPlayer, weapon);
+                rpgPlayer.getCurrentClass().executeRightClick(player, rpgPlayer, weapon); // Gọi qua execute
             }
         }
     }
@@ -388,14 +389,10 @@ public class PlayerListener implements Listener {
         ItemStack weapon = player.getInventory().getItemInMainHand();
         String classId = rpgPlayer.getCurrentClass().getId();
 
-        // Nếu đang cầm vũ khí của hệ phái (VD: Summoner cầm Dây dắt)
         if (isValidWeaponForClass(weapon, classId)) {
-            // HỦY SỰ KIỆN: Chặn vĩnh viễn việc buộc dây dắt vào heo bò...
             event.setCancelled(true);
-
-            // [MỚI THÊM]: Vẫn phải báo cáo thao tác Chuột Phải này về cho hệ phái xử lý!
-            // Nhờ dòng này, Shift + Chuột phải thẳng vào mặt con Sói vẫn sẽ thu hồi được nó.
-            rpgPlayer.getCurrentClass().onRightClick(player, rpgPlayer, weapon);
+            // Báo cáo qua phễu lọc
+            rpgPlayer.getCurrentClass().executeRightClick(player, rpgPlayer, weapon);
         }
     }
 
