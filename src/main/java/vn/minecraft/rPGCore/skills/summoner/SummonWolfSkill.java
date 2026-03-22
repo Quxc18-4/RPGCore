@@ -89,28 +89,24 @@ public class SummonWolfSkill implements ISkill {
             return false;
         }
 
-        // 2. Kiểm tra Cooldown (Tính từng số thập phân giây)
-        long now = System.currentTimeMillis();
-        long cd = getCooldown(level);
-        if (now - cooldowns.getOrDefault(player.getUniqueId(), 0L) < cd) {
-            double timeLeft = (cd - (now - cooldowns.get(player.getUniqueId()))) / 1000.0;
+        // 2. KIỂM TRA HỒI CHIÊU (Áp dụng ý tưởng của bạn)
+        long currentTime = System.currentTimeMillis();
+        long lastUsed = cooldowns.getOrDefault(player.getUniqueId(), 0L);
+
+        long baseCd = getCooldown(level); // Lấy thời gian gốc
+        long finalCd = getFinalCooldown(rpgPlayer, baseCd); // Đưa qua máy ép CDR
+
+        if (currentTime - lastUsed < finalCd) {
+            double timeLeft = (finalCd - (currentTime - lastUsed)) / 1000.0;
             player.sendMessage("§cKỹ năng đang hồi chiêu (" + String.format("%.1f", timeLeft) + "s)");
             return false;
         }
 
-        // 3. Trừ Mana & Cập nhật thời gian
+        // 3. TRỪ NĂNG LƯỢNG VÀ LƯU COOLDOWN
         rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - cost);
-        cooldowns.put(player.getUniqueId(), now);
+        cooldowns.put(player.getUniqueId(), currentTime);
 
-        // Task báo hồi chiêu xong cho mượt
-        new org.bukkit.scheduler.BukkitRunnable() {
-            @Override
-            public void run() {
-                if (player.isOnline()) {
-                    player.sendMessage("§a§l[!] §fKỹ năng §eLinh Lang §fđã sẵn sàng!");
-                }
-            }
-        }.runTaskLater(plugin, cd / 50L);
+        startCooldownNotifier(player, finalCd);
 
         // ==========================================
         // 4. TRIỆU HỒI MYTHICMOB (FIX TỌA ĐỘ Y)

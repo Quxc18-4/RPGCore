@@ -232,6 +232,14 @@ public class SummonerClass extends RPGClass {
     }
 
     @Override
+    public boolean performMeleeAttack(Player attacker, RPGPlayer rpgAttacker, LivingEntity target, ItemStack weapon) {
+        // [CƠ CHẾ ĐẶC BIỆT]: Summoner đánh tay trúng quái sẽ tự động gọi đòn Quất Roi AoE!
+        this.onLeftClick(attacker, rpgAttacker, weapon);
+
+        return false; // Hủy đòn chém tay vật lý gốc của Minecraft
+    }
+
+    @Override
     public void onRightClick(Player player, RPGPlayer rpgPlayer, ItemStack weapon) { }
 
     @Override

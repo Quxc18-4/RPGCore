@@ -14,6 +14,9 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
+import vn.minecraft.rPGCore.RPGCore;
+import vn.minecraft.rPGCore.managers.CombatManager;
+import vn.minecraft.rPGCore.managers.DurabilityManager;
 import vn.minecraft.rPGCore.player.PlayerManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 import vn.minecraft.rPGCore.ui.BossBarManager;
@@ -55,7 +58,11 @@ public class PlayerListener implements Listener {
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
         if (event.getHand() == org.bukkit.inventory.EquipmentSlot.OFF_HAND) return;
+
         if (player.hasMetadata("Is_Casting")) return;
+
+        // [MỚI THÊM]: Chặn tuyệt đối việc gọi đòn đánh cơ bản (như Bắn cung, Quất roi) khi đang múa Combo
+        if (player.hasMetadata("Is_Combo_Casting")) return;
 
         RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
         if (rpgPlayer == null) return;
@@ -64,6 +71,10 @@ public class PlayerListener implements Listener {
 
         // Chỉ chuyển giao cho Class nếu đang cầm đúng vũ khí phái mình
         if (isValidWeaponForClass(weapon, rpgPlayer.getCurrentClass().getId())) {
+            // [MỚI]: Chặn Dây dắt (Lead) buộc vào Hàng rào hoặc các block tương tác khác
+            if (event.getAction() == org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK) {
+                event.setCancelled(true);
+            }
             if (event.getAction().name().contains("LEFT")) {
                 rpgPlayer.getCurrentClass().onLeftClick(player, rpgPlayer, weapon);
             } else if (event.getAction().name().contains("RIGHT")) {
@@ -113,32 +124,52 @@ public class PlayerListener implements Listener {
     @EventHandler
     public void onDealDamage(EntityDamageByEntityEvent event) {
         // ==========================================
-        // [MỚI]: XỬ LÝ SÁT THƯƠNG TỪ THÚ TRIỆU HỒI (SUMMONER)
+        // XỬ LÝ SÁT THƯƠNG TỪ THÚ TRIỆU HỒI (SUMMONER)
         // ==========================================
         if (event.getDamager().hasMetadata("Summoner_Pet")) {
-            String ownerUuidStr = event.getDamager().getMetadata("Summoner_Pet").get(0).asString();
-            java.util.UUID ownerUuid = java.util.UUID.fromString(ownerUuidStr);
-            RPGPlayer rpgOwner = playerManager.getRPGPlayer(ownerUuid);
 
-            if (rpgOwner != null && event.getEntity() instanceof LivingEntity) {
-                LivingEntity target = (LivingEntity) event.getEntity();
-                Player owner = rpgOwner.getBukkitPlayer();
+            // [FIX LỖI]: Lấy danh sách Metadata ra và kiểm tra an toàn
+            java.util.List<org.bukkit.metadata.MetadataValue> metaList = event.getDamager().getMetadata("Summoner_Pet");
 
-                // [MỚI CẬP NHẬT]: Ép Vanilla Minecraft công nhận Chủ Nhân là người ra đòn
-                // Khi quái chết, hàm getKiller() sẽ trả về tên bạn -> Bạn sẽ nhận 100% EXP và Loot!
-                target.setKiller(owner);
-
-                // Lấy lượng sát thương gốc của MythicMobs (10 DMG trong file YML)
-                double basePetDamage = event.getDamage();
-
-                // Ném vào CombatManager để tính toán khuếch đại sát thương
-                double finalPetDamage = vn.minecraft.rPGCore.managers.CombatManager.calculatePetDamage(
-                        owner, rpgOwner, event.getDamager(), target, basePetDamage
-                );
-
-                event.setDamage(finalPetDamage); // Ghi đè sát thương gốc của MythicMobs
+            // Nếu danh sách rỗng (Do lỗi reload server / chunk) -> Bỏ qua ngay lập tức
+            if (metaList == null || metaList.isEmpty()) {
+                return;
             }
-            return; // Đã xử lý xong sát thương của đệ, return luôn để chống lỗi
+
+            // [QUAN TRỌNG]: Hủy đòn đánh vật lý gốc
+            event.setCancelled(true);
+
+            // Bây giờ gọi .get(0) mới an toàn 100%
+            String ownerUuidStr = metaList.get(0).asString();
+
+            try {
+                java.util.UUID ownerUuid = java.util.UUID.fromString(ownerUuidStr);
+                RPGPlayer rpgOwner = playerManager.getRPGPlayer(ownerUuid);
+
+                if (rpgOwner != null && event.getEntity() instanceof LivingEntity) {
+                    LivingEntity target = (LivingEntity) event.getEntity();
+                    Player owner = rpgOwner.getBukkitPlayer();
+
+                    double basePetDamage = event.getDamage();
+
+                    double finalPetDamage = CombatManager.calculatePetDamage(
+                            owner, rpgOwner, event.getDamager(), target, basePetDamage
+                    );
+
+                    // [BỊT MẮT COMBO LISTENER]: Treo biển báo đang Auto đánh
+                    owner.setMetadata("Ghost_L_Blocker", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), true));
+
+                    CombatManager.applySkillDamage(owner, target, finalPetDamage);
+
+                    // Đánh xong gỡ biển báo ngay lập tức
+                    owner.removeMetadata("Ghost_L_Blocker", vn.minecraft.rPGCore.RPGCore.getInstance());
+                }
+            } catch (IllegalArgumentException e) {
+                // Đề phòng UUID bị lỗi định dạng
+                return;
+            }
+
+            return; // Đã xử lý xong
         }
         // Chỉ kích hoạt khi Damager trực tiếp là Player (Đánh cận chiến)
         if (event.getDamager() instanceof Player && event.getEntity() instanceof LivingEntity) {
@@ -171,32 +202,11 @@ public class PlayerListener implements Listener {
                 }
 
                 // ==========================================
-                // [MỚI]: CLASS BẮN XA -> VÔ HIỆU HÓA HOÀN TOÀN CẬN CHIẾN
+                // [CHUẨN SOLID]: GIAO QUYỀN QUYẾT ĐỊNH CHO TỪNG CLASS
                 // ==========================================
-                if (classId.equals("archer") || classId.equals("mage") || classId.equals("summoner")) {
-                    event.setCancelled(true); // Cấm gây sát thương đấm tay vật lý gốc
-
-                    // 1. XỬ LÝ RIÊNG CHO SUMMONER: Bẻ lái sang quất roi AoE và KHÔNG báo lỗi
-                    if (classId.equals("summoner")) {
-                        rpgAttacker.getCurrentClass().onLeftClick(attacker, rpgAttacker, mainItem);
-                        return; // Ngừng chạy code tính toán bên dưới
-                    }
-
-                    // 2. VỚI ARCHER VÀ MAGE: Chặn và cảnh báo
-                    if (!attacker.hasMetadata("Ranged_Warning_Cooldown")) {
-                        attacker.sendMessage("§c§l[!] §fHệ phái của bạn không thể tấn công cận chiến!");
-                        attacker.setMetadata("Ranged_Warning_Cooldown", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), true));
-
-                        new org.bukkit.scheduler.BukkitRunnable() {
-                            @Override
-                            public void run() {
-                                if (attacker.hasMetadata("Ranged_Warning_Cooldown")) {
-                                    attacker.removeMetadata("Ranged_Warning_Cooldown", vn.minecraft.rPGCore.RPGCore.getInstance());
-                                }
-                            }
-                        }.runTaskLater(vn.minecraft.rPGCore.RPGCore.getInstance(), 40L);
-                    }
-                    return; // Chặn đứng tại đây
+                if (!rpgAttacker.getCurrentClass().performMeleeAttack(attacker, rpgAttacker, target, mainItem)) {
+                    event.setCancelled(true);
+                    return; // Nếu Class (như Archer/Summoner) trả về false -> Hủy ngay sát thương tay
                 }
 
                 EquipmentListener eqListener = new EquipmentListener(playerManager);
@@ -224,19 +234,19 @@ public class PlayerListener implements Listener {
                         extraCritRate = 50.0 + ((fbLevel - 1) * 10.0);
                         extraCritDmg = 300.0 + ((fbLevel - 1) * 20.0);
 
-                        attacker.removeMetadata("Assassin_FatalBlow_Level", vn.minecraft.rPGCore.RPGCore.getInstance());
+                        attacker.removeMetadata("Assassin_FatalBlow_Level", RPGCore.getInstance());
                         attacker.getWorld().spawnParticle(Particle.ENCHANTED_HIT, target.getLocation().add(0, 1, 0), 20, 0.3, 0.3, 0.3, 0.1);
                         attacker.sendMessage("§c§l[!] §fĐòn đánh thường được Cường hóa!");
                     }
 
                     // TÍNH SÁT THƯƠNG TỔNG
-                    double finalDamage = vn.minecraft.rPGCore.managers.CombatManager.calculateDamage(
+                    double finalDamage = CombatManager.calculateDamage(
                             attacker, rpgAttacker, target, classDmgMultiplier, 0.0, extraCritRate, extraCritDmg, isMagicWeapon, false
                     );
 
                     event.setDamage(finalDamage);
-                    vn.minecraft.rPGCore.managers.CombatManager.applyLifeSteal(attacker, rpgAttacker, finalDamage, 0.0, isMagicWeapon);
-                    vn.minecraft.rPGCore.managers.DurabilityManager.damageItem(attacker, rpgAttacker, mainItem, 1);
+                    CombatManager.applyLifeSteal(attacker, rpgAttacker, finalDamage, 0.0, isMagicWeapon);
+                    DurabilityManager.damageItem(attacker, rpgAttacker, mainItem, 1);
                 }
             }
         }
@@ -254,7 +264,7 @@ public class PlayerListener implements Listener {
                 double initialDamage = event.getDamage();
                 double modifiedDamage = rpgVictim.getCurrentClass().onTakeDamage(victim, rpgVictim, attackerEntity, initialDamage);
 
-                double finalDamage = vn.minecraft.rPGCore.managers.CombatManager.calculateDamageTaken(victim, rpgVictim, modifiedDamage);
+                double finalDamage = CombatManager.calculateDamageTaken(victim, rpgVictim, modifiedDamage);
 
                 if (finalDamage <= 0) event.setCancelled(true);
                 else event.setDamage(finalDamage);
@@ -326,7 +336,7 @@ public class PlayerListener implements Listener {
             if (isCustomDoT) {
                 new org.bukkit.scheduler.BukkitRunnable() {
                     @Override public void run() { if (entity.isValid() && !entity.isDead()) entity.setNoDamageTicks(0); }
-                }.runTaskLater(vn.minecraft.rPGCore.RPGCore.getInstance(), 1L);
+                }.runTaskLater(RPGCore.getInstance(), 1L);
             }
         }
         if (event.getEntity() instanceof Player) {
@@ -341,7 +351,29 @@ public class PlayerListener implements Listener {
             }
             new org.bukkit.scheduler.BukkitRunnable() {
                 @Override public void run() { bossBarManager.updateBars(player, rpgPlayer); }
-            }.runTaskLater(vn.minecraft.rPGCore.RPGCore.getInstance(), 1L);
+            }.runTaskLater(RPGCore.getInstance(), 1L);
+        }
+    }
+
+    // ==========================================
+    // CỔNG ĐIỀU PHỐI TƯƠNG TÁC ENTITY (CHẶN DÂY DẮT, MỞ KHO ĐỒ LÀNG...)
+    // ==========================================
+    @EventHandler
+    public void onPlayerInteractEntity(org.bukkit.event.player.PlayerInteractEntityEvent event) {
+        if (event.getHand() == org.bukkit.inventory.EquipmentSlot.OFF_HAND) return;
+
+        Player player = event.getPlayer();
+        RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
+        if (rpgPlayer == null) return;
+
+        ItemStack weapon = player.getInventory().getItemInMainHand();
+        String classId = rpgPlayer.getCurrentClass().getId();
+
+        // Nếu đang cầm vũ khí của hệ phái (VD: Summoner cầm Dây dắt)
+        if (isValidWeaponForClass(weapon, classId)) {
+            // HỦY SỰ KIỆN: Chặn vĩnh viễn việc buộc dây dắt vào heo bò,
+            // chặn cả việc lỡ tay click phải lên Dân làng mở giao diện trade khi đang combat.
+            event.setCancelled(true);
         }
     }
 }

@@ -418,4 +418,22 @@ public class ArcherClass extends RPGClass {
 
         arrow.remove();
     }
+
+    @Override
+    public boolean performMeleeAttack(Player attacker, RPGPlayer rpgAttacker, LivingEntity target, ItemStack weapon) {
+        if (!attacker.hasMetadata("Ranged_Warning_Cooldown")) {
+            attacker.sendMessage("§c§l[!] §fHệ phái của bạn không thể tấn công cận chiến!");
+            attacker.setMetadata("Ranged_Warning_Cooldown", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), true));
+
+            new org.bukkit.scheduler.BukkitRunnable() {
+                @Override
+                public void run() {
+                    if (attacker.hasMetadata("Ranged_Warning_Cooldown")) {
+                        attacker.removeMetadata("Ranged_Warning_Cooldown", vn.minecraft.rPGCore.RPGCore.getInstance());
+                    }
+                }
+            }.runTaskLater(vn.minecraft.rPGCore.RPGCore.getInstance(), 40L);
+        }
+        return false; // Trả về false để PlayerListener tự động hủy sát thương
+    }
 }

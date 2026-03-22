@@ -98,16 +98,24 @@ public class PoisonDartSkill implements ISkill, Listener {
             return false;
         }
 
-        long now = System.currentTimeMillis();
-        long cd = getCooldown(level);
-        if (now - cooldowns.getOrDefault(player.getUniqueId(), 0L) < cd) {
-            double timeLeft = (cd - (now - cooldowns.get(player.getUniqueId()))) / 1000.0;
+        // 2. KIỂM TRA HỒI CHIÊU (Áp dụng ý tưởng của bạn)
+        long currentTime = System.currentTimeMillis();
+        long lastUsed = cooldowns.getOrDefault(player.getUniqueId(), 0L);
+
+        long baseCd = getCooldown(level); // Lấy thời gian gốc
+        long finalCd = getFinalCooldown(rpgPlayer, baseCd); // Đưa qua máy ép CDR
+
+        if (currentTime - lastUsed < finalCd) {
+            double timeLeft = (finalCd - (currentTime - lastUsed)) / 1000.0;
             player.sendMessage("§cKỹ năng đang hồi chiêu (" + String.format("%.1f", timeLeft) + "s)");
             return false;
         }
 
+        // 3. TRỪ NĂNG LƯỢNG VÀ LƯU COOLDOWN
         rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - cost);
-        cooldowns.put(player.getUniqueId(), now);
+        cooldowns.put(player.getUniqueId(), currentTime);
+
+        startCooldownNotifier(player, finalCd);
 
         Location eye = player.getEyeLocation();
         Vector dir = eye.getDirection();
@@ -272,18 +280,18 @@ public class PoisonDartSkill implements ISkill, Listener {
         int durationTicks = (int) (durationMs / 50);
         StatusEffectManager.applyEffect(target, PotionEffectType.POISON, durationTicks, 0);
 
-        target.setMetadata("Assassin_AntiHeal", new FixedMetadataValue(plugin, System.currentTimeMillis() + durationMs));
+        target.setMetadata("Status_AntiHeal", new FixedMetadataValue(plugin, System.currentTimeMillis() + durationMs));
         target.getWorld().spawnParticle(Particle.ANGRY_VILLAGER, target.getEyeLocation(), 3, 0.3, 0.3, 0.3, 0);
     }
 
     @EventHandler
     public void onEntityRegen(EntityRegainHealthEvent event) {
-        if (event.getEntity().hasMetadata("Assassin_AntiHeal")) {
-            long expireTime = event.getEntity().getMetadata("Assassin_AntiHeal").get(0).asLong();
+        if (event.getEntity().hasMetadata("Status_AntiHeal")) {
+            long expireTime = event.getEntity().getMetadata("Status_AntiHeal").get(0).asLong();
             if (System.currentTimeMillis() < expireTime) {
                 event.setCancelled(true);
             } else {
-                event.getEntity().removeMetadata("Assassin_AntiHeal", plugin);
+                event.getEntity().removeMetadata("Status_AntiHeal", plugin);
             }
         }
     }

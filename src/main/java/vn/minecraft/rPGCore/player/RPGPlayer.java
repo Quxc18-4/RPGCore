@@ -408,10 +408,12 @@ public class RPGPlayer {
     }
     public void heal(double amount) {
         if (!this.bukkitPlayer.isDead()) {
-            if (this.bukkitPlayer.hasMetadata("Assassin_AntiHeal")) {
-                long expire = this.bukkitPlayer.getMetadata("Assassin_AntiHeal").get(0).asLong();
-                if (System.currentTimeMillis() < expire) return;
+            // [CHUẨN SOLID]: Dùng một Tag chung cho toàn bộ server thay vì gọi tên Assassin
+            if (this.bukkitPlayer.hasMetadata("Status_AntiHeal")) {
+                long expire = this.bukkitPlayer.getMetadata("Status_AntiHeal").get(0).asLong();
+                if (System.currentTimeMillis() < expire) return; // Bị trúng độc cấm hồi máu -> Bỏ qua
             }
+
             AttributeInstance maxAttr = this.bukkitPlayer.getAttribute(Attribute.MAX_HEALTH);
             if (maxAttr == null) return;
             double newHp = Math.min(this.bukkitPlayer.getHealth() + amount, maxAttr.getValue());

@@ -177,8 +177,8 @@ public class CombatManager {
     }
 
     public static void applyLifeSteal(Player attacker, RPGPlayer rpgPlayer, double damageDealt, double extraLifeStealPct, boolean isMagic) {
-        if (attacker.hasMetadata("Assassin_AntiHeal")) {
-            long expire = attacker.getMetadata("Assassin_AntiHeal").get(0).asLong();
+        if (attacker.hasMetadata("Status_AntiHeal")) {
+            long expire = attacker.getMetadata("Status_AntiHeal").get(0).asLong();
             if (System.currentTimeMillis() < expire) return;
         }
 

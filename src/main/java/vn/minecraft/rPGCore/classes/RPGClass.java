@@ -109,4 +109,13 @@ public abstract class RPGClass {
     protected void processCrit(java.util.Map<String, Double> combatStats, double critRate) {
         combatStats.put("Tỉ lệ chí mạng", Math.min(critRate, critRateCap));
     }
+
+    // ==========================================
+    // HÀM KIỂM SOÁT ĐÁNH CẬN CHIẾN (MELEE CONTROL)
+    // Trả về TRUE: Cho phép chém tay (Warrior, Assassin...)
+    // Trả về FALSE: Hủy đòn chém tay (Archer, Mage, Summoner...)
+    // ==========================================
+    public boolean performMeleeAttack(Player attacker, RPGPlayer rpgAttacker, LivingEntity target, ItemStack weapon) {
+        return true; // Mặc định các hệ phái đều được đánh cận chiến
+    }
 }
