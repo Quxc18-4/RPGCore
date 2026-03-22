@@ -103,7 +103,7 @@ public class CookingEngine {
                     }
                     break;
                 case "magic_fermented_eye":
-                    double regen = 20.0 * magicMult;
+                    double regen = 10.0 * magicMult;
                     if (!isReversed) result.regenRate += regen;
                     else result.potionEffects.add("POISON:" + (int) Math.min(4, magicMult/2)); // Bị độc càng nặng
                     break;
@@ -119,19 +119,44 @@ public class CookingEngine {
                     // Luôn luôn bị độc (Ám sát)
                     result.potionEffects.add("POISON:" + (isReversed ? 2 : 1));
                     break;
+
+                // ==========================================
+                // BỔ SUNG MÁU KỊCH ĐỘC TỪ XÁC SỐNG
+                // ==========================================
+                case "magic_toxic_blood":
+                    if (!isReversed) {
+                        // Nấu bình thường: Món ăn thành thuốc độc hạng nặng (Poison + Wither)
+                        result.potionEffects.add("POISON:" + (int) Math.min(4, magicMult));
+                        result.potionEffects.add("WITHER:0");
+                        result.flavorTags.add("§c[Kịch Độc] §7- Tứ chi hoại tử!");
+                    } else {
+                        // Đảo ngược lời nguyền: Biến thành "Sôi Máu" - Buff lượng sát thương khổng lồ
+                        result.bonusDmg += 10.0 * magicMult;
+                        result.flavorTags.add("§4[Sôi Máu] §7- Sức mạnh cuồng nộ!");
+                    }
+                    break;
+
                 case "magic_bat_wing":
                     double ls = 10.0 * magicMult;
                     result.lifeSteal += isReversed ? -ls : ls;
                     break;
+                case "magic_goblin_ear":
+                    double dropBonus = 10.0 * magicMult;
+                    if (!isReversed) {
+                        result.dropRate += dropBonus;
+                    } else {
+                        // Nếu bỏ quá nhiều đồ Magic gây Đảo ngược Lời nguyền
+                        result.dropRate -= dropBonus;
+                        result.potionEffects.add("UNLUCK:0"); // Hiệu ứng Xui xẻo của Vanilla
+                        result.flavorTags.add("§c[Đen Đủi] §7- Đụng đâu hỏng đó!");
+                    }
+                    break;
                 case "magic_glowstone":
                     double crit = 10.0 * magicMult;
-                    double drop = 15.0 * magicMult;
                     if (!isReversed) {
                         result.critRate += crit;
-                        result.dropRate += drop;
                     } else {
                         result.critRate -= crit;
-                        result.dropRate -= drop;
                         result.potionEffects.add("GLOWING:0");
                     }
                     break;

@@ -270,6 +270,7 @@ public class PlayerListener implements Listener {
         }
 
         // --- XỬ LÝ KHI NGƯỜI CHƠI BỊ ĐÁNH TRÚNG ---
+        // (Phần này giữ nguyên không đổi)
         if (event.getEntity() instanceof Player) {
             Player victim = (Player) event.getEntity();
             RPGPlayer rpgVictim = playerManager.getRPGPlayer(victim.getUniqueId());

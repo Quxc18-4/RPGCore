@@ -268,7 +268,14 @@ public class CookingManager implements Listener {
         meta.setDisplayName(data.name);
 
         List<String> lore = new ArrayList<>();
-        lore.add("§8Đang xác định độ tươi...");
+        // Lấy thời gian thực tế lúc múc súp
+        long cookedTime = System.currentTimeMillis();
+        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("HH:mm - dd/MM");
+        String timeStr = sdf.format(new java.util.Date(cookedTime));
+
+        lore.add("§7Nấu lúc: §e" + timeStr);
+        lore.add("§7Thời gian bảo quản: §a" + data.freshnessMinutes + " Phút");
+        lore.add("§8§o(Sẽ giảm chất lượng hoặc ôi thiu nếu để nguội)");
         lore.add("");
         lore.add("§f§lThông tin chung:");
         lore.add("§7 ⌚ No Căng: §a" + data.durationMinutes + " Phút");
@@ -366,6 +373,39 @@ public class CookingManager implements Listener {
                 if (pot.scoopsLeft <= 4 && cauldronData.getLevel() == 3) cauldronData.setLevel(2);
                 if (pot.scoopsLeft <= 2 && cauldronData.getLevel() == 2) cauldronData.setLevel(1);
                 block.setBlockData(cauldronData);
+            }
+        }
+    }
+    // ==========================================
+    // CẬP NHẬT LORE KHI CẦM LÊN TAY (LAZY UPDATE)
+    // ==========================================
+    @EventHandler
+    public void onHoldFood(org.bukkit.event.player.PlayerItemHeldEvent event) {
+        ItemStack item = event.getPlayer().getInventory().getItem(event.getNewSlot());
+        if (item == null || !item.hasItemMeta()) return;
+
+        ItemMeta meta = item.getItemMeta();
+        if (!meta.getPersistentDataContainer().has(COOKED_TIME_KEY, PersistentDataType.LONG)) return;
+
+        long cookedTime = meta.getPersistentDataContainer().get(COOKED_TIME_KEY, PersistentDataType.LONG);
+        int maxFreshness = meta.getPersistentDataContainer().getOrDefault(MAX_FRESHNESS_KEY, PersistentDataType.INTEGER, 30);
+        long ageInMinutes = (System.currentTimeMillis() - cookedTime) / 60000;
+
+        List<String> lore = meta.getLore();
+        if (lore == null) return;
+
+        // Tìm và sửa lại trạng thái Tươi
+        String newStatus = "§7Tình trạng: §cThiu thối (Độc)";
+        if (ageInMinutes <= maxFreshness * 0.15) newStatus = "§7Tình trạng: §6Nóng hổi (Ngon nhất)";
+        else if (ageInMinutes < maxFreshness * 0.75) newStatus = "§7Tình trạng: §aĐang ấm";
+        else if (ageInMinutes <= maxFreshness) newStatus = "§7Tình trạng: §eĐã nguội lạnh";
+
+        // Ghi đè vào dòng đầu tiên (Hoặc dòng bạn quy định)
+        if (lore.size() > 0 && lore.get(0).contains("Tình trạng")) {
+            if (!lore.get(0).equals(newStatus)) {
+                lore.set(0, newStatus);
+                meta.setLore(lore);
+                item.setItemMeta(meta); // Cập nhật lại Item (Chỉ xảy ra khi đổi trạng thái)
             }
         }
     }

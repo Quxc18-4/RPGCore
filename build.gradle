@@ -49,6 +49,41 @@ tasks.withType(JavaCompile).configureEach {
     }
 }
 
+// Tạo một task mới để copy file
+tasks.register('copyToOtherProjects') {
+    // Đảm bảo task này chỉ chạy SAU KHI task 'build' (hoặc 'jar') đã hoàn thành
+    dependsOn('build')
+
+    doLast {
+        // Lấy đường dẫn tới file JAR vừa được build ra
+        // Nếu bạn dùng shadowJar (đóng gói thư viện) thì đổi 'jar' thành 'shadowJar'
+        def sourceJar = jar.archiveFile.get().asFile
+
+        // 1. Copy sang RPGDens
+        copy {
+            from sourceJar
+            into "C:/Users/Pon/IdeaProjects/RPGDens/libs"
+        }
+
+        // 2. Copy sang RPGGuild
+        copy {
+            from sourceJar
+            into "C:/Users/Pon/IdeaProjects/RPGGuild/libs"
+        }
+
+        // 3. Copy sang RPGParty
+        copy {
+            from sourceJar
+            into "C:/Users/Pon/IdeaProjects/RPGParty/libs"
+        }
+
+        println "[RPGCore] Đã copy tự động file JAR sang các project vệ tinh!"
+    }
+}
+
+// Lệnh này giúp Gradle tự động nối task copy vào sau mỗi lần bạn chạy lệnh 'build'
+build.finalizedBy(copyToOtherProjects)
+
 processResources {
     def props = [version: version]
     inputs.properties props

@@ -27,6 +27,13 @@ public class NutritionStats {
                 continue; // Bỏ qua switch bên dưới
             }
 
+            // [MỚI THÊM]: Xử lý ngoại lệ Xương Sói: Cho điểm Thịt và thêm điểm Ngọt (sugar)
+            if (id.equals("meat_wolf_bone")) {
+                meat += data.points; // Cộng 0.25 Thịt
+                sugar += 0.25;       // Cộng 0.25 Ngọt
+                continue; // Bỏ qua switch bên dưới
+            }
+
             switch (data.category) {
                 case MEAT: meat += data.points; break;
                 case FISH: fish += data.points; break; // Fish tách riêng

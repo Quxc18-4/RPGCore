@@ -64,19 +64,19 @@ public class ArrowRainSkill implements ISkill {
 
     // --- CÁC HÀM LẤY THÔNG SỐ THEO CẤP ---
     private int getWaves(int level) {
-        int waves = 2;
+        int waves = 3;
         if (level >= 3) waves++;
         if (level >= 6) waves++;
         if (level >= 10) waves++;
-        return waves; // Tối đa 5 đợt
+        return waves; // Tối đa 6 đợt
     }
 
     private int getMinArrows(int level) {
-        int min = 10;
-        if (level >= 3) min = 12;
-        if (level >= 6) min = 14;
-        if (level >= 10) min = 16;
-        return min; // Tối đa 16~20 mũi
+        int min = 18;
+        if (level >= 3) min = 22;
+        if (level >= 6) min = 28;
+        if (level >= 10) min = 36;
+        return min; // Tối đa 18~36 mũi
     }
 
     private int getMaxArrows(int level) {
@@ -161,9 +161,9 @@ public class ArrowRainSkill implements ISkill {
                     int arrowsThisWave = rand.nextInt(maxArrows - minArrows + 1) + minArrows;
 
                     for (int i = 0; i < arrowsThisWave; i++) {
-                        // Tính toán độ lệch X và Z (Bán kính r=3)
-                        double offsetX = (rand.nextDouble() * 6) - 3;
-                        double offsetZ = (rand.nextDouble() * 6) - 3;
+                        // Tính toán độ lệch X và Z (Bán kính r=4)
+                        double offsetX = (rand.nextDouble() * 8) - 4;
+                        double offsetZ = (rand.nextDouble() * 8) - 4;
 
                         // 2. TẠO ĐỘ LỆCH CHIỀU CAO (RANDOM 0 ĐẾN 2 BLOCK)
                         // Giúp các mũi tên trong cùng 1 đợt không bị rơi xuống cùng 1 lúc
