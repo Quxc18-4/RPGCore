@@ -134,22 +134,24 @@ public class SummonWolfSkill implements ISkill {
                 Entity bukkitEntity = wolf.getEntity().getBukkitEntity();
 
                 // ==========================================
-                // [FIX]: BƠM ĐẦY MÁU SAU KHI SET LEVEL
-                // MythicMobs cập nhật MaxHP nhưng quên hồi máu, ta phải tự bơm!
+                // [FIX]: BƠM MÁU VÀ SÁT THƯƠNG VÀO NÃO VANILLA
                 // ==========================================
                 if (bukkitEntity instanceof org.bukkit.entity.LivingEntity) {
                     org.bukkit.entity.LivingEntity livingPet = (org.bukkit.entity.LivingEntity) bukkitEntity;
-                    new org.bukkit.scheduler.BukkitRunnable() {
-                        @Override
-                        public void run() {
-                            if (livingPet.isValid()) {
-                                org.bukkit.attribute.AttributeInstance maxHpAttr = livingPet.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
-                                if (maxHpAttr != null) {
-                                    livingPet.setHealth(maxHpAttr.getValue());
-                                }
-                            }
-                        }
-                    }.runTaskLater(plugin, 2L); // Chờ 2 tick để MythicMobs load xong thông số mới
+
+                    double baseHp = 1000 + (level * 120);
+                    double baseDmg = 50 + (level * 15);
+
+                    // Bơm Máu
+                    if (livingPet.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH) != null) {
+                        livingPet.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).setBaseValue(baseHp);
+                        livingPet.setHealth(baseHp); // Hồi đầy máu
+                    }
+
+                    // Bơm Sát thương (Sẽ sửa lỗi cắn 4.3 DMG)
+                    if (livingPet.getAttribute(org.bukkit.attribute.Attribute.ATTACK_DAMAGE) != null) {
+                        livingPet.getAttribute(org.bukkit.attribute.Attribute.ATTACK_DAMAGE).setBaseValue(baseDmg);
+                    }
                 }
 
                 if (bukkitEntity instanceof org.bukkit.entity.Tameable) {

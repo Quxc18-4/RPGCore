@@ -2,6 +2,7 @@ package vn.minecraft.rPGCore.listeners;
 
 import org.bukkit.Material;
 import org.bukkit.Particle;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityRegainHealthEvent;
@@ -131,22 +132,27 @@ public class PlayerListener implements Listener {
     @EventHandler
     public void onDealDamage(EntityDamageByEntityEvent event) {
         // ==========================================
-        // XỬ LÝ SÁT THƯƠNG TỪ THÚ TRIỆU HỒI (SUMMONER)
+        // [CHẶN ĐÁNH ĐỆ TỬ]: Khóa Sát thương Đồng minh (Friendly Fire)
+        // Ngăn chặn người chơi vô tình chém chết đệ tử của chính mình
+        // ==========================================
+        if (event.getDamager() instanceof Player && event.getEntity().hasMetadata("Summoner_Pet")) {
+            java.util.List<org.bukkit.metadata.MetadataValue> metaList = event.getEntity().getMetadata("Summoner_Pet");
+            if (metaList != null && !metaList.isEmpty()) {
+                if (event.getDamager().getUniqueId().toString().equals(metaList.get(0).asString())) {
+                    event.setCancelled(true); // Im lặng hủy sát thương
+                    return;
+                }
+            }
+        }
+
+        // ==========================================
+        // XỬ LÝ SÁT THƯƠNG TỪ THÚ TRIỆU HỒI GÂY RA (CỰC KỲ GỌN GÀNG)
         // ==========================================
         if (event.getDamager().hasMetadata("Summoner_Pet")) {
-
-            // [FIX LỖI]: Lấy danh sách Metadata ra và kiểm tra an toàn
             java.util.List<org.bukkit.metadata.MetadataValue> metaList = event.getDamager().getMetadata("Summoner_Pet");
+            if (metaList == null || metaList.isEmpty()) return;
 
-            // Nếu danh sách rỗng (Do lỗi reload server / chunk) -> Bỏ qua ngay lập tức
-            if (metaList == null || metaList.isEmpty()) {
-                return;
-            }
-
-            // [QUAN TRỌNG]: Hủy đòn đánh vật lý gốc
-            event.setCancelled(true);
-
-            // Bây giờ gọi .get(0) mới an toàn 100%
+            event.setCancelled(true); // Hủy đòn vật lý gốc
             String ownerUuidStr = metaList.get(0).asString();
 
             try {
@@ -157,38 +163,17 @@ public class PlayerListener implements Listener {
                     LivingEntity target = (LivingEntity) event.getEntity();
                     Player owner = rpgOwner.getBukkitPlayer();
 
-                    double basePetDamage = event.getDamage();
-
-                    // ==========================================
-                    // [FIX]: LẤY SÁT THƯƠNG THỰC TẾ TỪ MYTHICMOBS
-                    // Bỏ qua giới hạn của Bukkit để lấy đúng Sát thương đã cộng LevelModifiers
-                    // ==========================================
-                    try {
-                        io.lumine.mythic.core.mobs.ActiveMob am = io.lumine.mythic.bukkit.MythicBukkit.inst().getMobManager().getActiveMob(event.getDamager().getUniqueId()).orElse(null);
-                        if (am != null) {
-                            basePetDamage = am.getDamage();
-                        }
-                    } catch (Exception ignored) {}
-
-                    // Tính toán qua CombatManager như bình thường
+                    // Đẩy toàn bộ trách nhiệm Lách luật và Tính toán cho CombatManager
                     double finalPetDamage = vn.minecraft.rPGCore.managers.CombatManager.calculatePetDamage(
-                            owner, rpgOwner, event.getDamager(), target, basePetDamage
+                            owner, rpgOwner, event.getDamager(), target, event.getDamage()
                     );
 
-                    // [BỊT MẮT COMBO LISTENER]: Treo biển báo đang Auto đánh
                     owner.setMetadata("Ghost_L_Blocker", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), true));
-
                     CombatManager.applySkillDamage(owner, target, finalPetDamage);
-
-                    // Đánh xong gỡ biển báo ngay lập tức
                     owner.removeMetadata("Ghost_L_Blocker", vn.minecraft.rPGCore.RPGCore.getInstance());
                 }
-            } catch (IllegalArgumentException e) {
-                // Đề phòng UUID bị lỗi định dạng
-                return;
-            }
-
-            return; // Đã xử lý xong
+            } catch (IllegalArgumentException e) { return; }
+            return;
         }
         // Chỉ kích hoạt khi Damager trực tiếp là Player (Đánh cận chiến)
         if (event.getDamager() instanceof Player && event.getEntity() instanceof LivingEntity) {
