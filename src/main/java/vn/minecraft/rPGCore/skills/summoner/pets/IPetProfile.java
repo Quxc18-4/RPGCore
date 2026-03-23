@@ -6,6 +6,9 @@ import org.bukkit.entity.Player;
 public interface IPetProfile {
     String getId(); // Tương ứng với Pet_Type (VD: "AlphaSpiritWolf")
 
+    // Xác định loại sát thương.
+    boolean isMagicDamage();
+
     // Xử lý bơm chỉ số, kích thước, hiệu ứng khi vừa sinh ra
     void onSpawn(Player owner, LivingEntity pet, int skillLevel, double... extraArgs);
 

@@ -10,6 +10,9 @@ public class SpiritWolfProfile implements IPetProfile {
     public String getId() { return "SpiritWolf"; }
 
     @Override
+    public boolean isMagicDamage() {return false; }
+
+    @Override
     public void onSpawn(Player owner, LivingEntity pet, int level, double... extraArgs) {
         // Chỉ số của Sói thường
         double baseHp = 1000 + (level * 120);

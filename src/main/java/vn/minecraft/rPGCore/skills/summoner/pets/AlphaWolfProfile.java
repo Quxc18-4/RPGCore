@@ -16,6 +16,9 @@ public class AlphaWolfProfile implements IPetProfile {
     public String getId() { return "AlphaSpiritWolf"; }
 
     @Override
+    public boolean isMagicDamage() {return false; }
+
+    @Override
     public void onSpawn(Player owner, LivingEntity pet, int level, double... extraArgs) {
         double petCount = extraArgs[0];
         double finalHpBonus = extraArgs[1];
