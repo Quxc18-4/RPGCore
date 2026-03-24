@@ -9,6 +9,16 @@ public interface IPetProfile {
     // Xác định loại sát thương.
     boolean isMagicDamage();
 
+    // Trả về ID của dạng Dung hợp (Ví dụ Sói -> "AlphaSpiritWolf"). Trả về null nếu không thể dung hợp.
+    String getFusionTargetId();
+
+    // Tên hiển thị của dạng Dung hợp (Ví dụ: "Tinh Lang Vương")
+    String getFusionTargetName();
+
+    // [MỚI]: Hàm xử lý sự kiện khi chủ nhân Click chuột phải vào Thú
+    // Dùng default để không làm lỗi các file Profile cũ (Sói thường, Golem...)
+    default void onInteract(Player player, LivingEntity pet, org.bukkit.inventory.ItemStack item) {}
+
     // [MỚI]: Định nghĩa sát thương gốc (Flat) của từng loại thú
     double getBaseFlatDamage(int level);
 

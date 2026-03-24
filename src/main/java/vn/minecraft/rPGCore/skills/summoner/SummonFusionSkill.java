@@ -15,6 +15,8 @@ import org.bukkit.scheduler.BukkitRunnable;
 import vn.minecraft.rPGCore.classes.impl.SummonerClass;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 import vn.minecraft.rPGCore.skills.ISkill;
+import vn.minecraft.rPGCore.skills.summoner.pets.IPetProfile;
+import vn.minecraft.rPGCore.skills.summoner.pets.SummonPetManager;
 
 import java.util.*;
 
@@ -33,26 +35,22 @@ public class SummonFusionSkill implements ISkill {
     @Override public Material getIcon() { return Material.NETHER_STAR; }
     @Override public int getMaxLevel() { return 5; }
     @Override public int getUpgradeCost(int currentLevel) { return 2; }
-    @Override public Map<String, Integer> getRequiredSkills() {
-        Map<String, Integer> req = new HashMap<>();
-        req.put("summoner_wolf", 3);
-        return req;
-    }
+    @Override public Map<String, Integer> getRequiredSkills() { return new HashMap<>(); }
+    @Override public int getRequiredPlayerLevel() { return 28; }
 
-    @Override public double getManaCost(int level) { return 150.0 + (level * 10.0); }
-    @Override public long getCooldown(int level) { return 45000L; }
+    @Override public double getManaCost(int level) { return 110.0 + (level * 10.0); }
+    @Override public long getCooldown(int level) { return 60000L; }
 
     @Override
     public List<String> getDescription(int level) {
         return Arrays.asList(
-                "§7Hiến tế toàn bộ Linh Thú trên sân.",
-                "§7Sấm sét giáng xuống gây sát thương diện rộng",
-                "§7và bắt đầu 2s nghi thức triệu hồi.",
+                "§7Tiến hành nghi thức dung hợp các Linh Thú cùng",
+                "§7loại trên sân để triệu hồi một Thực Thể Tiến Cấp.",
                 "",
-                "§f⚡ §c§lTINH LANG VƯƠNG GIÁNG THẾ:",
-                "§f- Yêu cầu: §eÍt nhất 2 Linh Lang thường",
+                "§f⚡ §c§lTHỰC THỂ DUNG HỢP:",
+                "§f- Yêu cầu: §eTối thiểu 2 Linh Thú cùng loại",
                 "§f- Cấp độ Bonus: §a+1 Lv cho mỗi thú dư ra",
-                "§f- Máu & Sát thương: §cGộp từ các tế phẩm",
+                "§f- Sức mạnh: §cQuy đổi bằng máu & sát thương Linh Thú",
                 "",
                 "§fTiêu hao: §b" + getManaCost(level) + " Mana",
                 "§fThời gian hồi: §e" + (getCooldown(level) / 1000.0) + "s"
@@ -77,36 +75,61 @@ public class SummonFusionSkill implements ISkill {
             return false;
         }
 
-        // 1. TÌM KIẾM TẾ PHẨM HỢP LỆ (Chỉ lấy SpiritWolf)
-        List<Entity> validPets = new ArrayList<>();
-        double totalSacrificeHp = 0.0;
-        List<Double> petDamages = new ArrayList<>();
+        // ==========================================
+        // 1. QUÉT & PHÂN LOẠI THÚ TRÊN SÂN (UNIVERSAL SCAN)
+        // ==========================================
+        Map<String, List<Entity>> fusableGroups = new HashMap<>();
 
         for (Entity e : player.getNearbyEntities(25, 10, 25)) {
             if (e.hasMetadata("Summoner_Pet") && e instanceof LivingEntity) {
                 if (e.getMetadata("Summoner_Pet").get(0).asString().equals(player.getUniqueId().toString())) {
                     String petType = e.hasMetadata("Pet_Type") ? e.getMetadata("Pet_Type").get(0).asString() : "";
+                    IPetProfile profile = SummonPetManager.getProfile(petType);
 
-                    if (petType.equalsIgnoreCase("SpiritWolf")) {
-                        validPets.add(e);
-                        LivingEntity lp = (LivingEntity) e;
-                        if (lp.getAttribute(Attribute.MAX_HEALTH) != null) {
-                            totalSacrificeHp += lp.getAttribute(Attribute.MAX_HEALTH).getValue();
-                        }
-                        // Lấy dummy stat để tính fusion multiplier
-                        petDamages.add(10.0);
+                    // Nếu thú này có dạng tiến hóa -> Thêm vào nhóm chờ dung hợp
+                    if (profile != null && profile.getFusionTargetId() != null) {
+                        fusableGroups.computeIfAbsent(petType, k -> new ArrayList<>()).add(e);
                     }
                 }
             }
         }
 
-        // 2. KIỂM TRA ĐIỀU KIỆN
-        if (validPets.size() < 2) {
-            player.sendMessage("§c§l[!] §fBạn cần ít nhất 2 Linh Lang thường trên sân để thực hiện Dung Hợp!");
+        // ==========================================
+        // 2. CHỌN NHÓM ĐÔNG NHẤT ĐỂ DUNG HỢP
+        // ==========================================
+        String bestGroupType = null;
+        int maxCount = 0;
+        for (Map.Entry<String, List<Entity>> entry : fusableGroups.entrySet()) {
+            if (entry.getValue().size() > maxCount) {
+                maxCount = entry.getValue().size();
+                bestGroupType = entry.getKey();
+            }
+        }
+
+        if (bestGroupType == null || maxCount < 2) {
+            player.sendMessage("§c§l[!] §fBạn cần ít nhất 2 Linh Thú cùng loại (chưa tiến hóa) để dung hợp!");
             return false;
         }
 
+        List<Entity> validPets = fusableGroups.get(bestGroupType);
+        IPetProfile baseProfile = SummonPetManager.getProfile(bestGroupType);
+
+        final String targetFusionId = baseProfile.getFusionTargetId();
+        final String targetFusionName = baseProfile.getFusionTargetName();
+
         // 3. TÍNH BỘI SỐ VÀ BONUS LEVEL
+        double totalSacrificeHp = 0.0;
+        List<Double> petDamages = new ArrayList<>();
+
+        for (Entity pet : validPets) {
+            LivingEntity lp = (LivingEntity) pet;
+            if (lp.getAttribute(Attribute.MAX_HEALTH) != null) {
+                totalSacrificeHp += lp.getAttribute(Attribute.MAX_HEALTH).getValue();
+            }
+            // Lấy dummy stat 10.0 để tính trọng số dung hợp
+            petDamages.add(10.0);
+        }
+
         petDamages.sort(Collections.reverseOrder());
         double fusionMultiplier = 0.0;
         for (int i = 0; i < petDamages.size(); i++) {
@@ -115,7 +138,7 @@ public class SummonFusionSkill implements ISkill {
         }
 
         final int petsConsumed = validPets.size();
-        final int finalAlphaLevel = Math.min(level + (petsConsumed - 2), 20); // Tối đa Lv 20
+        final int finalFusionLevel = Math.min(level + (petsConsumed - 2), 20); // Tối đa Lv 20
         final double finalFusionMultiplier = fusionMultiplier;
         final double finalHpBonus = totalSacrificeHp;
 
@@ -143,14 +166,14 @@ public class SummonFusionSkill implements ISkill {
 
         double reservedAfter = rpgPlayer.getReservedResource();
         final double exactManaFreed = reservedBefore - reservedAfter;
-        final double totalRequiredMana = cost + exactManaFreed; // Phải đủ trả lại tiền thế chấp cho Sói Vương
+        final double totalRequiredMana = cost + exactManaFreed;
 
         player.sendMessage("§e§l[!] Nghi thức bắt đầu! §c" + petsConsumed + " linh thú §eđã dung hợp...");
-        player.sendMessage("§b✦ Cấp độ Tinh Lang Vương dự kiến: §eLv " + finalAlphaLevel);
+        player.sendMessage("§b✦ Cấp độ " + targetFusionName + " dự kiến: §eLv " + finalFusionLevel);
 
         final Location ritualLoc = player.getLocation().clone();
 
-        // 5. NGHI THỨC TRIỆU HỒI SÓI VƯƠNG (Delay 2 giây)
+        // 5. NGHI THỨC TRIỆU HỒI (UNIVERSAL)
         new BukkitRunnable() {
             int ticks = 0;
             @Override
@@ -166,9 +189,8 @@ public class SummonFusionSkill implements ISkill {
                 }
                 this.cancel();
 
-                // Kiểm tra lại Mana trước khi xuất hiện
                 if (rpgPlayer.getCurrentResource() < totalRequiredMana) {
-                    player.sendMessage("§c§l[!] NGHI THỨC SỤP ĐỔ! §fBạn cần " + (int)totalRequiredMana + " Mana để duy trì Sói Vương.");
+                    player.sendMessage("§c§l[!] NGHI THỨC SỤP ĐỔ! §fBạn cần " + (int)totalRequiredMana + " Mana để duy trì thực thể.");
                     ritualLoc.getWorld().playSound(ritualLoc, Sound.BLOCK_GLASS_BREAK, 1f, 0.5f);
                     return;
                 }
@@ -178,50 +200,52 @@ public class SummonFusionSkill implements ISkill {
                 ritualLoc.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, ritualLoc.clone().add(0, 1, 0), 1);
 
                 try {
-                    ActiveMob alpha = MythicBukkit.inst().getMobManager().spawnMob("AlphaSpiritWolf", ritualLoc);
-                    if (alpha != null) {
-                        alpha.setLevel(finalAlphaLevel);
-                        alpha.setOwnerUUID(player.getUniqueId());
-                        Entity alphaEnt = alpha.getEntity().getBukkitEntity();
+                    // TRIỆU HỒI DỰA TRÊN ID TARGET CỦA PROFILE
+                    ActiveMob fusionMob = MythicBukkit.inst().getMobManager().spawnMob(targetFusionId, ritualLoc);
+                    if (fusionMob != null) {
+                        fusionMob.setLevel(finalFusionLevel);
+                        fusionMob.setOwnerUUID(player.getUniqueId());
+                        Entity fusionEnt = fusionMob.getEntity().getBukkitEntity();
 
-                        if (alphaEnt instanceof org.bukkit.entity.Wolf) {
-                            org.bukkit.entity.Wolf wolf = (org.bukkit.entity.Wolf) alphaEnt;
-                            wolf.setTamed(true);
-                            wolf.setOwner(player);
-                            wolf.setAngry(true);
-                            wolf.setCollarColor(DyeColor.WHITE);
+                        if (fusionEnt instanceof org.bukkit.entity.Tameable) {
+                            ((org.bukkit.entity.Tameable) fusionEnt).setTamed(true);
+                            ((org.bukkit.entity.Tameable) fusionEnt).setOwner(player);
+                        }
+                        if (fusionEnt instanceof org.bukkit.entity.Wolf) {
+                            ((org.bukkit.entity.Wolf) fusionEnt).setAngry(true);
+                            ((org.bukkit.entity.Wolf) fusionEnt).setCollarColor(DyeColor.WHITE);
                         }
 
                         // GẮN DATA TRƯỚC KHI GỌI PROFILE
-                        alphaEnt.setMetadata("Summoner_Pet", new FixedMetadataValue(plugin, player.getUniqueId().toString()));
-                        alphaEnt.setMetadata("Pet_Type", new FixedMetadataValue(plugin, "AlphaSpiritWolf"));
-                        alphaEnt.setMetadata("Summon_Level", new FixedMetadataValue(plugin, finalAlphaLevel));
-                        alphaEnt.setMetadata("Fusion_Multiplier", new FixedMetadataValue(plugin, finalFusionMultiplier));
+                        fusionEnt.setMetadata("Summoner_Pet", new FixedMetadataValue(plugin, player.getUniqueId().toString()));
+                        fusionEnt.setMetadata("Pet_Type", new FixedMetadataValue(plugin, targetFusionId));
+                        fusionEnt.setMetadata("Summon_Level", new FixedMetadataValue(plugin, finalFusionLevel));
+                        fusionEnt.setMetadata("Fusion_Multiplier", new FixedMetadataValue(plugin, finalFusionMultiplier));
 
-                        if (alphaEnt instanceof LivingEntity) {
-                            LivingEntity livingAlpha = (LivingEntity) alphaEnt;
+                        if (fusionEnt instanceof LivingEntity) {
+                            LivingEntity livingFusion = (LivingEntity) fusionEnt;
 
-                            vn.minecraft.rPGCore.skills.summoner.pets.IPetProfile profile = vn.minecraft.rPGCore.skills.summoner.pets.SummonPetManager.getProfile("AlphaSpiritWolf");
-                            if (profile != null) {
-                                profile.onSpawn(player, livingAlpha, finalAlphaLevel, (double)petsConsumed, finalHpBonus);
+                            IPetProfile fusionProfile = SummonPetManager.getProfile(targetFusionId);
+                            if (fusionProfile != null) {
+                                fusionProfile.onSpawn(player, livingFusion, finalFusionLevel, (double)petsConsumed, finalHpBonus);
                             }
 
-                            long baseDurSec = Math.min(180, 60 + ((finalAlphaLevel - 1) * 30));
+                            long baseDurSec = Math.min(180, 60 + ((finalFusionLevel - 1) * 30));
                             long bonusDurSec = (long) (finalHpBonus / 100.0);
                             long totalDurationTicks = (baseDurSec + bonusDurSec) * 20L;
 
                             new BukkitRunnable() {
                                 @Override
                                 public void run() {
-                                    if (livingAlpha.isValid() && !livingAlpha.isDead()) {
-                                        livingAlpha.setHealth(0);
+                                    if (livingFusion.isValid() && !livingFusion.isDead()) {
+                                        livingFusion.setHealth(0);
                                     }
                                 }
                             }.runTaskLater(plugin, totalDurationTicks);
                         }
 
-                        sClass.registerPet(alphaEnt.getUniqueId(), exactManaFreed, rpgPlayer, "Tinh Lang Vương");
-                        player.sendMessage("§4§l[Dung Hợp] §fTinh Lang Vương đã giáng thế!");
+                        sClass.registerPet(fusionEnt.getUniqueId(), exactManaFreed, rpgPlayer, targetFusionName);
+                        player.sendMessage("§4§l[Dung Hợp] §f" + targetFusionName + " đã giáng thế!");
                     }
                 } catch (Exception e) {}
             }

@@ -13,15 +13,21 @@ public class SpiritWolfProfile implements IPetProfile {
     public boolean isMagicDamage() {return false; }
 
     @Override
+    public String getFusionTargetId() { return "AlphaSpiritWolf"; }
+
+    @Override
+    public String getFusionTargetName() { return "Linh Lang Vương"; }
+
+    @Override
     public double getBaseFlatDamage(int level) {
         // [CẤU HÌNH TẠI ĐÂY]: Lv 1 = 15 | Lv 2 = 25...
-        return 15.0 + (level - 1) * 15.0;
+        return 15.0 + (level - 1) * 8.0;
     }
 
     @Override
     public double getWeaponScaling(int level) {
         // [CẤU HÌNH TẠI ĐÂY]: Hệ số nhân từ vũ khí (Lv 10 = 6.0x)
-        return 1.0 + (level * 0.5);
+        return 1.0 + (level * 0.35);
     }
 
     @Override

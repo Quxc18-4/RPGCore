@@ -102,9 +102,6 @@ public class SummonerClass extends RPGClass {
         super.applyPassiveBonusStats(rpgPlayer, currentStats);
     }
 
-    // ==========================================
-    // ĐÃ REFACTOR: CHUẨN BOOLEAN, KHÔNG GỌI DURABILITY THỦ CÔNG NỮA
-    // ==========================================
     @Override
     public boolean onLeftClick(Player player, RPGPlayer rpgPlayer, ItemStack weapon) {
         if (player.hasMetadata("Summoner_Whip_Cooldown")) return false; // Trả về false nếu đang Cooldown
@@ -159,11 +156,12 @@ public class SummonerClass extends RPGClass {
         player.getWorld().playSound(impactLoc, Sound.ENTITY_DRAGON_FIREBALL_EXPLODE, 0.5f, 2.0f);
         player.getWorld().playSound(impactLoc, Sound.ITEM_TRIDENT_HIT, 1.0f, 0.8f);
 
+        // Lấy danh sách đệ tử
         List<org.bukkit.entity.Mob> myPets = new ArrayList<>();
         for (Entity e : player.getNearbyEntities(20, 10, 20)) {
             if (e.hasMetadata("Summoner_Pet")) {
                 List<MetadataValue> metaList = e.getMetadata("Summoner_Pet");
-                if (!metaList.isEmpty() && metaList.get(0).asString().equals(player.getUniqueId().toString())) {
+                if (metaList != null && !metaList.isEmpty() && metaList.get(0).asString().equals(player.getUniqueId().toString())) {
                     if (e instanceof org.bukkit.entity.Mob) myPets.add((org.bukkit.entity.Mob) e);
                 }
             }
@@ -179,10 +177,10 @@ public class SummonerClass extends RPGClass {
 
         boolean isMagic = rpgPlayer.getStats().maxMagicalDamage > 0;
         List<LivingEntity> markedTargets = new ArrayList<>();
-        boolean hitSomething = false; // Cờ kiểm tra trúng mục tiêu
+        boolean hitSomething = false;
 
         if (!hitTargets.isEmpty()) {
-            hitSomething = true; // Đã trúng quái, lát nữa sẽ báo true để hệ thống trừ độ bền
+            hitSomething = true;
             Collections.shuffle(hitTargets);
             int markedCount = 0;
             String markKey = "Summoner_Mark_" + player.getUniqueId().toString();
@@ -203,16 +201,23 @@ public class SummonerClass extends RPGClass {
             rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() + 2);
         }
 
+        // ==========================================
+        // [ĐÃ FIX BUG BẰNG LỚP BẢO VỆ]
+        // ==========================================
         @SuppressWarnings("unchecked")
-        LinkedList<LivingEntity> targetStack;
+        LinkedList<LivingEntity> targetStack = new LinkedList<>();
         if (player.hasMetadata("Summoner_Target_Stack")) {
-            targetStack = (LinkedList<LivingEntity>) player.getMetadata("Summoner_Target_Stack").get(0).value();
-        } else {
-            targetStack = new LinkedList<>();
+            List<MetadataValue> targetMeta = player.getMetadata("Summoner_Target_Stack");
+            if (targetMeta != null && !targetMeta.isEmpty()) {
+                Object val = targetMeta.get(0).value();
+                if (val instanceof LinkedList) {
+                    targetStack = (LinkedList<LivingEntity>) val;
+                }
+            }
         }
 
-        targetStack.removeIf(e -> !e.isValid() || e.isDead() || e.getLocation().distance(player.getLocation()) > 35);
-
+        // [WORLD CHECK] Loại bỏ lỗi khác chiều không gian
+        targetStack.removeIf(e -> !e.isValid() || e.isDead() || !e.getWorld().equals(player.getWorld()) || e.getLocation().distance(player.getLocation()) > 35);
         for (LivingEntity target : markedTargets) {
             targetStack.remove(target);
             targetStack.addFirst(target);
@@ -257,21 +262,15 @@ public class SummonerClass extends RPGClass {
             }
         }
 
-        return hitSomething; // Chỉ trả về true (tốn độ bền) nếu quất trúng ít nhất 1 quái!
+        return hitSomething;
     }
 
     @Override
     public boolean performMeleeAttack(Player attacker, RPGPlayer rpgAttacker, LivingEntity target, ItemStack weapon) {
-        // [CƠ CHẾ ĐẶC BIỆT]: Gọi phễu lọc trung tâm thay vì gọi trực tiếp onLeftClick
-        // Để nó tự check level vũ khí và tự trừ độ bền nếu trúng đích
         this.executeLeftClick(attacker, rpgAttacker, weapon);
-
-        return false; // Hủy đòn chém tay vật lý gốc
+        return false;
     }
 
-    // ==========================================
-    // ĐÃ REFACTOR: CHUẨN BOOLEAN, KHÔNG GỌI DURABILITY THỦ CÔNG NỮA
-    // ==========================================
     @Override
     public boolean onRightClick(Player player, RPGPlayer rpgPlayer, ItemStack weapon) {
         if (player.isSneaking()) {
@@ -290,7 +289,7 @@ public class SummonerClass extends RPGClass {
                         targetPet = org.bukkit.Bukkit.getEntity(entry.getKey());
                         if (targetPet == null) {
                             unregisterPet(entry.getKey(), rpgPlayer);
-                            return true; // Thu hồi đồ kẹt chunk cũng tính là 1 lần tác vụ thành công
+                            return true;
                         }
                         break;
                     }
@@ -304,11 +303,11 @@ public class SummonerClass extends RPGClass {
                     unregisterPet(targetPet.getUniqueId(), rpgPlayer);
                     player.getWorld().playSound(player.getLocation(), org.bukkit.Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 0.5f);
 
-                    return true; // Xóa thành công 1 đệ tử -> Báo cáo true để trừ độ bền Dây dắt
+                    return true;
                 }
             }
         }
-        return false; // Không thao tác gì thì không trừ độ bền
+        return false;
     }
 
     @Override
@@ -318,36 +317,50 @@ public class SummonerClass extends RPGClass {
 
     @Override
     public double onTakeDamage(Player victim, RPGPlayer rpgPlayer, LivingEntity attacker, double initialDamage) {
-        if (attacker != null && !attacker.equals(victim) && !(attacker instanceof ArmorStand) && !attacker.hasMetadata("Summoner_Pet")) {
+        if (attacker != null && !attacker.equals(victim) && !(attacker instanceof org.bukkit.entity.ArmorStand) && !attacker.hasMetadata("Summoner_Pet")) {
 
             @SuppressWarnings("unchecked")
-            LinkedList<LivingEntity> targetStack;
+            LinkedList<LivingEntity> targetStack = new LinkedList<>();
+
+            // ==========================================
+            // [FIX BUG BẰNG LỚP BẢO VỆ]
+            // ==========================================
             if (victim.hasMetadata("Summoner_Target_Stack")) {
-                targetStack = (LinkedList<LivingEntity>) victim.getMetadata("Summoner_Target_Stack").get(0).value();
-            } else {
-                targetStack = new LinkedList<>();
+                List<org.bukkit.metadata.MetadataValue> targetMeta = victim.getMetadata("Summoner_Target_Stack");
+                if (targetMeta != null && !targetMeta.isEmpty()) {
+                    Object val = targetMeta.get(0).value();
+                    if (val instanceof LinkedList) {
+                        targetStack = (LinkedList<LivingEntity>) val;
+                    }
+                }
             }
 
-            targetStack.removeIf(e -> !e.isValid() || e.isDead() || e.getLocation().distance(victim.getLocation()) > 35);
+            // [WORLD CHECK] Chặn lỗi khác chiều không gian khi đo khoảng cách
+            targetStack.removeIf(e -> !e.isValid() || e.isDead() || !e.getWorld().equals(victim.getWorld()) || e.getLocation().distance(victim.getLocation()) > 35);
             targetStack.remove(attacker);
             targetStack.addFirst(attacker);
 
             while (targetStack.size() > 8) {
                 targetStack.removeLast();
             }
-            victim.setMetadata("Summoner_Target_Stack", new FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), targetStack));
+            victim.setMetadata("Summoner_Target_Stack", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), targetStack));
 
             List<org.bukkit.entity.Mob> myPets = new ArrayList<>();
-            for (Entity e : victim.getNearbyEntities(20, 10, 20)) {
+            for (org.bukkit.entity.Entity e : victim.getNearbyEntities(20, 10, 20)) {
                 if (e.hasMetadata("Summoner_Pet")) {
                     List<org.bukkit.metadata.MetadataValue> metaList = e.getMetadata("Summoner_Pet");
-                    if (!metaList.isEmpty() && metaList.get(0).asString().equals(victim.getUniqueId().toString())) {
-                        if (e instanceof org.bukkit.entity.Mob) myPets.add((org.bukkit.entity.Mob) e);
+
+                    if (metaList != null && !metaList.isEmpty()) {
+                        if (metaList.get(0).asString().equals(victim.getUniqueId().toString())) {
+                            if (e instanceof org.bukkit.entity.Mob) {
+                                myPets.add((org.bukkit.entity.Mob) e);
+                            }
+                        }
                     }
                 }
             }
 
-            if (!myPets.isEmpty()) {
+            if (!myPets.isEmpty() && !targetStack.isEmpty()) {
                 for (int i = 0; i < myPets.size(); i++) {
                     org.bukkit.entity.Mob pet = myPets.get(i);
                     LivingEntity targetToAttack = targetStack.get(i % targetStack.size());
@@ -358,11 +371,11 @@ public class SummonerClass extends RPGClass {
                     pet.setTarget(targetToAttack);
 
                     try {
-                        if (MythicBukkit.inst().getAPIHelper().isMythicMob(pet)) {
-                            MythicBukkit.inst().getAPIHelper().addThreat(pet, targetToAttack, 99999);
-                            MythicBukkit.inst().getAPIHelper().taunt(pet, targetToAttack);
+                        if (io.lumine.mythic.bukkit.MythicBukkit.inst().getAPIHelper().isMythicMob(pet)) {
+                            io.lumine.mythic.bukkit.MythicBukkit.inst().getAPIHelper().addThreat(pet, targetToAttack, 99999);
+                            io.lumine.mythic.bukkit.MythicBukkit.inst().getAPIHelper().taunt(pet, targetToAttack);
                         }
-                    } catch (Exception ex) {}
+                    } catch (Exception ex) { }
                 }
             }
         }
@@ -370,10 +383,6 @@ public class SummonerClass extends RPGClass {
         return initialDamage;
     }
 
-    // ==========================================
-    // [MỚI]: XÓA TOÀN BỘ ĐỆ TỬ CỦA MỘT NGƯỜI CHƠI
-    // (Dùng khi Thoát game hoặc Đổi Class)
-    // ==========================================
     public void clearAllPets(Player player) {
         java.util.UUID ownerId = player.getUniqueId();
         RPGPlayer rpgOwner = vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager().getRPGPlayer(ownerId);
@@ -381,19 +390,16 @@ public class SummonerClass extends RPGClass {
 
         for (Map.Entry<java.util.UUID, PetInfo> entry : reservedPets.entrySet()) {
             if (entry.getValue().ownerId.equals(ownerId)) {
-                // Tiêu diệt Entity trên bản đồ
                 Entity pet = org.bukkit.Bukkit.getEntity(entry.getKey());
                 if (pet != null && pet.isValid()) {
                     pet.remove();
                 }
 
-                // Trả lại Mana dự trữ
                 if (rpgOwner != null) {
                     rpgOwner.freeReservedResource(entry.getValue().manaReserved);
                     rpgOwner.setCurrentResource(rpgOwner.getCurrentResource() + entry.getValue().manaReserved);
                 }
 
-                // Xóa khỏi danh sách thế chấp
                 reservedPets.remove(entry.getKey());
                 count++;
             }

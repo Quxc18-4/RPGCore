@@ -447,4 +447,23 @@ public class PlayerListener implements Listener {
             } catch (Exception ignored) {}
         }
     }
+
+    @org.bukkit.event.EventHandler
+    public void onPetInteract(org.bukkit.event.player.PlayerInteractEntityEvent event) {
+        org.bukkit.entity.Entity ent = event.getRightClicked();
+        if (ent.hasMetadata("Summoner_Pet") && ent.hasMetadata("Pet_Type")) {
+            String ownerId = ent.getMetadata("Summoner_Pet").get(0).asString();
+
+            // Chỉ chủ nhân mới được tương tác
+            if (event.getPlayer().getUniqueId().toString().equals(ownerId)) {
+                String petType = ent.getMetadata("Pet_Type").get(0).asString();
+                vn.minecraft.rPGCore.skills.summoner.pets.IPetProfile profile = vn.minecraft.rPGCore.skills.summoner.pets.SummonPetManager.getProfile(petType);
+
+                if (profile != null && ent instanceof org.bukkit.entity.LivingEntity) {
+                    profile.onInteract(event.getPlayer(), (org.bukkit.entity.LivingEntity) ent, event.getPlayer().getInventory().getItemInMainHand());
+                    event.setCancelled(true); // Chặn hành động mặc định của Vanilla
+                }
+            }
+        }
+    }
 }
