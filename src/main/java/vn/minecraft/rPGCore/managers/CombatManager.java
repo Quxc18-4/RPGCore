@@ -274,23 +274,51 @@ public class CombatManager {
         }
         petCount = Math.max(1, petCount);
 
+        // ==========================================
+        // [MỚI] 4.5. ĐỌC BUFF DUNG HỢP (RESONANCE)
+        // ==========================================
+        double resonanceDmgBonus = 0.0;
+        double resonancePen = 0.0;
+        double resonanceLifesteal = 0.0;
+        double resonanceHealOnHit = 0.0;
+        double resonanceBurnChance = 0.0;
+        double resonanceSlowChance = 0.0;
+
+        if (owner.hasMetadata("Resonance_Stats")) {
+            Object val = owner.getMetadata("Resonance_Stats").get(0).value();
+            if (val instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Double> resonanceBuffs = (Map<String, Double>) val;
+
+                resonanceDmgBonus = resonanceBuffs.getOrDefault("DamageMultiplier", 0.0);
+                // Nhân 100 vì trong Buff lưu dạng 0.05, nhưng code gốc của bạn dùng dạng % (5.0)
+                resonancePen = resonanceBuffs.getOrDefault("ArmorPen", 0.0) * 100.0;
+                resonanceLifesteal = resonanceBuffs.getOrDefault("Lifesteal", 0.0) * 100.0;
+                resonanceHealOnHit = resonanceBuffs.getOrDefault("HealOnHit", 0.0);
+                resonanceBurnChance = resonanceBuffs.getOrDefault("BurnChance", 0.0) * 100.0;
+                resonanceSlowChance = resonanceBuffs.getOrDefault("SlowChance", 0.0) * 100.0;
+            }
+        }
+
         double petArmorPen = 0.0;
         double petMagicPen = 0.0;
         double petLifeSteal = 0.0;
 
         if (isMagicPet) {
             double shareFactor = 0.5 / petCount;
-            petMagicPen = playerStats.getOrDefault("Tỉ lệ xuyên kháng phép", 0.0) * shareFactor;
-            petLifeSteal = playerStats.getOrDefault("Tỉ lệ hút máu phép", 0.0) * shareFactor;
+            petMagicPen = (playerStats.getOrDefault("Tỉ lệ xuyên kháng phép", 0.0) * shareFactor) + resonancePen;
+            petLifeSteal = (playerStats.getOrDefault("Tỉ lệ hút máu phép", 0.0) * shareFactor) + resonanceLifesteal;
         } else {
             double shareFactor = 1.0 / petCount;
-            petArmorPen = playerStats.getOrDefault("Tỉ lệ xuyên giáp", 0.0) * shareFactor;
-            petLifeSteal = playerStats.getOrDefault("Tỉ lệ hút máu", 0.0) * shareFactor;
+            petArmorPen = (playerStats.getOrDefault("Tỉ lệ xuyên giáp", 0.0) * shareFactor) + resonancePen;
+            petLifeSteal = (playerStats.getOrDefault("Tỉ lệ hút máu", 0.0) * shareFactor) + resonanceLifesteal;
         }
 
         // 5. NỘI TẠI VÀ CHÍ MẠNG
         double summonDmgBonusPct = playerStats.getOrDefault("Sát thương Triệu hồi", 0.0);
-        double rpgMultiplier = 1.0 + (summonDmgBonusPct / 100.0);
+
+        // [CỘNG HƯỞNG]: Nhồi Buff Sát Thương (Attacker) vào Hệ số tổng
+        double rpgMultiplier = 1.0 + (summonDmgBonusPct / 100.0) + resonanceDmgBonus;
 
         String markKey = "Summoner_Mark_" + owner.getUniqueId().toString();
         boolean hasMark = target.hasMetadata(markKey);
@@ -313,24 +341,41 @@ public class CombatManager {
             if (targetRpg != null) targetDefense = targetRpg.getTotalStatsMap().getOrDefault("Kháng phép", 0.0);
             targetDefense *= (1.0 - (petMagicPen / 100.0));
         } else if (!isMagicPet) {
-            AttributeInstance armorAttr = target.getAttribute(Attribute.ARMOR);
+            org.bukkit.attribute.AttributeInstance armorAttr = target.getAttribute(org.bukkit.attribute.Attribute.ARMOR);
             if (armorAttr != null) targetDefense = armorAttr.getValue();
             targetDefense *= (1.0 - (petArmorPen / 100.0));
         }
 
         double finalDamage = Math.max(1.0, rawDamage - targetDefense);
 
-        // 7. HÚT MÁU CHÉO (Hồi cho chủ nhân)
+        // ==========================================
+        // 7. HÚT MÁU CHÉO & HIỆU ỨNG ĐÒN ĐÁNH (CỘNG HƯỞNG)
+        // ==========================================
+        double totalHeal = 0.0;
         if (petLifeSteal > 0) {
-            double healAmount = finalDamage * (petLifeSteal / 100.0);
-            double maxHp = owner.getAttribute(Attribute.MAX_HEALTH).getValue();
-            owner.setHealth(Math.min(maxHp, owner.getHealth() + healAmount));
-            owner.spawnParticle(Particle.HEART, owner.getLocation().add(0, 2, 0), 1, 0.3, 0.3, 0.3, 0);
+            totalHeal += finalDamage * (petLifeSteal / 100.0);
+        }
+        if (resonanceHealOnHit > 0) {
+            totalHeal += resonanceHealOnHit; // Hồi máu chuẩn từ hệ Light
+        }
+
+        if (totalHeal > 0) {
+            double maxHp = owner.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue();
+            owner.setHealth(Math.min(maxHp, owner.getHealth() + totalHeal));
+            owner.getWorld().spawnParticle(Particle.HEART, owner.getLocation().add(0, 2, 0), 1, 0.3, 0.3, 0.3, 0);
+        }
+
+        // [CỘNG HƯỞNG]: Hiệu ứng Nguyên Tố (Thiêu Đốt, Làm Chậm)
+        if (resonanceBurnChance > 0 && (Math.random() * 100) <= resonanceBurnChance) {
+            target.setFireTicks(60); // Đốt 3s
+        }
+        if (resonanceSlowChance > 0 && (Math.random() * 100) <= resonanceSlowChance) {
+            vn.minecraft.rPGCore.managers.StatusEffectManager.applyEffect(target, org.bukkit.potion.PotionEffectType.SLOWNESS, 40, 1);
         }
 
         // 8. KIỂM TRA & XỬ LÝ DUMMY (Báo DMG + Bất tử Dummy)
-        if (target.getCustomName() != null && ChatColor.stripColor(target.getCustomName()).contains("Dummy")) {
-            String petNameRaw = pet.getCustomName() != null ? ChatColor.stripColor(pet.getCustomName()).replaceAll("\\[.*?\\]", "").trim() : "Linh Lang";
+        if (target.getCustomName() != null && org.bukkit.ChatColor.stripColor(target.getCustomName()).contains("Dummy")) {
+            String petNameRaw = pet.getCustomName() != null ? org.bukkit.ChatColor.stripColor(pet.getCustomName()).replaceAll("\\[.*?\\]", "").trim() : "Linh Lang";
             String prefix = hasMark ? "§d[" + petNameRaw + " - Cuồng Nộ]" : "§b[" + petNameRaw + "]";
 
             String skillName = "";
@@ -345,7 +390,7 @@ public class CombatManager {
                 @Override
                 public void run() {
                     if (target.isValid() && !target.isDead()) {
-                        AttributeInstance maxHp = target.getAttribute(Attribute.MAX_HEALTH);
+                        org.bukkit.attribute.AttributeInstance maxHp = target.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
                         if (maxHp != null) target.setHealth(maxHp.getValue());
                         target.setFireTicks(0);
                     }

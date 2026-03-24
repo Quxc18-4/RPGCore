@@ -30,6 +30,13 @@ public class AlphaWolfProfile implements IPetProfile {
     @Override
     public double getWeaponScaling(int level) { return 2.0 + (level * 0.8); }
 
+    // Hệ Phái (Attacker, Swift, Defender, Caster, Vanguard)
+    @Override
+    public String getArchetype() { return "Attacker"; }
+    // Thuộc Tính (Spirit, Fire, Ice, Wind, Earth, Light)
+    @Override
+    public String getElement() { return "Spirit"; }
+
     @Override
     public void onSpawn(Player owner, LivingEntity pet, int level, double... extraArgs) {
         double petCount = extraArgs.length > 0 ? extraArgs[0] : 1;
@@ -297,7 +304,7 @@ public class AlphaWolfProfile implements IPetProfile {
         // 5. ĐÁNH THƯỜNG (0s CD | Đánh bù | 100% Sát thương)
         // ==========================================
         else {
-            pet.getWorld().playSound(pet.getLocation(), Sound.ENTITY_WOLF_GRUMPY_DEATH, 1.0f, 1.0f);
+            pet.getWorld().playSound(pet.getLocation(), Sound.ENTITY_WOLF_ANGRY_DEATH, 1.0f, 1.0f);
             pet.getWorld().spawnParticle(Particle.CLOUD, target.getLocation().add(0, 1, 0), 5, 0.2, 0.2, 0.2, 0.05);
 
             return 1.0;

@@ -26,9 +26,16 @@ public class SpiritWolfProfile implements IPetProfile {
 
     @Override
     public double getWeaponScaling(int level) {
-        // [CẤU HÌNH TẠI ĐÂY]: Hệ số nhân từ vũ khí (Lv 10 = 6.0x)
-        return 1.0 + (level * 0.35);
+        // [CẤU HÌNH TẠI ĐÂY]: Hệ số nhân từ vũ khí (Lv 10 = 5.0x)
+        return 1.0 + (level * 0.5);
     }
+
+    // Hệ Phái (Attacker, Swift, Defender, Caster, Vanguard)
+    @Override
+    public String getArchetype() { return "Attacker"; }
+    // Thuộc Tính (Spirit, Fire, Ice, Wind, Earth, Light)
+    @Override
+    public String getElement() { return "Spirit"; }
 
     @Override
     public void onSpawn(Player owner, LivingEntity pet, int level, double... extraArgs) {

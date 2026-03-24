@@ -9,6 +9,11 @@ public interface IPetProfile {
     // Xác định loại sát thương.
     boolean isMagicDamage();
 
+    // Hệ Phái (Attacker, Swift, Defender, Caster, Vanguard)
+    default String getArchetype() { return "None"; }
+    // Thuộc Tính (Spirit, Fire, Ice, Wind, Earth, Light)
+    default String getElement() { return "None"; }
+
     // Trả về ID của dạng Dung hợp (Ví dụ Sói -> "AlphaSpiritWolf"). Trả về null nếu không thể dung hợp.
     String getFusionTargetId();
 
