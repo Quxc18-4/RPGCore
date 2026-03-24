@@ -63,7 +63,7 @@ public class AlphaWolfProfile implements IPetProfile {
             if (scale >= 2.5) {
                 if (pet.getPassengers().isEmpty()) {
                     pet.addPassenger(player);
-                    player.sendMessage("§a§l[!] §fBạn đã trèo lên lưng Tinh Lang Vương!");
+                    player.sendMessage("§a§l[!] §fBạn đã trèo lên lưng Linh Lang Vương!");
                     pet.getWorld().playSound(pet.getLocation(), Sound.ENTITY_HORSE_SADDLE, 1.0f, 1.0f);
 
                     // Truyền 200% tốc độ của chủ cho Sói
@@ -130,7 +130,7 @@ public class AlphaWolfProfile implements IPetProfile {
             pet.setMetadata("Alpha_Thunder_Used", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), true));
             pet.setNoDamageTicks(40);
             pet.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, pet.getLocation().add(0, 1.5, 0), 50, 0.5, 0.5, 0.5, 0.2);
-            owner.sendMessage("§c§l[Cảnh báo] §fTinh Lang Vương nổi điên (Dưới 30% HP)!");
+            owner.sendMessage("§c§l[Cảnh báo] §fLinh Lang Vương nổi điên (Dưới 30% HP)!");
             forceThunder = true;
         }
 
@@ -149,7 +149,7 @@ public class AlphaWolfProfile implements IPetProfile {
             setSkillCooldown(pet, "Alpha_CD_Thunder"); // Đặt Cooldown 30s
 
             double radius = 4.0 + (scale * 0.5);
-            owner.sendMessage("§e§l[Tinh Lang Vương] §fThi triển §cTrận Đồ Sấm Sét§f!");
+            owner.sendMessage("§e§l[Linh Lang Vương] §fThi triển §cTrận Đồ Sấm Sét§f!");
             pet.getWorld().playSound(pet.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.0f, 1.2f);
 
             StatusEffectManager.applyEffect(target, org.bukkit.potion.PotionEffectType.SLOWNESS, 40, 7);

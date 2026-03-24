@@ -76,14 +76,23 @@ public class SummonWolfSkill implements ISkill {
 
     @Override
     public List<String> getDescription(int level) {
+        double flatDamage = 15.0 + ((level - 1) * 8.0);
+        double scaling = 1.0 + (level * 0.35);
+        int scalePercent = (int) (scaling * 100);
+
         return Arrays.asList(
-                "§7Triệu hồi một Linh Lang chiến đấu bên cạnh.",
-                "§7Linh Lang tự động tấn công mục tiêu của bạn.",
-                "§7Sát thương và máu của Linh Lang kế thừa",
-                "§7từ chỉ số Phép Thuật của chủ nhân.",
+                "§7Triệu hồi một Linh Lang từ cõi mộng",
+                "§7để sát cánh chiến đấu cùng chủ nhân.",
                 "",
-                "§fMana tiêu hao: §b" + getManaCost(level),
-                "§fThời gian hồi: §e" + (getCooldown(level) / 1000.0) + "s"
+                "§8▪ §fHệ phái: §cChiến Đấu (Attacker)",
+                "§8▪ §fThuộc tính: §dTâm Linh (Spirit)",
+                "",
+                "§e[Chỉ số Kế thừa]",
+                "§f- Sát thương: §c" + flatDamage + " §f(+§e" + scalePercent + "% Sát thương vũ khí§f)",
+                "",
+                "§d[Hiệu ứng Hấp thụ]",
+                "§f- §c+5% §fSát thương toàn phần",
+                "§f- §b+5% §fXuyên giáp toàn phần"
         );
     }
 

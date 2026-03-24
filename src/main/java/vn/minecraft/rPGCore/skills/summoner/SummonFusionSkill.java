@@ -43,17 +43,22 @@ public class SummonFusionSkill implements ISkill {
 
     @Override
     public List<String> getDescription(int level) {
+        // Lấy sát thương nổ diện rộng từ logic code bên dưới
+        double explosionDmg = 50.0 + (level * 10.0);
+
         return Arrays.asList(
-                "§7Tiến hành nghi thức dung hợp các Linh Thú cùng",
-                "§7loại trên sân để triệu hồi một Thực Thể Tiến Cấp.",
+                "§7Khởi động vòng tròn ma thuật, hiến tế các Linh Thú",
+                "§7cùng loại trên sân để triệu hồi Thực Thể Tiến Cấp.",
                 "",
-                "§f⚡ §c§lTHỰC THỂ DUNG HỢP:",
-                "§f- Yêu cầu: §eTối thiểu 2 Linh Thú cùng loại",
-                "§f- Cấp độ Bonus: §a+1 Lv cho mỗi thú dư ra",
-                "§f- Sức mạnh: §cQuy đổi bằng máu & sát thương Linh Thú",
+                "§e[Dung Hợp: Hiến tế]",
+                "§f- Yêu cầu: §aTối thiểu 2 Linh Thú cùng loại",
+                "§f- Bùng nổ: §7Gây §c" + explosionDmg + " Sát thương §7và §eChoáng 1s",
+                "§7  cho toàn bộ kẻ địch đứng gần các tế phẩm.",
                 "",
-                "§fTiêu hao: §b" + getManaCost(level) + " Mana",
-                "§fThời gian hồi: §e" + (getCooldown(level) / 1000.0) + "s"
+                "§d[Dung Hợp: Tái sinh]",
+                "§f- Cấp độ Bonus: §a+1 Lv §f(Cho mỗi thú hiến tế dư ra)",
+                "§f- Sức mạnh: §cKế thừa Máu & Sát thương tế phẩm",
+                "§f- Sinh mệnh: §6Có thời hạn §f(Tăng theo Máu tế phẩm)"
         );
     }
 
