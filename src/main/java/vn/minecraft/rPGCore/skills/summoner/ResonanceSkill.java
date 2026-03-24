@@ -14,7 +14,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
-import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 import vn.minecraft.rPGCore.skills.ISkill;
 import vn.minecraft.rPGCore.skills.summoner.pets.IPetProfile;
@@ -32,9 +31,13 @@ public class ResonanceSkill implements ISkill {
     private static class PetTrait {
         String archetype;
         String element;
-        public PetTrait(String archetype, String element) {
+        double petMaxHp;
+
+        // Thêm tham số petMaxHp vào hàm khởi tạo
+        public PetTrait(String archetype, String element, double petMaxHp) {
             this.archetype = archetype;
             this.element = element;
+            this.petMaxHp = petMaxHp;
         }
     }
 
@@ -226,14 +229,16 @@ public class ResonanceSkill implements ISkill {
                         String pArchetype = profile.getArchetype();
                         String pElement = profile.getElement();
 
-                        // Ép thú nổ tung
+                        // Lấy máu tối đa của thú trước khi xóa nó và Ép thú nổ tung
+                        double petHp = targetPet.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue();
+
                         Location spawnLoc = targetPet.getLocation().add(0, 1.0, 0);
                         targetPet.getWorld().spawnParticle(Particle.EXPLOSION, spawnLoc, 1);
                         targetPet.getWorld().playSound(spawnLoc, Sound.ENTITY_ILLUSIONER_MIRROR_MOVE, 1.0f, 0.8f);
                         targetPet.remove();
 
                         // Gọi hàm phóng Quả Cầu Linh Hồn bay ngược lại
-                        spawnSoulOrb(player, spawnLoc, pArchetype, pElement, level);
+                        spawnSoulOrb(player, spawnLoc, pArchetype, pElement, level, petHp);
                     }
                     this.cancel();
                 }
@@ -246,13 +251,13 @@ public class ResonanceSkill implements ISkill {
     // ==========================================
     // LOGIC CỦA QUẢ CẦU LINH HỒN - ĐƯỜNG CONG TỰ BẺ LÁI
     // ==========================================
-    private void spawnSoulOrb(Player player, Location startLoc, String archetype, String element, int level) {
+    private void spawnSoulOrb(Player player, Location startLoc, String archetype, String element, int level, double petMaxHp) {
         new BukkitRunnable() {
             Location orbLoc = startLoc.clone();
             int ticksLived = 0;
             double speed = 0.4 + (level * 0.05); // Tốc độ rượt đuổi tối đa
 
-            // [MỚI]: Vận tốc khởi điểm (Bắn vọt lên trên và tỏa ra các hướng ngẫu nhiên)
+            // Vận tốc khởi điểm (Bắn vọt lên trên và tỏa ra các hướng ngẫu nhiên)
             Vector velocity = new Vector(
                     (Math.random() - 0.5) * 0.6,
                     0.6, // Lực hất tung lên trời
@@ -279,7 +284,7 @@ public class ResonanceSkill implements ISkill {
 
                     List<PetTrait> myStacks = playerStacks.computeIfAbsent(player.getUniqueId(), k -> new ArrayList<>());
                     synchronized (myStacks) {
-                        myStacks.add(new PetTrait(archetype, element));
+                        myStacks.add(new PetTrait(archetype, element, petMaxHp));
                         while (myStacks.size() > getMaxStacks(level)) {
                             myStacks.remove(0);
                         }
@@ -353,36 +358,45 @@ public class ResonanceSkill implements ISkill {
 
     private void recalculateAndApplyBuffs(Player player, List<PetTrait> stacks, int durationSeconds) {
         Map<String, Double> finalBuffs = new HashMap<>();
+        double totalEarthShield = 0.0;
 
         for (PetTrait trait : stacks) {
             switch (trait.archetype) {
-                case "Attacker": finalBuffs.put("DamageMultiplier", finalBuffs.getOrDefault("DamageMultiplier", 0.0) + 0.5); break;
-                case "Swift":
-                    finalBuffs.put("MoveSpeed", finalBuffs.getOrDefault("MoveSpeed", 0.0) + 0.12);
-                    finalBuffs.put("AttackSpeed", finalBuffs.getOrDefault("AttackSpeed", 0.0) + 0.05);
-                    break;
-                case "Defender": finalBuffs.put("DamageReduction", finalBuffs.getOrDefault("DamageReduction", 0.0) + 0.08); break;
-                case "Caster": finalBuffs.put("CooldownReduction", finalBuffs.getOrDefault("CooldownReduction", 0.0) + 0.05); break;
-                case "Vanguard": finalBuffs.put("Lifesteal", finalBuffs.getOrDefault("Lifesteal", 0.0) + 0.05); break;
+                case "Attacker": finalBuffs.put("DamageMultiplier", finalBuffs.getOrDefault("DamageMultiplier", 0.0) + 0.10); break;
+                case "Swift": finalBuffs.put("MoveSpeed", finalBuffs.getOrDefault("MoveSpeed", 0.0) + 0.12); break;
+                case "Vanguard": finalBuffs.put("DamageReduction", finalBuffs.getOrDefault("DamageReduction", 0.0) + 0.04); break;
+                case "Caster": finalBuffs.put("MagicPen", finalBuffs.getOrDefault("MagicPen", 0.0) + 0.05); break;
+                case "Support": finalBuffs.put("RegenRate", finalBuffs.getOrDefault("RegenRate", 0.0) + 5.0); break;
             }
 
             switch (trait.element) {
                 case "Spirit": finalBuffs.put("ArmorPen", finalBuffs.getOrDefault("ArmorPen", 0.0) + 0.05); break;
                 case "Fire": finalBuffs.put("BurnChance", finalBuffs.getOrDefault("BurnChance", 0.0) + 0.15); break;
                 case "Ice": finalBuffs.put("SlowChance", finalBuffs.getOrDefault("SlowChance", 0.0) + 0.20); break;
+                case "Wind": finalBuffs.put("EffectResistance", finalBuffs.getOrDefault("EffectResistance", 0.0) + 10.0); break;
                 case "Light": finalBuffs.put("HealOnHit", finalBuffs.getOrDefault("HealOnHit", 0.0) + 5.0); break;
                 case "Earth":
-                    double maxHp = player.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue();
-                    player.setAbsorptionAmount(player.getAbsorptionAmount() + (maxHp * 0.15));
+                    totalEarthShield += (trait.petMaxHp * 0.15);
                     break;
             }
+        }
+
+        if (totalEarthShield > 0) {
+            player.setAbsorptionAmount(totalEarthShield);
+        } else {
+            player.setAbsorptionAmount(0);
         }
 
         player.setMetadata("Resonance_Stats", new FixedMetadataValue(plugin, finalBuffs));
 
         if (player.hasMetadata("Resonance_Task")) {
-            BukkitRunnable oldTask = (BukkitRunnable) player.getMetadata("Resonance_Task").get(0).value();
-            oldTask.cancel();
+            java.util.List<org.bukkit.metadata.MetadataValue> taskMeta = player.getMetadata("Resonance_Task");
+            if (taskMeta != null && !taskMeta.isEmpty()) {
+                Object val = taskMeta.get(0).value();
+                if (val instanceof BukkitRunnable) {
+                    ((BukkitRunnable) val).cancel();
+                }
+            }
         }
 
         BukkitRunnable durationTask = new BukkitRunnable() {
@@ -391,6 +405,7 @@ public class ResonanceSkill implements ISkill {
                 if (player.isOnline()) {
                     player.removeMetadata("Resonance_Stats", plugin);
                     playerStacks.remove(player.getUniqueId());
+                    player.setAbsorptionAmount(0);
                     player.sendMessage("§7§o(Trạng thái Cộng hưởng đã phai nhạt...)");
                 }
             }
