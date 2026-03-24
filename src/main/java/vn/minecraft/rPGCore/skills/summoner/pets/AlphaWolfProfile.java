@@ -16,23 +16,32 @@ public class AlphaWolfProfile implements IPetProfile {
     public String getId() { return "AlphaSpiritWolf"; }
 
     @Override
-    public boolean isMagicDamage() {return false; }
+    public boolean isMagicDamage() { return false; }
+
+    @Override
+    public double getBaseFlatDamage(int level) {
+        // Cấu hình Flat Damage: Lv 1 = 50 | Lv 10 = 230
+        return 50.0 + (level - 1) * 20.0;
+    }
+
+    @Override
+    public double getWeaponScaling(int level) {
+        // Cấu hình Scaling cực khủng: Lv 1 = 2.8x | Lv 10 = 10.0x
+        return 2.0 + (level * 0.8);
+    }
 
     @Override
     public void onSpawn(Player owner, LivingEntity pet, int level, double... extraArgs) {
-        double petCount = extraArgs[0];
-        double finalHpBonus = extraArgs[1];
-        double finalDmgBonus = extraArgs[2];
+        double petCount = extraArgs.length > 0 ? extraArgs[0] : 1;
+        double finalHpBonus = extraArgs.length > 1 ? extraArgs[1] : 0;
 
+        // Không dùng finalDmgBonus nữa vì CombatManager đã tự scale
         pet.getAttribute(Attribute.SCALE).setBaseValue(1.5 + (petCount * 0.2));
 
         double newMaxHp = 2500 + (level * 300) + (finalHpBonus * 0.8);
-        pet.getAttribute(Attribute.MAX_HEALTH).setBaseValue(newMaxHp);
-        pet.setHealth(newMaxHp);
-
-        double newBaseDmg = 180 + (level * 30) + finalDmgBonus;
-        if (pet.getAttribute(Attribute.ATTACK_DAMAGE) != null) {
-            pet.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(newBaseDmg);
+        if (pet.getAttribute(Attribute.MAX_HEALTH) != null) {
+            pet.getAttribute(Attribute.MAX_HEALTH).setBaseValue(newMaxHp);
+            pet.setHealth(newMaxHp);
         }
     }
 
@@ -61,7 +70,7 @@ public class AlphaWolfProfile implements IPetProfile {
 
         // Kích hoạt AOE
         final int finalSkillType = skillType;
-        final double finalMultiplier = multiplier; // [FIX LỖI JAVA]: Chốt sổ biến multiplier thành final
+        final double finalMultiplier = multiplier;
 
         new BukkitRunnable() {
             @Override
@@ -86,7 +95,7 @@ public class AlphaWolfProfile implements IPetProfile {
         pet.getWorld().strikeLightningEffect(pet.getLocation());
         pet.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, pet.getLocation(), 1);
 
-        double explosionDmg = pet.getAttribute(Attribute.ATTACK_DAMAGE).getValue() * 3.0;
+        double explosionDmg = pet.hasMetadata("Base_Damage_Snapshot") ? pet.getMetadata("Base_Damage_Snapshot").get(0).asDouble() * 3.0 : 5000;
 
         for (org.bukkit.entity.Entity e : pet.getWorld().getNearbyEntities(pet.getLocation(), 5, 3, 5)) {
             if (e instanceof LivingEntity && e != owner && !e.hasMetadata("Summoner_Pet")) {

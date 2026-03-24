@@ -9,6 +9,12 @@ public interface IPetProfile {
     // Xác định loại sát thương.
     boolean isMagicDamage();
 
+    // [MỚI]: Định nghĩa sát thương gốc (Flat) của từng loại thú
+    double getBaseFlatDamage(int level);
+
+    // [MỚI]: Định nghĩa hệ số nhân sức mạnh (Scaling) từ vũ khí chủ
+    double getWeaponScaling(int level);
+
     // Xử lý bơm chỉ số, kích thước, hiệu ứng khi vừa sinh ra
     void onSpawn(Player owner, LivingEntity pet, int skillLevel, double... extraArgs);
 

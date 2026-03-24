@@ -235,54 +235,60 @@ public class CombatManager {
     // HỆ THỐNG TÍNH TOÁN SÁT THƯƠNG CHO THÚ TRIỆU HỒI
     // ==========================================
     public static double calculatePetDamage(Player owner, RPGPlayer rpgOwner, org.bukkit.entity.Entity pet, LivingEntity target, double eventDamage) {
+        // 1. LẤY THÔNG TIN PROFILE
+        String petType = pet.hasMetadata("Pet_Type") ? pet.getMetadata("Pet_Type").get(0).asString() : "Unknown";
+        vn.minecraft.rPGCore.skills.summoner.pets.IPetProfile profile = vn.minecraft.rPGCore.skills.summoner.pets.SummonPetManager.getProfile(petType);
+        int skillLevel = pet.hasMetadata("Summon_Level") ? pet.getMetadata("Summon_Level").get(0).asInt() : 1;
+
+        if (profile == null) return 1.0;
+
         Map<String, Double> playerStats = rpgOwner.getTotalStatsMap();
 
-        // 1. LẤY SÁT THƯƠNG PHÉP THUẬT TRUNG BÌNH CỦA CHỦ LÀM GỐC
+        // 2. TÍNH TOÁN SÁT THƯƠNG GỐC THEO PROFILE
         double minMagic = playerStats.getOrDefault("Sát thương phép thuật (Nhỏ nhất)", 5.0);
         double maxMagic = playerStats.getOrDefault("Sát thương phép thuật (Lớn nhất)", 10.0);
         double avgMasterDamage = (minMagic + maxMagic) / 2.0;
 
-        // Tính Sát thương cơ bản cho Đệ tử (55% của Chủ x Hệ số Level)
-        int skillLevel = pet.hasMetadata("Summon_Level") ? pet.getMetadata("Summon_Level").get(0).asInt() : 1;
-        double levelMultiplier = 1.0 + (skillLevel * 0.5);
-        double finalBasePetDamage = (avgMasterDamage * 0.55) * levelMultiplier;
+        double flatBase = profile.getBaseFlatDamage(skillLevel);
+        double scaling = profile.getWeaponScaling(skillLevel);
+        double finalBasePetDamage = flatBase + (avgMasterDamage * 0.55 * scaling);
 
-        // 2. NHẬN DIỆN ĐỆ TỬ & LẤY KỸ NĂNG
-        String petType = pet.hasMetadata("Pet_Type") ? pet.getMetadata("Pet_Type").get(0).asString() : "Unknown";
-        vn.minecraft.rPGCore.skills.summoner.pets.IPetProfile profile = vn.minecraft.rPGCore.skills.summoner.pets.SummonPetManager.getProfile(petType);
-
-        boolean isMagicPet = false;
-        double skillMultiplier = 1.0;
-        if (profile != null && pet instanceof LivingEntity) {
-            isMagicPet = profile.isMagicDamage(); // Phân biệt hệ Vật lý hay Phép
-            skillMultiplier = profile.onAttack(owner, (LivingEntity) pet, target, finalBasePetDamage);
+        // Áp dụng Bội số Dung hợp (Nếu có)
+        if (pet.hasMetadata("Fusion_Multiplier")) {
+            finalBasePetDamage *= pet.getMetadata("Fusion_Multiplier").get(0).asDouble();
         }
 
-        // 3. ĐẾM SỐ LƯỢNG ĐỆ TỬ ĐỂ CHIA CHỈ SỐ (CHỐNG LẠM PHÁT)
+        // Lưu Snapshot lại cho hàm onDeath nổ
+        pet.setMetadata("Base_Damage_Snapshot", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), finalBasePetDamage));
+
+        // 3. XỬ LÝ KỸ NĂNG VÀ PHÂN LOẠI
+        boolean isMagicPet = profile.isMagicDamage();
+        double skillMultiplier = profile.onAttack(owner, (LivingEntity) pet, target, finalBasePetDamage);
+
+        // 4. ĐẾM THÚ VÀ CHIA SẺ SUB-STATS
         int petCount = 0;
         for (org.bukkit.entity.Entity e : owner.getNearbyEntities(30, 20, 30)) {
             if (e.hasMetadata("Summoner_Pet") && e.getMetadata("Summoner_Pet").get(0).asString().equals(owner.getUniqueId().toString())) {
                 petCount++;
             }
         }
-        petCount = Math.max(1, petCount); // Tránh chia cho 0
+        petCount = Math.max(1, petCount);
 
-        // 4. CƠ CHẾ CHUYỂN GIAO SUB-STATS (XUYÊN GIÁP & HÚT MÁU CHÉO)
         double petArmorPen = 0.0;
         double petMagicPen = 0.0;
         double petLifeSteal = 0.0;
 
         if (isMagicPet) {
-            double shareFactor = 0.5 / petCount; // Đệ Phép nhận 50% chỉ số Phép
+            double shareFactor = 0.5 / petCount;
             petMagicPen = playerStats.getOrDefault("Tỉ lệ xuyên kháng phép", 0.0) * shareFactor;
             petLifeSteal = playerStats.getOrDefault("Tỉ lệ hút máu phép", 0.0) * shareFactor;
         } else {
-            double shareFactor = 1.0 / petCount; // Đệ Vật lý (Sói) nhận 100% chỉ số Vật lý
+            double shareFactor = 1.0 / petCount;
             petArmorPen = playerStats.getOrDefault("Tỉ lệ xuyên giáp", 0.0) * shareFactor;
             petLifeSteal = playerStats.getOrDefault("Tỉ lệ hút máu", 0.0) * shareFactor;
         }
 
-        // 5. TÍNH TOÁN TỔNG SÁT THƯƠNG GÂY RA
+        // 5. NỘI TẠI VÀ CHÍ MẠNG
         double summonDmgBonusPct = playerStats.getOrDefault("Sát thương Triệu hồi", 0.0);
         double rpgMultiplier = 1.0 + (summonDmgBonusPct / 100.0);
 
@@ -292,7 +298,6 @@ public class CombatManager {
 
         double rawDamage = finalBasePetDamage * skillMultiplier * rpgMultiplier;
 
-        // Tính Chí mạng (Chia đều cho số lượng thú để cân bằng)
         double critRate = playerStats.getOrDefault("Tỉ lệ chí mạng", 5.0) * (1.0 / petCount);
         double critDamage = playerStats.getOrDefault("Sát thương chí mạng", 50.0);
         if ((Math.random() * 100) <= critRate) {
@@ -301,7 +306,7 @@ public class CombatManager {
             owner.playSound(owner.getLocation(), Sound.ENTITY_WOLF_GROWL, 0.5f, 1.5f);
         }
 
-        // 6. TRỪ PHÒNG THỦ MỤC TIÊU (THEO ĐÚNG HỆ CỦA ĐỆ TỬ)
+        // 6. TRỪ PHÒNG THỦ
         double targetDefense = 0;
         if (isMagicPet && target instanceof Player) {
             RPGPlayer targetRpg = vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager().getRPGPlayer(target.getUniqueId());
@@ -315,7 +320,7 @@ public class CombatManager {
 
         double finalDamage = Math.max(1.0, rawDamage - targetDefense);
 
-        // 7. HÚT MÁU (Sói cắn -> Hồi máu cho Chủ nhân)
+        // 7. HÚT MÁU CHÉO (Hồi cho chủ nhân)
         if (petLifeSteal > 0) {
             double healAmount = finalDamage * (petLifeSteal / 100.0);
             double maxHp = owner.getAttribute(Attribute.MAX_HEALTH).getValue();
@@ -323,29 +328,26 @@ public class CombatManager {
             owner.spawnParticle(Particle.HEART, owner.getLocation().add(0, 2, 0), 1, 0.3, 0.3, 0.3, 0);
         }
 
-        // ==========================================
-        // 8. KIỂM TRA & XỬ LÝ DUMMY (Báo DMG + Hồi máu)
-        // ==========================================
+        // 8. KIỂM TRA & XỬ LÝ DUMMY (Báo DMG + Bất tử Dummy)
         if (target.getCustomName() != null && ChatColor.stripColor(target.getCustomName()).contains("Dummy")) {
             String petNameRaw = pet.getCustomName() != null ? ChatColor.stripColor(pet.getCustomName()).replaceAll("\\[.*?\\]", "").trim() : "Linh Lang";
             String prefix = hasMark ? "§d[" + petNameRaw + " - Cuồng Nộ]" : "§b[" + petNameRaw + "]";
 
             String skillName = "";
-            if (profile != null && skillMultiplier > 1.0) {
+            if (skillMultiplier > 1.0) {
                 if (skillMultiplier >= 2.0) skillName = " §e[Sét]";
                 else skillName = " §6[Đuôi]";
             }
 
             owner.sendMessage("§e§l[DUMMY] " + prefix + skillName + " §fSát thương: §c" + String.format("%.1f", finalDamage) + " ⚔");
 
-            // [MỚI]: Kích hoạt cơ chế bất tử cho Dummy
             new BukkitRunnable() {
                 @Override
                 public void run() {
                     if (target.isValid() && !target.isDead()) {
                         AttributeInstance maxHp = target.getAttribute(Attribute.MAX_HEALTH);
                         if (maxHp != null) target.setHealth(maxHp.getValue());
-                        target.setFireTicks(0); // Dập lửa nếu trúng hiệu ứng cháy
+                        target.setFireTicks(0);
                     }
                 }
             }.runTaskLater(vn.minecraft.rPGCore.RPGCore.getInstance(), 1L);

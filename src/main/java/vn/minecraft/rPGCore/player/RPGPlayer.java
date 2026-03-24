@@ -429,6 +429,11 @@ public class RPGPlayer {
     public void changeClass(RPGClass newClass) {
         if (this.currentClass != null && !this.currentClass.getId().equalsIgnoreCase(newClass.getId())) {
 
+            // [MỚI]: Nếu đang là Summoner mà đổi class khác -> Tiêu diệt toàn bộ thú!
+            if (this.currentClass instanceof vn.minecraft.rPGCore.classes.impl.SummonerClass) {
+                ((vn.minecraft.rPGCore.classes.impl.SummonerClass) this.currentClass).clearAllPets(this.bukkitPlayer);
+            }
+
             // Dọn dẹp tàn dư của Class cũ
             this.skillData.clearAllSkills();
             this.skillData.clearAllBinds();

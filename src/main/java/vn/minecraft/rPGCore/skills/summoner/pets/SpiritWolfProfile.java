@@ -13,6 +13,18 @@ public class SpiritWolfProfile implements IPetProfile {
     public boolean isMagicDamage() {return false; }
 
     @Override
+    public double getBaseFlatDamage(int level) {
+        // [CẤU HÌNH TẠI ĐÂY]: Lv 1 = 15 | Lv 2 = 25...
+        return 15.0 + (level - 1) * 15.0;
+    }
+
+    @Override
+    public double getWeaponScaling(int level) {
+        // [CẤU HÌNH TẠI ĐÂY]: Hệ số nhân từ vũ khí (Lv 10 = 6.0x)
+        return 1.0 + (level * 0.5);
+    }
+
+    @Override
     public void onSpawn(Player owner, LivingEntity pet, int level, double... extraArgs) {
         // Chỉ số của Sói thường
         double baseHp = 1000 + (level * 120);

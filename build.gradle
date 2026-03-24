@@ -62,19 +62,19 @@ tasks.register('copyToOtherProjects') {
         // 1. Copy sang RPGDens
         copy {
             from sourceJar
-            into "C:/Users/Quoc Danh/IdeaProjects/RPGDens/libs"
+            into "C:/Users/Pon/IdeaProjects/RPGDens/libs"
         }
 
         // 2. Copy sang RPGGuild
         copy {
             from sourceJar
-            into "C:/Users/Quoc Danh/IdeaProjects/RPGGuild/libs"
+            into "C:/Users/Pon/IdeaProjects/RPGGuild/libs"
         }
 
         // 3. Copy sang RPGParty
         copy {
             from sourceJar
-            into "C:/Users/Quoc Danh/IdeaProjects/RPGParty/libs"
+            into "C:/Users/Pon/IdeaProjects/RPGParty/libs"
         }
 
         println "[RPGCore] Đã copy tự động file JAR sang các project vệ tinh!"

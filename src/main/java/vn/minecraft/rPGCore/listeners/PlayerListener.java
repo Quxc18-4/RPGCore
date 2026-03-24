@@ -315,9 +315,18 @@ public class PlayerListener implements Listener {
         RPGPlayer rpgPlayer = playerManager.loadPlayer(player);
         bossBarManager.createBars(player, rpgPlayer);
     }
-    @EventHandler public void onPlayerQuit(PlayerQuitEvent event) {
-        bossBarManager.removeBars(event.getPlayer());
-        playerManager.savePlayer(event.getPlayer().getUniqueId());
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        Player player = event.getPlayer();
+        RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
+
+        // [MỚI]: Thu hồi toàn bộ đệ tử trước khi thoát để tránh kẹt Entity và lỗi Mana
+        if (rpgPlayer != null && rpgPlayer.getCurrentClass() instanceof vn.minecraft.rPGCore.classes.impl.SummonerClass) {
+            ((vn.minecraft.rPGCore.classes.impl.SummonerClass) rpgPlayer.getCurrentClass()).clearAllPets(player);
+        }
+
+        bossBarManager.removeBars(player);
+        playerManager.savePlayer(player.getUniqueId());
     }
     @EventHandler public void onVanillaRegen(EntityRegainHealthEvent event) {
         if (event.getEntity() instanceof Player && (event.getRegainReason() == EntityRegainHealthEvent.RegainReason.SATIATED || event.getRegainReason() == EntityRegainHealthEvent.RegainReason.REGEN)) {

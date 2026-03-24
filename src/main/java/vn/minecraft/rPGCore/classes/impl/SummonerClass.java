@@ -370,6 +370,40 @@ public class SummonerClass extends RPGClass {
         return initialDamage;
     }
 
+    // ==========================================
+    // [MỚI]: XÓA TOÀN BỘ ĐỆ TỬ CỦA MỘT NGƯỜI CHƠI
+    // (Dùng khi Thoát game hoặc Đổi Class)
+    // ==========================================
+    public void clearAllPets(Player player) {
+        java.util.UUID ownerId = player.getUniqueId();
+        RPGPlayer rpgOwner = vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager().getRPGPlayer(ownerId);
+        int count = 0;
+
+        for (Map.Entry<java.util.UUID, PetInfo> entry : reservedPets.entrySet()) {
+            if (entry.getValue().ownerId.equals(ownerId)) {
+                // Tiêu diệt Entity trên bản đồ
+                Entity pet = org.bukkit.Bukkit.getEntity(entry.getKey());
+                if (pet != null && pet.isValid()) {
+                    pet.remove();
+                }
+
+                // Trả lại Mana dự trữ
+                if (rpgOwner != null) {
+                    rpgOwner.freeReservedResource(entry.getValue().manaReserved);
+                    rpgOwner.setCurrentResource(rpgOwner.getCurrentResource() + entry.getValue().manaReserved);
+                }
+
+                // Xóa khỏi danh sách thế chấp
+                reservedPets.remove(entry.getKey());
+                count++;
+            }
+        }
+
+        if (count > 0 && player.isOnline()) {
+            player.sendMessage("§b§l[!] §fHệ thống đã tự động thu hồi §e" + count + " Linh Thú§f!");
+        }
+    }
+
     @Override
     public void onProjectileHit(Player shooter, RPGPlayer rpgPlayer, org.bukkit.entity.Projectile projectile, org.bukkit.event.entity.ProjectileHitEvent event) { }
 }
