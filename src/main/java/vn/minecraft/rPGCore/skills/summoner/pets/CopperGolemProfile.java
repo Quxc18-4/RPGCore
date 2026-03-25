@@ -1,6 +1,9 @@
 package vn.minecraft.rPGCore.skills.summoner.pets;
 
-import org.bukkit.*;
+import org.bukkit.Bukkit;
+import org.bukkit.Material;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
@@ -17,6 +20,7 @@ import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 
 import java.util.Map;
+import java.util.UUID;
 
 public class CopperGolemProfile implements IPetProfile, Listener {
 
@@ -34,33 +38,35 @@ public class CopperGolemProfile implements IPetProfile, Listener {
     @Override public String getElement() { return "Earth"; }
 
     // ==========================================
-    // 1. KÍCH HOẠT KHIÊN PHẢN SÁT THƯƠNG (3 VÒNG SÁNG)
+    // 1. KÍCH HOẠT KHIÊN (3 VÒNG TRÒN GAI NGANG)
     // ==========================================
     public static void activateReflect(LivingEntity golem) {
         golem.setMetadata("Golem_Reflect_Active", new FixedMetadataValue(RPGCore.getInstance(), System.currentTimeMillis() + 3000));
         golem.getWorld().playSound(golem.getLocation(), Sound.ITEM_SHIELD_BLOCK, 1.0f, 0.5f);
 
-        // VISUAL: 3 vòng sáng Particle.ENCHANTED_HIT bao quanh
         new BukkitRunnable() {
             int ticks = 0;
             @Override
             public void run() {
-                if (ticks > 60 || golem.isDead() || !golem.isValid()) {
+                if (ticks >= 60 || golem.isDead() || !golem.isValid()) {
                     this.cancel();
                     return;
                 }
 
-                Location center = golem.getLocation().add(0, 1.5, 0); // Tâm ở giữa ngực Golem
-                double radius = 1.6;
+                org.bukkit.Location baseLoc = golem.getLocation();
+                double radius = 1.6; // Bán kính vòng tròn
+                double[] heights = {0.3, 1.4, 2.5}; // 3 độ cao: Dưới chân, giữa bụng, trên đầu
 
-                for (int i = 0; i < 3; i++) {
-                    // Tạo 3 vòng đan chéo nhau, lệch góc 120 độ
-                    double angle = ticks * 0.4 + (i * (2 * Math.PI / 3));
-                    double x = Math.cos(angle) * radius;
-                    double z = Math.sin(angle) * radius;
-                    double y = Math.sin(ticks * 0.15 + i) * 0.8; // Gợn sóng lên xuống
+                // Vẽ hạt xoay quanh 3 vòng tròn
+                for (double h : heights) {
+                    for (int i = 0; i < 3; i++) { // Spawn 3 điểm trên mỗi vòng để tạo vệt xoay nhanh
+                        double angle = (ticks * 0.4) + (i * (2 * Math.PI / 3));
+                        double x = Math.cos(angle) * radius;
+                        double z = Math.sin(angle) * radius;
 
-                    center.getWorld().spawnParticle(Particle.ENCHANTED_HIT, center.clone().add(x, y, z), 1, 0, 0, 0, 0);
+                        // Dùng hạt CRIT (Chí mạng) để tạo cảm giác "Gai nhọn"
+                        baseLoc.getWorld().spawnParticle(Particle.CRIT, baseLoc.clone().add(x, h, z), 1, 0, 0, 0, 0);
+                    }
                 }
                 ticks++;
             }
@@ -72,55 +78,77 @@ public class CopperGolemProfile implements IPetProfile, Listener {
     // ==========================================
     @Override
     public void onSpawn(Player owner, LivingEntity pet, int level, double... extraArgs) {
-        // 2.1. TĂNG KÍCH THƯỚC (Scale 1.75) VÀ BẤT ĐỘNG HOÀN TOÀN
         if (pet.getAttribute(Attribute.SCALE) != null) pet.getAttribute(Attribute.SCALE).setBaseValue(1.75);
         if (pet.getAttribute(Attribute.MOVEMENT_SPEED) != null) pet.getAttribute(Attribute.MOVEMENT_SPEED).setBaseValue(0.0);
+        if (pet.getAttribute(Attribute.KNOCKBACK_RESISTANCE) != null) pet.getAttribute(Attribute.KNOCKBACK_RESISTANCE).setBaseValue(1.0);
         pet.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 999999, 255, false, false));
+        pet.setCollidable(false);
 
-        // 2.2. MÁU ĐƯỢC GIẢM XUỐNG ĐỂ CÂN BẰNG
         RPGPlayer rpgOwner = RPGCore.getInstance().getPlayerManager().getRPGPlayer(owner.getUniqueId());
         double weaponDmgBonus = 0;
         if (rpgOwner != null) {
             Map<String, Double> stats = rpgOwner.getTotalStatsMap();
             double min = stats.getOrDefault("Sát thương phép thuật (Nhỏ nhất)", stats.getOrDefault("Sát thương vật lý (Nhỏ nhất)", 5.0));
             double max = stats.getOrDefault("Sát thương phép thuật (Lớn nhất)", stats.getOrDefault("Sát thương vật lý (Lớn nhất)", 10.0));
-            weaponDmgBonus = ((min + max) / 2.0) * 15.0; // Giảm quy đổi còn 15 máu / 1 DMG
+            weaponDmgBonus = ((min + max) / 2.0) * 40.0;
         }
 
-        // Lv 10 = ~1500 HP cơ bản + HP từ vũ khí
-        double maxHp = 500 + (level * 100) + weaponDmgBonus;
+        double maxHp = 2000 + (level * 300) + weaponDmgBonus;
         if (pet.getAttribute(Attribute.MAX_HEALTH) != null) {
             pet.getAttribute(Attribute.MAX_HEALTH).setBaseValue(maxHp);
             pet.setHealth(maxHp);
         }
 
-        // 2.3. VÒNG LẶP AUTO-TAUNT (Gầm khiêu khích mỗi 5 giây)
         new BukkitRunnable() {
+            int timer = 0;
             @Override
             public void run() {
-                if (pet.isDead() || !pet.isValid()) {
-                    this.cancel();
-                    return;
-                }
+                if (pet.isDead() || !pet.isValid()) { this.cancel(); return; }
 
-                // Đánh dấu nhận 1.3x sát thương trong 5s (Do dùng sức để gầm)
-                pet.setMetadata("Golem_Vulnerable", new FixedMetadataValue(RPGCore.getInstance(), System.currentTimeMillis() + 5000));
+                if (timer % 20 == 0) addRage(pet, 1);
 
-                pet.getWorld().playSound(pet.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 0.5f, 0.5f);
-                pet.getWorld().spawnParticle(Particle.ANGRY_VILLAGER, pet.getLocation().add(0, 2.5, 0), 5, 1, 0.5, 1, 0);
+                if (timer % 40 == 0) {
+                    // [ĐÃ XÓA]: Xóa hoàn toàn Debuff 130% Golem_Vulnerable
+                    pet.getWorld().spawnParticle(Particle.ANGRY_VILLAGER, pet.getLocation().add(0, 2.5, 0), 3, 1, 0.5, 1, 0);
 
-                for (org.bukkit.entity.Entity e : pet.getNearbyEntities(10, 5, 10)) {
-                    if (e instanceof Mob && e != owner && !e.hasMetadata("Summoner_Pet")) {
-                        ((Mob) e).setTarget(pet); // Ép quái đánh Golem
+                    int maxTaunt = 3 + (int) (level * 0.5);
+                    int count = 0;
+
+                    for (org.bukkit.entity.Entity e : pet.getNearbyEntities(12, 5, 12)) {
+                        if (e instanceof Mob && e != owner && !e.hasMetadata("Summoner_Pet")) {
+                            ((Mob) e).setTarget(pet);
+                            e.setMetadata("Taunted_By_Golem", new FixedMetadataValue(RPGCore.getInstance(), pet.getUniqueId().toString()));
+                            count++;
+                            if (count >= maxTaunt) break;
+                        }
                     }
                 }
+                timer++;
             }
-        }.runTaskTimer(RPGCore.getInstance(), 20L, 100L); // Trễ 1s, lặp mỗi 5s
+        }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
     }
 
     // ==========================================
-    // 3. XỬ LÝ SỰ KIỆN KHI GOLEM MẤT MÁU (VẠN NĂNG)
+    // 3. XỬ LÝ SỰ KIỆN MẤT MÁU VÀ TÍCH NỘ
     // ==========================================
+    public static void addRage(LivingEntity golem, int amount) {
+        if (golem.hasMetadata("Golem_Reflect_Active")) return;
+
+        int currentRage = golem.hasMetadata("Golem_Rage") ? golem.getMetadata("Golem_Rage").get(0).asInt() : 0;
+        currentRage += amount;
+
+        if (amount > 0) {
+            golem.getWorld().spawnParticle(Particle.DAMAGE_INDICATOR, golem.getLocation().add(0, 2.5, 0), 1, 0.2, 0.2, 0.2, 0);
+        }
+
+        if (currentRage >= 50) {
+            activateReflect(golem);
+            golem.setMetadata("Golem_Rage", new FixedMetadataValue(RPGCore.getInstance(), 0));
+        } else {
+            golem.setMetadata("Golem_Rage", new FixedMetadataValue(RPGCore.getInstance(), currentRage));
+        }
+    }
+
     @EventHandler
     public void onGolemDamaged(EntityDamageEvent event) {
         if (event.isCancelled() || !(event.getEntity() instanceof LivingEntity)) return;
@@ -128,50 +156,70 @@ public class CopperGolemProfile implements IPetProfile, Listener {
 
         if (!victim.hasMetadata("Pet_Type") || !victim.getMetadata("Pet_Type").get(0).asString().equals("CopperGolem")) return;
 
-        // 3.1. NẾU KHIÊN ĐANG BẬT -> GIẢM 90% DMG & PHẢN SÁT THƯƠNG (KHÔNG TÍCH NỘ)
+        double realIncomingDamage = event.getDamage();
+        LivingEntity attacker = null;
+
+        if (event instanceof EntityDamageByEntityEvent) {
+            EntityDamageByEntityEvent edbe = (EntityDamageByEntityEvent) event;
+            if (edbe.getDamager() instanceof LivingEntity) {
+                attacker = (LivingEntity) edbe.getDamager();
+                try {
+                    io.lumine.mythic.core.mobs.ActiveMob am = io.lumine.mythic.bukkit.MythicBukkit.inst().getMobManager().getActiveMob(attacker.getUniqueId()).orElse(null);
+                    if (am != null) {
+                        realIncomingDamage = am.getDamage() / 2.0;
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
+
+        // 3.1. KHIÊN GAI (ACTIVE): GIẢM 95% DMG & PHẢN 200% ST
         if (victim.hasMetadata("Golem_Reflect_Active")) {
             long expire = victim.getMetadata("Golem_Reflect_Active").get(0).asLong();
             if (System.currentTimeMillis() < expire) {
-                double originalDamage = event.getDamage();
-                event.setDamage(originalDamage * 0.1);
+                event.setDamage(realIncomingDamage * 0.05); // Chỉ nhận 5% ST
 
-                if (event instanceof EntityDamageByEntityEvent) {
-                    EntityDamageByEntityEvent edbe = (EntityDamageByEntityEvent) event;
-                    if (edbe.getDamager() instanceof LivingEntity) {
-                        LivingEntity attacker = (LivingEntity) edbe.getDamager();
-                        attacker.damage(originalDamage * 2.0, victim); // Phản 200%
+                if (attacker != null) {
+                    double reflectDmg = realIncomingDamage * 2.0;
+                    attacker.setNoDamageTicks(0);
+                    attacker.damage(reflectDmg, victim);
+
+                    if (victim.hasMetadata("Summoner_Pet")) {
+                        String ownerUUID = victim.getMetadata("Summoner_Pet").get(0).asString();
+                        Player owner = Bukkit.getPlayer(UUID.fromString(ownerUUID));
+                        if (owner != null && owner.isOnline()) {
+                            owner.sendMessage("§e[Debug] Khiên Golem vừa phản §c" + String.format("%.1f", reflectDmg) + " DMG §evào " + attacker.getName());
+                        }
                     }
                 }
                 victim.getWorld().playSound(victim.getLocation(), Sound.ENCHANT_THORNS_HIT, 1.0f, 0.8f);
-                return; // Thoát ngang, không bị chịu debuff 1.3x và không tích Nộ thêm
+                return; // Đã phản 200% thì thoát, không kích hoạt cái 10% bên dưới
             }
         }
 
-        // 3.2. NẾU ĐANG BỊ SUY YẾU (DO TAUNT) -> NHẬN 130% DMG
-        if (victim.hasMetadata("Golem_Vulnerable")) {
-            long expire = victim.getMetadata("Golem_Vulnerable").get(0).asLong();
-            if (System.currentTimeMillis() < expire) {
-                event.setDamage(event.getDamage() * 1.3);
+        // 3.2. NỘI TẠI (PASSIVE): LUÔN TỰ ĐỘNG PHẢN LẠI 10% SÁT THƯƠNG
+        event.setDamage(realIncomingDamage); // Trả lại đúng lượng sát thương bị nhận
+        if (attacker != null) {
+            double passiveReflect = realIncomingDamage * 0.10;
+            if (passiveReflect > 0) {
+                attacker.setNoDamageTicks(0);
+                attacker.damage(passiveReflect, victim);
             }
         }
 
-        // 3.3. TÍCH LŨY 1 NỘ CHO MỖI LẦN BỊ TRỪ MÁU (BAO GỒM CẢ ĐỘC/CHÁY)
-        int currentRage = victim.hasMetadata("Golem_Rage") ? victim.getMetadata("Golem_Rage").get(0).asInt() : 0;
-        currentRage += 1;
-
-        // Hạt bụi đỏ báo hiệu đang sạc Nộ
-        victim.getWorld().spawnParticle(Particle.DAMAGE_INDICATOR, victim.getLocation().add(0, 2.5, 0), 1, 0.2, 0.2, 0.2, 0);
-
-        if (currentRage >= 60) {
-            activateReflect(victim);
-            victim.setMetadata("Golem_Rage", new FixedMetadataValue(RPGCore.getInstance(), 0)); // Reset nộ
-        } else {
-            victim.setMetadata("Golem_Rage", new FixedMetadataValue(RPGCore.getInstance(), currentRage));
+        // 3.3. TÍCH NỘ
+        int rageGain = 1;
+        if (attacker != null && attacker.hasMetadata("Taunted_By_Golem")) {
+            rageGain = 2;
         }
+        addRage(victim, rageGain);
     }
 
+    // ==========================================
+    // 4. CHẶN ĐÁNH THƯỜNG HOÀN TOÀN
+    // ==========================================
     @Override
     public double onAttack(Player owner, LivingEntity pet, LivingEntity target, double baseDamage) {
+        // Trả về 0 và không thực thi bất cứ logic hay âm thanh hất tung nào nữa
         return 0.0;
     }
 

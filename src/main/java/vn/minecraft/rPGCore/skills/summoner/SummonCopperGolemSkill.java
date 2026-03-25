@@ -10,6 +10,7 @@ import org.bukkit.Sound;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -51,6 +52,7 @@ public class SummonCopperGolemSkill implements ISkill {
 
     @Override
     public List<String> getDescription(int level) {
+        int maxTaunt = 3 + (int) (level * 0.5); // Hiển thị số lượng taunt
         return Arrays.asList(
                 "§7Lấy quặng đồng dưới lòng đất dung hợp",
                 "§7cùng ma thuật để tạo ra cỗ máy bảo vệ.",
@@ -58,14 +60,14 @@ public class SummonCopperGolemSkill implements ISkill {
                 "§8▪ §fHệ phái: §6Tiên Phong (Vanguard)",
                 "§8▪ §fThuộc tính: §aĐại Địa (Earth)",
                 "",
-                "§e[Cơ Chế Bức Tường]",
-                "§f- Máu: §aGia tăng theo Sát Thương Vũ Khí",
-                "§f- Đứng im: §7Bất động như một bức tượng",
-                "§f- Khiêu khích: §cThu hút quái, chịu 130% Sát thương",
-                "§f- Tích nộ: §6Chịu 60 lần trừ máu sẽ tự bật Khiên",
+                "§e[Cơ Chế Pháo Đài]",
+                "§f- Máu Base: §a1000 §f(+200/Lv + 2000% DMG Vũ Khí)",
+                "§f- Bất động: §7Đứng im tuyệt đối, cản mọi vật thể",
+                "§f- Khiêu khích: §cThu hút tối đa §e" + maxTaunt + " quái §f(Mỗi 2s)",
+                "§f- Tích nộ (Max 50): §6Tự động tăng, bật khiên phản 200% ST",
                 "",
                 "§c[!] Tái kích hoạt: §fGọi Golem về sát bên, tốn §b50% Mana§f,",
-                "§fhồi 20% HP và lập tức kích hoạt khiên Phản sát thương!"
+                "§fhồi 20% HP và lập tức khiêu khích + kích hoạt Khiên!"
         );
     }
 
@@ -74,16 +76,24 @@ public class SummonCopperGolemSkill implements ISkill {
         boolean isRecall = false;
         Entity existingGolem = null;
 
-        // 1. KIỂM TRA TỒN TẠI (TÁI KÍCH HOẠT)
+        // ==========================================
+        // 1. KIỂM TRA TỒN TẠI (AN TOÀN METADATA)
+        // ==========================================
         if (player.hasMetadata("Active_Copper_Golem")) {
-            String uuidStr = player.getMetadata("Active_Copper_Golem").get(0).asString();
-            existingGolem = Bukkit.getEntity(UUID.fromString(uuidStr));
-            if (existingGolem != null && existingGolem.isValid() && !existingGolem.isDead()) {
-                isRecall = true;
+            java.util.List<org.bukkit.metadata.MetadataValue> metaList = player.getMetadata("Active_Copper_Golem");
+            if (metaList != null && !metaList.isEmpty()) {
+                String uuidStr = metaList.get(0).asString();
+                try {
+                    existingGolem = Bukkit.getEntity(UUID.fromString(uuidStr));
+                    if (existingGolem != null && existingGolem.isValid() && !existingGolem.isDead()) {
+                        isRecall = true;
+                    }
+                } catch (IllegalArgumentException e) {
+                    // Bỏ qua nếu UUID không hợp lệ
+                }
             }
         }
 
-        // 2. TÍNH TOÁN MANA (Recall chỉ tốn 50%)
         double finalCost = isRecall ? (getManaCost(level) / 2.0) : getManaCost(level);
 
         if (rpgPlayer.getCurrentResource() < finalCost) {
@@ -104,7 +114,7 @@ public class SummonCopperGolemSkill implements ISkill {
         Location spawnLoc = player.getLocation().add(player.getLocation().getDirection().multiply(1.5)).add(0, 0.5, 0);
 
         // ==========================================
-        // 3A. NẾU LÀ GỌI VỀ
+        // 3A. NẾU LÀ GỌI VỀ (RECALL)
         // ==========================================
         if (isRecall) {
             rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - finalCost);
@@ -116,10 +126,24 @@ public class SummonCopperGolemSkill implements ISkill {
             double maxHp = le.getAttribute(Attribute.MAX_HEALTH).getValue();
             le.setHealth(Math.min(maxHp, le.getHealth() + (maxHp * 0.2)));
 
-            // Ép bật Khiên Phản Sát Thương ngay lập tức
+            // 1. Kích hoạt Khiên lập tức
             CopperGolemProfile.activateReflect(le);
 
-            player.sendMessage("§6§l[Đồng Nhân] §fĐã được gọi về, hồi §a20% HP §fvà bật §cPhản Sát Thương§f!");
+            // 2. Ép quét Taunt tức thời
+            le.getWorld().playSound(le.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 0.5f, 0.5f);
+            le.getWorld().spawnParticle(Particle.ANGRY_VILLAGER, le.getLocation().add(0, 2.5, 0), 5, 1, 0.5, 1, 0);
+            int count = 0;
+            int maxTaunt = 3 + (int) (level * 0.5);
+            for (Entity e : le.getNearbyEntities(12, 5, 12)) {
+                if (e instanceof Mob && e != player && !e.hasMetadata("Summoner_Pet")) {
+                    ((Mob) e).setTarget(le);
+                    e.setMetadata("Taunted_By_Golem", new FixedMetadataValue(plugin, le.getUniqueId().toString()));
+                    count++;
+                    if (count >= maxTaunt) break;
+                }
+            }
+
+            player.sendMessage("§6§l[Đồng Nhân] §fĐã gọi về, hồi §a20% HP §fvà bật §cPhản Sát Thương§f!");
             player.getWorld().playSound(spawnLoc, Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
             return true;
         }
@@ -139,10 +163,10 @@ public class SummonCopperGolemSkill implements ISkill {
                 golem.setOwnerUUID(player.getUniqueId());
                 Entity bukkitEntity = golem.getEntity().getBukkitEntity();
 
-                if (bukkitEntity instanceof org.bukkit.entity.LivingEntity) {
+                if (bukkitEntity instanceof LivingEntity) {
                     vn.minecraft.rPGCore.skills.summoner.pets.IPetProfile profile = vn.minecraft.rPGCore.skills.summoner.pets.SummonPetManager.getProfile("CopperGolem");
                     if (profile != null) {
-                        profile.onSpawn(player, (org.bukkit.entity.LivingEntity) bukkitEntity, level);
+                        profile.onSpawn(player, (LivingEntity) bukkitEntity, level);
                     }
                 }
 
@@ -155,7 +179,6 @@ public class SummonCopperGolemSkill implements ISkill {
                 bukkitEntity.setMetadata("Pet_Type", new FixedMetadataValue(plugin, "CopperGolem"));
                 bukkitEntity.setMetadata("Summon_Level", new FixedMetadataValue(plugin, level));
 
-                // Lưu ID để làm Tái kích hoạt
                 player.setMetadata("Active_Copper_Golem", new FixedMetadataValue(plugin, bukkitEntity.getUniqueId().toString()));
 
                 if (rpgPlayer.getCurrentClass() instanceof vn.minecraft.rPGCore.classes.impl.SummonerClass) {
