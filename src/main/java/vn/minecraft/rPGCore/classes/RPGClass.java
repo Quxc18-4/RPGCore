@@ -144,4 +144,25 @@ public abstract class RPGClass {
     public boolean performMeleeAttack(Player attacker, RPGPlayer rpgAttacker, LivingEntity target, ItemStack weapon) {
         return true; // Mặc định các hệ phái đều được đánh cận chiến
     }
+
+    // ==========================================
+    // CÁC HÀM HOOK DÀNH CHO COMBAT MANAGER ĐIỀU PHỐI
+    // ==========================================
+
+    /**
+     * Hook 1: Báo cáo đòn tấn công đã trúng đích (Dùng để tích nội tại như Sát Ý, Stack đòn đánh...)
+     */
+    public void onAttackLanded(Player attacker, LivingEntity target) { }
+
+    /**
+     * Hook 2: Sửa đổi chỉ số linh hoạt ngay trước khi nổ sát thương (Dành cho Đâm lén, Tàng hình...)
+     */
+    public void applyDynamicCombatStats(Player attacker, LivingEntity target, java.util.Map<String, Double> combatStats) { }
+
+    /**
+     * Hook 3: Trả về lượng % Hút máu cộng thêm linh hoạt (Dành cho các chiêu buff tạm thời như Khát Máu)
+     */
+    public double getDynamicLifeSteal(Player attacker, RPGPlayer rpgPlayer) {
+        return 0.0;
+    }
 }

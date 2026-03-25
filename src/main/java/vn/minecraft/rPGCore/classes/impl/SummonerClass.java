@@ -312,7 +312,23 @@ public class SummonerClass extends RPGClass {
 
     @Override
     public double onMeleeHit(Player attacker, RPGPlayer rpgPlayer, LivingEntity target, double baseMultiplier) {
-        return baseMultiplier * 0.45;
+        // 1. Mặc định Summoner bị giảm sát thương cận chiến chỉ còn 45%
+        double finalMultiplier = baseMultiplier * 0.45;
+
+        // 2. Đọc Buff sát thương từ Quả Cầu Cộng Hưởng
+        if (attacker.hasMetadata("Resonance_Stats")) {
+            Object val = attacker.getMetadata("Resonance_Stats").get(0).value();
+            if (val instanceof java.util.Map) {
+                @SuppressWarnings("unchecked")
+                java.util.Map<String, Double> buffs = (java.util.Map<String, Double>) val;
+
+                // [Hệ Attacker]: Tăng % Sát thương gây ra
+                // Ví dụ: Đang là 0.45, cộng thêm 0.10 từ buff sẽ thành 0.55
+                finalMultiplier += buffs.getOrDefault("DamageMultiplier", 0.0);
+            }
+        }
+
+        return finalMultiplier;
     }
 
     @Override
@@ -412,4 +428,64 @@ public class SummonerClass extends RPGClass {
 
     @Override
     public void onProjectileHit(Player shooter, RPGPlayer rpgPlayer, org.bukkit.entity.Projectile projectile, org.bukkit.event.entity.ProjectileHitEvent event) { }
+
+    // ==========================================
+    // HOOK 1: HIỆU ỨNG TRÚNG ĐÍCH TỪ CỘNG HƯỞNG (RESONANCE)
+    // ==========================================
+    @Override
+    public void onAttackLanded(Player attacker, LivingEntity target) {
+        // Kiểm tra xem Triệu hồi sư có đang cầm bùa lợi Cộng hưởng không
+        if (attacker.hasMetadata("Resonance_Stats")) {
+            Object val = attacker.getMetadata("Resonance_Stats").get(0).value();
+            if (val instanceof java.util.Map) {
+                @SuppressWarnings("unchecked")
+                java.util.Map<String, Double> buffs = (java.util.Map<String, Double>) val;
+
+                // [Hệ Ánh Sáng]: Hồi máu chuẩn trên mỗi đòn đánh trúng
+                double heal = buffs.getOrDefault("HealOnHit", 0.0);
+                if (heal > 0) {
+                    double maxHp = attacker.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue();
+                    attacker.setHealth(Math.min(maxHp, attacker.getHealth() + heal));
+                    attacker.getWorld().spawnParticle(org.bukkit.Particle.HEART, attacker.getLocation().add(0, 2, 0), 1, 0.3, 0.3, 0.3, 0);
+                }
+
+                // [Hệ Lửa]: Xác suất thiêu đốt mục tiêu
+                double burnChance = buffs.getOrDefault("BurnChance", 0.0) * 100.0;
+                if (burnChance > 0 && (Math.random() * 100) <= burnChance) {
+                    target.setFireTicks(60); // Đốt 3 giây
+                }
+
+                // [Hệ Băng]: Xác suất làm chậm mục tiêu
+                double slowChance = buffs.getOrDefault("SlowChance", 0.0) * 100.0;
+                if (slowChance > 0 && (Math.random() * 100) <= slowChance) {
+                    vn.minecraft.rPGCore.managers.StatusEffectManager.applyEffect(target, org.bukkit.potion.PotionEffectType.SLOWNESS, 40, 1);
+                }
+            }
+        }
+    }
+
+    // ==========================================
+    // HOOK 2: CỘNG XUYÊN GIÁP / XUYÊN PHÉP TỪ CỘNG HƯỞNG
+    // ==========================================
+    @Override
+    public void applyDynamicCombatStats(Player attacker, LivingEntity target, java.util.Map<String, Double> combatStats) {
+        if (attacker.hasMetadata("Resonance_Stats")) {
+            Object val = attacker.getMetadata("Resonance_Stats").get(0).value();
+            if (val instanceof java.util.Map) {
+                @SuppressWarnings("unchecked")
+                java.util.Map<String, Double> buffs = (java.util.Map<String, Double>) val;
+
+                // [Hệ Tinh Linh / Pháp Sư]: Đọc chỉ số xuyên thấu
+                double extraArmorPen = buffs.getOrDefault("ArmorPen", 0.0) * 100.0;
+                double extraMagicPen = buffs.getOrDefault("MagicPen", 0.0) * 100.0;
+
+                if (extraArmorPen > 0) {
+                    combatStats.put("Tỉ lệ xuyên giáp", combatStats.getOrDefault("Tỉ lệ xuyên giáp", 0.0) + extraArmorPen);
+                }
+                if (extraMagicPen > 0) {
+                    combatStats.put("Tỉ lệ xuyên kháng phép", combatStats.getOrDefault("Tỉ lệ xuyên kháng phép", 0.0) + extraMagicPen);
+                }
+            }
+        }
+    }
 }
