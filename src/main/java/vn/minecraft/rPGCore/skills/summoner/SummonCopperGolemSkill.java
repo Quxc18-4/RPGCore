@@ -52,7 +52,9 @@ public class SummonCopperGolemSkill implements ISkill {
 
     @Override
     public List<String> getDescription(int level) {
-        int maxTaunt = 3 + (int) (level * 0.5); // Hiển thị số lượng taunt
+        int maxTaunt = 3 + (int) (level * 0.5);
+        int reflectPercent = 100 + (level * 10); // Cấp 1: 110% -> Cấp 10: 200%
+
         return Arrays.asList(
                 "§7Lấy quặng đồng dưới lòng đất dung hợp",
                 "§7cùng ma thuật để tạo ra cỗ máy bảo vệ.",
@@ -60,13 +62,13 @@ public class SummonCopperGolemSkill implements ISkill {
                 "§8▪ §fHệ phái: §6Tiên Phong (Vanguard)",
                 "§8▪ §fThuộc tính: §aĐại Địa (Earth)",
                 "",
-                "§e[Cơ Chế Pháo Đài]",
-                "§f- Máu Base: §a1000 §f(+200/Lv + 2000% DMG Vũ Khí)",
-                "§f- Bất động: §7Đứng im tuyệt đối, cản mọi vật thể",
+                "§e[Nội tại: Pháo Đài kiên cố]",
+                "§f- Máu cơ bản: §a2000 §f(+300/Lv + §e40 HP / 1 ST Vũ Khí§f)",
                 "§f- Khiêu khích: §cThu hút tối đa §e" + maxTaunt + " quái §f(Mỗi 2s)",
-                "§f- Tích nộ (Max 50): §6Tự động tăng, bật khiên phản 200% ST",
+                "§f- Phản đòn: §6Tự động phản §c10% §6sát thương nhận vào",
+                "§f- Tích nộ (Max 50): §6Bật khiên giảm §b95% ST§6, phản §c" + reflectPercent + "% ST",
                 "",
-                "§c[!] Tái kích hoạt: §fGọi Golem về sát bên, tốn §b50% Mana§f,",
+                "§c[!] Tái kích hoạt: §fGọi Golem về sát bên (tốn §b50% Mana§f),",
                 "§fhồi 20% HP và lập tức khiêu khích + kích hoạt Khiên!"
         );
     }
@@ -77,7 +79,7 @@ public class SummonCopperGolemSkill implements ISkill {
         Entity existingGolem = null;
 
         // ==========================================
-        // 1. KIỂM TRA TỒN TẠI (AN TOÀN METADATA)
+        // 1. KIỂM TRA TỒN TẠI (AN TOÀN METADATA TỐI ĐA)
         // ==========================================
         if (player.hasMetadata("Active_Copper_Golem")) {
             java.util.List<org.bukkit.metadata.MetadataValue> metaList = player.getMetadata("Active_Copper_Golem");
@@ -89,7 +91,7 @@ public class SummonCopperGolemSkill implements ISkill {
                         isRecall = true;
                     }
                 } catch (IllegalArgumentException e) {
-                    // Bỏ qua nếu UUID không hợp lệ
+                    // Bỏ qua nếu UUID lỗi
                 }
             }
         }
@@ -126,10 +128,8 @@ public class SummonCopperGolemSkill implements ISkill {
             double maxHp = le.getAttribute(Attribute.MAX_HEALTH).getValue();
             le.setHealth(Math.min(maxHp, le.getHealth() + (maxHp * 0.2)));
 
-            // 1. Kích hoạt Khiên lập tức
             CopperGolemProfile.activateReflect(le);
 
-            // 2. Ép quét Taunt tức thời
             le.getWorld().playSound(le.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 0.5f, 0.5f);
             le.getWorld().spawnParticle(Particle.ANGRY_VILLAGER, le.getLocation().add(0, 2.5, 0), 5, 1, 0.5, 1, 0);
             int count = 0;
@@ -143,7 +143,7 @@ public class SummonCopperGolemSkill implements ISkill {
                 }
             }
 
-            player.sendMessage("§6§l[Đồng Nhân] §fĐã gọi về, hồi §a20% HP §fvà bật §cPhản Sát Thương§f!");
+            player.sendMessage("§6§l[Golem Đồng] §fĐã gọi về, hồi §a20% HP §fvà bật §cPhản Sát Thương§f!");
             player.getWorld().playSound(spawnLoc, Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
             return true;
         }

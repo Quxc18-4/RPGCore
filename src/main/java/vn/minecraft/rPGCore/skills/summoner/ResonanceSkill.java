@@ -381,13 +381,39 @@ public class ResonanceSkill implements ISkill {
             }
         }
 
+        // ==========================================
+        // [MỚI]: CƠ CHẾ KHIÊN ẢO HÓA (VISUAL SHIELD)
+        // ==========================================
         if (totalEarthShield > 0) {
-            player.setAbsorptionAmount(totalEarthShield);
+            // 1. Lưu lượng khiên thật vào dữ liệu ngầm
+            player.setMetadata("Custom_Earth_Shield", new FixedMetadataValue(plugin, totalEarthShield));
+            player.setMetadata("Custom_Earth_Shield_Max", new FixedMetadataValue(plugin, totalEarthShield));
+
+            // 2. Ép hiển thị đúng 1 dòng (20 điểm = 10 tim vàng)
+            player.setAbsorptionAmount(20.0);
         } else {
+            player.removeMetadata("Custom_Earth_Shield", plugin);
+            player.removeMetadata("Custom_Earth_Shield_Max", plugin);
             player.setAbsorptionAmount(0);
         }
 
         player.setMetadata("Resonance_Stats", new FixedMetadataValue(plugin, finalBuffs));
+
+        // ==========================================
+        // [MỚI]: IN BẢNG DEBUG CHO DỄ THEO DÕI
+        // ==========================================
+        player.sendMessage(" ");
+        player.sendMessage("§d§l[CỘNG HƯỞNG] §fCác trạng thái bạn vừa hấp thụ: ");
+        if (totalEarthShield > 0) {
+            player.sendMessage("§f- §aKhiên Ảo (Thổ): §e+" + String.format("%.1f", totalEarthShield) + " Máu");
+        }
+        if (finalBuffs.containsKey("DamageReduction")) {
+            player.sendMessage("§f- §6Giảm Sát Thương (Tiên Phong): §c-" + (finalBuffs.get("DamageReduction") * 100) + "%");
+        }
+        if (finalBuffs.containsKey("DamageMultiplier")) {
+            player.sendMessage("§f- §cTăng Sát Thương (Chiến Đấu): §c+" + (finalBuffs.get("DamageMultiplier") * 100) + "%");
+        }
+        player.sendMessage(" ");
 
         if (player.hasMetadata("Resonance_Task")) {
             java.util.List<org.bukkit.metadata.MetadataValue> taskMeta = player.getMetadata("Resonance_Task");
@@ -404,6 +430,13 @@ public class ResonanceSkill implements ISkill {
             public void run() {
                 if (player.isOnline()) {
                     player.removeMetadata("Resonance_Stats", plugin);
+
+                    // ==========================================
+                    // [THÊM 2 DÒNG NÀY VÀO]: Xóa khiên ngầm khi hết giờ
+                    // ==========================================
+                    player.removeMetadata("Custom_Earth_Shield", plugin);
+                    player.removeMetadata("Custom_Earth_Shield_Max", plugin);
+
                     playerStacks.remove(player.getUniqueId());
                     player.setAbsorptionAmount(0);
                     player.sendMessage("§7§o(Trạng thái Cộng hưởng đã phai nhạt...)");
