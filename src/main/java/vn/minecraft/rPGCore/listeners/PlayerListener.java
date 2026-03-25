@@ -253,6 +253,9 @@ public class PlayerListener implements Listener {
                     event.setDamage(finalDamage);
                     CombatManager.applyLifeSteal(attacker, rpgAttacker, finalDamage, 0.0, isMagicWeapon);
                     DurabilityManager.damageItem(attacker, rpgAttacker, mainItem, 1);
+
+                    // [CHUẨN SOLID]: BÁO CÁO ĐÒN ĐÁNH TAY TRÚNG ĐÍCH CHO CLASS XỬ LÝ
+                    rpgAttacker.getCurrentClass().onAttackLanded(attacker, target);
                 }
             }
         }

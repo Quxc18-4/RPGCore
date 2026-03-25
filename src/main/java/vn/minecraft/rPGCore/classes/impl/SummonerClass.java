@@ -488,4 +488,26 @@ public class SummonerClass extends RPGClass {
             }
         }
     }
+
+    // ==========================================
+    // HOOK 4: TRUYỀN CHỈ SỐ CỘNG HƯỞNG CHO ĐỆ TỬ
+    // ==========================================
+    @Override
+    public void applyPetDynamicStats(Player owner, RPGPlayer rpgOwner, Entity pet, Map<String, Double> petStats) {
+        if (owner.hasMetadata("Resonance_Stats")) {
+            Object val = owner.getMetadata("Resonance_Stats").get(0).value();
+            if (val instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Double> buffs = (Map<String, Double>) val;
+
+                // Chuyển đổi buff Cộng hưởng thành chỉ số của Đệ tử
+                petStats.put("DamageMultiplier", buffs.getOrDefault("DamageMultiplier", 0.0));
+                petStats.put("ArmorPen", buffs.getOrDefault("ArmorPen", 0.0) * 100.0);
+                petStats.put("Lifesteal", buffs.getOrDefault("Lifesteal", 0.0) * 100.0);
+                petStats.put("HealOnHit", buffs.getOrDefault("HealOnHit", 0.0));
+                petStats.put("BurnChance", buffs.getOrDefault("BurnChance", 0.0) * 100.0);
+                petStats.put("SlowChance", buffs.getOrDefault("SlowChance", 0.0) * 100.0);
+            }
+        }
+    }
 }

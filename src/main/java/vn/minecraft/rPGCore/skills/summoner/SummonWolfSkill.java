@@ -91,7 +91,7 @@ public class SummonWolfSkill implements ISkill {
                 "§f- Sát thương: §c" + flatDamage + " §f(+§e" + scalePercent + "% Sát thương vũ khí§f)",
                 "",
                 "§d[Hiệu ứng Hấp thụ]",
-                "§f- §c+5% §fSát thương toàn phần",
+                "§f- §c+10% §fSát thương toàn phần",
                 "§f- §b+5% §fXuyên giáp toàn phần"
         );
     }

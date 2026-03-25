@@ -24,13 +24,6 @@ public class CombatManager {
 
     public static double calculateDamage(Player attacker, RPGPlayer rpgPlayer, LivingEntity target, double dmgMultiplier, double extraArmorPen, double extraCritRate, double extraCritDamage, boolean isMagic, boolean isCrossbow) {
 
-        // ==========================================
-        // 1. [CHUẨN SOLID]: BÁO CÁO ĐÒN ĐÁNH TRÚNG ĐÍCH CHO CLASS XỬ LÝ
-        // ==========================================
-        if (rpgPlayer.getCurrentClass() != null) {
-            rpgPlayer.getCurrentClass().onAttackLanded(attacker, target);
-        }
-
         Map<String, Double> combatStats = new java.util.HashMap<>(rpgPlayer.getTotalStatsMap());
 
         // Đưa các chỉ số bổ sung cơ bản từ Kỹ năng vào Map
@@ -273,30 +266,19 @@ public class CombatManager {
         petCount = Math.max(1, petCount);
 
         // ==========================================
-        // [MỚI] 4.5. ĐỌC BUFF DUNG HỢP (RESONANCE)
+        // [CHUẨN SOLID] 4.5. LẤY CHỈ SỐ ĐỘNG CHO ĐỆ TỬ TỪ CLASS
         // ==========================================
-        double resonanceDmgBonus = 0.0;
-        double resonancePen = 0.0;
-        double resonanceLifesteal = 0.0;
-        double resonanceHealOnHit = 0.0;
-        double resonanceBurnChance = 0.0;
-        double resonanceSlowChance = 0.0;
-
-        if (owner.hasMetadata("Resonance_Stats")) {
-            Object val = owner.getMetadata("Resonance_Stats").get(0).value();
-            if (val instanceof Map) {
-                @SuppressWarnings("unchecked")
-                Map<String, Double> resonanceBuffs = (Map<String, Double>) val;
-
-                resonanceDmgBonus = resonanceBuffs.getOrDefault("DamageMultiplier", 0.0);
-                // Nhân 100 vì trong Buff lưu dạng 0.05, nhưng code gốc của bạn dùng dạng % (5.0)
-                resonancePen = resonanceBuffs.getOrDefault("ArmorPen", 0.0) * 100.0;
-                resonanceLifesteal = resonanceBuffs.getOrDefault("Lifesteal", 0.0) * 100.0;
-                resonanceHealOnHit = resonanceBuffs.getOrDefault("HealOnHit", 0.0);
-                resonanceBurnChance = resonanceBuffs.getOrDefault("BurnChance", 0.0) * 100.0;
-                resonanceSlowChance = resonanceBuffs.getOrDefault("SlowChance", 0.0) * 100.0;
-            }
+        Map<String, Double> petDynamicStats = new java.util.HashMap<>();
+        if (rpgOwner.getCurrentClass() != null) {
+            rpgOwner.getCurrentClass().applyPetDynamicStats(owner, rpgOwner, pet, petDynamicStats);
         }
+
+        double resonanceDmgBonus = petDynamicStats.getOrDefault("DamageMultiplier", 0.0);
+        double resonancePen = petDynamicStats.getOrDefault("ArmorPen", 0.0);
+        double resonanceLifesteal = petDynamicStats.getOrDefault("Lifesteal", 0.0);
+        double resonanceHealOnHit = petDynamicStats.getOrDefault("HealOnHit", 0.0);
+        double resonanceBurnChance = petDynamicStats.getOrDefault("BurnChance", 0.0);
+        double resonanceSlowChance = petDynamicStats.getOrDefault("SlowChance", 0.0);
 
         double petArmorPen = 0.0;
         double petMagicPen = 0.0;

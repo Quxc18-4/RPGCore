@@ -162,6 +162,10 @@ public class PoisonDartSkill implements ISkill, Listener {
             public void run() { if (dart.isValid()) dart.remove(); }
         }.runTaskLater(plugin, 60L);
 
+        if (rpgPlayer.getCurrentClass() instanceof vn.minecraft.rPGCore.classes.impl.AssassinClass) {
+            ((vn.minecraft.rPGCore.classes.impl.AssassinClass) rpgPlayer.getCurrentClass()).addSkillStack(player);
+        }
+
         return true;
     }
 

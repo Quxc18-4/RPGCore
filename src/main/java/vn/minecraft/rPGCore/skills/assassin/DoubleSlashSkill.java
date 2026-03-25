@@ -103,6 +103,10 @@ public class DoubleSlashSkill implements ISkill {
             public void run() { performSlash(player, rpgPlayer, level, true, finalFbLevel); }
         }.runTaskLater(plugin, 4L);
 
+        if (rpgPlayer.getCurrentClass() instanceof vn.minecraft.rPGCore.classes.impl.AssassinClass) {
+            ((vn.minecraft.rPGCore.classes.impl.AssassinClass) rpgPlayer.getCurrentClass()).addSkillStack(player);
+        }
+
         return true;
     }
 

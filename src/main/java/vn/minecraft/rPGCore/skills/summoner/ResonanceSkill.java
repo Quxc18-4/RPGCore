@@ -384,13 +384,17 @@ public class ResonanceSkill implements ISkill {
         // ==========================================
         // [MỚI]: CƠ CHẾ KHIÊN ẢO HÓA (VISUAL SHIELD)
         // ==========================================
+        // ==========================================
+        // [MỚI]: CƠ CHẾ KHIÊN ẢO HÓA (VISUAL SHIELD)
+        // ==========================================
         if (totalEarthShield > 0) {
-            // 1. Lưu lượng khiên thật vào dữ liệu ngầm
             player.setMetadata("Custom_Earth_Shield", new FixedMetadataValue(plugin, totalEarthShield));
             player.setMetadata("Custom_Earth_Shield_Max", new FixedMetadataValue(plugin, totalEarthShield));
 
-            // 2. Ép hiển thị đúng 1 dòng (20 điểm = 10 tim vàng)
             player.setAbsorptionAmount(20.0);
+
+            // [FIX BUG VISUAL]: Ép Vanilla Minecraft render tim vàng ra màn hình!
+            player.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.ABSORPTION, durationSeconds * 20, 4, false, false, false));
         } else {
             player.removeMetadata("Custom_Earth_Shield", plugin);
             player.removeMetadata("Custom_Earth_Shield_Max", plugin);

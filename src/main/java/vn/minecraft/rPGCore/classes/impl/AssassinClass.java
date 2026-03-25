@@ -141,4 +141,32 @@ public class AssassinClass extends RPGClass {
         }
         return 0.0;
     }
+
+    // Thêm hàm này để các Kỹ năng tự gọi khi cast thành công
+    public void addSkillStack(Player attacker) {
+        if (attacker.hasMetadata("Assassin_KillingIntent_Active")) {
+            long expire = attacker.getMetadata("Assassin_KillingIntent_Active").get(0).asLong();
+            if (System.currentTimeMillis() <= expire) {
+                int subStacks = attacker.hasMetadata("Assassin_KillingIntent_SubStacks") ? attacker.getMetadata("Assassin_KillingIntent_SubStacks").get(0).asInt() : 0;
+
+                // 1 Kỹ năng = 1 Stack = 3 SubStacks
+                subStacks += 3;
+                if (subStacks > 30) subStacks = 30;
+
+                attacker.setMetadata("Assassin_KillingIntent_SubStacks", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), subStacks));
+
+                int realStacks = subStacks / 3;
+                attacker.playSound(attacker.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.6f, 1.0f + (realStacks * 0.1f));
+
+                if (subStacks < 30) {
+                    attacker.setMetadata("Assassin_KillingIntent_Active", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), System.currentTimeMillis() + 7000));
+                } else {
+                    int kiLevel = attacker.hasMetadata("Assassin_KillingIntent_Level") ? attacker.getMetadata("Assassin_KillingIntent_Level").get(0).asInt() : 1;
+                    long maxDur = (10 + kiLevel) * 1000L;
+                    attacker.setMetadata("Assassin_KillingIntent_Active", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), System.currentTimeMillis() + maxDur));
+                    attacker.sendMessage("§4§l[!] TỤ SÁT Ý TỐI ĐA! (Cuồng nộ trong " + (10+kiLevel) + "s)");
+                }
+            }
+        }
+    }
 }

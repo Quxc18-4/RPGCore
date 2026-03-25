@@ -82,7 +82,7 @@ public class CopperGolemProfile implements IPetProfile, Listener {
             Map<String, Double> stats = rpgOwner.getTotalStatsMap();
             double min = stats.getOrDefault("Sát thương phép thuật (Nhỏ nhất)", stats.getOrDefault("Sát thương vật lý (Nhỏ nhất)", 5.0));
             double max = stats.getOrDefault("Sát thương phép thuật (Lớn nhất)", stats.getOrDefault("Sát thương vật lý (Lớn nhất)", 10.0));
-            weaponDmgBonus = ((min + max) / 2.0) * 40.0;
+            weaponDmgBonus = ((min + max) / 2.0) * 15.0;
         }
 
         double maxHp = 2000 + (level * 300) + weaponDmgBonus;

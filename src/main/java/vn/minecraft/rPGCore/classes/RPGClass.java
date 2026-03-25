@@ -165,4 +165,9 @@ public abstract class RPGClass {
     public double getDynamicLifeSteal(Player attacker, RPGPlayer rpgPlayer) {
         return 0.0;
     }
+
+    /**
+     * Hook 4: Truyền chỉ số động cho Đệ tử (Dành cho Summoner)
+     */
+    public void applyPetDynamicStats(Player owner, RPGPlayer rpgOwner, org.bukkit.entity.Entity pet, java.util.Map<String, Double> petStats) { }
 }

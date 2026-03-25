@@ -63,7 +63,7 @@ public class SummonCopperGolemSkill implements ISkill {
                 "§8▪ §fThuộc tính: §aĐại Địa (Earth)",
                 "",
                 "§e[Nội tại: Pháo Đài kiên cố]",
-                "§f- Máu cơ bản: §a2000 §f(+300/Lv + §e40 HP / 1 ST Vũ Khí§f)",
+                "§f- Máu cơ bản: §a2000 §f(+300/Lv + §e15 HP / 1 ST Vũ Khí§f)",
                 "§f- Khiêu khích: §cThu hút tối đa §e" + maxTaunt + " quái §f(Mỗi 2s)",
                 "§f- Phản đòn: §6Tự động phản §c10% §6sát thương nhận vào",
                 "§f- Tích nộ (Max 50): §6Bật khiên giảm §b95% ST§6, phản §c" + reflectPercent + "% ST",

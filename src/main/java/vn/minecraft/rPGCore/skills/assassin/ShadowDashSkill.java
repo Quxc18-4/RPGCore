@@ -161,6 +161,10 @@ public class ShadowDashSkill implements ISkill {
 
         performDash(player, rpgPlayer, level, 1, fbLevel);
 
+        if (rpgPlayer.getCurrentClass() instanceof vn.minecraft.rPGCore.classes.impl.AssassinClass) {
+            ((vn.minecraft.rPGCore.classes.impl.AssassinClass) rpgPlayer.getCurrentClass()).addSkillStack(player);
+        }
+
         return true;
     }
 

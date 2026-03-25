@@ -153,6 +153,10 @@ public class SmokeBombSkill implements ISkill {
             activeTasks.put(player.getUniqueId(), stealthTask);
         }
 
+        if (rpgPlayer.getCurrentClass() instanceof vn.minecraft.rPGCore.classes.impl.AssassinClass) {
+            ((vn.minecraft.rPGCore.classes.impl.AssassinClass) rpgPlayer.getCurrentClass()).addSkillStack(player);
+        }
+
         return true;
     }
 

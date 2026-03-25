@@ -156,6 +156,11 @@ public class ShadowDecoySkill implements ISkill {
         spawnAndHandleDecoy(player, rpgPlayer, level, decoyLoc, fbLevel, forwardDir);
 
         player.sendMessage("§8§l[!] THẾ THÂN BÓNG TỐI!");
+
+        if (rpgPlayer.getCurrentClass() instanceof vn.minecraft.rPGCore.classes.impl.AssassinClass) {
+            ((vn.minecraft.rPGCore.classes.impl.AssassinClass) rpgPlayer.getCurrentClass()).addSkillStack(player);
+        }
+
         return true;
     }
 
