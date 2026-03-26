@@ -55,9 +55,10 @@ public class HeavyBlowShootSkill implements ISkill, Listener {
         return (long) (cd * 1000);
     }
 
-    private double getDirectDmg(int level) { return (level == 3) ? 22.0 : (level == 2) ? 18.0 : 15.0; }
-    private double getHitAoEMulti(int level) { return (level == 3) ? 6.0 : (level == 2) ? 4.8 : 4.0; }
-    private double getMissAoEMulti(int level) { return (level == 3) ? 6.5 : (level == 2) ? 5.0 : 4.0; }
+    // [CẬP NHẬT]: Nerf 40% sát thương
+    private double getDirectDmg(int level) { return (level == 3) ? 13.2 : (level == 2) ? 10.8 : 9.0; }
+    private double getHitAoEMulti(int level) { return (level == 3) ? 3.6 : (level == 2) ? 2.8 : 2.4; }
+    private double getMissAoEMulti(int level) { return (level == 3) ? 3.9 : (level == 2) ? 3.0 : 2.4; }
 
     @Override
     public List<String> getDescription(int level) {
@@ -113,7 +114,7 @@ public class HeavyBlowShootSkill implements ISkill, Listener {
         if (backward.lengthSquared() > 0) backward.normalize();
         else backward = new Vector(-1, 0, 0);
 
-        Vector jumpVector = backward.multiply(1.2).setY(1.25);
+        Vector jumpVector = backward.multiply(0.8).setY(0.9);
         player.setVelocity(jumpVector);
         player.getWorld().playSound(player.getLocation(), org.bukkit.Sound.ENTITY_WIND_CHARGE_WIND_BURST, 1.0f, 1.0f);
 

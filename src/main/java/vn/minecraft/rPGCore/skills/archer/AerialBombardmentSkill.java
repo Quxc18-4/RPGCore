@@ -54,12 +54,13 @@ public class AerialBombardmentSkill implements ISkill {
     public List<String> getDescription(int level) {
         return Arrays.asList(
                 "§6§l[TUYỆT KỸ TỐI THƯỢNG]",
-                "§7Mượn lực gió bay lên không trung, giương cung",
-                "§7Thiên Không và oanh tạc đạn nổ diện rộng.",
+                "§7Kỹ năng mang theo ý chí của Thần Gió.",
+                "§7Bay lên và gieo rắc sự hủy diệt bằng hoa pha lê.",
                 "",
-                "§f- Thời gian vận nộ/mũi: §e" + getCastTime(level) + "s",
-                "§f- Tổng số phát bắn: §a" + level + " phát",
-                "§f- Sát thương Pha lê (R=4): §c250% / phát"
+                "§f- Sát thương: §c600% §fST mỗi phát bắn",
+                "§f- Số đợt bắn: §a" + level + " đợt",
+                "§f- Hiệu ứng: §dCrystal Bloom §f(R=4.5)",
+                "§8(Kỹ năng có tỉ lệ scale sát thương cao nhất toàn phái)"
         );
     }
 
@@ -305,7 +306,7 @@ public class AerialBombardmentSkill implements ISkill {
                 // MỖI TICK VẼ 2 KHỐI CHÓP PHA LÊ (PYRAMIDS)
                 for (int i = 0; i < 2; i++) {
                     // 1. Chọn 1 điểm gốc ngẫu nhiên dưới mặt đất (Bán kính 3 block)
-                    double rBase = Math.random() * 3.0;
+                    double rBase = Math.random() * 6.0;
                     double tBase = Math.random() * 2 * Math.PI;
                     Location baseCenter = centerBase.clone().add(rBase * Math.cos(tBase), 0, rBase * Math.sin(tBase));
 
@@ -315,8 +316,8 @@ public class AerialBombardmentSkill implements ISkill {
                     Location apex = baseCenter.clone().add((Math.random() - 0.5) * 1.5, apexHeight, (Math.random() - 0.5) * 1.5);
 
                     // 3. Vẽ khối chóp tứ giác (Square Pyramid)
-                    int sides = 4;
-                    double crystalRadius = 0.3 + Math.random() * 0.4; // Độ dày đáy pha lê
+                    int sides = 6;
+                    double crystalRadius = 0.3 + Math.random() * 0.6; // Độ dày đáy pha lê
                     double angleOffset = Math.random() * Math.PI;
 
                     Particle.DustOptions faceColor = (Math.random() > 0.5) ? pinkDust : whitePinkDust;
@@ -346,7 +347,7 @@ public class AerialBombardmentSkill implements ISkill {
         }.runTaskTimer(plugin, 0L, 1L);
 
         // Logic Sát thương
-        for (org.bukkit.entity.Entity e : loc.getWorld().getNearbyEntities(loc, 4.0, 4.0, 4.0)) {
+        for (org.bukkit.entity.Entity e : loc.getWorld().getNearbyEntities(loc, 4.5, 4.5, 4.5)) {
             if (e instanceof LivingEntity && e != player && !e.hasMetadata("Summoner_Pet")) {
                 LivingEntity target = (LivingEntity) e;
                 boolean isCrossbow = player.getInventory().getItemInMainHand().getType() == Material.CROSSBOW;

@@ -29,7 +29,17 @@ public class PiercingBeamSkill implements ISkill {
     @Override public Material getIcon() { return Material.LIGHTNING_ROD; }
     @Override public int getMaxLevel() { return 10; }
     @Override public int getUpgradeCost(int currentLevel) { return 1; }
-    @Override public Map<String, Integer> getRequiredSkills() { return new HashMap<>(); }
+    // [CẬP NHẬT]: Yêu cầu cấp độ 32
+    @Override public int getRequiredPlayerLevel() { return 32; }
+
+    // [CẬP NHẬT]: Yêu cầu max level của 2 kỹ năng tiền đề
+    @Override
+    public Map<String, Integer> getRequiredSkills() {
+        Map<String, Integer> reqs = new HashMap<>();
+        reqs.put("archer_sniper_passive", 5);
+        reqs.put("archer_pierce_buff", 5);
+        return reqs;
+    }
 
     @Override public double getManaCost(int level) { return 50.0 + (level * 5.0); }
     @Override public long getCooldown(int level) { return 12000L - (level * 200L); }
@@ -37,15 +47,15 @@ public class PiercingBeamSkill implements ISkill {
     @Override
     public List<String> getDescription(int level) {
         double dmg = 120 + (level * 15);
-        int maxTargets = 5 + level; // [MỚI]: Tính giới hạn mục tiêu
+        int maxTargets = 5 + level;
         return Arrays.asList(
-                "§7Nén luồng gió thành một tia siêu âm bắn",
-                "§7xuyên thấu mọi vật thể trên đường thẳng.",
+                "§7Kết tinh của sự chuẩn xác và sức mạnh xuyên tâm.",
+                "§7Bắn ra một tia sóng siêu âm nén cực mạnh.",
                 "",
-                "§f- Sát thương: §c" + (int)dmg + "% §f(Không suy giảm)",
+                "§f- Sát thương: §c" + (int)dmg + "% §fST (Không bị giảm trừ)",
                 "§f- Tầm bắn: §a25 block",
-                "§f- Giới hạn xuyên thấu: §e" + maxTargets + " mục tiêu",
-                "§f- Hiệu ứng: Xuyên giáp 50%"
+                "§f- Xuyên thấu: §e" + maxTargets + " kẻ địch",
+                "§8(Bỏ qua hoàn toàn hiệu ứng giảm sát thương xuyên thấu)"
         );
     }
 

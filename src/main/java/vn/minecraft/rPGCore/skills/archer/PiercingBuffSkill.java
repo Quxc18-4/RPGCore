@@ -30,6 +30,8 @@ public class PiercingBuffSkill implements ISkill {
     @Override public Material getIcon() { return Material.FEATHER; }
     @Override public int getMaxLevel() { return 5; }
     @Override public int getUpgradeCost(int currentLevel) { return 1; }
+    // [CẬP NHẬT]: Yêu cầu cấp độ 22
+    @Override public int getRequiredPlayerLevel() { return 22; }
     @Override public Map<String, Integer> getRequiredSkills() { return new HashMap<>(); }
 
     @Override
@@ -45,14 +47,14 @@ public class PiercingBuffSkill implements ISkill {
     @Override
     public List<String> getDescription(int level) {
         int duration = 8 + (level * 2);
-
         return Arrays.asList(
-                "§7Yểm phép gió vào dây cung, biến mọi mũi tên",
-                "§7bắn ra có khả năng đâm xuyên hàng vạn quân thù.",
+                "§7Yểm linh khí gió vào mũi tên, giúp chúng",
+                "§7có khả năng xuyên thấu mọi mục tiêu.",
                 "",
-                "§f- Thời gian tác dụng: §a" + duration + " giây",
-                "§f- Sát thương giảm dần: §c-8% / mục tiêu xuyên qua",
-                "§8  (Luôn giữ lại ít nhất 30% sát thương gốc)"
+                "§f- Thời gian: §a" + duration + " giây",
+                "§f- Giảm ST: §c-8% §fST mỗi lần xuyên qua",
+                "§f- Tối thiểu: §eGiữ lại 30% ST gốc",
+                "§8(Hiệu quả với cả đòn bắn thường và kỹ năng)"
         );
     }
 

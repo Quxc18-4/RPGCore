@@ -25,6 +25,7 @@ public class SniperPassiveSkill implements ISkill {
     @Override public Material getIcon() { return Material.SPYGLASS; }
     @Override public int getMaxLevel() { return 5; } // Max level 5
     @Override public int getUpgradeCost(int currentLevel) { return 1; }
+    @Override public int getRequiredPlayerLevel() { return 18; }
     @Override public Map<String, Integer> getRequiredSkills() { return new HashMap<>(); }
 
     @Override public double getManaCost(int level) { return 0; }
@@ -33,12 +34,13 @@ public class SniperPassiveSkill implements ISkill {
     @Override
     public List<String> getDescription(int level) {
         return Arrays.asList(
-                "§7Kỹ năng bị động của Cung Thủ.",
-                "§7Càng giữ khoảng cách với mục tiêu,",
-                "§7sát thương mũi tên càng khủng khiếp.",
+                "§7Nhãn lực của một thợ săn bậc thầy.",
+                "§7Mũi tên bay càng xa, quán tính và độ chính xác",
+                "§7càng làm tăng sát thương lên mục tiêu.",
                 "",
-                "§f- Mỗi 1 block khoảng cách: §c+" + level + "% ST",
-                "§8  (Tối đa cộng dồn ở khoảng cách 25 block)"
+                "§f- Hiệu quả: §c+" + level + "% §fST mỗi 1 block khoảng cách",
+                "§f- Giới hạn: §7Tính toán tối đa 25 block",
+                "§8(Tăng tối đa §c+" + (level * 25) + "% §8ST ở tầm cực xa)"
         );
     }
 
