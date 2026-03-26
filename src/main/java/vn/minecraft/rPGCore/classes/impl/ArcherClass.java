@@ -353,8 +353,12 @@ public class ArcherClass extends RPGClass implements Listener {
                 if (!arrow.hasMetadata("Is_Piercing_Arrow") || arrow.getMetadata("Pierce_Hit_Count").get(0).asInt() == 1) {
                     DurabilityManager.damageItem(shooter, rpgShooter, weapon, durabilityLoss);
                 }
-
+                // ==========================================
+                // [FIX LỖI COMBO ẢO]: Bọc cờ Ghost_L_Blocker trước khi ép sát thương
+                // ==========================================
+                shooter.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(plugin, true));
                 CombatManager.applySkillDamage(shooter, target, finalDamage);
+                shooter.removeMetadata("Ghost_L_Blocker", plugin);
             }
         }
 

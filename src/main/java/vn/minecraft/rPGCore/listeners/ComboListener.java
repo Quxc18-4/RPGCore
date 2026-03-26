@@ -58,23 +58,17 @@ public class ComboListener implements Listener {
         if (event.getDamager() instanceof Player) {
             Player player = (Player) event.getDamager();
 
-            if (!(event.getDamager() instanceof org.bukkit.entity.Player)) {
-                return;
-            }
-
-            // [MỚI THÊM]: Khóa mõm L ma do Summoner Pet gây ra
+            // Khóa mõm L ma do CombatManager gây ra
             if (player.hasMetadata("Ghost_L_Blocker")) {
                 return;
             }
 
-            // [MỚI THÊM - CHẶN "L" MA CỦA SUMMONER]:
-            // Bỏ qua hoàn toàn nếu đây là đòn sát thương ảo do Pet hoặc Skill gây ra!
-            if (event.getEntity().hasMetadata("Skill_Damage_Lock")) {
+            // [ĐÃ SỬA LỖI TYPO]: Kiểm tra metadata trên 'player' thay vì 'event.getEntity()'
+            if (player.hasMetadata("Skill_Damage_Lock")) {
                 return;
             }
 
             // Nếu đang múa Combo mà lỡ tay chém trúng quái
-            // Đòn này đã bị chặn sát thương ở PlayerListener, nhưng ta vẫn phải thu thập chữ "L"
             if (player.hasMetadata("Is_Combo_Casting")) {
                 processComboInput(player, "L");
             }

@@ -179,7 +179,10 @@ public class HeavyBlowShootSkill implements ISkill, Listener {
             double extraArmorPen = 40.0; // Trọng Tiễn mặc định có 40% Xuyên giáp
 
             double finalDirectDmg = CombatManager.calculateDamage(shooter, rpgPlayer, target, directMulti, extraArmorPen, 0.0, 0.0, false, isCrossbow);
+            // [FIX LỖI COMBO ẢO] - Sát thương trực tiếp
+            shooter.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(plugin, true));
             CombatManager.applySkillDamage(shooter, target, finalDirectDmg);
+            shooter.removeMetadata("Ghost_L_Blocker", plugin);
 
             // Gây nổ AoE cho đám xung quanh
             double aoeMulti = getHitAoEMulti(level);
@@ -207,7 +210,10 @@ public class HeavyBlowShootSkill implements ISkill, Listener {
 
                 // Vụ nổ AoE cũng được nhận Chí Mạng, Xuyên Giáp từ Trang Bị
                 double finalDmg = CombatManager.calculateDamage(shooter, rpgPlayer, target, dmgMulti, 40.0, 0.0, 0.0, false, isCrossbow);
+                // [FIX LỖI COMBO ẢO] - Sát thương trực tiếp
+                shooter.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(plugin, true));
                 CombatManager.applySkillDamage(shooter, target, finalDmg);
+                shooter.removeMetadata("Ghost_L_Blocker", plugin);
             }
         }
     }

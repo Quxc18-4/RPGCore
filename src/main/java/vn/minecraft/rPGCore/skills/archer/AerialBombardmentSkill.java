@@ -16,6 +16,7 @@ import vn.minecraft.rPGCore.player.RPGPlayer;
 import vn.minecraft.rPGCore.skills.ISkill;
 import vn.minecraft.rPGCore.managers.CombatManager;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -58,7 +59,7 @@ public class AerialBombardmentSkill implements ISkill {
                 "",
                 "§f- Thời gian vận nộ/mũi: §e" + getCastTime(level) + "s",
                 "§f- Tổng số phát bắn: §a" + level + " phát",
-                "§f- Sát thương Sphere (R=4): §c250% / phát"
+                "§f- Sát thương Pha lê (R=4): §c250% / phát"
         );
     }
 
@@ -86,7 +87,6 @@ public class AerialBombardmentSkill implements ISkill {
         player.sendMessage("§d§l[!] TUYỆT KỸ: THIÊN KHÔNG CHI TIỄN!");
         player.setMetadata("Is_Casting", new FixedMetadataValue(plugin, true));
 
-        // Bypass Anti-cheat
         boolean wasAllowFlight = player.getAllowFlight();
         player.setAllowFlight(true);
 
@@ -140,37 +140,25 @@ public class AerialBombardmentSkill implements ISkill {
                     Particle.DustOptions magentaDust = new Particle.DustOptions(org.bukkit.Color.fromRGB(226, 43, 226), 1.0f);
 
                     // ==========================================
-                    // 1. CÁNH HÌNH THOI (SAU LƯNG) - TRẢ VỀ LOGIC CŨ MƯỢT MÀ
+                    // 1. CÁNH HÌNH THOI (SAU LƯNG - GIỮ NGUYÊN)
                     // ==========================================
-                    // Dịch chuyển mặt phẳng ra sau lưng cách 0.5 block
                     Location backCenter = eyeLoc.clone().subtract(dir.clone().multiply(0.5)).subtract(up.clone().multiply(0.2));
-
-                    double rectW = 0.5;
-                    double rectH = 0.8;
+                    double backRectW = 0.5;
+                    double backRectH = 0.8;
 
                     for (int dx : new int[]{-1, 1}) {
                         for (int dy : new int[]{-1, 1}) {
-                            Location corner = backCenter.clone().add(right.clone().multiply(dx * rectW)).add(up.clone().multiply(dy * rectH));
-
+                            Location corner = backCenter.clone().add(right.clone().multiply(dx * backRectW)).add(up.clone().multiply(dy * backRectH));
                             double scale = (dy == 1) ? 1.5 : 0.9;
                             double length = 2.5 * scale;
                             double maxWidth = 0.7 * scale;
 
-                            // Hướng ra ngoài 45 độ (Logic Cũ)
                             Vector outDir = right.clone().multiply(dx).add(up.clone().multiply(dy)).normalize();
-
-                            // Bẻ cong như cũ (-0.4) thay vì bẻ gãy (-0.75)
                             outDir = outDir.add(dir.clone().multiply(-0.4)).normalize();
                             Vector crossDir = outDir.clone().crossProduct(dir).normalize();
 
                             for (double t = 0; t <= length; t += 0.3) {
-                                double currentWidth;
-                                if (t < length * 0.25) {
-                                    currentWidth = maxWidth * (t / (length * 0.25));
-                                } else {
-                                    currentWidth = maxWidth * (1.0 - (t - length * 0.25) / (length * 0.75));
-                                }
-
+                                double currentWidth = (t < length * 0.25) ? maxWidth * (t / (length * 0.25)) : maxWidth * (1.0 - (t - length * 0.25) / (length * 0.75));
                                 for (double w = -currentWidth; w <= currentWidth; w += 0.2) {
                                     Location pLoc = corner.clone().add(outDir.clone().multiply(t)).add(crossDir.clone().multiply(w));
                                     Particle.DustOptions color = (Math.abs(w) >= currentWidth - 0.25) ? magentaDust : whiteDust;
@@ -181,11 +169,13 @@ public class AerialBombardmentSkill implements ISkill {
                     }
 
                     // ==========================================
-                    // 2. TƠ RUA BẺ CONG (TRƯỚC MẶT)
+                    // 2. TƠ RUA BẺ CONG (TRƯỚC MẶT - DỜI RA XA 0.5 BLOCK)
                     // ==========================================
                     Location frontCenter = eyeLoc.clone().add(dir.clone().multiply(2.0));
-                    double frontRectW = 0.65;
-                    double frontRectH = 0.75;
+
+                    // [ĐÃ SỬA] Cộng thêm 0.5 vào mỗi chiều để 4 góc mọc ra xa tâm ngắm hơn
+                    double frontRectW = 1.15;
+                    double frontRectH = 1.25;
 
                     for (int dx : new int[]{-1, 1}) {
                         for (int dy : new int[]{-1, 1}) {
@@ -278,7 +268,8 @@ public class AerialBombardmentSkill implements ISkill {
             public void run() {
                 if (!arrow.isValid() || arrow.isOnGround()) {
                     Location hitLoc = arrow.getLocation();
-                    createAerialSphere(player, hitLoc, dmgMulti);
+                    // GỌI HÀM NỞ HOA PHA LÊ MỚI
+                    createCrystalBloom(player, hitLoc, dmgMulti);
                     this.cancel();
                     return;
                 }
@@ -289,37 +280,74 @@ public class AerialBombardmentSkill implements ISkill {
         }.runTaskTimer(plugin, 0L, 1L);
     }
 
-    private void createAerialSphere(Player player, Location loc, double dmgMulti) {
+    // ==========================================
+    // TẠO HOA PHA LÊ (CRYSTAL BLOOM) THAY VÌ SPHERE
+    // ==========================================
+    private void createCrystalBloom(Player player, Location loc, double dmgMulti) {
         RPGPlayer rpgPlayer = RPGCore.getInstance().getPlayerManager().getRPGPlayer(player.getUniqueId());
 
         loc.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, loc, 1);
-        // [ĐÃ SỬA LỖI]: Bỏ hạt FLASH gây crash
         loc.getWorld().playSound(loc, Sound.ENTITY_GENERIC_EXPLODE, 1.5f, 0.8f);
+        // Tiếng pha lê leng keng cực kỳ sang trọng
+        loc.getWorld().playSound(loc, Sound.BLOCK_AMETHYST_BLOCK_CHIME, 2.0f, 0.5f);
+
+        // 1. Tạo 1 tâm và 12 điểm mốc mặt đồng hồ (Bán kính 1.5 block)
+        Location centerBase = loc.clone().subtract(0, 0.5, 0);
+        List<Location> clockPoints = new ArrayList<>();
+        double baseRadius = 1.5;
+
+        for (int i = 0; i < 12; i++) {
+            double angle = i * (Math.PI / 6); // Chia 360 độ cho 12
+            clockPoints.add(centerBase.clone().add(Math.cos(angle) * baseRadius, 0, Math.sin(angle) * baseRadius));
+        }
+        clockPoints.add(centerBase); // Nhét luôn cái tâm vào mốc để nối
+
+        Particle.DustOptions pinkDust = new Particle.DustOptions(org.bukkit.Color.fromRGB(255, 182, 193), 1.5f);
+        Particle.DustOptions magentaDust = new Particle.DustOptions(org.bukkit.Color.fromRGB(226, 43, 226), 1.2f);
 
         new BukkitRunnable() {
             int ticks = 0;
             @Override
             public void run() {
-                if (ticks >= 20) { this.cancel(); return; }
+                if (ticks >= 15) { this.cancel(); return; } // Nở liên tục trong 15 ticks (0.75s)
 
-                double radius = 4.0;
-                for (int i = 0; i < 30; i++) {
-                    Vector p = new Vector(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiply(radius);
-                    Particle.DustOptions color = (Math.random() > 0.5) ? new Particle.DustOptions(org.bukkit.Color.fromRGB(226, 43, 226), 1.5f) : new Particle.DustOptions(org.bukkit.Color.fromRGB(255, 182, 193), 1.5f);
-                    loc.getWorld().spawnParticle(Particle.DUST, loc.clone().add(p), 1, 0, 0, 0, 0, color);
+                // Vẽ tâm gốc lan tỏa ra 12 nhánh mốc
+                if (ticks == 0) {
+                    for (Location basePoint : clockPoints) {
+                        drawParticleLine(centerBase, basePoint, magentaDust, loc.getWorld());
+                    }
                 }
 
-                if (ticks % 5 == 0) {
-                    loc.getWorld().spawnParticle(Particle.SWEEP_ATTACK, loc, 1, 1.5, 1.5, 1.5, 0);
+                // Mỗi tick nối 4 nhánh từ mốc đồng hồ lên các điểm ngẫu nhiên trên không trung
+                for (int i = 0; i < 4; i++) {
+                    // Chọn ngẫu nhiên 1 trong 13 điểm mốc dưới đất
+                    Location startPoint = clockPoints.get((int) (Math.random() * clockPoints.size()));
+
+                    // Chọn ngẫu nhiên 1 điểm trong nửa trên khối cầu (R=4)
+                    double r = 1.5 + Math.random() * 2.5; // Đâm cao từ 1.5 đến 4 block
+                    double theta = Math.random() * 2 * Math.PI;
+                    double phi = Math.random() * (Math.PI / 2); // Chỉ lấy nửa góc trên (0 đến 90 độ)
+
+                    double x = r * Math.sin(phi) * Math.cos(theta);
+                    double y = r * Math.cos(phi); // y luôn dương đâm lên trời
+                    double z = r * Math.sin(phi) * Math.sin(theta);
+                    Location endPoint = loc.clone().add(x, y, z);
+
+                    // Nối điểm mốc với điểm ngẫu nhiên tạo thành nhánh pha lê đâm tủa
+                    drawParticleLine(startPoint, endPoint, (Math.random() > 0.5) ? pinkDust : magentaDust, loc.getWorld());
+                }
+
+                if (ticks % 3 == 0) {
+                    loc.getWorld().spawnParticle(Particle.FIREWORK, loc, 10, 2.0, 2.0, 2.0, 0.1);
                 }
                 ticks++;
             }
         }.runTaskTimer(plugin, 0L, 1L);
 
+        // 2. Logic: Sát thương diện rộng R=4
         for (org.bukkit.entity.Entity e : loc.getWorld().getNearbyEntities(loc, 4.0, 4.0, 4.0)) {
             if (e instanceof LivingEntity && e != player && !e.hasMetadata("Summoner_Pet")) {
                 LivingEntity target = (LivingEntity) e;
-
                 boolean isCrossbow = player.getInventory().getItemInMainHand().getType() == Material.CROSSBOW;
                 double finalDamage = CombatManager.calculateDamage(player, rpgPlayer, target, dmgMulti, 50.0, 0.0, 0.0, false, isCrossbow);
 
@@ -327,6 +355,17 @@ public class AerialBombardmentSkill implements ISkill {
                 CombatManager.applySkillDamage(player, target, finalDamage);
                 player.removeMetadata("Ghost_L_Blocker", plugin);
             }
+        }
+    }
+
+    // Hàm tiện ích hỗ trợ nối 2 điểm bất kỳ bằng dải hạt DUST
+    private void drawParticleLine(Location start, Location end, Particle.DustOptions dust, org.bukkit.World world) {
+        Vector dirLine = end.toVector().subtract(start.toVector());
+        double distLine = dirLine.length();
+        if (distLine == 0) return;
+        dirLine.normalize();
+        for (double t = 0; t <= distLine; t += 0.2) {
+            world.spawnParticle(Particle.DUST, start.clone().add(dirLine.clone().multiply(t)), 1, 0, 0, 0, 0, dust);
         }
     }
 }
