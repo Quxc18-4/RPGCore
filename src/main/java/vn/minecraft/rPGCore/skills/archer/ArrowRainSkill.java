@@ -204,6 +204,13 @@ public class ArrowRainSkill implements ISkill {
         arrow.setMetadata("Skill_DmgMulti", new FixedMetadataValue(plugin, dmgMultiplier));
         arrow.setMetadata("Skill_ArmorPen", new FixedMetadataValue(plugin, ignoreChance));
 
+        // [TÍCH HỢP XUYÊN THẤU]: Bơm thẳng mác Xuyên thấu vào đạn kỹ năng
+        if (player.hasMetadata("Archer_Pierce_Buff")) {
+            arrow.setMetadata("Is_Piercing_Arrow", new FixedMetadataValue(plugin, true));
+            arrow.setMetadata("Pierce_Hit_Count", new FixedMetadataValue(plugin, 0));
+            arrow.setMetadata("Pierced_Entities", new FixedMetadataValue(plugin, new java.util.ArrayList<java.util.UUID>()));
+        }
+
         new BukkitRunnable() {
             @Override
             public void run() {

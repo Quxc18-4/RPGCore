@@ -81,11 +81,16 @@ public class PiercingBuffSkill implements ISkill {
 
         int durationTicks = (8 + (level * 2)) * 20;
 
-        // [FIX BUG]: Xóa Task đếm ngược cũ nếu buff đang hoạt động để Restart lại từ đầu
+        // ==========================================
+        // [FIX BUG]: Kiểm tra an toàn List rỗng trước khi get(0)
+        // ==========================================
         if (player.hasMetadata("Archer_Pierce_Task")) {
-            Object task = player.getMetadata("Archer_Pierce_Task").get(0).value();
-            if (task instanceof BukkitRunnable) {
-                ((BukkitRunnable) task).cancel();
+            java.util.List<org.bukkit.metadata.MetadataValue> metaList = player.getMetadata("Archer_Pierce_Task");
+            if (metaList != null && !metaList.isEmpty()) {
+                Object task = metaList.get(0).value();
+                if (task instanceof BukkitRunnable) {
+                    ((BukkitRunnable) task).cancel();
+                }
             }
         }
 

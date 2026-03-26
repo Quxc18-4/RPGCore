@@ -58,6 +58,10 @@ public class ComboListener implements Listener {
         if (event.getDamager() instanceof Player) {
             Player player = (Player) event.getDamager();
 
+            if (!(event.getDamager() instanceof org.bukkit.entity.Player)) {
+                return;
+            }
+
             // [MỚI THÊM]: Khóa mõm L ma do Summoner Pet gây ra
             if (player.hasMetadata("Ghost_L_Blocker")) {
                 return;

@@ -22,7 +22,6 @@ import vn.minecraft.rPGCore.managers.CombatManager;
 import vn.minecraft.rPGCore.managers.DurabilityManager;
 import vn.minecraft.rPGCore.managers.StatusEffectManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
-import org.bukkit.Sound;
 
 import java.util.HashMap;
 import java.util.List;
@@ -39,7 +38,6 @@ public class ArcherClass extends RPGClass implements Listener {
         super(id, displayName, icon, description, maxHealth, maxResource, resourceType, regenRate, isEnchanted);
         this.armorPenCap = 80.0;
 
-        // Đăng ký Listener trực tiếp
         RPGCore.getInstance().getServer().getPluginManager().registerEvents(this, RPGCore.getInstance());
     }
 
@@ -51,7 +49,7 @@ public class ArcherClass extends RPGClass implements Listener {
     }
 
     // ==========================================
-    // [MỚI]: HACK VÀO MỌI MŨI TÊN ĐỂ GẮN XUYÊN THẤU
+    // GẮN CỜ XUYÊN THẤU VÀ DANH SÁCH MỤC TIÊU ĐÃ XUYÊN
     // ==========================================
     @EventHandler
     public void onArrowLaunch(ProjectileLaunchEvent event) {
@@ -60,12 +58,13 @@ public class ArcherClass extends RPGClass implements Listener {
             RPGPlayer rpgPlayer = RPGCore.getInstance().getPlayerManager().getRPGPlayer(player.getUniqueId());
 
             if (rpgPlayer != null && rpgPlayer.getCurrentClass() != null && rpgPlayer.getCurrentClass().getId().equals("archer")) {
-                // Kiểm tra xem buff xuyên thấu có đang bật không
                 if (player.hasMetadata("Archer_Pierce_Buff")) {
                     Arrow arrow = (Arrow) event.getEntity();
-                    arrow.setPierceLevel(10); // Cấp phép Vanilla đâm xuyên 10 mục tiêu
+                    // KHÔNG dùng setPierceLevel của Vanilla nữa
                     arrow.setMetadata("Is_Piercing_Arrow", new FixedMetadataValue(RPGCore.getInstance(), true));
                     arrow.setMetadata("Pierce_Hit_Count", new FixedMetadataValue(RPGCore.getInstance(), 0));
+                    // Tạo danh sách lưu quái đã bị xuyên qua để tránh cắn dame liên tục trong lúc bay
+                    arrow.setMetadata("Pierced_Entities", new FixedMetadataValue(RPGCore.getInstance(), new java.util.ArrayList<UUID>()));
                 }
             }
         }
@@ -186,10 +185,29 @@ public class ArcherClass extends RPGClass implements Listener {
 
         if (!isCustomSkill && !isNormalHit && !isCustomArrow) return;
 
+        RPGCore plugin = RPGCore.getInstance();
+
+        // ==========================================
+        // [FIX LỖI XUYÊN THẤU]: HACK CƠ CHẾ VẬT LÝ VANILLA
+        // ==========================================
+        if (arrow.hasMetadata("Is_Piercing_Arrow") && event.getHitEntity() != null) {
+            java.util.List<UUID> piercedList = (java.util.List<UUID>) arrow.getMetadata("Pierced_Entities").get(0).value();
+
+            // Nếu mũi tên vẫn đang kẹt trong Hitbox của con quái cũ -> Bỏ qua
+            if (piercedList.contains(event.getHitEntity().getUniqueId())) {
+                event.setCancelled(true); // Cho mũi tên bay tiếp
+                return;
+            }
+
+            // Đánh dấu quái mới đã bị đâm
+            piercedList.add(event.getHitEntity().getUniqueId());
+
+            // HỦY VA CHẠM VẬT LÝ: Ép mũi tên trở thành "bóng ma", không bị dội lại (Bounce)
+            event.setCancelled(true);
+        }
+
         Location hitLoc = event.getHitBlock() != null ? event.getHitBlock().getLocation() :
                 (event.getHitEntity() != null ? event.getHitEntity().getLocation() : arrow.getLocation());
-
-        RPGCore plugin = RPGCore.getInstance();
 
         // 1. GÂY SÁT THƯƠNG NẾU TRÚNG QUÁI
         if (event.getHitEntity() instanceof LivingEntity && event.getHitEntity() != shooter) {
@@ -222,31 +240,26 @@ public class ArcherClass extends RPGClass implements Listener {
                 }
 
                 // ==========================================
-                // [MỚI]: NỘI TẠI NGẮM CHUẨN (SNIPER)
+                // NỘI TẠI NGẮM CHUẨN (SNIPER)
                 // ==========================================
                 int sniperLv = rpgShooter.getSkillData().getSkillLevel("archer_sniper_passive");
                 if (sniperLv > 0) {
                     double dist = shooter.getLocation().distance(target.getLocation());
-                    // Giới hạn tính toán tối đa 25 block để tránh lạm dụng
                     double cappedDist = Math.min(dist, 25.0);
                     double distanceBonus = cappedDist * (sniperLv * 0.01);
                     dmgMulti += distanceBonus;
                 }
 
                 // ==========================================
-                // [MỚI]: GIẢM SÁT THƯƠNG NẾU LÀ ĐẠN XUYÊN THẤU
+                // GIẢM SÁT THƯƠNG ĐẠN XUYÊN THẤU
                 // ==========================================
                 if (arrow.hasMetadata("Is_Piercing_Arrow")) {
                     int hitCount = arrow.getMetadata("Pierce_Hit_Count").get(0).asInt();
 
-                    // Giảm 8% mỗi lần trúng, tối đa giảm 70% (còn 30%)
                     double piercePenalty = Math.max(0.30, 1.0 - (hitCount * 0.08));
                     dmgMulti *= piercePenalty;
 
-                    // Tăng bộ đếm cho mục tiêu tiếp theo
                     arrow.setMetadata("Pierce_Hit_Count", new FixedMetadataValue(plugin, hitCount + 1));
-
-                    // Vẽ Particle nhỏ để nhận biết đạn vừa xuyên qua quái
                     target.getWorld().spawnParticle(Particle.ENCHANTED_HIT, target.getLocation().add(0, 1, 0), 10, 0.2, 0.2, 0.2, 0.1);
                 }
 
@@ -337,7 +350,6 @@ public class ArcherClass extends RPGClass implements Listener {
                 double finalDamage = CombatManager.calculateDamage(shooter, rpgShooter, target, dmgMulti, extraArmorPen, 0.0, 0.0, false, isCrossbow);
                 CombatManager.applyLifeSteal(shooter, rpgShooter, finalDamage, extraLifeSteal, false);
 
-                // Nếu là đạn xuyên thấu, không trừ độ bền nhiều lần
                 if (!arrow.hasMetadata("Is_Piercing_Arrow") || arrow.getMetadata("Pierce_Hit_Count").get(0).asInt() == 1) {
                     DurabilityManager.damageItem(shooter, rpgShooter, weapon, durabilityLoss);
                 }
@@ -347,15 +359,17 @@ public class ArcherClass extends RPGClass implements Listener {
         }
 
         // 2. XỬ LÝ AOE MŨI TÊN ĐẶC BIỆT CHẠM ĐẤT
-        if (isCustomArrow && event.getHitBlock() != null) {
+        if (isCustomArrow) {
             String cType = arrow.getMetadata("CustomArrowType").get(0).asString();
 
             if (cType.equals("arrow_nature")) {
-                Location exactHitLoc = arrow.getLocation().clone();
-                while (!exactHitLoc.getBlock().getType().isSolid() && exactHitLoc.getY() > exactHitLoc.getWorld().getMinHeight()) {
-                    exactHitLoc.subtract(0, 1, 0);
+                Location exactHitLoc = (event.getHitEntity() != null) ? event.getHitEntity().getLocation().clone() : arrow.getLocation().clone();
+                if (event.getHitEntity() == null) {
+                    while (!exactHitLoc.getBlock().getType().isSolid() && exactHitLoc.getY() > exactHitLoc.getWorld().getMinHeight()) {
+                        exactHitLoc.subtract(0, 1, 0);
+                    }
+                    exactHitLoc.setY(exactHitLoc.getBlockY() + 1.05);
                 }
-                exactHitLoc.setY(exactHitLoc.getBlockY() + 1.05);
 
                 List<double[]> vines = new java.util.ArrayList<>();
                 for (int i = 0; i < 28; i++) {
@@ -397,7 +411,7 @@ public class ArcherClass extends RPGClass implements Listener {
                     }
                 }.runTaskTimer(plugin, 0L, 1L);
             }
-            else if (cType.equals("arrow_ice")) {
+            else if (cType.equals("arrow_ice") && event.getHitBlock() != null) {
                 arrow.getLocation().getWorld().playSound(arrow.getLocation(), org.bukkit.Sound.BLOCK_SNOW_BREAK, 1.0f, 0.5f);
                 new BukkitRunnable() {
                     int ticks = 0;
@@ -438,7 +452,7 @@ public class ArcherClass extends RPGClass implements Listener {
                         if (ticks >= 30) {
                             center.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, center, 1);
                             center.getWorld().spawnParticle(Particle.GUST_EMITTER_LARGE, center, 1);
-                            center.getWorld().playSound(center, Sound.ENTITY_GENERIC_EXPLODE, 1.5f, 1.0f);
+                            center.getWorld().playSound(center, org.bukkit.Sound.ENTITY_GENERIC_EXPLODE, 1.5f, 1.0f);
 
                             for (org.bukkit.entity.Entity e : center.getWorld().getNearbyEntities(center, 6.0, 6.0, 6.0)) {
                                 if (e instanceof LivingEntity && e != shooter) {
@@ -462,7 +476,7 @@ public class ArcherClass extends RPGClass implements Listener {
                         double z2 = 1.8 * Math.sin(-ticks * 0.3);
                         center.getWorld().spawnParticle(Particle.DUST, center.clone().add(1.8 * Math.cos(-ticks * 0.3), z2 * Math.sin(Math.toRadians(-40)), z2 * Math.cos(Math.toRadians(-40))), 1, cyanDust);
 
-                        if (ticks % 10 == 0) center.getWorld().playSound(center, Sound.ITEM_ELYTRA_FLYING, 1.0f, 1.5f);
+                        if (ticks % 10 == 0) center.getWorld().playSound(center, org.bukkit.Sound.ITEM_ELYTRA_FLYING, 1.0f, 1.5f);
 
                         for (org.bukkit.entity.Entity e : center.getWorld().getNearbyEntities(center, 6.0, 6.0, 6.0)) {
                             if (e instanceof LivingEntity && e != shooter) {
@@ -476,7 +490,7 @@ public class ArcherClass extends RPGClass implements Listener {
             }
         }
 
-        // [MỚI]: KHÔNG XÓA MŨI TÊN NẾU NÓ LÀ ĐẠN XUYÊN THẤU VÀ CHƯA CHẠM ĐẤT
+        // [QUAN TRỌNG]: KHÔNG XÓA MŨI TÊN NẾU NÓ LÀ ĐẠN XUYÊN THẤU VÀ CHƯA CHẠM TƯỜNG (CHẠM ĐẤT)
         if (arrow.hasMetadata("Is_Piercing_Arrow") && event.getHitEntity() != null) {
             return;
         }
@@ -488,16 +502,16 @@ public class ArcherClass extends RPGClass implements Listener {
     public boolean performMeleeAttack(Player attacker, RPGPlayer rpgAttacker, LivingEntity target, ItemStack weapon) {
         if (!attacker.hasMetadata("Ranged_Warning_Cooldown")) {
             attacker.sendMessage("§c§l[!] §fHệ phái của bạn không thể tấn công cận chiến!");
-            attacker.setMetadata("Ranged_Warning_Cooldown", new FixedMetadataValue(RPGCore.getInstance(), true));
+            attacker.setMetadata("Ranged_Warning_Cooldown", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), true));
 
-            new BukkitRunnable() {
+            new org.bukkit.scheduler.BukkitRunnable() {
                 @Override
                 public void run() {
                     if (attacker.hasMetadata("Ranged_Warning_Cooldown")) {
-                        attacker.removeMetadata("Ranged_Warning_Cooldown", RPGCore.getInstance());
+                        attacker.removeMetadata("Ranged_Warning_Cooldown", vn.minecraft.rPGCore.RPGCore.getInstance());
                     }
                 }
-            }.runTaskLater(RPGCore.getInstance(), 40L);
+            }.runTaskLater(vn.minecraft.rPGCore.RPGCore.getInstance(), 40L);
         }
         return false;
     }
