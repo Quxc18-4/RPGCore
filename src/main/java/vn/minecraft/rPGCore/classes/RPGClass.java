@@ -58,9 +58,9 @@ public abstract class RPGClass {
     // ==========================================
     // CÁC HÀM SỰ KIỆN (HOOKS) CHO PHÉP OVERRIDE
     // ==========================================
-    public void onLeftClick(Player player, RPGPlayer rpgPlayer, ItemStack weapon) {}
+    public boolean onLeftClick(Player player, RPGPlayer rpgPlayer, ItemStack weapon) { return false; }
 
-    public void onRightClick(Player player, RPGPlayer rpgPlayer, ItemStack weapon) {}
+    public boolean onRightClick(Player player, RPGPlayer rpgPlayer, ItemStack weapon) { return false; }
 
     public double onMeleeHit(Player attacker, RPGPlayer rpgAttacker, LivingEntity target, double rawDamage) {
         return rawDamage;
@@ -68,6 +68,32 @@ public abstract class RPGClass {
 
     public double onTakeDamage(Player victim, RPGPlayer rpgVictim, LivingEntity attacker, double incomingDamage) {
         return incomingDamage;
+    }
+
+    // ==========================================
+    // PHỄU LỌC TRUNG TÂM (TEMPLATE METHOD) - CHUẨN SOLID
+    // Tự động kiểm tra điều kiện và trừ độ bền nếu tung chiêu thành công
+    // ==========================================
+    public final void executeLeftClick(Player player, RPGPlayer rpgPlayer, ItemStack weapon) {
+        vn.minecraft.rPGCore.listeners.EquipmentListener eqListener = new vn.minecraft.rPGCore.listeners.EquipmentListener(vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager());
+        if (!eqListener.canPlayerUse(player, weapon)) return; // Chặn vũ khí vượt cấp
+
+        boolean success = this.onLeftClick(player, rpgPlayer, weapon);
+
+        // Chỉ trừ độ bền nếu Class báo cáo tung chiêu/trúng đích thành công
+        if (success) {
+            vn.minecraft.rPGCore.managers.DurabilityManager.damageItem(player, rpgPlayer, weapon, 1);
+        }
+    }
+
+    public final void executeRightClick(Player player, RPGPlayer rpgPlayer, ItemStack weapon) {
+        vn.minecraft.rPGCore.listeners.EquipmentListener eqListener = new vn.minecraft.rPGCore.listeners.EquipmentListener(vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager());
+        if (!eqListener.canPlayerUse(player, weapon)) return;
+
+        boolean success = this.onRightClick(player, rpgPlayer, weapon);
+        if (success) {
+            vn.minecraft.rPGCore.managers.DurabilityManager.damageItem(player, rpgPlayer, weapon, 1);
+        }
     }
 
     // [THÊM MỚI]: Hàm dành riêng cho việc xử lý đạn/mũi tên chạm mục tiêu
@@ -118,4 +144,30 @@ public abstract class RPGClass {
     public boolean performMeleeAttack(Player attacker, RPGPlayer rpgAttacker, LivingEntity target, ItemStack weapon) {
         return true; // Mặc định các hệ phái đều được đánh cận chiến
     }
+
+    // ==========================================
+    // CÁC HÀM HOOK DÀNH CHO COMBAT MANAGER ĐIỀU PHỐI
+    // ==========================================
+
+    /**
+     * Hook 1: Báo cáo đòn tấn công đã trúng đích (Dùng để tích nội tại như Sát Ý, Stack đòn đánh...)
+     */
+    public void onAttackLanded(Player attacker, LivingEntity target) { }
+
+    /**
+     * Hook 2: Sửa đổi chỉ số linh hoạt ngay trước khi nổ sát thương (Dành cho Đâm lén, Tàng hình...)
+     */
+    public void applyDynamicCombatStats(Player attacker, LivingEntity target, java.util.Map<String, Double> combatStats) { }
+
+    /**
+     * Hook 3: Trả về lượng % Hút máu cộng thêm linh hoạt (Dành cho các chiêu buff tạm thời như Khát Máu)
+     */
+    public double getDynamicLifeSteal(Player attacker, RPGPlayer rpgPlayer) {
+        return 0.0;
+    }
+
+    /**
+     * Hook 4: Truyền chỉ số động cho Đệ tử (Dành cho Summoner)
+     */
+    public void applyPetDynamicStats(Player owner, RPGPlayer rpgOwner, org.bukkit.entity.Entity pet, java.util.Map<String, Double> petStats) { }
 }

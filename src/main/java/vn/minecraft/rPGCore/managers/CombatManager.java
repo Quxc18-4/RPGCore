@@ -24,75 +24,23 @@ public class CombatManager {
 
     public static double calculateDamage(Player attacker, RPGPlayer rpgPlayer, LivingEntity target, double dmgMultiplier, double extraArmorPen, double extraCritRate, double extraCritDamage, boolean isMagic, boolean isCrossbow) {
 
-        // ==========================================
-        // 1. TÍCH LŨY STACK SÁT Ý LĨNH VỰC (Cơ chế 1/3 Stack)
-        // ==========================================
-        if (attacker.hasMetadata("Assassin_KillingIntent_Active")) {
-            long expire = attacker.getMetadata("Assassin_KillingIntent_Active").get(0).asLong();
-            if (System.currentTimeMillis() <= expire) {
-                // SỬ DỤNG SUBSTACKS (1/3)
-                int subStacks = attacker.hasMetadata("Assassin_KillingIntent_SubStacks") ? attacker.getMetadata("Assassin_KillingIntent_SubStacks").get(0).asInt() : 0;
-
-                if (subStacks < 30) { // 30 Sub = 10 Stack thật
-                    subStacks++;
-                    attacker.setMetadata("Assassin_KillingIntent_SubStacks", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), subStacks));
-
-                    int realStacks = subStacks / 3;
-                    if (subStacks % 3 == 0) { // Cứ đủ 3 hit thì kêu một tiếng "Ping"
-                        attacker.playSound(attacker.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.4f, 1.0f + (realStacks * 0.1f));
-                    }
-
-                    if (subStacks < 30) {
-                        // Làm mới lại 7s
-                        attacker.setMetadata("Assassin_KillingIntent_Active", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), System.currentTimeMillis() + 7000));
-                    } else {
-                        // Max 10 Stack -> Đặt thời gian (Scaling theo level) và Khóa làm mới
-                        int kiLevel = attacker.hasMetadata("Assassin_KillingIntent_Level") ? attacker.getMetadata("Assassin_KillingIntent_Level").get(0).asInt() : 1;
-                        long maxDur = (10 + kiLevel) * 1000L;
-                        attacker.setMetadata("Assassin_KillingIntent_Active", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), System.currentTimeMillis() + maxDur));
-                        attacker.sendMessage("§4§l[!] TỤ SÁT Ý TỐI ĐA! (Cuồng nộ trong " + (10+kiLevel) + "s)");
-                    }
-                }
-            }
-        }
-
         Map<String, Double> combatStats = new java.util.HashMap<>(rpgPlayer.getTotalStatsMap());
 
-        // CHUẨN BỊ BÙ CRIT TỪ ĐÁNH LÉN TÀNG HÌNH (Bảo đảm 100% không tính dư)
-        if (attacker.hasMetadata("Basic_Stealth_Attack")) {
-            attacker.removeMetadata("Basic_Stealth_Attack", vn.minecraft.rPGCore.RPGCore.getInstance());
-            double currentBaseCrit = combatStats.getOrDefault("Tỉ lệ chí mạng", 5.0);
-            if (currentBaseCrit < 100.0) {
-                extraCritRate += (100.0 - currentBaseCrit);
-            }
+        // Đưa các chỉ số bổ sung cơ bản từ Kỹ năng vào Map
+        combatStats.put("Tỉ lệ chí mạng", combatStats.getOrDefault("Tỉ lệ chí mạng", 5.0) + extraCritRate);
+        combatStats.put("Sát thương chí mạng", combatStats.getOrDefault("Sát thương chí mạng", 50.0) + extraCritDamage);
+        combatStats.put("Tỉ lệ xuyên giáp", combatStats.getOrDefault("Tỉ lệ xuyên giáp", 0.0) + extraArmorPen);
+
+        // ==========================================
+        // 2. [CHUẨN SOLID]: GỌI CLASS TỰ SỬA ĐỔI CHỈ SỐ LINH HOẠT
+        // ==========================================
+        if (rpgPlayer.getCurrentClass() != null) {
+            rpgPlayer.getCurrentClass().applyDynamicCombatStats(attacker, target, combatStats);
         }
 
-        double dynamicCritRate = combatStats.getOrDefault("Tỉ lệ chí mạng", 5.0) + extraCritRate;
-        double dynamicCritDamage = combatStats.getOrDefault("Sát thương chí mạng", 50.0) + extraCritDamage;
-        double dynamicArmorPen = combatStats.getOrDefault("Tỉ lệ xuyên giáp", 0.0) + extraArmorPen;
-
-        if (attacker.hasMetadata("Assassin_KillingIntent_SubStacks")) {
-            int realStacks = attacker.getMetadata("Assassin_KillingIntent_SubStacks").get(0).asInt() / 3;
-            int level = attacker.hasMetadata("Assassin_KillingIntent_Level") ? attacker.getMetadata("Assassin_KillingIntent_Level").get(0).asInt() : 1;
-
-            // [GIẢM SỨC MẠNH SÁT Ý]: 2.5% Crit và 6% DMG ở max level
-            dynamicCritRate += (realStacks * (0.5 + (level * 0.4)));
-            dynamicCritDamage += (realStacks * (1.0 + (level * 1.0)));
-        }
-
-        combatStats.put("Tỉ lệ chí mạng", dynamicCritRate);
-        combatStats.put("Sát thương chí mạng", dynamicCritDamage);
-        combatStats.put("Tỉ lệ xuyên giáp", dynamicArmorPen);
-
-        // NỘI TẠI CLASS CHUYỂN HÓA CRIT
+        // NỘI TẠI CLASS CHUYỂN HÓA CRIT & ÉP CAP VỀ MỨC GIỚI HẠN
         if (rpgPlayer.getCurrentClass() != null) {
             rpgPlayer.getCurrentClass().applyOffensivePassives(combatStats);
-        }
-
-        // BÙ CRIT CHO CHIÊU CHÉM ĐÔI (Backstab 30% - Không bị tính dư)
-        if (attacker.hasMetadata("DoubleSlash_Backstab")) {
-            double finalCrit = combatStats.getOrDefault("Tỉ lệ chí mạng", 5.0) + 30.0;
-            combatStats.put("Tỉ lệ chí mạng", Math.min(finalCrit, 100.0));
         }
 
         // Lấy lại dữ liệu "Thành phẩm" sau khi Class đã nhào nặn xong
@@ -125,17 +73,16 @@ public class CombatManager {
             if (armorAttr != null) targetDefense = armorAttr.getValue();
         }
 
-        // Xuyên giáp giờ lấy thẳng từ finalArmorPen (Đã được mở Gap 80% nếu là Archer)
         double penToUse = isMagic ? finalMagicPen : finalArmorPen;
         double finalDefenseMulti = 1.0 - (penToUse / 100.0);
         targetDefense *= finalDefenseMulti;
 
         double finalDamage = Math.max(1.0, (rawDamage - targetDefense) * dmgMultiplier);
 
-        // Code Dummy Test giữ nguyên
+        // Code Dummy Test
         if (target.getCustomName() != null && ChatColor.stripColor(target.getCustomName()).contains("Dummy")) {
-            int currentStacks = attacker.hasMetadata("Assassin_KillingIntent_Stacks") ? attacker.getMetadata("Assassin_KillingIntent_Stacks").get(0).asInt() : 0;
-            attacker.sendMessage("§e§l[DUMMY] §8[Stack: " + currentStacks + "] §fSát thương: §c" + String.format("%.1f", finalDamage) + " ⚔");
+            int currentStacks = attacker.hasMetadata("Assassin_KillingIntent_SubStacks") ? attacker.getMetadata("Assassin_KillingIntent_SubStacks").get(0).asInt() / 3 : 0;
+            attacker.sendMessage("§e§l[DUMMY] §8[Stack Sát Ý: " + currentStacks + "] §fSát thương: §c" + String.format("%.1f", finalDamage) + " ⚔");
 
             new BukkitRunnable() {
                 @Override
@@ -173,6 +120,57 @@ public class CombatManager {
             victim.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR, net.md_5.bungee.api.chat.TextComponent.fromLegacyText("§9§l[ĐỠ ĐÒN: -30% SÁT THƯƠNG]"));
         }
 
+        // ==========================================
+        // [MỚI]: KÍCH HOẠT GIẢM SÁT THƯƠNG TỪ CỘNG HƯỞNG (VANGUARD)
+        // ==========================================
+        if (victim.hasMetadata("Resonance_Stats")) {
+            Object val = victim.getMetadata("Resonance_Stats").get(0).value();
+            if (val instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Double> resonanceBuffs = (Map<String, Double>) val;
+                double damageReduction = resonanceBuffs.getOrDefault("DamageReduction", 0.0);
+
+                if (damageReduction > 0) {
+                    finalDamage *= (1.0 - damageReduction); // Trừ đi % ST tương ứng
+
+                    // [DEBUG] In ra ST đã được giảm nhờ Vanguard
+                    victim.sendMessage("§e[Debug Vanguard] Đã giảm §c" + (damageReduction * 100) + "% §eST nhận vào (Còn lại: " + String.format("%.1f", finalDamage) + ")");
+                }
+            }
+        }
+
+        // ==========================================
+        // [MỚI]: HẤP THỤ SÁT THƯƠNG VÀO KHIÊN NGẦM
+        // ==========================================
+        if (victim.hasMetadata("Custom_Earth_Shield")) {
+            double currentShield = victim.getMetadata("Custom_Earth_Shield").get(0).asDouble();
+            double maxShield = victim.getMetadata("Custom_Earth_Shield_Max").get(0).asDouble();
+
+            if (currentShield > 0) {
+                if (finalDamage <= currentShield) {
+                    // Khiên đủ sức đỡ toàn bộ sát thương
+                    currentShield -= finalDamage;
+                    finalDamage = 0; // Sát thương truyền vào người = 0
+                    victim.setMetadata("Custom_Earth_Shield", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), currentShield));
+                } else {
+                    // Sát thương làm vỡ khiên
+                    finalDamage -= currentShield; // Sát thương tràn vào máu đỏ
+                    currentShield = 0;
+                    victim.removeMetadata("Custom_Earth_Shield", vn.minecraft.rPGCore.RPGCore.getInstance());
+                    victim.removeMetadata("Custom_Earth_Shield_Max", vn.minecraft.rPGCore.RPGCore.getInstance());
+                    victim.setAbsorptionAmount(0);
+                    victim.playSound(victim.getLocation(), org.bukkit.Sound.ITEM_SHIELD_BREAK, 1.0f, 1.2f);
+                }
+
+                // Cập nhật lại UI hiển thị tim vàng (Chia tỷ lệ)
+                if (currentShield > 0) {
+                    double displayAbsorption = (currentShield / maxShield) * 20.0;
+                    // Đảm bảo dù khiên còn 1 giọt cũng hiển thị ít nhất nửa tim vàng cho người chơi dễ nhìn
+                    victim.setAbsorptionAmount(Math.max(1.0, displayAbsorption));
+                }
+            }
+        }
+
         return finalDamage;
     }
 
@@ -185,17 +183,10 @@ public class CombatManager {
         double finalExtraLifesteal = extraLifeStealPct;
 
         // ==========================================
-        // [MỚI CẬP NHẬT]: KÍCH HOẠT ĐÒN KHÁT MÁU (CHỈ DÙNG 1 LẦN)
+        // [CHUẨN SOLID]: LẤY LIFESTEAL TỪ CLASS
         // ==========================================
-        if (attacker.hasMetadata("Assassin_Bloodlust_Value")) {
-            finalExtraLifesteal += attacker.getMetadata("Assassin_Bloodlust_Value").get(0).asDouble();
-
-            // Xóa ngay lập tức để không bị lặp lại ở đòn thứ 2
-            attacker.removeMetadata("Assassin_Bloodlust_Value", vn.minecraft.rPGCore.RPGCore.getInstance());
-
-            attacker.sendMessage("§c§l[!] §fĐòn Khát Máu chạm đích! Hồi phục sinh lực!");
-            attacker.getWorld().playSound(attacker.getLocation(), Sound.ENTITY_WITCH_DRINK, 1.0f, 0.8f);
-            attacker.getWorld().spawnParticle(Particle.HEART, attacker.getLocation().add(0, 2, 0), 7, 0.5, 0.5, 0.5, 0.1);
+        if (rpgPlayer.getCurrentClass() != null) {
+            finalExtraLifesteal += rpgPlayer.getCurrentClass().getDynamicLifeSteal(attacker, rpgPlayer);
         }
 
         Map<String, Double> totalStats = rpgPlayer.getTotalStatsMap();
@@ -234,63 +225,157 @@ public class CombatManager {
     // ==========================================
     // HỆ THỐNG TÍNH TOÁN SÁT THƯƠNG CHO THÚ TRIỆU HỒI
     // ==========================================
-    public static double calculatePetDamage(Player owner, RPGPlayer rpgOwner, org.bukkit.entity.Entity pet, LivingEntity target, double basePetDamage) {
-        Map<String, Double> totalStats = rpgOwner.getTotalStatsMap();
+    public static double calculatePetDamage(Player owner, RPGPlayer rpgOwner, org.bukkit.entity.Entity pet, LivingEntity target, double eventDamage) {
+        // 1. LẤY THÔNG TIN PROFILE
+        String petType = pet.hasMetadata("Pet_Type") ? pet.getMetadata("Pet_Type").get(0).asString() : "Unknown";
+        vn.minecraft.rPGCore.skills.summoner.pets.IPetProfile profile = vn.minecraft.rPGCore.skills.summoner.pets.SummonPetManager.getProfile(petType);
+        int skillLevel = pet.hasMetadata("Summon_Level") ? pet.getMetadata("Summon_Level").get(0).asInt() : 1;
 
-        // 1. Kế thừa chỉ số: Lấy sức mạnh Mana của Tamer (Nội tại Cộng Hưởng Ma Lực)
-        double summonDmgBonusPct = totalStats.getOrDefault("Sát thương Triệu hồi", 0.0);
-        double multiplier = 1.0 + (summonDmgBonusPct / 100.0);
+        if (profile == null) return 1.0;
 
-        // Kế thừa 50% Xuyên giáp và Chí mạng từ Chủ nhân
-        double armorPen = totalStats.getOrDefault("Tỉ lệ xuyên giáp", 0.0) * 0.5;
-        double critRate = totalStats.getOrDefault("Tỉ lệ chí mạng", 5.0) * 0.5;
-        double critDamage = totalStats.getOrDefault("Sát thương chí mạng", 50.0);
+        Map<String, Double> playerStats = rpgOwner.getTotalStatsMap();
 
-        // ==========================================
-        // 2. CƠ CHẾ: DẤU SĂN MỒI (HUNTER'S MARK)
-        // ==========================================
-        String markKey = "Summoner_Mark_" + owner.getUniqueId().toString();
-        boolean hasMark = target.hasMetadata(markKey);
+        // 2. TÍNH TOÁN SÁT THƯƠNG GỐC THEO PROFILE
+        double minMagic = playerStats.getOrDefault("Sát thương phép thuật (Nhỏ nhất)", 5.0);
+        double maxMagic = playerStats.getOrDefault("Sát thương phép thuật (Lớn nhất)", 10.0);
+        double avgMasterDamage = (minMagic + maxMagic) / 2.0;
 
-        if (hasMark) {
-            // Mục tiêu bị trúng đòn Roi của chủ -> Thú cưng nổi điên!
-            multiplier *= 1.3; // +30% Tổng sát thương
-            critRate += 20.0;  // +20% Tỉ lệ bạo kích
+        double flatBase = profile.getBaseFlatDamage(skillLevel);
+        double scaling = profile.getWeaponScaling(skillLevel);
+        double finalBasePetDamage = flatBase + (avgMasterDamage * 0.55 * scaling);
 
-            // Hiệu ứng Visual khi đệ cắn trúng mục tiêu bị đánh dấu
-            target.getWorld().spawnParticle(Particle.ENCHANTED_HIT, target.getLocation().add(0, 1, 0), 10, 0.3, 0.3, 0.3, 0.1);
-            target.getWorld().spawnParticle(
-                    Particle.DUST,
-                    target.getLocation().add(0, 1, 0),
-                    5, 0.3, 0.3, 0.3, 0.1,
-                    new Particle.DustOptions(org.bukkit.Color.PURPLE, 1.5f)
-            );
+        // Áp dụng Bội số Dung hợp (Nếu có)
+        if (pet.hasMetadata("Fusion_Multiplier")) {
+            finalBasePetDamage *= pet.getMetadata("Fusion_Multiplier").get(0).asDouble();
         }
 
-        // 3. Tính sát thương thô
-        double rawDamage = basePetDamage * multiplier;
+        // Lưu Snapshot lại cho hàm onDeath nổ
+        pet.setMetadata("Base_Damage_Snapshot", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), finalBasePetDamage));
 
-        // 4. Bạo kích (Critical Hit)
+        // 3. XỬ LÝ KỸ NĂNG VÀ PHÂN LOẠI
+        boolean isMagicPet = profile.isMagicDamage();
+        double skillMultiplier = profile.onAttack(owner, (LivingEntity) pet, target, finalBasePetDamage);
+
+        // 4. ĐẾM THÚ VÀ CHIA SẺ SUB-STATS
+        int petCount = 0;
+        for (org.bukkit.entity.Entity e : owner.getNearbyEntities(30, 20, 30)) {
+            if (e.hasMetadata("Summoner_Pet") && e.getMetadata("Summoner_Pet").get(0).asString().equals(owner.getUniqueId().toString())) {
+                petCount++;
+            }
+        }
+        petCount = Math.max(1, petCount);
+
+        // ==========================================
+        // [CHUẨN SOLID] 4.5. LẤY CHỈ SỐ ĐỘNG CHO ĐỆ TỬ TỪ CLASS
+        // ==========================================
+        Map<String, Double> petDynamicStats = new java.util.HashMap<>();
+        if (rpgOwner.getCurrentClass() != null) {
+            rpgOwner.getCurrentClass().applyPetDynamicStats(owner, rpgOwner, pet, petDynamicStats);
+        }
+
+        double resonanceDmgBonus = petDynamicStats.getOrDefault("DamageMultiplier", 0.0);
+        double resonancePen = petDynamicStats.getOrDefault("ArmorPen", 0.0);
+        double resonanceLifesteal = petDynamicStats.getOrDefault("Lifesteal", 0.0);
+        double resonanceHealOnHit = petDynamicStats.getOrDefault("HealOnHit", 0.0);
+        double resonanceBurnChance = petDynamicStats.getOrDefault("BurnChance", 0.0);
+        double resonanceSlowChance = petDynamicStats.getOrDefault("SlowChance", 0.0);
+
+        double petArmorPen = 0.0;
+        double petMagicPen = 0.0;
+        double petLifeSteal = 0.0;
+
+        if (isMagicPet) {
+            double shareFactor = 0.5 / petCount;
+            petMagicPen = (playerStats.getOrDefault("Tỉ lệ xuyên kháng phép", 0.0) * shareFactor) + resonancePen;
+            petLifeSteal = (playerStats.getOrDefault("Tỉ lệ hút máu phép", 0.0) * shareFactor) + resonanceLifesteal;
+        } else {
+            double shareFactor = 1.0 / petCount;
+            petArmorPen = (playerStats.getOrDefault("Tỉ lệ xuyên giáp", 0.0) * shareFactor) + resonancePen;
+            petLifeSteal = (playerStats.getOrDefault("Tỉ lệ hút máu", 0.0) * shareFactor) + resonanceLifesteal;
+        }
+
+        // 5. NỘI TẠI VÀ CHÍ MẠNG
+        double summonDmgBonusPct = playerStats.getOrDefault("Sát thương Triệu hồi", 0.0);
+
+        // [CỘNG HƯỞNG]: Nhồi Buff Sát Thương (Attacker) vào Hệ số tổng
+        double rpgMultiplier = 1.0 + (summonDmgBonusPct / 100.0) + resonanceDmgBonus;
+
+        String markKey = "Summoner_Mark_" + owner.getUniqueId().toString();
+        boolean hasMark = target.hasMetadata(markKey);
+        if (hasMark) rpgMultiplier *= 1.3;
+
+        double rawDamage = finalBasePetDamage * skillMultiplier * rpgMultiplier;
+
+        double critRate = playerStats.getOrDefault("Tỉ lệ chí mạng", 5.0) * (1.0 / petCount);
+        double critDamage = playerStats.getOrDefault("Sát thương chí mạng", 50.0);
         if ((Math.random() * 100) <= critRate) {
             rawDamage *= (1.0 + (critDamage / 100.0));
             target.getWorld().spawnParticle(Particle.CRIT, target.getLocation().add(0, 1, 0), 15, 0.5, 0.5, 0.5, 0.1);
             owner.playSound(owner.getLocation(), Sound.ENTITY_WOLF_GROWL, 0.5f, 1.5f);
         }
 
-        // 5. Trừ Giáp mục tiêu (Vật lý)
+        // 6. TRỪ PHÒNG THỦ
         double targetDefense = 0;
-        AttributeInstance armorAttr = target.getAttribute(Attribute.ARMOR);
-        if (armorAttr != null) targetDefense = armorAttr.getValue();
-
-        double finalDefenseMulti = 1.0 - (armorPen / 100.0);
-        targetDefense *= finalDefenseMulti;
+        if (isMagicPet && target instanceof Player) {
+            RPGPlayer targetRpg = vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager().getRPGPlayer(target.getUniqueId());
+            if (targetRpg != null) targetDefense = targetRpg.getTotalStatsMap().getOrDefault("Kháng phép", 0.0);
+            targetDefense *= (1.0 - (petMagicPen / 100.0));
+        } else if (!isMagicPet) {
+            org.bukkit.attribute.AttributeInstance armorAttr = target.getAttribute(org.bukkit.attribute.Attribute.ARMOR);
+            if (armorAttr != null) targetDefense = armorAttr.getValue();
+            targetDefense *= (1.0 - (petArmorPen / 100.0));
+        }
 
         double finalDamage = Math.max(1.0, rawDamage - targetDefense);
 
-        // 6. Test Dummy
-        if (target.getCustomName() != null && ChatColor.stripColor(target.getCustomName()).contains("Dummy")) {
-            String prefix = hasMark ? "§d[Linh Lang - Cuồng Nộ]" : "§b[Linh Lang]";
-            owner.sendMessage("§e§l[DUMMY] " + prefix + " §fSát thương: §c" + String.format("%.1f", finalDamage) + " ⚔");
+        // ==========================================
+        // 7. HÚT MÁU CHÉO & HIỆU ỨNG ĐÒN ĐÁNH (CỘNG HƯỞNG)
+        // ==========================================
+        double totalHeal = 0.0;
+        if (petLifeSteal > 0) {
+            totalHeal += finalDamage * (petLifeSteal / 100.0);
+        }
+        if (resonanceHealOnHit > 0) {
+            totalHeal += resonanceHealOnHit; // Hồi máu chuẩn từ hệ Light
+        }
+
+        if (totalHeal > 0) {
+            double maxHp = owner.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue();
+            owner.setHealth(Math.min(maxHp, owner.getHealth() + totalHeal));
+            owner.getWorld().spawnParticle(Particle.HEART, owner.getLocation().add(0, 2, 0), 1, 0.3, 0.3, 0.3, 0);
+        }
+
+        // [CỘNG HƯỞNG]: Hiệu ứng Nguyên Tố (Thiêu Đốt, Làm Chậm)
+        if (resonanceBurnChance > 0 && (Math.random() * 100) <= resonanceBurnChance) {
+            target.setFireTicks(60); // Đốt 3s
+        }
+        if (resonanceSlowChance > 0 && (Math.random() * 100) <= resonanceSlowChance) {
+            vn.minecraft.rPGCore.managers.StatusEffectManager.applyEffect(target, org.bukkit.potion.PotionEffectType.SLOWNESS, 40, 1);
+        }
+
+        // 8. KIỂM TRA & XỬ LÝ DUMMY (Báo DMG + Bất tử Dummy)
+        if (target.getCustomName() != null && org.bukkit.ChatColor.stripColor(target.getCustomName()).contains("Dummy")) {
+            String petNameRaw = pet.getCustomName() != null ? org.bukkit.ChatColor.stripColor(pet.getCustomName()).replaceAll("\\[.*?\\]", "").trim() : "Linh Lang";
+            String prefix = hasMark ? "§d[" + petNameRaw + " - Cuồng Nộ]" : "§b[" + petNameRaw + "]";
+
+            String skillName = "";
+            if (skillMultiplier > 1.0) {
+                if (skillMultiplier >= 2.0) skillName = " §e[Sét]";
+                else skillName = " §6[Đuôi]";
+            }
+
+            owner.sendMessage("§e§l[DUMMY] " + prefix + skillName + " §fSát thương: §c" + String.format("%.1f", finalDamage) + " ⚔");
+
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    if (target.isValid() && !target.isDead()) {
+                        org.bukkit.attribute.AttributeInstance maxHp = target.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+                        if (maxHp != null) target.setHealth(maxHp.getValue());
+                        target.setFireTicks(0);
+                    }
+                }
+            }.runTaskLater(vn.minecraft.rPGCore.RPGCore.getInstance(), 1L);
         }
 
         return finalDamage;

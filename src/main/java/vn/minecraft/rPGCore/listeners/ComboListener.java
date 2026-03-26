@@ -114,7 +114,10 @@ public class ComboListener implements Listener {
         if (!PlayerListener.isValidWeaponForClass(mainItem, classId)) return;
 
         EquipmentListener eqListener = new EquipmentListener(playerManager);
-        if (!eqListener.canPlayerUse(player, mainItem)) return;
+        if (!eqListener.canPlayerUse(player, mainItem)) {
+            return;
+        }
+
         if (player.hasMetadata("Is_Casting")) return;
 
         String current = currentCombos.getOrDefault(uuid, "");

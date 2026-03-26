@@ -33,7 +33,6 @@ public class SummonerClass extends RPGClass {
     public SummonerClass(String id, String displayName, Material icon, java.util.List<String> description, double maxHealth, double maxResource, ResourceType resourceType, double regenRate, boolean enchanted) {
         super(id, displayName, icon, description, maxHealth, maxResource, resourceType, regenRate, enchanted);
 
-        // CHUYỂN TASK DỌN RÁC (GARBAGE COLLECTOR) VÀO ĐÂY
         new org.bukkit.scheduler.BukkitRunnable() {
             @Override
             public void run() {
@@ -43,13 +42,12 @@ public class SummonerClass extends RPGClass {
                 for (Map.Entry<java.util.UUID, PetInfo> entry : reservedPets.entrySet()) {
                     Entity pet = org.bukkit.Bukkit.getEntity(entry.getKey());
 
-                    // Nếu Entity không tồn tại hoặc đã chết do kẹt chunk/clear lag
                     if (pet == null || !pet.isValid() || pet.isDead()) {
                         RPGPlayer owner = pm.getRPGPlayer(entry.getValue().ownerId);
                         if (owner != null) {
                             unregisterPet(entry.getKey(), owner);
                         } else {
-                            reservedPets.remove(entry.getKey()); // Tránh kẹt RAM nếu chủ nhân offline
+                            reservedPets.remove(entry.getKey());
                         }
                     }
                 }
@@ -59,13 +57,10 @@ public class SummonerClass extends RPGClass {
 
     private final Map<java.util.UUID, PetInfo> reservedPets = new java.util.concurrent.ConcurrentHashMap<>();
 
-    // ==========================================
-    // CLASS LƯU TRỮ THÔNG TIN KHẾ ƯỚC (NÂNG CẤP)
-    // ==========================================
     public static class PetInfo {
         public final java.util.UUID ownerId;
         public final double manaReserved;
-        public final String petName; // [MỚI]: Lưu thêm tên của đệ tử
+        public final String petName;
 
         public PetInfo(java.util.UUID ownerId, double manaReserved, String petName) {
             this.ownerId = ownerId;
@@ -74,20 +69,17 @@ public class SummonerClass extends RPGClass {
         }
     }
 
-    // [CẬP NHẬT]: Thêm tham số petName vào hàm đăng ký
     public void registerPet(java.util.UUID petId, double manaReserved, RPGPlayer owner, String petName) {
         reservedPets.put(petId, new PetInfo(owner.getBukkitPlayer().getUniqueId(), manaReserved, petName));
         owner.addReservedResource(manaReserved);
     }
 
-    // [CẬP NHẬT]: Gọi tên động (Dynamic Name) thay vì cứng chữ "Linh Lang"
     public void unregisterPet(java.util.UUID petId, RPGPlayer owner) {
         PetInfo info = reservedPets.remove(petId);
         if (info != null) {
             owner.freeReservedResource(info.manaReserved);
             owner.setCurrentResource(owner.getCurrentResource() + info.manaReserved);
             if (owner.getBukkitPlayer().isOnline()) {
-                // Sử dụng info.petName để báo tên chính xác
                 owner.getBukkitPlayer().sendMessage("§b§l[!] §f" + info.petName + " đã biến mất. Hoàn trả §b" + (int)info.manaReserved + " Mana§f!");
             }
         }
@@ -95,29 +87,24 @@ public class SummonerClass extends RPGClass {
 
     @Override
     public void applyPassiveBonusStats(RPGPlayer rpgPlayer, Map<String, Double> currentStats) {
-        // 1. Cộng 8% CDR cơ bản
         double totalCdr = currentStats.getOrDefault("Giảm hồi chiêu", 0.0) + 8.0;
 
-        // 2. Tính Mana dư (Vẫn tính trên con số thực tế chưa bị Cap)
         if (totalCdr > 40.0) {
             double bonusMana = (totalCdr - 40.0) * 5.0;
             currentStats.put("Năng lượng tối đa", currentStats.getOrDefault("Năng lượng tối đa", 0.0) + bonusMana);
         }
 
-        // Cập nhật lại CDR vào Map để lát nữa hàm cha applyOffensivePassives khóa nó lại
         currentStats.put("Giảm hồi chiêu", totalCdr);
 
-        // 3. Tính Damage Triệu hồi (Như cũ)
         double finalMaxMana = this.getMaxResource() + (rpgPlayer.getAttributeData().getAttribute("INT") * 1.0) + currentStats.getOrDefault("Năng lượng tối đa", 0.0);
         currentStats.put("Sát thương Triệu hồi", Math.floor(finalMaxMana / 100.0) * 5.0);
 
-        // QUAN TRỌNG: Gọi super để nó chạy hàm khóa Cap (Xuyên giáp, Crit, CDR...)
         super.applyPassiveBonusStats(rpgPlayer, currentStats);
     }
 
     @Override
-    public void onLeftClick(Player player, RPGPlayer rpgPlayer, ItemStack weapon) {
-        if (player.hasMetadata("Summoner_Whip_Cooldown")) return;
+    public boolean onLeftClick(Player player, RPGPlayer rpgPlayer, ItemStack weapon) {
+        if (player.hasMetadata("Summoner_Whip_Cooldown")) return false; // Trả về false nếu đang Cooldown
 
         double atkSpeed = rpgPlayer.getTotalStatsMap().getOrDefault("Tốc độ đánh", 0.0);
         long cooldownTicks = (long) Math.max(4, 12 * (1.0 - (atkSpeed / 100.0)));
@@ -169,22 +156,17 @@ public class SummonerClass extends RPGClass {
         player.getWorld().playSound(impactLoc, Sound.ENTITY_DRAGON_FIREBALL_EXPLODE, 0.5f, 2.0f);
         player.getWorld().playSound(impactLoc, Sound.ITEM_TRIDENT_HIT, 1.0f, 0.8f);
 
-        // ==========================================
-        // 1. TÌM ĐỆ TỬ CỦA NGƯỜI CHƠI (BÁN KÍNH 20 BƯỚC)
-        // ==========================================
+        // Lấy danh sách đệ tử
         List<org.bukkit.entity.Mob> myPets = new ArrayList<>();
         for (Entity e : player.getNearbyEntities(20, 10, 20)) {
             if (e.hasMetadata("Summoner_Pet")) {
                 List<MetadataValue> metaList = e.getMetadata("Summoner_Pet");
-                if (!metaList.isEmpty() && metaList.get(0).asString().equals(player.getUniqueId().toString())) {
+                if (metaList != null && !metaList.isEmpty() && metaList.get(0).asString().equals(player.getUniqueId().toString())) {
                     if (e instanceof org.bukkit.entity.Mob) myPets.add((org.bukkit.entity.Mob) e);
                 }
             }
         }
 
-        // ==========================================
-        // 2. LỌC TÌM QUÁI MỚI BỊ ĐÁNH TRÚNG TẠI ĐIỂM NỔ
-        // ==========================================
         List<LivingEntity> hitTargets = new ArrayList<>();
         for (Entity e : impactLoc.getWorld().getNearbyEntities(impactLoc, 2.5, 2.0, 2.5)) {
             if (e.hasMetadata("Summoner_Pet")) continue;
@@ -195,8 +177,10 @@ public class SummonerClass extends RPGClass {
 
         boolean isMagic = rpgPlayer.getStats().maxMagicalDamage > 0;
         List<LivingEntity> markedTargets = new ArrayList<>();
+        boolean hitSomething = false;
 
         if (!hitTargets.isEmpty()) {
+            hitSomething = true;
             Collections.shuffle(hitTargets);
             int markedCount = 0;
             String markKey = "Summoner_Mark_" + player.getUniqueId().toString();
@@ -218,42 +202,37 @@ public class SummonerClass extends RPGClass {
         }
 
         // ==========================================
-        // 3. XỬ LÝ STACK MỤC TIÊU (HÀNG ĐỢI THÔNG MINH)
+        // [ĐÃ FIX BUG BẰNG LỚP BẢO VỆ]
         // ==========================================
         @SuppressWarnings("unchecked")
-        LinkedList<LivingEntity> targetStack;
+        LinkedList<LivingEntity> targetStack = new LinkedList<>();
         if (player.hasMetadata("Summoner_Target_Stack")) {
-            targetStack = (LinkedList<LivingEntity>) player.getMetadata("Summoner_Target_Stack").get(0).value();
-        } else {
-            targetStack = new LinkedList<>();
+            List<MetadataValue> targetMeta = player.getMetadata("Summoner_Target_Stack");
+            if (targetMeta != null && !targetMeta.isEmpty()) {
+                Object val = targetMeta.get(0).value();
+                if (val instanceof LinkedList) {
+                    targetStack = (LinkedList<LivingEntity>) val;
+                }
+            }
         }
 
-        // A. Dọn dẹp Stack: Xóa quái đã chết hoặc chạy quá xa (VD: > 35 block)
-        targetStack.removeIf(e -> !e.isValid() || e.isDead() || e.getLocation().distance(player.getLocation()) > 35);
-
-        // B. Cập nhật Stack: Thêm quái mới bị đánh trúng vào đầu Stack (Ưu tiên nhất)
+        // [WORLD CHECK] Loại bỏ lỗi khác chiều không gian
+        targetStack.removeIf(e -> !e.isValid() || e.isDead() || !e.getWorld().equals(player.getWorld()) || e.getLocation().distance(player.getLocation()) > 35);
         for (LivingEntity target : markedTargets) {
-            targetStack.remove(target); // Nếu đã có trong hàng chờ thì gỡ ra...
-            targetStack.addFirst(target); // ...để đôn nó lên vị trí đầu tiên (vừa bị đánh)
+            targetStack.remove(target);
+            targetStack.addFirst(target);
         }
 
-        // C. Giới hạn trí nhớ: Bầy thú chỉ nhớ tối đa 6 mục tiêu gần nhất
         while (targetStack.size() > 8) {
             targetStack.removeLast();
         }
 
-        // Lưu Stack lại cho lần vụt roi sau
         player.setMetadata("Summoner_Target_Stack", new FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), targetStack));
 
-        // ==========================================
-        // 4. RA LỆNH CHO ĐỆ TỬ DỰA TRÊN STACK
-        // ==========================================
         if (!myPets.isEmpty()) {
             if (!targetStack.isEmpty()) {
-                // Trong Stack có quái -> Chia việc cắn xé
                 for (int i = 0; i < myPets.size(); i++) {
                     org.bukkit.entity.Mob pet = myPets.get(i);
-                    // Chia đều: Chó 1 đánh Quái 1, Chó 2 đánh Quái 2 (Lặp lại nếu chó nhiều hơn quái)
                     LivingEntity targetToAttack = targetStack.get(i % targetStack.size());
 
                     if (pet instanceof org.bukkit.entity.Wolf) {
@@ -269,14 +248,12 @@ public class SummonerClass extends RPGClass {
                     } catch (Exception ex) {}
                 }
             } else {
-                // Stack rỗng (Quái chết sạch) -> Reset Aggro, Về chế độ phòng thủ!
                 for (org.bukkit.entity.Mob pet : myPets) {
-                    pet.setTarget(null); // Bỏ qua mục tiêu
+                    pet.setTarget(null);
                     if (pet instanceof org.bukkit.entity.Wolf) {
-                        ((org.bukkit.entity.Wolf) pet).setAngry(false); // Ngưng sủa
+                        ((org.bukkit.entity.Wolf) pet).setAngry(false);
                     }
                     try {
-                        // Trả quyền điều khiển lại cho AI mặc định (đi theo chủ)
                         if (MythicBukkit.inst().getAPIHelper().isMythicMob(pet)) {
                             MythicBukkit.inst().getAPIHelper().reduceThreat(pet, pet.getTarget(), 99999);
                         }
@@ -284,72 +261,253 @@ public class SummonerClass extends RPGClass {
                 }
             }
         }
+
+        return hitSomething;
     }
 
     @Override
     public boolean performMeleeAttack(Player attacker, RPGPlayer rpgAttacker, LivingEntity target, ItemStack weapon) {
-        // [CƠ CHẾ ĐẶC BIỆT]: Summoner đánh tay trúng quái sẽ tự động gọi đòn Quất Roi AoE!
-        this.onLeftClick(attacker, rpgAttacker, weapon);
-
-        return false; // Hủy đòn chém tay vật lý gốc của Minecraft
+        this.executeLeftClick(attacker, rpgAttacker, weapon);
+        return false;
     }
 
-    // ==========================================
-    // TÍNH NĂNG SHIFT + CLICK PHẢI (GIẢI TRỪ KHẾ ƯỚC NÂNG CẤP)
-    // ==========================================
     @Override
-    public void onRightClick(Player player, RPGPlayer rpgPlayer, ItemStack weapon) {
+    public boolean onRightClick(Player player, RPGPlayer rpgPlayer, ItemStack weapon) {
         if (player.isSneaking()) {
             Entity targetPet = null;
 
-            // 1. Phóng tia nhìn (RayTrace) 10 block xem chủ nhân có đang nhìn thẳng vào con đệ nào không
             org.bukkit.util.RayTraceResult result = player.getWorld().rayTraceEntities(
                     player.getEyeLocation(), player.getEyeLocation().getDirection(), 10.0,
                     entity -> entity.hasMetadata("Summoner_Pet") && reservedPets.containsKey(entity.getUniqueId())
             );
 
-            // Nếu nhìn trúng 1 con thú triệu hồi
             if (result != null && result.getHitEntity() != null) {
                 targetPet = result.getHitEntity();
             } else {
-                // 2. Nếu không nhìn ai, tự động bắt 1 con bất kỳ trong Sổ Nam Tào
                 for (Map.Entry<java.util.UUID, PetInfo> entry : reservedPets.entrySet()) {
                     if (entry.getValue().ownerId.equals(player.getUniqueId())) {
                         targetPet = org.bukkit.Bukkit.getEntity(entry.getKey());
                         if (targetPet == null) {
-                            // Mob kẹt chunk (null) -> Thu hồi giải phóng Mana luôn rồi thoát
                             unregisterPet(entry.getKey(), rpgPlayer);
-                            return;
+                            return true;
                         }
-                        break; // [QUAN TRỌNG]: Lấy 1 con xong là break ngay, không xóa toàn bộ nữa!
+                        break;
                     }
                 }
             }
 
-            // 3. Tiến hành giải trừ mục tiêu đã chọn
             if (targetPet != null && reservedPets.containsKey(targetPet.getUniqueId())) {
                 PetInfo info = reservedPets.get(targetPet.getUniqueId());
                 if (info.ownerId.equals(player.getUniqueId())) {
-                    targetPet.remove(); // Xóa xác vật lý
-
-                    // Gọi hàm unregisterPet để trả Mana (Hàm này đã có sẵn thông báo Chat)
+                    targetPet.remove();
                     unregisterPet(targetPet.getUniqueId(), rpgPlayer);
                     player.getWorld().playSound(player.getLocation(), org.bukkit.Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 0.5f);
+
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public double onMeleeHit(Player attacker, RPGPlayer rpgPlayer, LivingEntity target, double baseMultiplier) {
+        // 1. Mặc định Summoner bị giảm sát thương cận chiến chỉ còn 45%
+        double finalMultiplier = baseMultiplier * 0.45;
+
+        // 2. Đọc Buff sát thương từ Quả Cầu Cộng Hưởng
+        if (attacker.hasMetadata("Resonance_Stats")) {
+            Object val = attacker.getMetadata("Resonance_Stats").get(0).value();
+            if (val instanceof java.util.Map) {
+                @SuppressWarnings("unchecked")
+                java.util.Map<String, Double> buffs = (java.util.Map<String, Double>) val;
+
+                // [Hệ Attacker]: Tăng % Sát thương gây ra
+                // Ví dụ: Đang là 0.45, cộng thêm 0.10 từ buff sẽ thành 0.55
+                finalMultiplier += buffs.getOrDefault("DamageMultiplier", 0.0);
+            }
+        }
+
+        return finalMultiplier;
+    }
+
+    @Override
+    public double onTakeDamage(Player victim, RPGPlayer rpgPlayer, LivingEntity attacker, double initialDamage) {
+        if (attacker != null && !attacker.equals(victim) && !(attacker instanceof org.bukkit.entity.ArmorStand) && !attacker.hasMetadata("Summoner_Pet")) {
+
+            @SuppressWarnings("unchecked")
+            LinkedList<LivingEntity> targetStack = new LinkedList<>();
+
+            // ==========================================
+            // [FIX BUG BẰNG LỚP BẢO VỆ]
+            // ==========================================
+            if (victim.hasMetadata("Summoner_Target_Stack")) {
+                List<org.bukkit.metadata.MetadataValue> targetMeta = victim.getMetadata("Summoner_Target_Stack");
+                if (targetMeta != null && !targetMeta.isEmpty()) {
+                    Object val = targetMeta.get(0).value();
+                    if (val instanceof LinkedList) {
+                        targetStack = (LinkedList<LivingEntity>) val;
+                    }
+                }
+            }
+
+            // [WORLD CHECK] Chặn lỗi khác chiều không gian khi đo khoảng cách
+            targetStack.removeIf(e -> !e.isValid() || e.isDead() || !e.getWorld().equals(victim.getWorld()) || e.getLocation().distance(victim.getLocation()) > 35);
+            targetStack.remove(attacker);
+            targetStack.addFirst(attacker);
+
+            while (targetStack.size() > 8) {
+                targetStack.removeLast();
+            }
+            victim.setMetadata("Summoner_Target_Stack", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), targetStack));
+
+            List<org.bukkit.entity.Mob> myPets = new ArrayList<>();
+            for (org.bukkit.entity.Entity e : victim.getNearbyEntities(20, 10, 20)) {
+                if (e.hasMetadata("Summoner_Pet")) {
+                    List<org.bukkit.metadata.MetadataValue> metaList = e.getMetadata("Summoner_Pet");
+
+                    if (metaList != null && !metaList.isEmpty()) {
+                        if (metaList.get(0).asString().equals(victim.getUniqueId().toString())) {
+                            if (e instanceof org.bukkit.entity.Mob) {
+                                myPets.add((org.bukkit.entity.Mob) e);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!myPets.isEmpty() && !targetStack.isEmpty()) {
+                for (int i = 0; i < myPets.size(); i++) {
+                    org.bukkit.entity.Mob pet = myPets.get(i);
+                    LivingEntity targetToAttack = targetStack.get(i % targetStack.size());
+
+                    if (pet instanceof org.bukkit.entity.Wolf) {
+                        ((org.bukkit.entity.Wolf) pet).setAngry(true);
+                    }
+                    pet.setTarget(targetToAttack);
+
+                    try {
+                        if (io.lumine.mythic.bukkit.MythicBukkit.inst().getAPIHelper().isMythicMob(pet)) {
+                            io.lumine.mythic.bukkit.MythicBukkit.inst().getAPIHelper().addThreat(pet, targetToAttack, 99999);
+                            io.lumine.mythic.bukkit.MythicBukkit.inst().getAPIHelper().taunt(pet, targetToAttack);
+                        }
+                    } catch (Exception ex) { }
+                }
+            }
+        }
+
+        return initialDamage;
+    }
+
+    public void clearAllPets(Player player) {
+        java.util.UUID ownerId = player.getUniqueId();
+        RPGPlayer rpgOwner = vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager().getRPGPlayer(ownerId);
+        int count = 0;
+
+        for (Map.Entry<java.util.UUID, PetInfo> entry : reservedPets.entrySet()) {
+            if (entry.getValue().ownerId.equals(ownerId)) {
+                Entity pet = org.bukkit.Bukkit.getEntity(entry.getKey());
+                if (pet != null && pet.isValid()) {
+                    pet.remove();
+                }
+
+                if (rpgOwner != null) {
+                    rpgOwner.freeReservedResource(entry.getValue().manaReserved);
+                    rpgOwner.setCurrentResource(rpgOwner.getCurrentResource() + entry.getValue().manaReserved);
+                }
+
+                reservedPets.remove(entry.getKey());
+                count++;
+            }
+        }
+
+        if (count > 0 && player.isOnline()) {
+            player.sendMessage("§b§l[!] §fHệ thống đã tự động thu hồi §e" + count + " Linh Thú§f!");
+        }
+    }
+
+    @Override
+    public void onProjectileHit(Player shooter, RPGPlayer rpgPlayer, org.bukkit.entity.Projectile projectile, org.bukkit.event.entity.ProjectileHitEvent event) { }
+
+    // ==========================================
+    // HOOK 1: HIỆU ỨNG TRÚNG ĐÍCH TỪ CỘNG HƯỞNG (RESONANCE)
+    // ==========================================
+    @Override
+    public void onAttackLanded(Player attacker, LivingEntity target) {
+        // Kiểm tra xem Triệu hồi sư có đang cầm bùa lợi Cộng hưởng không
+        if (attacker.hasMetadata("Resonance_Stats")) {
+            Object val = attacker.getMetadata("Resonance_Stats").get(0).value();
+            if (val instanceof java.util.Map) {
+                @SuppressWarnings("unchecked")
+                java.util.Map<String, Double> buffs = (java.util.Map<String, Double>) val;
+
+                // [Hệ Ánh Sáng]: Hồi máu chuẩn trên mỗi đòn đánh trúng
+                double heal = buffs.getOrDefault("HealOnHit", 0.0);
+                if (heal > 0) {
+                    double maxHp = attacker.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue();
+                    attacker.setHealth(Math.min(maxHp, attacker.getHealth() + heal));
+                    attacker.getWorld().spawnParticle(org.bukkit.Particle.HEART, attacker.getLocation().add(0, 2, 0), 1, 0.3, 0.3, 0.3, 0);
+                }
+
+                // [Hệ Lửa]: Xác suất thiêu đốt mục tiêu
+                double burnChance = buffs.getOrDefault("BurnChance", 0.0) * 100.0;
+                if (burnChance > 0 && (Math.random() * 100) <= burnChance) {
+                    target.setFireTicks(60); // Đốt 3 giây
+                }
+
+                // [Hệ Băng]: Xác suất làm chậm mục tiêu
+                double slowChance = buffs.getOrDefault("SlowChance", 0.0) * 100.0;
+                if (slowChance > 0 && (Math.random() * 100) <= slowChance) {
+                    vn.minecraft.rPGCore.managers.StatusEffectManager.applyEffect(target, org.bukkit.potion.PotionEffectType.SLOWNESS, 40, 1);
                 }
             }
         }
     }
 
+    // ==========================================
+    // HOOK 2: CỘNG XUYÊN GIÁP / XUYÊN PHÉP TỪ CỘNG HƯỞNG
+    // ==========================================
     @Override
-    public double onMeleeHit(Player attacker, RPGPlayer rpgPlayer, LivingEntity target, double baseMultiplier) {
-        return baseMultiplier * 0.45;
+    public void applyDynamicCombatStats(Player attacker, LivingEntity target, java.util.Map<String, Double> combatStats) {
+        if (attacker.hasMetadata("Resonance_Stats")) {
+            Object val = attacker.getMetadata("Resonance_Stats").get(0).value();
+            if (val instanceof java.util.Map) {
+                @SuppressWarnings("unchecked")
+                java.util.Map<String, Double> buffs = (java.util.Map<String, Double>) val;
+
+                // [Hệ Tinh Linh / Pháp Sư]: Đọc chỉ số xuyên thấu
+                double extraArmorPen = buffs.getOrDefault("ArmorPen", 0.0) * 100.0;
+                double extraMagicPen = buffs.getOrDefault("MagicPen", 0.0) * 100.0;
+
+                if (extraArmorPen > 0) {
+                    combatStats.put("Tỉ lệ xuyên giáp", combatStats.getOrDefault("Tỉ lệ xuyên giáp", 0.0) + extraArmorPen);
+                }
+                if (extraMagicPen > 0) {
+                    combatStats.put("Tỉ lệ xuyên kháng phép", combatStats.getOrDefault("Tỉ lệ xuyên kháng phép", 0.0) + extraMagicPen);
+                }
+            }
+        }
     }
 
+    // ==========================================
+    // HOOK 4: TRUYỀN CHỈ SỐ CỘNG HƯỞNG CHO ĐỆ TỬ
+    // ==========================================
     @Override
-    public double onTakeDamage(Player victim, RPGPlayer rpgPlayer, LivingEntity attacker, double initialDamage) {
-        return initialDamage;
-    }
+    public void applyPetDynamicStats(Player owner, RPGPlayer rpgOwner, Entity pet, Map<String, Double> petStats) {
+        if (owner.hasMetadata("Resonance_Stats")) {
+            Object val = owner.getMetadata("Resonance_Stats").get(0).value();
+            if (val instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Double> buffs = (Map<String, Double>) val;
 
-    @Override
-    public void onProjectileHit(Player shooter, RPGPlayer rpgPlayer, org.bukkit.entity.Projectile projectile, org.bukkit.event.entity.ProjectileHitEvent event) { }
+                // Chuyển đổi buff Cộng hưởng thành chỉ số của Đệ tử
+                petStats.put("DamageMultiplier", buffs.getOrDefault("DamageMultiplier", 0.0));
+                petStats.put("ArmorPen", buffs.getOrDefault("ArmorPen", 0.0) * 100.0);
+                petStats.put("Lifesteal", buffs.getOrDefault("Lifesteal", 0.0) * 100.0);
+                petStats.put("HealOnHit", buffs.getOrDefault("HealOnHit", 0.0));
+                petStats.put("BurnChance", buffs.getOrDefault("BurnChance", 0.0) * 100.0);
+                petStats.put("SlowChance", buffs.getOrDefault("SlowChance", 0.0) * 100.0);
+            }
+        }
+    }
 }

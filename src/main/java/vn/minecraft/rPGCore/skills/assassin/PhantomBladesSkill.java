@@ -163,6 +163,10 @@ public class PhantomBladesSkill implements ISkill {
             launchBlade(player, rpgPlayer, level, startLoc.clone(), bladeDir, fbLevel, hitCounts);
         }
 
+        if (rpgPlayer.getCurrentClass() instanceof vn.minecraft.rPGCore.classes.impl.AssassinClass) {
+            ((vn.minecraft.rPGCore.classes.impl.AssassinClass) rpgPlayer.getCurrentClass()).addSkillStack(player);
+        }
+
         return true;
     }
 

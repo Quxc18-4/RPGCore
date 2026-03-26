@@ -143,6 +143,10 @@ public class ShadowStepSkill implements ISkill {
 
         applyMobilityBuffs(player, rpgPlayer, getSpeedBonus(level), getJumpBonus(level), duration);
 
+        if (rpgPlayer.getCurrentClass() instanceof vn.minecraft.rPGCore.classes.impl.AssassinClass) {
+            ((vn.minecraft.rPGCore.classes.impl.AssassinClass) rpgPlayer.getCurrentClass()).addSkillStack(player);
+        }
+
         return true;
     }
 

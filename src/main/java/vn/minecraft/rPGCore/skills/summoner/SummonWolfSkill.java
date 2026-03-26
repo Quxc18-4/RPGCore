@@ -76,14 +76,23 @@ public class SummonWolfSkill implements ISkill {
 
     @Override
     public List<String> getDescription(int level) {
+        double flatDamage = (level == 10) ? 90.0 : 15.0 + ((level - 1) * 8.0);
+        double scaling = 1.0 + (level * 0.35);
+        int scalePercent = (int) (scaling * 100);
+
         return Arrays.asList(
-                "§7Triệu hồi một Linh Lang chiến đấu bên cạnh.",
-                "§7Linh Lang tự động tấn công mục tiêu của bạn.",
-                "§7Sát thương và máu của Linh Lang kế thừa",
-                "§7từ chỉ số Phép Thuật của chủ nhân.",
+                "§7Triệu hồi một Linh Lang từ cõi mộng",
+                "§7để sát cánh chiến đấu cùng chủ nhân.",
                 "",
-                "§fMana tiêu hao: §b" + getManaCost(level),
-                "§fThời gian hồi: §e" + (getCooldown(level) / 1000.0) + "s"
+                "§8▪ §fHệ phái: §cChiến Đấu (Attacker)",
+                "§8▪ §fThuộc tính: §dTâm Linh (Spirit)",
+                "",
+                "§e[Chỉ số Kế thừa]",
+                "§f- Sát thương: §c" + flatDamage + " §f(+§e" + scalePercent + "% Sát thương vũ khí§f)",
+                "",
+                "§d[Hiệu ứng Hấp thụ]",
+                "§f- §c+10% §fSát thương toàn phần",
+                "§f- §b+5% §fXuyên giáp toàn phần"
         );
     }
 
@@ -91,18 +100,16 @@ public class SummonWolfSkill implements ISkill {
     public boolean execute(Player player, RPGPlayer rpgPlayer, int level) {
         double cost = getManaCost(level);
 
-        // 1. Kiểm tra Năng lượng (Đồng bộ Chat)
+        // 1. Kiểm tra tài chính (Mana)
         if (rpgPlayer.getCurrentResource() < cost) {
-            player.sendMessage("§cKhông đủ Năng lượng (Mana)!");
+            player.sendMessage("§cKhông đủ Năng lượng (Cần " + cost + " Mana)!");
             return false;
         }
 
-        // 2. KIỂM TRA HỒI CHIÊU (Áp dụng ý tưởng của bạn)
+        // 2. Kiểm tra hồi chiêu
         long currentTime = System.currentTimeMillis();
         long lastUsed = cooldowns.getOrDefault(player.getUniqueId(), 0L);
-
-        long baseCd = getCooldown(level); // Lấy thời gian gốc
-        long finalCd = getFinalCooldown(rpgPlayer, baseCd); // Đưa qua máy ép CDR
+        long finalCd = getFinalCooldown(rpgPlayer, getCooldown(level));
 
         if (currentTime - lastUsed < finalCd) {
             double timeLeft = (finalCd - (currentTime - lastUsed)) / 1000.0;
@@ -110,61 +117,45 @@ public class SummonWolfSkill implements ISkill {
             return false;
         }
 
-        // 3. TRỪ NĂNG LƯỢNG VÀ LƯU COOLDOWN
-        rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - cost);
-        cooldowns.put(player.getUniqueId(), currentTime);
-
-        startCooldownNotifier(player, finalCd);
-
-        // ==========================================
-        // 4. TRIỆU HỒI MYTHICMOB
-        // ==========================================
         Location spawnLoc = player.getLocation().add(player.getLocation().getDirection().multiply(1.5)).add(0, 0.5, 0);
 
         try {
+            // THỬ GIAO HÀNG TRƯỚC
             ActiveMob wolf = MythicBukkit.inst().getMobManager().spawnMob("SpiritWolf", spawnLoc);
 
             if (wolf != null) {
-                // [QUAN TRỌNG NHẤT]: Truyền cấp độ Kỹ năng sang cho MythicMobs
-                // MythicMobs sẽ tự lấy số Level này áp vào biến <mob.level>
-                // và tự động cộng thêm Máu/Dame theo LevelModifiers.
-                wolf.setLevel(level);
+                // ==========================================
+                // [BẢO MẬT]: TẠO QUÁI THÀNH CÔNG MỚI TRỪ MANA!
+                // ==========================================
+                rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - cost);
+                cooldowns.put(player.getUniqueId(), currentTime);
+                startCooldownNotifier(player, finalCd);
 
+                wolf.setLevel(level);
                 wolf.setOwnerUUID(player.getUniqueId());
                 Entity bukkitEntity = wolf.getEntity().getBukkitEntity();
 
-                // ==========================================
-                // [FIX]: BƠM ĐẦY MÁU SAU KHI SET LEVEL
-                // MythicMobs cập nhật MaxHP nhưng quên hồi máu, ta phải tự bơm!
-                // ==========================================
                 if (bukkitEntity instanceof org.bukkit.entity.LivingEntity) {
-                    org.bukkit.entity.LivingEntity livingPet = (org.bukkit.entity.LivingEntity) bukkitEntity;
-                    new org.bukkit.scheduler.BukkitRunnable() {
-                        @Override
-                        public void run() {
-                            if (livingPet.isValid()) {
-                                org.bukkit.attribute.AttributeInstance maxHpAttr = livingPet.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
-                                if (maxHpAttr != null) {
-                                    livingPet.setHealth(maxHpAttr.getValue());
-                                }
-                            }
-                        }
-                    }.runTaskLater(plugin, 2L); // Chờ 2 tick để MythicMobs load xong thông số mới
+                    vn.minecraft.rPGCore.skills.summoner.pets.IPetProfile profile = vn.minecraft.rPGCore.skills.summoner.pets.SummonPetManager.getProfile("SpiritWolf");
+                    if (profile != null) {
+                        profile.onSpawn(player, (org.bukkit.entity.LivingEntity) bukkitEntity, level);
+                    }
                 }
 
                 if (bukkitEntity instanceof org.bukkit.entity.Tameable) {
                     ((org.bukkit.entity.Tameable) bukkitEntity).setTamed(true);
                     ((org.bukkit.entity.Tameable) bukkitEntity).setOwner(player);
                 }
-
                 if (bukkitEntity instanceof org.bukkit.entity.Sittable) {
                     ((org.bukkit.entity.Sittable) bukkitEntity).setSitting(false);
                 }
 
+                // Đóng dấu kiểm định
                 bukkitEntity.setMetadata("Summoner_Pet", new FixedMetadataValue(plugin, player.getUniqueId().toString()));
+                bukkitEntity.setMetadata("Pet_Type", new FixedMetadataValue(plugin, "SpiritWolf"));
                 bukkitEntity.setMetadata("Summon_Level", new FixedMetadataValue(plugin, level));
 
-                // Gọi vào Sổ Nam Tào
+                // Lưu vào sổ nợ (Thế chấp Mana)
                 if (rpgPlayer.getCurrentClass() instanceof vn.minecraft.rPGCore.classes.impl.SummonerClass) {
                     ((vn.minecraft.rPGCore.classes.impl.SummonerClass) rpgPlayer.getCurrentClass())
                             .registerPet(bukkitEntity.getUniqueId(), cost, rpgPlayer, "Linh Lang");
@@ -176,9 +167,12 @@ public class SummonWolfSkill implements ISkill {
 
                 player.sendMessage("§d§l[Triệu Hồi] §fMột Linh Lang đã đáp lại lời gọi của bạn!");
                 return true;
+            } else {
+                // Nếu MythicMobs thất bại -> Báo lỗi, KHÔNG TRỪ MANA!
+                player.sendMessage("§c[!] Lỗi Hệ Thống: MythicMobs không tìm thấy Thú 'SpiritWolf'. Vui lòng kiểm tra lại file cấu hình!");
             }
         } catch (Exception e) {
-            player.sendMessage("§c[!] Lỗi: Không tìm thấy quái vật SpiritWolf trong thư mục MythicMobs!");
+            player.sendMessage("§c[!] Lỗi Ngoại lệ: Quá trình tạo quái bị gián đoạn!");
             e.printStackTrace();
         }
 

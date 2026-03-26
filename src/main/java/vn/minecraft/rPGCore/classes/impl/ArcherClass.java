@@ -46,13 +46,13 @@ public class ArcherClass extends RPGClass {
     }
 
     @Override
-    public void onLeftClick(Player player, RPGPlayer rpgPlayer, ItemStack weapon) {
+    public boolean onLeftClick(Player player, RPGPlayer rpgPlayer, ItemStack weapon) {
         Material type = weapon.getType();
-        if (type != Material.BOW && type != Material.CROSSBOW) return;
+        if (type != Material.BOW && type != Material.CROSSBOW) return false;
 
         long currentTime = System.currentTimeMillis();
         long allowedTime = nextShootTime.getOrDefault(player.getUniqueId(), 0L);
-        if (currentTime < allowedTime) return;
+        if (currentTime < allowedTime) return false;
 
         ItemStack offHandItem = player.getInventory().getItemInOffHand();
         String customArrowType = null;
@@ -64,7 +64,7 @@ public class ArcherClass extends RPGClass {
             if (lastLine.startsWith("§8arrow_")) {
                 if (rpgPlayer.getSkillData().getSkillLevel("archer_arrow_crafting") < 1) {
                     player.sendMessage("§c§l(!) §cBạn chưa học [Chế Tác Tiễn] nên không thể sử dụng loại mũi tên này!");
-                    return;
+                    return false; // Chưa học skill
                 }
                 customArrowType = lastLine.replace("§8", "");
                 offHandItem.setAmount(offHandItem.getAmount() - 1);
@@ -85,6 +85,9 @@ public class ArcherClass extends RPGClass {
             nextShootTime.put(player.getUniqueId(), currentTime + crossbowCooldown);
             fireArrow(player, "CROSSBOW", customArrowType);
         }
+
+        // Trả về false vì Archer có logic trừ độ bền riêng (Trừ nhiều/ít tùy loại tên ở hàm onProjectileHit)
+        return false;
     }
 
     private void fireArrow(Player player, String weaponType, String customType) {

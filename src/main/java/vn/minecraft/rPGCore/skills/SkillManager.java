@@ -1,9 +1,11 @@
 package vn.minecraft.rPGCore.skills;
 
 import org.bukkit.plugin.java.JavaPlugin;
+import org.checkerframework.checker.units.qual.C;
 import vn.minecraft.rPGCore.skills.archer.*;
 import vn.minecraft.rPGCore.skills.assassin.*;
-import vn.minecraft.rPGCore.skills.summoner.SummonWolfSkill;
+import vn.minecraft.rPGCore.skills.summoner.*;
+import vn.minecraft.rPGCore.skills.summoner.pets.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,6 +18,15 @@ public class SkillManager {
 
     public SkillManager(JavaPlugin plugin) {
         this.plugin = plugin;
+        // ==========================================
+        // ĐĂNG KÝ HỒ SƠ THÚ TRIỆU HỒI (PET PROFILES)
+        // ==========================================
+        SummonPetManager.register(new SpiritWolfProfile());
+        SummonPetManager.register(new AlphaWolfProfile());
+        SummonPetManager.register(new CopperGolemProfile());
+        SummonPetManager.register(new WindSpiritProfile());
+        SummonPetManager.register(new GreatWindSpiritProfile());
+
         // Nơi đăng ký mọi kỹ năng của Server
         registerSkill(new DoubleShotSkill(plugin));
         registerSkill(new TripleShotSkill(plugin));
@@ -35,6 +46,10 @@ public class SkillManager {
         registerSkill(new ShadowDecoySkill(plugin));
         registerSkill(new KillingIntentSkill(plugin));
         registerSkill(new SummonWolfSkill(plugin));
+        registerSkill(new SummonFusionSkill(plugin));
+        registerSkill(new ResonanceSkill(plugin));
+        registerSkill(new SummonCopperGolemSkill(plugin));
+        registerSkill(new SummonWindSpiritSkill(plugin));
     }
 
     public void registerSkill(ISkill skill) {
