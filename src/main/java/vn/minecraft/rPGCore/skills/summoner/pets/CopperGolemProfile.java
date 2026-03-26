@@ -180,13 +180,13 @@ public class CopperGolemProfile implements IPetProfile, Listener {
                     attacker.setNoDamageTicks(0);
                     attacker.damage(reflectDmg);
 
-                    if (victim.hasMetadata("Summoner_Pet")) {
-                        String ownerUUID = victim.getMetadata("Summoner_Pet").get(0).asString();
-                        Player owner = Bukkit.getPlayer(UUID.fromString(ownerUUID));
-                        if (owner != null && owner.isOnline()) {
-                            owner.sendMessage("§e[Debug] Khiên Golem (Lv." + petLevel + ") vừa phản §c" + String.format("%.1f", reflectDmg) + " DMG §evào " + attacker.getName() + " §7(" + (int)(reflectMultiplier * 100) + "%)");
-                        }
-                    }
+//                    if (victim.hasMetadata("Summoner_Pet")) {
+//                        String ownerUUID = victim.getMetadata("Summoner_Pet").get(0).asString();
+//                        Player owner = Bukkit.getPlayer(UUID.fromString(ownerUUID));
+//                        if (owner != null && owner.isOnline()) {
+//                            owner.sendMessage("§e[Debug] Khiên Golem (Lv." + petLevel + ") vừa phản §c" + String.format("%.1f", reflectDmg) + " DMG §evào " + attacker.getName() + " §7(" + (int)(reflectMultiplier * 100) + "%)");
+//                        }
+//                    }
                 }
                 victim.getWorld().playSound(victim.getLocation(), Sound.ENCHANT_THORNS_HIT, 1.0f, 0.8f);
                 return;

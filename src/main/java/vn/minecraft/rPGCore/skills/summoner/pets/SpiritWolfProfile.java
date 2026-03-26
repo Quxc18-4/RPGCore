@@ -20,7 +20,10 @@ public class SpiritWolfProfile implements IPetProfile {
 
     @Override
     public double getBaseFlatDamage(int level) {
-        // [CẤU HÌNH TẠI ĐÂY]: Lv 1 = 15 | Lv 2 = 25...
+        // [MỐC ĐỘT PHÁ CẤP 10]: Tròn 90 Sát thương thay vì 87
+        if (level == 10) {
+            return 90.0;
+        }
         return 15.0 + (level - 1) * 8.0;
     }
 

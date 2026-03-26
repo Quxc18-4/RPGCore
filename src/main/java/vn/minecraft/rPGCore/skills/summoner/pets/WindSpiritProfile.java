@@ -53,14 +53,16 @@ public class WindSpiritProfile implements IPetProfile, Listener {
             pet.setHealth(baseHp);
         }
 
-        final int attackSpeed = Math.max(16, 20 - (level - 1));
+        final int attackSpeed = Math.max(8, 20 - (int)((level - 1) * 1.33));
 
-        // [CÂN BẰNG MỚI]: Tính toán giới hạn tuổi thọ
-        final int maxLifespanTicks = (15 + (level * 2)) * 20;
+        // [ĐÃ CẬP NHẬT]: Giới hạn tuổi thọ mới (40s + 5s mỗi cấp)
+        // [MỐC ĐỘT PHÁ CẤP 10]: Tăng vọt lên 90s thay vì 85s
+        int durationSecs = (level == 10) ? 90 : 40 + ((level - 1) * 5);
+        final int maxLifespanTicks = durationSecs * 20;
 
         new BukkitRunnable() {
             int shootCooldown = 0;
-            int ticksLived = 0; // Bộ đếm tuổi thọ
+            int ticksLived = 0;
 
             @Override
             public void run() {
@@ -70,11 +72,14 @@ public class WindSpiritProfile implements IPetProfile, Listener {
                 }
 
                 // ==========================================
-                // KIỂM TRA TUỔI THỌ
+                // KIỂM TRA TUỔI THỌ (TỰ ĐỘNG BỐC HƠI)
                 // ==========================================
                 ticksLived++;
                 if (ticksLived >= maxLifespanTicks) {
-                    pet.setHealth(0); // Ép chết để kích hoạt onDeath và trả Mana
+                    pet.getWorld().spawnParticle(Particle.CLOUD, pet.getLocation(), 30, 0.5, 0.5, 0.5, 0.1);
+                    pet.getWorld().playSound(pet.getLocation(), Sound.ENTITY_BREEZE_DEATH, 1.0f, 1.0f);
+                    pet.remove(); // [BIẾN MẤT HẲN KHÔNG TÌ VẾT]
+                    this.cancel();
                     return;
                 }
 
@@ -93,18 +98,14 @@ public class WindSpiritProfile implements IPetProfile, Listener {
                 Vector currentV = pet.getVelocity();
                 double newY = currentV.getY();
 
-                // ==========================================
                 // 1. CƠ CHẾ LƠ LỬNG (BOBBING)
-                // ==========================================
                 if (pet.isOnGround()) {
                     newY = 1.2;
                 } else if (newY < -0.1) {
                     newY = -0.1;
                 }
 
-                // ==========================================
-                // 2. AI BAY THEO CHỦ VÀ THẢ DIỀU (STEERING BEHAVIOR)
-                // ==========================================
+                // 2. AI BAY THEO CHỦ VÀ THẢ DIỀU
                 Vector desiredXZ = new Vector(0, 0, 0);
                 boolean isMoving = false;
 
@@ -135,9 +136,7 @@ public class WindSpiritProfile implements IPetProfile, Listener {
                     pet.setVelocity(new Vector(currentV.getX() * 0.7, newY, currentV.getZ() * 0.7));
                 }
 
-                // ==========================================
-                // 3. XẢ ĐẠN (Chỉ kích hoạt khi đang lơ lửng)
-                // ==========================================
+                // 3. XẢ ĐẠN
                 if (target != null && !pet.isOnGround()) {
                     if (shootCooldown <= 0) {
                         org.bukkit.Location startLoc = pet.getLocation().add(0, pet.getHeight() / 2, 0);
@@ -202,10 +201,25 @@ public class WindSpiritProfile implements IPetProfile, Listener {
     }
 
     @Override public double onAttack(Player owner, LivingEntity pet, LivingEntity target, double baseDamage) { return 1.0; }
+    @Override public void onDeath(Player owner, LivingEntity pet) { } // Xử lý thủ công bên dưới
 
-    @Override public void onDeath(Player owner, LivingEntity pet) {
-        pet.getWorld().spawnParticle(Particle.CLOUD, pet.getLocation(), 30, 0.5, 0.5, 0.5, 0.1);
-        pet.getWorld().playSound(pet.getLocation(), Sound.ENTITY_BREEZE_DEATH, 1.0f, 1.0f);
+    // ==========================================
+    // KHÓA HOẠT ẢNH CHẾT VANILLA BẰNG CÁCH XÓA HẲN
+    // ==========================================
+    @EventHandler
+    public void onPetDamage(org.bukkit.event.entity.EntityDamageEvent event) {
+        if (event.getEntity() instanceof LivingEntity) {
+            LivingEntity pet = (LivingEntity) event.getEntity();
+            if (pet.hasMetadata("Pet_Type") && pet.getMetadata("Pet_Type").get(0).asString().equals("WindSpirit")) {
+                // Nếu sát thương đủ làm chết Tinh Linh
+                if (pet.getHealth() - event.getFinalDamage() <= 0) {
+                    event.setCancelled(true);
+                    pet.getWorld().spawnParticle(Particle.CLOUD, pet.getLocation(), 30, 0.5, 0.5, 0.5, 0.1);
+                    pet.getWorld().playSound(pet.getLocation(), Sound.ENTITY_BREEZE_DEATH, 1.0f, 1.0f);
+                    pet.remove(); // Bốc hơi ngay lập tức!
+                }
+            }
+        }
     }
 
     @EventHandler
@@ -223,13 +237,32 @@ public class WindSpiritProfile implements IPetProfile, Listener {
         }
     }
 
+    // ==========================================
+    // LOGIC NỔ DIỆN RỘNG (GÂY 140% SÁT THƯƠNG)
+    // ==========================================
     @EventHandler
     public void onWindChargeHit(ProjectileHitEvent event) {
         if (event.getEntity().hasMetadata("Enhanced_WindCharge")) {
             event.setCancelled(true);
             org.bukkit.entity.Projectile proj = event.getEntity();
             org.bukkit.Location hitLoc = proj.getLocation();
+
+            // Tìm chủ nhân để tính sát thương
+            LivingEntity pet = null;
+            if (proj.getShooter() instanceof LivingEntity) {
+                pet = (LivingEntity) proj.getShooter();
+            }
             proj.remove();
+
+            Player owner = null;
+            RPGPlayer rpgOwner = null;
+            if (pet != null && pet.hasMetadata("Summoner_Pet")) {
+                String ownerId = pet.getMetadata("Summoner_Pet").get(0).asString();
+                owner = Bukkit.getPlayer(UUID.fromString(ownerId));
+                if (owner != null) {
+                    rpgOwner = RPGCore.getInstance().getPlayerManager().getRPGPlayer(owner.getUniqueId());
+                }
+            }
 
             if (event.getHitEntity() != null) {
                 proj.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, hitLoc, 1);
@@ -237,8 +270,17 @@ public class WindSpiritProfile implements IPetProfile, Listener {
 
                 for (org.bukkit.entity.Entity e : proj.getWorld().getNearbyEntities(hitLoc, 4.0, 4.0, 4.0)) {
                     if (e instanceof LivingEntity && !e.hasMetadata("Summoner_Pet") && !(e instanceof Player)) {
+                        LivingEntity target = (LivingEntity) e;
                         Vector push = e.getLocation().toVector().subtract(hitLoc.toVector()).normalize().multiply(1.5).setY(0.5);
                         e.setVelocity(push);
+
+                        // [MỚI]: Gây 140% Sát thương trực tiếp
+                        if (owner != null && rpgOwner != null) {
+                            double finalDmg = CombatManager.calculatePetDamage(owner, rpgOwner, pet, target, 0) * 1.4;
+                            owner.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(RPGCore.getInstance(), true));
+                            CombatManager.applySkillDamage(owner, target, finalDmg);
+                            owner.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
+                        }
                     }
                 }
             } else if (event.getHitBlock() != null) {
@@ -247,7 +289,16 @@ public class WindSpiritProfile implements IPetProfile, Listener {
 
                 for (org.bukkit.entity.Entity e : proj.getWorld().getNearbyEntities(hitLoc, 3.0, 3.0, 3.0)) {
                     if (e instanceof LivingEntity && !e.hasMetadata("Summoner_Pet") && !(e instanceof Player)) {
+                        LivingEntity target = (LivingEntity) e;
                         e.setVelocity(new Vector(0, 1.2, 0));
+
+                        // [MỚI]: Gây 140% Sát thương trực tiếp
+                        if (owner != null && rpgOwner != null) {
+                            double finalDmg = CombatManager.calculatePetDamage(owner, rpgOwner, pet, target, 0) * 1.4;
+                            owner.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(RPGCore.getInstance(), true));
+                            CombatManager.applySkillDamage(owner, target, finalDmg);
+                            owner.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
+                        }
                     }
                 }
             }
@@ -259,6 +310,7 @@ public class WindSpiritProfile implements IPetProfile, Listener {
         if (event.getDamager().hasMetadata("Pet_Projectile")) {
             event.setCancelled(true);
 
+            // Cản những sát thương rác còn sót lại
             if (event.getEntity() instanceof LivingEntity) {
                 LivingEntity target = (LivingEntity) event.getEntity();
                 org.bukkit.entity.Projectile proj = (org.bukkit.entity.Projectile) event.getDamager();
@@ -266,7 +318,7 @@ public class WindSpiritProfile implements IPetProfile, Listener {
 
                 if (target instanceof Player) return;
 
-                if (pet != null && pet.hasMetadata("Summoner_Pet")) {
+                if (pet != null && pet.hasMetadata("Summoner_Pet") && !proj.hasMetadata("Enhanced_WindCharge")) {
                     String ownerId = pet.getMetadata("Summoner_Pet").get(0).asString();
                     Player owner = Bukkit.getPlayer(UUID.fromString(ownerId));
 

@@ -382,18 +382,16 @@ public class ResonanceSkill implements ISkill {
         }
 
         // ==========================================
-        // [MỚI]: CƠ CHẾ KHIÊN ẢO HÓA (VISUAL SHIELD)
+        // [CẬP NHẬT 1]: ÁP DỤNG TRỰC TIẾP TỐC ĐỘ CHẠY (WALK SPEED)
         // ==========================================
-        // ==========================================
-        // [MỚI]: CƠ CHẾ KHIÊN ẢO HÓA (VISUAL SHIELD)
-        // ==========================================
+        float defaultSpeed = 0.2f;
+        float speedBonus = finalBuffs.getOrDefault("MoveSpeed", 0.0).floatValue();
+        player.setWalkSpeed(Math.min(defaultSpeed * (1.0f + speedBonus), 1.0f));
+
         if (totalEarthShield > 0) {
             player.setMetadata("Custom_Earth_Shield", new FixedMetadataValue(plugin, totalEarthShield));
             player.setMetadata("Custom_Earth_Shield_Max", new FixedMetadataValue(plugin, totalEarthShield));
-
             player.setAbsorptionAmount(20.0);
-
-            // [FIX BUG VISUAL]: Ép Vanilla Minecraft render tim vàng ra màn hình!
             player.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.ABSORPTION, durationSeconds * 20, 4, false, false, false));
         } else {
             player.removeMetadata("Custom_Earth_Shield", plugin);
@@ -404,7 +402,7 @@ public class ResonanceSkill implements ISkill {
         player.setMetadata("Resonance_Stats", new FixedMetadataValue(plugin, finalBuffs));
 
         // ==========================================
-        // [MỚI]: IN BẢNG DEBUG CHO DỄ THEO DÕI
+        // IN BẢNG DEBUG (Đã thêm Tốc chạy & Kháng)
         // ==========================================
         player.sendMessage(" ");
         player.sendMessage("§d§l[CỘNG HƯỞNG] §fCác trạng thái bạn vừa hấp thụ: ");
@@ -412,10 +410,16 @@ public class ResonanceSkill implements ISkill {
             player.sendMessage("§f- §aKhiên Ảo (Thổ): §e+" + String.format("%.1f", totalEarthShield) + " Máu");
         }
         if (finalBuffs.containsKey("DamageReduction")) {
-            player.sendMessage("§f- §6Giảm Sát Thương (Tiên Phong): §c-" + (finalBuffs.get("DamageReduction") * 100) + "%");
+            player.sendMessage("§f- §6Giảm Sát Thương (Tiên Phong): §c-" + (int)(finalBuffs.get("DamageReduction") * 100) + "%");
         }
         if (finalBuffs.containsKey("DamageMultiplier")) {
-            player.sendMessage("§f- §cTăng Sát Thương (Chiến Đấu): §c+" + (finalBuffs.get("DamageMultiplier") * 100) + "%");
+            player.sendMessage("§f- §cTăng Sát Thương (Chiến Đấu): §c+" + (int)(finalBuffs.get("DamageMultiplier") * 100) + "%");
+        }
+        if (finalBuffs.containsKey("MoveSpeed")) {
+            player.sendMessage("§f- §bTăng Tốc Chạy (Nhanh Nhẹn): §b+" + (int)(finalBuffs.get("MoveSpeed") * 100) + "%");
+        }
+        if (finalBuffs.containsKey("EffectResistance")) {
+            player.sendMessage("§f- §aKháng Hiệu Ứng (Gió): §a+" + finalBuffs.get("EffectResistance") + "%");
         }
         player.sendMessage(" ");
 
@@ -434,16 +438,15 @@ public class ResonanceSkill implements ISkill {
             public void run() {
                 if (player.isOnline()) {
                     player.removeMetadata("Resonance_Stats", plugin);
-
-                    // ==========================================
-                    // [THÊM 2 DÒNG NÀY VÀO]: Xóa khiên ngầm khi hết giờ
-                    // ==========================================
                     player.removeMetadata("Custom_Earth_Shield", plugin);
                     player.removeMetadata("Custom_Earth_Shield_Max", plugin);
-
                     playerStacks.remove(player.getUniqueId());
                     player.setAbsorptionAmount(0);
-                    player.sendMessage("§7§o(Trạng thái Cộng hưởng đã phai nhạt...)");
+
+                    // [CẬP NHẬT 2]: Trả lại tốc độ gốc khi hết buff
+                    player.setWalkSpeed(0.2f);
+
+                    player.sendMessage("§7§o(Trạng thái Cộng hưởng đã tan biến...)");
                 }
             }
         };

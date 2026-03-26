@@ -39,8 +39,7 @@ public class SummonWindSpiritSkill implements ISkill {
 
     @Override
     public double getManaCost(int level) {
-        // [CÂN BẰNG LẠI]: Tăng cực mạnh Mana vì đây là ụ súng Auto-Aim
-        return 70.0 + (level * 10.0);
+        return 60.0 + (level * 10.0);
     }
 
     @Override
@@ -57,15 +56,14 @@ public class SummonWindSpiritSkill implements ISkill {
         double scaling = 0.8 + (level * 0.25);
         int scalePercent = (int) (scaling * 100);
 
-        int atkSpeedTick = Math.max(16, 20 - (level - 1));
+        int atkSpeedTick = Math.max(8, 20 - (int)((level - 1) * 1.33));
         double atkSpeedSec = atkSpeedTick / 20.0;
 
-        // Tính thời gian duy trì
-        int duration = 15 + (level * 2);
+        int duration = (level == 10) ? 90 : 40 + ((level - 1) * 5);
 
         return Arrays.asList(
                 "§7Hô gọi ngọn gió lốc hình thành nên Tinh linh,",
-                "§7bậc thầy tấn công tầm xa và khống chế diện rộng.",
+                "§7bậc thầy tấn công tầm xa và khống chế kẻ địch.",
                 "",
                 "§8▪ §fHệ phái: §bNhanh Nhẹn (Swift)",
                 "§8▪ §fThuộc tính: §aGió (Wind)",
@@ -74,9 +72,8 @@ public class SummonWindSpiritSkill implements ISkill {
                 "§f- Đạn gió: §c" + flatDamage + " §f(+§e" + scalePercent + "% ST Tổng§f)",
                 "§f- Tốc độ bắn: §e" + atkSpeedSec + "s / viên",
                 "§f- Thời gian tồn tại: §6" + duration + " giây",
-                "§f- Cường hóa (15%): §6Đạn gió sẽ gây Đẩy lùi mạnh",
-                "§6  khi trúng đích, hoặc Hất tung nếu chạm đất.",
-                "§8  (Hồi chiêu cường hóa: 6 giây)",
+                "§f- Đòn cường hóa: Bắn khí nén gây §c140% ST AOE§f,",
+                "§f gây hiệu ứng Đẩy lùi/ Hất tung khi bộc phát.",
                 "",
                 "§d[Hiệu ứng Cộng Hưởng]",
                 "§f- §b+12% §fTốc độ di chuyển",

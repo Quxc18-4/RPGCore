@@ -76,7 +76,7 @@ public class SummonWolfSkill implements ISkill {
 
     @Override
     public List<String> getDescription(int level) {
-        double flatDamage = 15.0 + ((level - 1) * 8.0);
+        double flatDamage = (level == 10) ? 90.0 : 15.0 + ((level - 1) * 8.0);
         double scaling = 1.0 + (level * 0.35);
         int scalePercent = (int) (scaling * 100);
 

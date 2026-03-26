@@ -22,8 +22,17 @@ public class StatusEffectManager {
             if (rpgPlayer != null) {
                 resistance = rpgPlayer.getTotalStatsMap().getOrDefault("Kháng hiệu ứng", 0.0);
 
+                // [HOOK MỚI]: Quét xem có đang bọc bùa lợi Cộng Hưởng (Gió) không
+                if (player.hasMetadata("Resonance_Stats")) {
+                    Object val = player.getMetadata("Resonance_Stats").get(0).value();
+                    if (val instanceof java.util.Map) {
+                        @SuppressWarnings("unchecked")
+                        java.util.Map<String, Double> buffs = (java.util.Map<String, Double>) val;
+                        resistance += buffs.getOrDefault("EffectResistance", 0.0);
+                    }
+                }
+
                 int swiftCount = rpgPlayer.getStats().setCounts.getOrDefault("swift", 0);
-                // Set 4 Swift: Miễn nhiễm Làm chậm và Trói chân (Trong MC, SLOWNESS cấp cao đóng vai trò như Root)
                 if (swiftCount >= 4 && type.equals(PotionEffectType.SLOWNESS)) {
                     isImmune = true;
                 }
@@ -37,6 +46,8 @@ public class StatusEffectManager {
             return;
         }
 
+        // Đảm bảo kháng tối đa là 100%
+        resistance = Math.min(resistance, 100.0);
         int finalDuration = (int) (durationTicks * (1.0 - (resistance / 100.0)));
 
         if (finalDuration > 0) {
@@ -46,14 +57,25 @@ public class StatusEffectManager {
 
     // 2. HÀM KHÁNG LỰC KÉO/ĐẨY (Dùng cho Mũi tên Lỗ đen)
     public static Vector calculateResistedVelocity(LivingEntity target, Vector originalVelocity) {
-        if (!(target instanceof Player)) return originalVelocity; // Quái vật thì bị hút 100%
+        if (!(target instanceof Player)) return originalVelocity;
 
-        RPGPlayer rpgPlayer = RPGCore.getInstance().getPlayerManager().getRPGPlayer(target.getUniqueId());
+        Player player = (Player) target;
+        RPGPlayer rpgPlayer = RPGCore.getInstance().getPlayerManager().getRPGPlayer(player.getUniqueId());
         if (rpgPlayer == null) return originalVelocity;
 
         double resistance = rpgPlayer.getTotalStatsMap().getOrDefault("Kháng hiệu ứng", 0.0);
 
-        // Trừ bớt lực hút dựa theo % kháng hiệu ứng
+        // [HOOK MỚI]: Quét bùa lợi Cộng Hưởng (Gió)
+        if (player.hasMetadata("Resonance_Stats")) {
+            Object val = player.getMetadata("Resonance_Stats").get(0).value();
+            if (val instanceof java.util.Map) {
+                @SuppressWarnings("unchecked")
+                java.util.Map<String, Double> buffs = (java.util.Map<String, Double>) val;
+                resistance += buffs.getOrDefault("EffectResistance", 0.0);
+            }
+        }
+
+        resistance = Math.min(resistance, 100.0);
         double factor = Math.max(0.0, 1.0 - (resistance / 100.0));
         return originalVelocity.multiply(factor);
     }

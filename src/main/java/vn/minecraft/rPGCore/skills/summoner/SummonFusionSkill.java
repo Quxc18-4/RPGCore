@@ -38,12 +38,16 @@ public class SummonFusionSkill implements ISkill {
     @Override public Map<String, Integer> getRequiredSkills() { return new HashMap<>(); }
     @Override public int getRequiredPlayerLevel() { return 28; }
 
-    @Override public double getManaCost(int level) { return 110.0 + (level * 10.0); }
+    @Override
+    public double getManaCost(int level) {
+        // [CÂN BẰNG MỚI]: Cấp 1: 110 Mana -> Cấp 5: 150 Mana
+        return 100.0 + (level * 10.0);
+    }
+
     @Override public long getCooldown(int level) { return 60000L; }
 
     @Override
     public List<String> getDescription(int level) {
-        // Lấy sát thương nổ diện rộng từ logic code bên dưới
         double explosionDmg = 50.0 + (level * 10.0);
 
         return Arrays.asList(
@@ -51,13 +55,13 @@ public class SummonFusionSkill implements ISkill {
                 "§7cùng loại trên sân để triệu hồi Thực Thể Tiến Cấp.",
                 "",
                 "§e[Dung Hợp: Hiến tế]",
-                "§f- Yêu cầu: §aTối thiểu 2 Linh Thú cùng loại",
+                "§f- Yêu cầu: §aTối thiểu 3 Linh Thú cùng loại",
                 "§f- Bùng nổ: §7Gây §c" + explosionDmg + " Sát thương §7và §eChoáng 1s",
                 "§7  cho toàn bộ kẻ địch đứng gần các tế phẩm.",
                 "",
                 "§d[Dung Hợp: Tái sinh]",
-                "§f- Cấp độ Bonus: §a+1 Lv §f(Cho mỗi thú hiến tế dư ra)",
-                "§f- Sức mạnh: §cKế thừa Máu & Sát thương tế phẩm",
+                "§f- Cấp độ Bonus: §a+1 Lv §f(Mỗi 2 thú hiến tế dư ra)",
+                "§f- Sức mạnh: §cKế thừa Máu, Sát thương & Kích thước",
                 "§f- Sinh mệnh: §6Có thời hạn §f(Tăng theo Máu tế phẩm)"
         );
     }
@@ -80,9 +84,6 @@ public class SummonFusionSkill implements ISkill {
             return false;
         }
 
-        // ==========================================
-        // 1. QUÉT & PHÂN LOẠI THÚ TRÊN SÂN (UNIVERSAL SCAN)
-        // ==========================================
         Map<String, List<Entity>> fusableGroups = new HashMap<>();
 
         for (Entity e : player.getNearbyEntities(25, 10, 25)) {
@@ -91,7 +92,6 @@ public class SummonFusionSkill implements ISkill {
                     String petType = e.hasMetadata("Pet_Type") ? e.getMetadata("Pet_Type").get(0).asString() : "";
                     IPetProfile profile = SummonPetManager.getProfile(petType);
 
-                    // Nếu thú này có dạng tiến hóa -> Thêm vào nhóm chờ dung hợp
                     if (profile != null && profile.getFusionTargetId() != null) {
                         fusableGroups.computeIfAbsent(petType, k -> new ArrayList<>()).add(e);
                     }
@@ -99,9 +99,6 @@ public class SummonFusionSkill implements ISkill {
             }
         }
 
-        // ==========================================
-        // 2. CHỌN NHÓM ĐÔNG NHẤT ĐỂ DUNG HỢP
-        // ==========================================
         String bestGroupType = null;
         int maxCount = 0;
         for (Map.Entry<String, List<Entity>> entry : fusableGroups.entrySet()) {
@@ -111,8 +108,9 @@ public class SummonFusionSkill implements ISkill {
             }
         }
 
-        if (bestGroupType == null || maxCount < 2) {
-            player.sendMessage("§c§l[!] §fBạn cần ít nhất 2 Linh Thú cùng loại (chưa tiến hóa) để dung hợp!");
+        // [CẬP NHẬT YÊU CẦU]: Đòi tối thiểu 3 thú
+        if (bestGroupType == null || maxCount < 3) {
+            player.sendMessage("§c§l[!] §fBạn cần ít nhất 3 Linh Thú cùng loại (chưa tiến hóa) để dung hợp!");
             return false;
         }
 
@@ -122,7 +120,6 @@ public class SummonFusionSkill implements ISkill {
         final String targetFusionId = baseProfile.getFusionTargetId();
         final String targetFusionName = baseProfile.getFusionTargetName();
 
-        // 3. TÍNH BỘI SỐ VÀ BONUS LEVEL
         double totalSacrificeHp = 0.0;
         List<Double> petDamages = new ArrayList<>();
 
@@ -131,7 +128,6 @@ public class SummonFusionSkill implements ISkill {
             if (lp.getAttribute(Attribute.MAX_HEALTH) != null) {
                 totalSacrificeHp += lp.getAttribute(Attribute.MAX_HEALTH).getValue();
             }
-            // Lấy dummy stat 10.0 để tính trọng số dung hợp
             petDamages.add(10.0);
         }
 
@@ -143,7 +139,8 @@ public class SummonFusionSkill implements ISkill {
         }
 
         final int petsConsumed = validPets.size();
-        final int finalFusionLevel = Math.min(level + (petsConsumed - 2), 20); // Tối đa Lv 20
+        // [CẬP NHẬT LEVEL BONUS]: Cứ dư 2 con mới được +1 Level
+        final int finalFusionLevel = Math.min(level + ((petsConsumed - 3) / 2), 20);
         final double finalFusionMultiplier = fusionMultiplier;
         final double finalHpBonus = totalSacrificeHp;
 
@@ -151,7 +148,6 @@ public class SummonFusionSkill implements ISkill {
         startCooldownNotifier(player, finalCd);
         SummonerClass sClass = (SummonerClass) rpgPlayer.getCurrentClass();
 
-        // 4. THU HỒI TẾ PHẨM VÀ TÍNH MANA TRẢ LẠI
         double reservedBefore = rpgPlayer.getReservedResource();
 
         for (Entity pet : validPets) {
@@ -178,7 +174,6 @@ public class SummonFusionSkill implements ISkill {
 
         final Location ritualLoc = player.getLocation().clone();
 
-        // 5. NGHI THỨC TRIỆU HỒI (UNIVERSAL)
         new BukkitRunnable() {
             int ticks = 0;
             @Override
@@ -205,7 +200,6 @@ public class SummonFusionSkill implements ISkill {
                 ritualLoc.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, ritualLoc.clone().add(0, 1, 0), 1);
 
                 try {
-                    // TRIỆU HỒI DỰA TRÊN ID TARGET CỦA PROFILE
                     ActiveMob fusionMob = MythicBukkit.inst().getMobManager().spawnMob(targetFusionId, ritualLoc);
                     if (fusionMob != null) {
                         fusionMob.setLevel(finalFusionLevel);
@@ -221,7 +215,6 @@ public class SummonFusionSkill implements ISkill {
                             ((org.bukkit.entity.Wolf) fusionEnt).setCollarColor(DyeColor.WHITE);
                         }
 
-                        // GẮN DATA TRƯỚC KHI GỌI PROFILE
                         fusionEnt.setMetadata("Summoner_Pet", new FixedMetadataValue(plugin, player.getUniqueId().toString()));
                         fusionEnt.setMetadata("Pet_Type", new FixedMetadataValue(plugin, targetFusionId));
                         fusionEnt.setMetadata("Summon_Level", new FixedMetadataValue(plugin, finalFusionLevel));
