@@ -6,6 +6,9 @@ import org.bukkit.Particle;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.potion.PotionEffectType;
@@ -19,13 +22,14 @@ import vn.minecraft.rPGCore.managers.CombatManager;
 import vn.minecraft.rPGCore.managers.DurabilityManager;
 import vn.minecraft.rPGCore.managers.StatusEffectManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
+import org.bukkit.Sound;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-public class ArcherClass extends RPGClass {
+public class ArcherClass extends RPGClass implements Listener {
 
     private final Map<UUID, Long> nextShootTime = new HashMap<>();
 
@@ -33,16 +37,38 @@ public class ArcherClass extends RPGClass {
                        double maxHealth, double maxResource, ResourceType resourceType,
                        double regenRate, boolean isEnchanted) {
         super(id, displayName, icon, description, maxHealth, maxResource, resourceType, regenRate, isEnchanted);
-        this.armorPenCap = 80.0; // Mở Gap Xuyên Giáp 80%
+        this.armorPenCap = 80.0;
+
+        // Đăng ký Listener trực tiếp
+        RPGCore.getInstance().getServer().getPluginManager().registerEvents(this, RPGCore.getInstance());
     }
 
     @Override
     public void applyPassiveBonusStats(RPGPlayer rpgPlayer, Map<String, Double> stats) {
         double currentPen = stats.getOrDefault("Tỉ lệ xuyên giáp", 0.0);
         stats.put("Tỉ lệ xuyên giáp", currentPen + 25.0);
-
-        // [THÊM MỚI]: Gọi hàm cha để khóa Cap 80%
         super.applyPassiveBonusStats(rpgPlayer, stats);
+    }
+
+    // ==========================================
+    // [MỚI]: HACK VÀO MỌI MŨI TÊN ĐỂ GẮN XUYÊN THẤU
+    // ==========================================
+    @EventHandler
+    public void onArrowLaunch(ProjectileLaunchEvent event) {
+        if (event.getEntity() instanceof Arrow && event.getEntity().getShooter() instanceof Player) {
+            Player player = (Player) event.getEntity().getShooter();
+            RPGPlayer rpgPlayer = RPGCore.getInstance().getPlayerManager().getRPGPlayer(player.getUniqueId());
+
+            if (rpgPlayer != null && rpgPlayer.getCurrentClass() != null && rpgPlayer.getCurrentClass().getId().equals("archer")) {
+                // Kiểm tra xem buff xuyên thấu có đang bật không
+                if (player.hasMetadata("Archer_Pierce_Buff")) {
+                    Arrow arrow = (Arrow) event.getEntity();
+                    arrow.setPierceLevel(10); // Cấp phép Vanilla đâm xuyên 10 mục tiêu
+                    arrow.setMetadata("Is_Piercing_Arrow", new FixedMetadataValue(RPGCore.getInstance(), true));
+                    arrow.setMetadata("Pierce_Hit_Count", new FixedMetadataValue(RPGCore.getInstance(), 0));
+                }
+            }
+        }
     }
 
     @Override
@@ -64,7 +90,7 @@ public class ArcherClass extends RPGClass {
             if (lastLine.startsWith("§8arrow_")) {
                 if (rpgPlayer.getSkillData().getSkillLevel("archer_arrow_crafting") < 1) {
                     player.sendMessage("§c§l(!) §cBạn chưa học [Chế Tác Tiễn] nên không thể sử dụng loại mũi tên này!");
-                    return false; // Chưa học skill
+                    return false;
                 }
                 customArrowType = lastLine.replace("§8", "");
                 offHandItem.setAmount(offHandItem.getAmount() - 1);
@@ -85,8 +111,6 @@ public class ArcherClass extends RPGClass {
             nextShootTime.put(player.getUniqueId(), currentTime + crossbowCooldown);
             fireArrow(player, "CROSSBOW", customArrowType);
         }
-
-        // Trả về false vì Archer có logic trừ độ bền riêng (Trừ nhiều/ít tùy loại tên ở hàm onProjectileHit)
         return false;
     }
 
@@ -149,9 +173,6 @@ public class ArcherClass extends RPGClass {
         }.runTaskLater(plugin, 60L);
     }
 
-    // ==========================================
-    // LOGIC XỬ LÝ MŨI TÊN CHẠM MỤC TIÊU / MẶT ĐẤT
-    // ==========================================
     @Override
     public void onProjectileHit(Player shooter, RPGPlayer rpgShooter, org.bukkit.entity.Projectile projectile, org.bukkit.event.entity.ProjectileHitEvent event) {
         if (!(projectile instanceof Arrow)) return;
@@ -200,17 +221,44 @@ public class ArcherClass extends RPGClass {
                     durabilityLoss = 3;
                 }
 
+                // ==========================================
+                // [MỚI]: NỘI TẠI NGẮM CHUẨN (SNIPER)
+                // ==========================================
+                int sniperLv = rpgShooter.getSkillData().getSkillLevel("archer_sniper_passive");
+                if (sniperLv > 0) {
+                    double dist = shooter.getLocation().distance(target.getLocation());
+                    // Giới hạn tính toán tối đa 25 block để tránh lạm dụng
+                    double cappedDist = Math.min(dist, 25.0);
+                    double distanceBonus = cappedDist * (sniperLv * 0.01);
+                    dmgMulti += distanceBonus;
+                }
+
+                // ==========================================
+                // [MỚI]: GIẢM SÁT THƯƠNG NẾU LÀ ĐẠN XUYÊN THẤU
+                // ==========================================
+                if (arrow.hasMetadata("Is_Piercing_Arrow")) {
+                    int hitCount = arrow.getMetadata("Pierce_Hit_Count").get(0).asInt();
+
+                    // Giảm 8% mỗi lần trúng, tối đa giảm 70% (còn 30%)
+                    double piercePenalty = Math.max(0.30, 1.0 - (hitCount * 0.08));
+                    dmgMulti *= piercePenalty;
+
+                    // Tăng bộ đếm cho mục tiêu tiếp theo
+                    arrow.setMetadata("Pierce_Hit_Count", new FixedMetadataValue(plugin, hitCount + 1));
+
+                    // Vẽ Particle nhỏ để nhận biết đạn vừa xuyên qua quái
+                    target.getWorld().spawnParticle(Particle.ENCHANTED_HIT, target.getLocation().add(0, 1, 0), 10, 0.2, 0.2, 0.2, 0.1);
+                }
+
                 if (isCustomArrow) {
                     String cType = arrow.getMetadata("CustomArrowType").get(0).asString();
                     durabilityLoss = 2;
 
                     switch (cType) {
                         case "arrow_ice":
-                            // [HIỆU ỨNG LỒNG BĂNG]
                             StatusEffectManager.applyEffect(target, PotionEffectType.SLOWNESS, 20, 10);
-                            target.setFreezeTicks(60); // Vanilla: Quái vật tái xanh
+                            target.setFreezeTicks(60);
                             target.getWorld().playSound(target.getLocation(), org.bukkit.Sound.BLOCK_GLASS_PLACE, 1f, 2f);
-
                             org.bukkit.block.data.BlockData iceData = org.bukkit.Bukkit.createBlockData(Material.BLUE_ICE);
 
                             new BukkitRunnable() {
@@ -221,28 +269,21 @@ public class ArcherClass extends RPGClass {
                                         this.cancel();
                                         return;
                                     }
-
-                                    // Hết 1 giây (20 ticks) -> VỠ BĂNG
                                     if (ticks >= 20) {
-                                        StatusEffectManager.applyEffect(target, PotionEffectType.SLOWNESS, 40, 0); // Chậm thêm 2s
+                                        StatusEffectManager.applyEffect(target, PotionEffectType.SLOWNESS, 40, 0);
                                         target.getWorld().spawnParticle(Particle.BLOCK, target.getLocation().add(0, 1, 0), 50, 0.5, 0.8, 0.5, 0.15, iceData);
                                         target.getWorld().playSound(target.getLocation(), org.bukkit.Sound.BLOCK_GLASS_BREAK, 1f, 0.8f);
                                         this.cancel();
                                         return;
                                     }
-
-                                    // TRONG SUỐT 1 GIÂY (Turn 1): VẼ LỒNG BĂNG ẢO
                                     Location entLoc = target.getLocation();
                                     Particle.DustOptions iceDust = new Particle.DustOptions(org.bukkit.Color.fromRGB(173, 216, 230), 1.2f);
                                     Particle.DustOptions whiteDust = new Particle.DustOptions(org.bukkit.Color.WHITE, 1.0f);
-
                                     double angleOffset = ticks * 0.1;
-
                                     for (double y = 0; y <= 2.0; y += 0.4) {
                                         for (double a = 0; a < Math.PI * 2; a += Math.PI / 4) {
                                             double x = Math.cos(a + angleOffset) * 0.7;
                                             double z = Math.sin(a + angleOffset) * 0.7;
-
                                             Particle.DustOptions color = (y % 0.8 == 0) ? whiteDust : iceDust;
                                             entLoc.getWorld().spawnParticle(Particle.DUST, entLoc.clone().add(x, y, z), 1, color);
                                         }
@@ -293,27 +334,28 @@ public class ArcherClass extends RPGClass {
                     }
                 }
 
-                // GỌI COMBAT MANAGER (Bây giờ nó sẽ hoạt động hoàn hảo!)
                 double finalDamage = CombatManager.calculateDamage(shooter, rpgShooter, target, dmgMulti, extraArmorPen, 0.0, 0.0, false, isCrossbow);
                 CombatManager.applyLifeSteal(shooter, rpgShooter, finalDamage, extraLifeSteal, false);
-                DurabilityManager.damageItem(shooter, rpgShooter, weapon, durabilityLoss);
+
+                // Nếu là đạn xuyên thấu, không trừ độ bền nhiều lần
+                if (!arrow.hasMetadata("Is_Piercing_Arrow") || arrow.getMetadata("Pierce_Hit_Count").get(0).asInt() == 1) {
+                    DurabilityManager.damageItem(shooter, rpgShooter, weapon, durabilityLoss);
+                }
 
                 CombatManager.applySkillDamage(shooter, target, finalDamage);
             }
         }
 
         // 2. XỬ LÝ AOE MŨI TÊN ĐẶC BIỆT CHẠM ĐẤT
-        if (isCustomArrow) {
+        if (isCustomArrow && event.getHitBlock() != null) {
             String cType = arrow.getMetadata("CustomArrowType").get(0).asString();
 
             if (cType.equals("arrow_nature")) {
-                Location exactHitLoc = (event.getHitEntity() != null) ? event.getHitEntity().getLocation().clone() : arrow.getLocation().clone();
-                if (event.getHitEntity() == null) {
-                    while (!exactHitLoc.getBlock().getType().isSolid() && exactHitLoc.getY() > exactHitLoc.getWorld().getMinHeight()) {
-                        exactHitLoc.subtract(0, 1, 0);
-                    }
-                    exactHitLoc.setY(exactHitLoc.getBlockY() + 1.05);
+                Location exactHitLoc = arrow.getLocation().clone();
+                while (!exactHitLoc.getBlock().getType().isSolid() && exactHitLoc.getY() > exactHitLoc.getWorld().getMinHeight()) {
+                    exactHitLoc.subtract(0, 1, 0);
                 }
+                exactHitLoc.setY(exactHitLoc.getBlockY() + 1.05);
 
                 List<double[]> vines = new java.util.ArrayList<>();
                 for (int i = 0; i < 28; i++) {
@@ -355,7 +397,7 @@ public class ArcherClass extends RPGClass {
                     }
                 }.runTaskTimer(plugin, 0L, 1L);
             }
-            else if (cType.equals("arrow_ice") && event.getHitBlock() != null) {
+            else if (cType.equals("arrow_ice")) {
                 arrow.getLocation().getWorld().playSound(arrow.getLocation(), org.bukkit.Sound.BLOCK_SNOW_BREAK, 1.0f, 0.5f);
                 new BukkitRunnable() {
                     int ticks = 0;
@@ -390,33 +432,53 @@ public class ArcherClass extends RPGClass {
                 Location exactHitLoc = arrow.getLocation();
                 new BukkitRunnable() {
                     int ticks = 0;
+                    Location center = exactHitLoc.clone().add(0, 1.0, 0);
                     @Override
                     public void run() {
-                        if (ticks >= 40) { this.cancel(); return; }
-                        Location center = exactHitLoc.clone().add(0, 1.5, 0);
-                        Particle.DustOptions blackDust = new Particle.DustOptions(org.bukkit.Color.BLACK, 1.5f);
-                        for (int i = 0; i < 20; i++) {
-                            double phi = Math.acos(2 * Math.random() - 1), theta = 2 * Math.PI * Math.random();
-                            center.getWorld().spawnParticle(Particle.DUST, center.clone().add(0.4 * Math.sin(phi) * Math.cos(theta), 0.4 * Math.sin(phi) * Math.sin(theta), 0.4 * Math.cos(phi)), 1, blackDust);
+                        if (ticks >= 30) {
+                            center.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, center, 1);
+                            center.getWorld().spawnParticle(Particle.GUST_EMITTER_LARGE, center, 1);
+                            center.getWorld().playSound(center, Sound.ENTITY_GENERIC_EXPLODE, 1.5f, 1.0f);
+
+                            for (org.bukkit.entity.Entity e : center.getWorld().getNearbyEntities(center, 6.0, 6.0, 6.0)) {
+                                if (e instanceof LivingEntity && e != shooter) {
+                                    Vector push = e.getLocation().toVector().subtract(center.toVector()).normalize().multiply(1.8).setY(0.6);
+                                    e.setVelocity(push);
+                                }
+                            }
+                            this.cancel();
+                            return;
                         }
 
-                        Particle.DustOptions purpleDust = new Particle.DustOptions(org.bukkit.Color.fromRGB(138, 43, 226), 1.2f);
+                        Particle.DustOptions whiteDust = new Particle.DustOptions(org.bukkit.Color.WHITE, 1.5f);
+                        for (int i = 0; i < 20; i++) {
+                            double phi = Math.acos(2 * Math.random() - 1), theta = 2 * Math.PI * Math.random();
+                            center.getWorld().spawnParticle(Particle.DUST, center.clone().add(0.4 * Math.sin(phi) * Math.cos(theta), 0.4 * Math.sin(phi) * Math.sin(theta), 0.4 * Math.cos(phi)), 1, whiteDust);
+                        }
+
+                        Particle.DustOptions cyanDust = new Particle.DustOptions(org.bukkit.Color.fromRGB(173, 216, 230), 1.2f);
                         double z1 = 1.2 * Math.sin(ticks * 0.4);
-                        center.getWorld().spawnParticle(Particle.DUST, center.clone().add(1.2 * Math.cos(ticks * 0.4), z1 * Math.sin(Math.toRadians(40)), z1 * Math.cos(Math.toRadians(40))), 1, purpleDust);
+                        center.getWorld().spawnParticle(Particle.DUST, center.clone().add(1.2 * Math.cos(ticks * 0.4), z1 * Math.sin(Math.toRadians(40)), z1 * Math.cos(Math.toRadians(40))), 1, cyanDust);
                         double z2 = 1.8 * Math.sin(-ticks * 0.3);
-                        center.getWorld().spawnParticle(Particle.DUST, center.clone().add(1.8 * Math.cos(-ticks * 0.3), z2 * Math.sin(Math.toRadians(-40)), z2 * Math.cos(Math.toRadians(-40))), 1, purpleDust);
+                        center.getWorld().spawnParticle(Particle.DUST, center.clone().add(1.8 * Math.cos(-ticks * 0.3), z2 * Math.sin(Math.toRadians(-40)), z2 * Math.cos(Math.toRadians(-40))), 1, cyanDust);
 
-                        if (ticks % 10 == 0) center.getWorld().playSound(center, org.bukkit.Sound.BLOCK_BEACON_AMBIENT, 2.0f, 0.5f);
+                        if (ticks % 10 == 0) center.getWorld().playSound(center, Sound.ITEM_ELYTRA_FLYING, 1.0f, 1.5f);
 
-                        for (org.bukkit.entity.Entity e : center.getWorld().getNearbyEntities(center, 5.0, 5.0, 5.0)) {
+                        for (org.bukkit.entity.Entity e : center.getWorld().getNearbyEntities(center, 6.0, 6.0, 6.0)) {
                             if (e instanceof LivingEntity && e != shooter) {
-                                e.setVelocity(e.getVelocity().add(StatusEffectManager.calculateResistedVelocity((LivingEntity)e, center.toVector().subtract(e.getLocation().toVector()).normalize().multiply(0.15))));
+                                Vector pull = center.toVector().subtract(e.getLocation().toVector()).normalize().multiply(0.2);
+                                e.setVelocity(e.getVelocity().add(StatusEffectManager.calculateResistedVelocity((LivingEntity)e, pull)));
                             }
                         }
                         ticks++;
                     }
                 }.runTaskTimer(plugin, 0L, 1L);
             }
+        }
+
+        // [MỚI]: KHÔNG XÓA MŨI TÊN NẾU NÓ LÀ ĐẠN XUYÊN THẤU VÀ CHƯA CHẠM ĐẤT
+        if (arrow.hasMetadata("Is_Piercing_Arrow") && event.getHitEntity() != null) {
+            return;
         }
 
         arrow.remove();
@@ -426,17 +488,17 @@ public class ArcherClass extends RPGClass {
     public boolean performMeleeAttack(Player attacker, RPGPlayer rpgAttacker, LivingEntity target, ItemStack weapon) {
         if (!attacker.hasMetadata("Ranged_Warning_Cooldown")) {
             attacker.sendMessage("§c§l[!] §fHệ phái của bạn không thể tấn công cận chiến!");
-            attacker.setMetadata("Ranged_Warning_Cooldown", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), true));
+            attacker.setMetadata("Ranged_Warning_Cooldown", new FixedMetadataValue(RPGCore.getInstance(), true));
 
-            new org.bukkit.scheduler.BukkitRunnable() {
+            new BukkitRunnable() {
                 @Override
                 public void run() {
                     if (attacker.hasMetadata("Ranged_Warning_Cooldown")) {
-                        attacker.removeMetadata("Ranged_Warning_Cooldown", vn.minecraft.rPGCore.RPGCore.getInstance());
+                        attacker.removeMetadata("Ranged_Warning_Cooldown", RPGCore.getInstance());
                     }
                 }
-            }.runTaskLater(vn.minecraft.rPGCore.RPGCore.getInstance(), 40L);
+            }.runTaskLater(RPGCore.getInstance(), 40L);
         }
-        return false; // Trả về false để PlayerListener tự động hủy sát thương
+        return false;
     }
 }

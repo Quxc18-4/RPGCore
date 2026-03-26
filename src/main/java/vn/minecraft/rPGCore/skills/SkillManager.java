@@ -35,6 +35,10 @@ public class SkillManager {
         registerSkill(new ArrowRainSkill(plugin));
         registerSkill(new HeavyBlowShootSkill(plugin));
         registerSkill(new ArrowCraftingSkill(plugin));
+        registerSkill(new PiercingBuffSkill(plugin));
+        registerSkill(new SniperPassiveSkill(plugin));
+        registerSkill(new PiercingBeamSkill(plugin));
+        registerSkill(new AerialBombardmentSkill(plugin));
         registerSkill(new DoubleSlashSkill(plugin));
         registerSkill(new SmokeBombSkill(plugin));
         registerSkill(new PoisonDartSkill(plugin));

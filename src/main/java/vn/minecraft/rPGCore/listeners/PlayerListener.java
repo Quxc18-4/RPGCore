@@ -113,7 +113,13 @@ public class PlayerListener implements Listener {
         if (event.getDamager() instanceof org.bukkit.entity.Arrow) {
             org.bukkit.entity.Arrow arrow = (org.bukkit.entity.Arrow) event.getDamager();
             if (arrow.hasMetadata("WeaponType") || arrow.hasMetadata("Is_Custom_Skill") || arrow.hasMetadata("CustomArrowType")) {
-                event.setCancelled(true);
+
+                // [FIX LỖI XUYÊN THẤU]: Nếu là đạn xuyên, KHÔNG ĐƯỢC CANCEL vì sẽ làm đạn bị dội ngược (Bounce)
+                if (arrow.hasMetadata("Is_Piercing_Arrow")) {
+                    event.setDamage(0.0); // Ép sát thương Vanilla về 0, nhưng vẫn cho phép sự kiện tiếp tục để đạn xuyên qua
+                } else {
+                    event.setCancelled(true);
+                }
             }
         }
     }
