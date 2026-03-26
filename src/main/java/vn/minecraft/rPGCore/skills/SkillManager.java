@@ -25,6 +25,7 @@ public class SkillManager {
         SummonPetManager.register(new AlphaWolfProfile());
         SummonPetManager.register(new CopperGolemProfile());
         SummonPetManager.register(new WindSpiritProfile());
+        SummonPetManager.register(new GreatWindSpiritProfile());
 
         // Nơi đăng ký mọi kỹ năng của Server
         registerSkill(new DoubleShotSkill(plugin));
