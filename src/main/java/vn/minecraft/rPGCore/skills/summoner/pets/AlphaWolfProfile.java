@@ -321,9 +321,16 @@ public class AlphaWolfProfile implements IPetProfile {
         double explosionDmg = pet.hasMetadata("Base_Damage_Snapshot") ? pet.getMetadata("Base_Damage_Snapshot").get(0).asDouble() * 3.0 : 5000;
 
         for (org.bukkit.entity.Entity e : pet.getWorld().getNearbyEntities(pet.getLocation(), 5, 3, 5)) {
-            if (e instanceof LivingEntity && e != owner && !e.hasMetadata("Summoner_Pet")) {
-                CombatManager.applySkillDamage(owner, (LivingEntity) e, explosionDmg);
-                StatusEffectManager.applyEffect((LivingEntity) e, org.bukkit.potion.PotionEffectType.SLOWNESS, 30, 7);
+            // [ĐÃ SỬA]: Tích hợp CombatManager.canTarget để phân biệt địch/ta
+            if (e instanceof LivingEntity && CombatManager.canTarget(owner, e)) {
+                LivingEntity target = (LivingEntity) e;
+
+                // [ĐÃ SỬA]: Bọc cờ khóa Combo Ảo cho chủ nhân
+                owner.setMetadata("Ghost_L_Blocker", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), true));
+                CombatManager.applySkillDamage(owner, target, explosionDmg);
+                owner.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
+
+                StatusEffectManager.applyEffect(target, org.bukkit.potion.PotionEffectType.SLOWNESS, 30, 7);
             }
         }
     }

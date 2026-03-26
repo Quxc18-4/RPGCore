@@ -4,6 +4,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.entity.Arrow;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -206,12 +207,11 @@ public class HeavyBlowShootSkill implements ISkill, Listener {
 
     private void damageNearby(Location loc, Player shooter, RPGPlayer rpgPlayer, org.bukkit.entity.Entity ignoreEntity, double dmgMulti, boolean isCrossbow) {
         for (org.bukkit.entity.Entity e : loc.getWorld().getNearbyEntities(loc, 3.0, 3.0, 3.0)) {
-            if (e instanceof org.bukkit.entity.LivingEntity && e != shooter && e != ignoreEntity) {
+            // [TÍCH HỢP FILTER]
+            if (e instanceof LivingEntity && e != ignoreEntity && CombatManager.canTarget(shooter, e)) {
                 org.bukkit.entity.LivingEntity target = (org.bukkit.entity.LivingEntity) e;
 
-                // Vụ nổ AoE cũng được nhận Chí Mạng, Xuyên Giáp từ Trang Bị
                 double finalDmg = CombatManager.calculateDamage(shooter, rpgPlayer, target, dmgMulti, 40.0, 0.0, 0.0, false, isCrossbow);
-                // [FIX LỖI COMBO ẢO] - Sát thương trực tiếp
                 shooter.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(plugin, true));
                 CombatManager.applySkillDamage(shooter, target, finalDmg);
                 shooter.removeMetadata("Ghost_L_Blocker", plugin);

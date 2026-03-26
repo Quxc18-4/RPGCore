@@ -322,7 +322,7 @@ public class AerialBombardmentSkill implements ISkill {
     private void createCrystalBloom(Player player, Location loc, double dmgMulti) {
         RPGPlayer rpgPlayer = RPGCore.getInstance().getPlayerManager().getRPGPlayer(player.getUniqueId());
 
-        // Âm thanh bùng nổ ma thuật thần thánh (Tiếng Totem of Undying cực kỳ uy lực)
+        loc.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, loc, 1);
         loc.getWorld().playSound(loc, Sound.ITEM_TOTEM_USE, 1.0f, 1.2f);
 
         // Tiếng tinh thể pha lê vỡ vụn sắc lẹm (Dùng CLUSTER thay vì BLOCK sẽ nghe giòn và giống thủy tinh hơn)
@@ -385,9 +385,9 @@ public class AerialBombardmentSkill implements ISkill {
             }
         }.runTaskTimer(plugin, 0L, 1L);
 
-        // Logic Sát thương
-        for (org.bukkit.entity.Entity e : loc.getWorld().getNearbyEntities(loc, 4.5, 4.5, 4.5)) {
-            if (e instanceof LivingEntity && e != player && !e.hasMetadata("Summoner_Pet")) {
+        // [TÍCH HỢP FILTER LỖI MỤC TIÊU CỦA BẠN]
+        for (org.bukkit.entity.Entity e : loc.getWorld().getNearbyEntities(loc, 6, 6, 6)) {
+            if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) {
                 LivingEntity target = (LivingEntity) e;
                 boolean isCrossbow = player.getInventory().getItemInMainHand().getType() == Material.CROSSBOW;
                 double finalDamage = CombatManager.calculateDamage(player, rpgPlayer, target, dmgMulti, 50.0, 0.0, 0.0, false, isCrossbow);

@@ -223,14 +223,17 @@ public class ShadowDashSkill implements ISkill {
                 }
 
                 for (Entity e : currentLoc.getWorld().getNearbyEntities(currentLoc, 2.0, 2.0, 2.0)) {
-                    if (e instanceof LivingEntity && e != player && !hitTargets.contains(e.getUniqueId())) {
+                    if (e instanceof LivingEntity && CombatManager.canTarget(player, e) && !hitTargets.contains(e.getUniqueId())) {
                         LivingEntity target = (LivingEntity) e;
                         hitTargets.add(target.getUniqueId());
                         hitAny = true;
 
                         // [ĐÃ XÓA BUG 100K DAME]: Không truyền extraCrit 100.0 nữa.
                         double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, finalDmgMulti, 0.0, 0.0, 0.0, false, false);
+                        // [ĐÃ SỬA]: Bọc cờ khóa Combo Ảo
+                        player.setMetadata("Ghost_L_Blocker", new org.bukkit.metadata.FixedMetadataValue(plugin, true));
                         CombatManager.applySkillDamage(player, target, finalDmg);
+                        player.removeMetadata("Ghost_L_Blocker", plugin);
 
                         target.getWorld().spawnParticle(Particle.SWEEP_ATTACK, target.getLocation().add(0, 1, 0), 1);
                         target.getWorld().spawnParticle(Particle.FIREWORK, target.getLocation().add(0, 1, 0), 5, 0.2, 0.2, 0.2, 0.1);

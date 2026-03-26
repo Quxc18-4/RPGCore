@@ -144,6 +144,11 @@ public class CopperGolemProfile implements IPetProfile, Listener {
 
         if (!victim.hasMetadata("Pet_Type") || !victim.getMetadata("Pet_Type").get(0).asString().equals("CopperGolem")) return;
 
+        // ==========================================
+        // [FIX LỖI 1]: XÓA I-FRAMES (Cho phép nhận sát thương liên tục từ Mưa Tên, Liên Hoàn Tên)
+        // ==========================================
+        victim.setNoDamageTicks(0);
+
         double realIncomingDamage = event.getDamage();
         LivingEntity attacker = null;
 

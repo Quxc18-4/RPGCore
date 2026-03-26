@@ -212,7 +212,8 @@ public class PhantomBladesSkill implements ISkill {
                 }
 
                 for (Entity e : currentLoc.getWorld().getNearbyEntities(currentLoc, 1.2, 1.2, 1.2)) {
-                    if (e instanceof LivingEntity && e != player && !hitTargets.contains(e.getUniqueId())) {
+                    // [ĐÃ SỬA]: Tích hợp CombatManager.canTarget
+                    if (e instanceof LivingEntity && CombatManager.canTarget(player, e) && !hitTargets.contains(e.getUniqueId())) {
                         LivingEntity target = (LivingEntity) e;
                         hitTargets.add(target.getUniqueId());
 
@@ -222,9 +223,12 @@ public class PhantomBladesSkill implements ISkill {
                         double currentDmgMulti = finalDmgMulti * (1.0 - reduction);
                         hitCounts.put(target.getUniqueId(), timesHit + 1);
 
-                        // Đã xóa cơ chế cộng thêm Crit vô lý
                         double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, currentDmgMulti, 0.0, 0.0, 0.0, false, false);
+
+                        // [ĐÃ SỬA]: Bọc cờ khóa Combo Ảo
+                        player.setMetadata("Ghost_L_Blocker", new org.bukkit.metadata.FixedMetadataValue(plugin, true));
                         CombatManager.applySkillDamage(player, target, finalDmg);
+                        player.removeMetadata("Ghost_L_Blocker", plugin);
 
                         target.getWorld().spawnParticle(Particle.SWEEP_ATTACK, target.getLocation().add(0, 1, 0), 1);
                         target.getWorld().playSound(target.getLocation(), Sound.ENTITY_PLAYER_ATTACK_SWEEP, 1.0f, 1.5f);

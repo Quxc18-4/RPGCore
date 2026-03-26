@@ -137,9 +137,12 @@ public class SummonerClass extends RPGClass {
             player.getWorld().spawnParticle(Particle.ENCHANTED_HIT, curvedPoint, 1, 0.02, 0.02, 0.02, 0);
         }
 
+        // ==========================================
+        // [ĐÃ SỬA]: Tích hợp CombatManager.canTarget vào thuật toán vung roi
+        // ==========================================
         RayTraceResult result = player.getWorld().rayTrace(
                 eyeLoc, direction, maxRange, org.bukkit.FluidCollisionMode.NEVER, true, 1.5,
-                entity -> entity instanceof LivingEntity && !entity.equals(player) && !(entity instanceof ArmorStand) && !entity.hasMetadata("Summoner_Pet")
+                entity -> entity instanceof LivingEntity && !(entity instanceof ArmorStand) && CombatManager.canTarget(player, entity)
         );
 
         Location impactLoc;
@@ -156,7 +159,7 @@ public class SummonerClass extends RPGClass {
         player.getWorld().playSound(impactLoc, Sound.ENTITY_DRAGON_FIREBALL_EXPLODE, 0.5f, 2.0f);
         player.getWorld().playSound(impactLoc, Sound.ITEM_TRIDENT_HIT, 1.0f, 0.8f);
 
-        // Lấy danh sách đệ tử
+        // Lấy danh sách đệ tử của mình (Giữ nguyên)
         List<org.bukkit.entity.Mob> myPets = new ArrayList<>();
         for (Entity e : player.getNearbyEntities(20, 10, 20)) {
             if (e.hasMetadata("Summoner_Pet")) {
@@ -167,10 +170,12 @@ public class SummonerClass extends RPGClass {
             }
         }
 
+        // ==========================================
+        // [ĐÃ SỬA]: Tích hợp CombatManager.canTarget vào vùng nổ của roi
+        // ==========================================
         List<LivingEntity> hitTargets = new ArrayList<>();
         for (Entity e : impactLoc.getWorld().getNearbyEntities(impactLoc, 2.5, 2.0, 2.5)) {
-            if (e.hasMetadata("Summoner_Pet")) continue;
-            if (e instanceof LivingEntity && !e.equals(player) && !(e instanceof ArmorStand)) {
+            if (e instanceof LivingEntity && !(e instanceof ArmorStand) && CombatManager.canTarget(player, e)) {
                 hitTargets.add((LivingEntity) e);
             }
         }

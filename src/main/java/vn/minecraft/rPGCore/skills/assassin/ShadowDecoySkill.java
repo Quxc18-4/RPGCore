@@ -245,7 +245,7 @@ public class ShadowDecoySkill implements ISkill {
                     distanceTravelled += 0.5;
 
                     for (Entity e : currentLoc.getWorld().getNearbyEntities(currentLoc, 1.0, 1.5, 1.0)) {
-                        if (e instanceof LivingEntity && e != player && !hitTargets.contains(e.getUniqueId())) {
+                        if (e instanceof LivingEntity && CombatManager.canTarget(player, e) && !hitTargets.contains(e.getUniqueId())) {
                             LivingEntity target = (LivingEntity) e;
                             hitTargets.add(target.getUniqueId());
 
@@ -255,7 +255,10 @@ public class ShadowDecoySkill implements ISkill {
                             hitCounts.put(target.getUniqueId(), timesHit + 1);
 
                             double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, currentDmgMulti, 0.0, 0.0, 0.0, false, false);
+                            // [ĐÃ SỬA]: Bọc cờ khóa Combo Ảo
+                            player.setMetadata("Ghost_L_Blocker", new org.bukkit.metadata.FixedMetadataValue(plugin, true));
                             CombatManager.applySkillDamage(player, target, finalDmg);
+                            player.removeMetadata("Ghost_L_Blocker", plugin);
 
                             target.getWorld().spawnParticle(Particle.SWEEP_ATTACK, target.getLocation().add(0, 1, 0), 1);
                         }
@@ -326,7 +329,7 @@ public class ShadowDecoySkill implements ISkill {
                 }
 
                 for (Entity e : currentLoc.getWorld().getNearbyEntities(currentLoc, 0.8, 0.8, 0.8)) {
-                    if (e instanceof LivingEntity && e != player && !hitTargets.contains(e.getUniqueId())) {
+                    if (e instanceof LivingEntity && CombatManager.canTarget(player, e) && !hitTargets.contains(e.getUniqueId())) {
                         LivingEntity target = (LivingEntity) e;
                         hitTargets.add(target.getUniqueId());
 
@@ -336,7 +339,10 @@ public class ShadowDecoySkill implements ISkill {
                         hitCounts.put(target.getUniqueId(), timesHit + 1);
 
                         double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, currentDmgMulti, 0.0, 0.0, 0.0, false, false);
+                        // [ĐÃ SỬA]: Bọc cờ khóa Combo Ảo
+                        player.setMetadata("Ghost_L_Blocker", new org.bukkit.metadata.FixedMetadataValue(plugin, true));
                         CombatManager.applySkillDamage(player, target, finalDmg);
+                        player.removeMetadata("Ghost_L_Blocker", plugin);
 
                         target.getWorld().spawnParticle(Particle.SWEEP_ATTACK, target.getLocation().add(0, 1, 0), 1);
                         target.getWorld().playSound(target.getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, 1.0f, 1.5f);

@@ -9,7 +9,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.Vector;
-import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.managers.CombatManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 import vn.minecraft.rPGCore.skills.ISkill;
@@ -94,30 +93,18 @@ public class PiercingBeamSkill implements ISkill {
             player.getWorld().spawnParticle(Particle.SONIC_BOOM, point, 1, 0, 0, 0, 0);
 
             for (org.bukkit.entity.Entity e : point.getWorld().getNearbyEntities(point, 1.0, 1.0, 1.0)) {
-                if (e instanceof LivingEntity && e != player) {
+                // [TÍCH HỢP FILTER]: Nhờ CombatManager kiểm duyệt
+                if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) {
+                    LivingEntity target = (LivingEntity) e;
+                    if (!hitTargets.contains(target)) {
+                        hitTargets.add(target);
 
-                    // [SỬA LỖI]: Cho phép bắn thú của người khác, chỉ bỏ qua thú của chính mình
-                    boolean isOwnPet = false;
-                    if (e.hasMetadata("Summoner_Pet")) {
-                        String ownerId = e.getMetadata("Summoner_Pet").get(0).asString();
-                        if (ownerId.equals(player.getUniqueId().toString())) {
-                            isOwnPet = true;
-                        }
-                    }
+                        double finalDamage = CombatManager.calculateDamage(player, rpgPlayer, target, dmgMulti, 50.0, 0.0, 0.0, false, isCrossbow);
+                        player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(plugin, true));
+                        CombatManager.applySkillDamage(player, target, finalDamage);
+                        player.removeMetadata("Ghost_L_Blocker", plugin);
 
-                    if (!isOwnPet) {
-                        LivingEntity target = (LivingEntity) e;
-                        if (!hitTargets.contains(target)) {
-                            hitTargets.add(target);
-
-                            double finalDamage = CombatManager.calculateDamage(player, rpgPlayer, target, dmgMulti, 50.0, 0.0, 0.0, false, isCrossbow);
-                            player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(plugin, true));
-                            CombatManager.applySkillDamage(player, target, finalDamage);
-                            player.removeMetadata("Ghost_L_Blocker", plugin);
-
-                            // Ngắt vòng lặp nếu đã xuyên đủ số mục tiêu cho phép
-                            if (hitTargets.size() >= maxTargets) break;
-                        }
+                        if (hitTargets.size() >= maxTargets) break;
                     }
                 }
             }

@@ -137,7 +137,8 @@ public class DoubleSlashSkill implements ISkill {
         }
 
         for (Entity e : loc.getWorld().getNearbyEntities(spawnLoc, 1.5, 1.5, 1.5)) {
-            if (e instanceof LivingEntity && e != player) {
+            // [ĐÃ SỬA]: Tích hợp CombatManager.canTarget
+            if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) {
                 LivingEntity target = (LivingEntity) e;
                 Vector targetDir = target.getLocation().getDirection().setY(0).normalize();
                 double dot = dir.dot(targetDir);
@@ -147,11 +148,13 @@ public class DoubleSlashSkill implements ISkill {
                     target.getWorld().spawnParticle(Particle.ENCHANTED_HIT, target.getLocation().add(0, 1, 0), 10);
                 }
 
-                // [ĐÃ SỬA]: Không truyền 30.0 vào extraCrit nữa, cờ Metadata sẽ lo việc đó.
                 double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, dmgMulti, 0.0, 0.0, 0.0, false, false);
                 if (player.hasMetadata("DoubleSlash_Backstab")) player.removeMetadata("DoubleSlash_Backstab", plugin);
 
+                // [ĐÃ SỬA]: Bọc cờ khóa Combo Ảo
+                player.setMetadata("Ghost_L_Blocker", new org.bukkit.metadata.FixedMetadataValue(plugin, true));
                 CombatManager.applySkillDamage(player, target, finalDmg);
+                player.removeMetadata("Ghost_L_Blocker", plugin);
 
                 target.getWorld().spawnParticle(Particle.BLOCK_CRUMBLE, target.getLocation().add(0, 1, 0), 10, org.bukkit.Material.REDSTONE_BLOCK.createBlockData());
             }

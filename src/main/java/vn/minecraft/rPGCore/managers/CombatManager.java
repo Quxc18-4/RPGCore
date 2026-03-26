@@ -380,4 +380,46 @@ public class CombatManager {
 
         return finalDamage;
     }
+    // Thêm hàm này vào CombatManager.java
+    public static boolean canTarget(Player attacker, org.bukkit.entity.Entity victim) {
+        if (attacker == null || victim == null) return false;
+        if (attacker.equals(victim)) return false; // Không tự đánh mình
+
+        Player victimOwner = null;
+
+        // 1. Nếu mục tiêu là Người chơi
+        if (victim instanceof Player) {
+            victimOwner = (Player) victim;
+        }
+        // 2. Nếu mục tiêu là Thú triệu hồi
+        else if (victim.hasMetadata("Summoner_Pet")) {
+            try {
+                // [FIX LỖI CONSOLE]: Kiểm tra list rỗng trước khi get(0)
+                if (victim.getMetadata("Summoner_Pet").isEmpty()) return true;
+
+                String ownerId = victim.getMetadata("Summoner_Pet").get(0).asString();
+
+                // KHÔNG đánh thú của chính mình
+                if (ownerId.equals(attacker.getUniqueId().toString())) {
+                    return false;
+                }
+                victimOwner = org.bukkit.Bukkit.getPlayer(java.util.UUID.fromString(ownerId));
+            } catch (Exception ignored) {}
+        }
+
+        // 3. Nếu mục tiêu CÓ CHỦ (Là người chơi khác hoặc Thú của họ) -> Check Guild
+        if (victimOwner != null && victimOwner.isOnline()) {
+
+            // ==========================================
+            // [TÍCH HỢP API RPGGUILD CỦA BẠN VÀO ĐÂY]
+            // boolean isSameGuild = RPGGuildAPI.isSameGuild(attacker, victimOwner);
+            // if (isSameGuild) return false;
+            // ==========================================
+
+            return true; // Khác Guild -> Cho phép tàn sát
+        }
+
+        // 4. Nếu là quái vật hoang dã bình thường
+        return true;
+    }
 }

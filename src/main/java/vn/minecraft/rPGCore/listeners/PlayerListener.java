@@ -137,19 +137,6 @@ public class PlayerListener implements Listener {
     // ==========================================
     @EventHandler
     public void onDealDamage(EntityDamageByEntityEvent event) {
-        // ==========================================
-        // [CHẶN ĐÁNH ĐỆ TỬ]: Khóa Sát thương Đồng minh (Friendly Fire)
-        // Ngăn chặn người chơi vô tình chém chết đệ tử của chính mình
-        // ==========================================
-        if (event.getDamager() instanceof Player && event.getEntity().hasMetadata("Summoner_Pet")) {
-            java.util.List<org.bukkit.metadata.MetadataValue> metaList = event.getEntity().getMetadata("Summoner_Pet");
-            if (metaList != null && !metaList.isEmpty()) {
-                if (event.getDamager().getUniqueId().toString().equals(metaList.get(0).asString())) {
-                    event.setCancelled(true); // Im lặng hủy sát thương
-                    return;
-                }
-            }
-        }
 
         // ==========================================
         // XỬ LÝ SÁT THƯƠNG TỪ THÚ TRIỆU HỒI GÂY RA
@@ -183,10 +170,20 @@ public class PlayerListener implements Listener {
             } catch (IllegalArgumentException e) { return; }
             return;
         }
-        // Chỉ kích hoạt khi Damager trực tiếp là Player (Đánh cận chiến)
+
+        // Chỉ kích hoạt khi Damager trực tiếp là Player (Đánh cận chiến, quất roi...)
         if (event.getDamager() instanceof Player && event.getEntity() instanceof LivingEntity) {
             Player attacker = (Player) event.getDamager();
             LivingEntity target = (LivingEntity) event.getEntity();
+
+            // ==========================================
+            // [ĐÃ SỬA]: DÙNG BỘ LỌC CHUẨN (Thay thế đoạn chặn đánh đệ tử cũ)
+            // Lọc chính xác địch/ta/Guild
+            // ==========================================
+            if (!CombatManager.canTarget(attacker, target)) {
+                event.setCancelled(true); // Hủy sát thương nếu đánh vào Pet phe mình hoặc người cùng Guild
+                return;
+            }
 
             // Ngoại lệ: Cho phép sát thương từ Kỹ năng (Skill) được đi qua
             if (attacker.hasMetadata("Skill_Damage_Lock") || attacker.hasMetadata("Skill_Just_Cast") || attacker.hasMetadata("Is_Casting")) {
@@ -204,7 +201,7 @@ public class PlayerListener implements Listener {
                 // ==========================================
                 if (attacker.hasMetadata("Is_Combo_Casting")) {
                     event.setCancelled(true);
-                    return; // Im lặng hủy sát thương để không làm hỏng chuỗi phím
+                    return;
                 }
 
                 // Lọc rác vũ khí (Không cho Chiến binh dùng Cung đập quái)

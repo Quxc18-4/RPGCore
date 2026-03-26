@@ -399,7 +399,8 @@ public class ArcherClass extends RPGClass implements Listener {
                         }
 
                         for (org.bukkit.entity.Entity e : exactHitLoc.getWorld().getNearbyEntities(exactHitLoc, 4.0, 2.0, 4.0)) {
-                            if (e instanceof LivingEntity && e != shooter) {
+                            // [ĐÃ SỬA]: Dùng CombatManager.canTarget
+                            if (e instanceof LivingEntity && CombatManager.canTarget(shooter, e)) {
                                 LivingEntity target = (LivingEntity) e;
                                 StatusEffectManager.applyEffect(target, PotionEffectType.SLOWNESS, 40, 10);
                                 Location entLoc = target.getLocation();
@@ -428,7 +429,10 @@ public class ArcherClass extends RPGClass implements Listener {
 
                         if (ticks % 10 == 0) {
                             for (org.bukkit.entity.Entity e : arrow.getLocation().getWorld().getNearbyEntities(arrow.getLocation(), 3.0, 2.0, 3.0)) {
-                                if (e instanceof LivingEntity && e != shooter) StatusEffectManager.applyEffect((LivingEntity) e, PotionEffectType.SLOWNESS, 40, 0);
+                                // [ĐÃ SỬA]: Dùng CombatManager.canTarget
+                                if (e instanceof LivingEntity && CombatManager.canTarget(shooter, e)) {
+                                    StatusEffectManager.applyEffect((LivingEntity) e, PotionEffectType.SLOWNESS, 40, 0);
+                                }
                             }
                         }
                         ticks++;
@@ -439,7 +443,8 @@ public class ArcherClass extends RPGClass implements Listener {
                 hitLoc.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, hitLoc, 1);
                 hitLoc.getWorld().playSound(hitLoc, org.bukkit.Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.0f);
                 for (org.bukkit.entity.Entity e : hitLoc.getWorld().getNearbyEntities(hitLoc, 4.0, 4.0, 4.0)) {
-                    if (e instanceof LivingEntity && e != shooter) {
+                    // [ĐÃ SỬA]: Dùng CombatManager.canTarget
+                    if (e instanceof LivingEntity && CombatManager.canTarget(shooter, e)) {
                         Vector knockback = e.getLocation().toVector().subtract(hitLoc.toVector());
                         if (knockback.lengthSquared() < 0.0001) knockback = new Vector(Math.random() - 0.5, 0, Math.random() - 0.5);
                         e.setVelocity(knockback.normalize().multiply(1.5).setY(0.5));
@@ -459,7 +464,8 @@ public class ArcherClass extends RPGClass implements Listener {
                             center.getWorld().playSound(center, org.bukkit.Sound.ENTITY_GENERIC_EXPLODE, 1.5f, 1.0f);
 
                             for (org.bukkit.entity.Entity e : center.getWorld().getNearbyEntities(center, 6.0, 6.0, 6.0)) {
-                                if (e instanceof LivingEntity && e != shooter) {
+                                // [ĐÃ SỬA]: Dùng CombatManager.canTarget
+                                if (e instanceof LivingEntity && CombatManager.canTarget(shooter, e)) {
                                     Vector push = e.getLocation().toVector().subtract(center.toVector()).normalize().multiply(1.8).setY(0.6);
                                     e.setVelocity(push);
                                 }
@@ -483,7 +489,8 @@ public class ArcherClass extends RPGClass implements Listener {
                         if (ticks % 10 == 0) center.getWorld().playSound(center, org.bukkit.Sound.ITEM_ELYTRA_FLYING, 1.0f, 1.5f);
 
                         for (org.bukkit.entity.Entity e : center.getWorld().getNearbyEntities(center, 6.0, 6.0, 6.0)) {
-                            if (e instanceof LivingEntity && e != shooter) {
+                            // [ĐÃ SỬA]: Dùng CombatManager.canTarget
+                            if (e instanceof LivingEntity && CombatManager.canTarget(shooter, e)) {
                                 Vector pull = center.toVector().subtract(e.getLocation().toVector()).normalize().multiply(0.2);
                                 e.setVelocity(e.getVelocity().add(StatusEffectManager.calculateResistedVelocity((LivingEntity)e, pull)));
                             }
