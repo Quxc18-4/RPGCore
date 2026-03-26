@@ -29,10 +29,8 @@ public class PiercingBeamSkill implements ISkill {
     @Override public Material getIcon() { return Material.LIGHTNING_ROD; }
     @Override public int getMaxLevel() { return 10; }
     @Override public int getUpgradeCost(int currentLevel) { return 1; }
-    // [CẬP NHẬT]: Yêu cầu cấp độ 32
     @Override public int getRequiredPlayerLevel() { return 32; }
 
-    // [CẬP NHẬT]: Yêu cầu max level của 2 kỹ năng tiền đề
     @Override
     public Map<String, Integer> getRequiredSkills() {
         Map<String, Integer> reqs = new HashMap<>();
@@ -46,13 +44,13 @@ public class PiercingBeamSkill implements ISkill {
 
     @Override
     public List<String> getDescription(int level) {
-        double dmg = 120 + (level * 15);
+        int dmgDisplay = (int) ((2.65 + (level - 1) * 0.15) * 100);
         int maxTargets = 5 + level;
         return Arrays.asList(
                 "§7Kết tinh của sự chuẩn xác và sức mạnh xuyên tâm.",
                 "§7Bắn ra một tia sóng siêu âm nén cực mạnh.",
                 "",
-                "§f- Sát thương: §c" + (int)dmg + "% §fST (Không bị giảm trừ)",
+                "§f- Sát thương: §c" + dmgDisplay + "% §fSát thương xuyên thấu",
                 "§f- Tầm bắn: §a25 block",
                 "§f- Xuyên thấu: §e" + maxTargets + " kẻ địch",
                 "§8(Bỏ qua hoàn toàn hiệu ứng giảm sát thương xuyên thấu)"
@@ -88,7 +86,7 @@ public class PiercingBeamSkill implements ISkill {
         Set<LivingEntity> hitTargets = new HashSet<>();
         int maxTargets = 5 + level;
 
-        double dmgMulti = 1.20 + (level * 0.15);
+        double dmgMulti = 2.65 + (level - 1) * 0.15;
         boolean isCrossbow = player.getInventory().getItemInMainHand().getType() == Material.CROSSBOW;
 
         for (double d = 0; d <= 25; d += 0.5) {
@@ -96,18 +94,30 @@ public class PiercingBeamSkill implements ISkill {
             player.getWorld().spawnParticle(Particle.SONIC_BOOM, point, 1, 0, 0, 0, 0);
 
             for (org.bukkit.entity.Entity e : point.getWorld().getNearbyEntities(point, 1.0, 1.0, 1.0)) {
-                if (e instanceof LivingEntity && e != player && !e.hasMetadata("Summoner_Pet")) {
-                    LivingEntity target = (LivingEntity) e;
-                    if (!hitTargets.contains(target)) {
-                        hitTargets.add(target);
+                if (e instanceof LivingEntity && e != player) {
 
-                        double finalDamage = CombatManager.calculateDamage(player, rpgPlayer, target, dmgMulti, 50.0, 0.0, 0.0, false, isCrossbow);
-                        player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(plugin, true));
-                        CombatManager.applySkillDamage(player, target, finalDamage);
-                        player.removeMetadata("Ghost_L_Blocker", plugin);
+                    // [SỬA LỖI]: Cho phép bắn thú của người khác, chỉ bỏ qua thú của chính mình
+                    boolean isOwnPet = false;
+                    if (e.hasMetadata("Summoner_Pet")) {
+                        String ownerId = e.getMetadata("Summoner_Pet").get(0).asString();
+                        if (ownerId.equals(player.getUniqueId().toString())) {
+                            isOwnPet = true;
+                        }
+                    }
 
-                        // [MỚI]: Ngắt vòng lặp nếu đã xuyên đủ số mục tiêu cho phép
-                        if (hitTargets.size() >= maxTargets) break;
+                    if (!isOwnPet) {
+                        LivingEntity target = (LivingEntity) e;
+                        if (!hitTargets.contains(target)) {
+                            hitTargets.add(target);
+
+                            double finalDamage = CombatManager.calculateDamage(player, rpgPlayer, target, dmgMulti, 50.0, 0.0, 0.0, false, isCrossbow);
+                            player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(plugin, true));
+                            CombatManager.applySkillDamage(player, target, finalDamage);
+                            player.removeMetadata("Ghost_L_Blocker", plugin);
+
+                            // Ngắt vòng lặp nếu đã xuyên đủ số mục tiêu cho phép
+                            if (hitTargets.size() >= maxTargets) break;
+                        }
                     }
                 }
             }

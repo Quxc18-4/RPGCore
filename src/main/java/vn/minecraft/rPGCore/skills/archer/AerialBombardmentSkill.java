@@ -31,36 +31,54 @@ public class AerialBombardmentSkill implements ISkill {
     public AerialBombardmentSkill(JavaPlugin plugin) { this.plugin = plugin; }
 
     @Override public String getId() { return "archer_aerial_bombardment"; }
-    @Override public String getName() { return "Tuyệt kỹ: Thiên Không Chi Tiễn"; }
+    @Override public String getName() { return "§d§l[TUYỆT KỸ TỐI THƯỢNG: CHÂN NGÃ]"; }
     @Override public String getRequiredClass() { return "archer"; }
-    @Override public Material getIcon() { return Material.FIREWORK_ROCKET; }
+    @Override public Material getIcon() { return Material.CACTUS_FLOWER; }
 
     @Override public int getMaxLevel() { return 3; }
     @Override public int getUpgradeCost(int currentLevel) { return 2; }
 
     @Override public Map<String, Integer> getRequiredSkills() { return new HashMap<>(); }
-    @Override public int getRequiredPlayerLevel() { return 40; }
+    @Override public int getRequiredPlayerLevel() { return 50; }
 
-    @Override public double getManaCost(int level) { return 150.0 + (level * 30.0); }
-    @Override public long getCooldown(int level) { return 45000L; }
+    @Override public double getManaCost(int level) { return 150.0 + (level * 40.0); }
+    @Override
+    public long getCooldown(int level) {
+        return 45000L - ((level - 1) * 4000L);
+    }
 
     private double getCastTime(int level) {
-        if (level == 3) return 1.5;
-        if (level == 2) return 1.8;
         return 2.0;
+    }
+
+    // [CẬP NHẬT]: Công thức sát thương 900% - 1100% - 1400%
+    private double getDamageMultiplier(int level) {
+        if (level == 3) return 14.0;
+        if (level == 2) return 11.0;
+        return 9.0;
     }
 
     @Override
     public List<String> getDescription(int level) {
+        int dmgPercent = (int) (getDamageMultiplier(level) * 100);
+        double cdSeconds = getCooldown(level) / 1000.0;
+
         return Arrays.asList(
-                "§6§l[TUYỆT KỸ TỐI THƯỢNG]",
-                "§7Kỹ năng mang theo ý chí của Thần Gió.",
-                "§7Bay lên và gieo rắc sự hủy diệt bằng hoa pha lê.",
+                "§d§o\"Vì vẻ đẹp của nhân gian, vì sự rực rỡ của tương lai...\"",
                 "",
-                "§f- Sát thương: §c600% §fST mỗi phát bắn",
-                "§f- Số đợt bắn: §a" + level + " đợt",
-                "§f- Hiệu ứng: §dCrystal Bloom §f(R=4.5)",
-                "§8(Kỹ năng có tỉ lệ scale sát thương cao nhất toàn phái)"
+                "§7Một ý chí thuần khiết lơ lửng giữa thời không vô định,",
+                "§7hi sinh và kết tinh thành những cánh hoa pha lê rực rỡ",
+                "§7dệt nên một câu chuyện rực rỡ khép lại thời đại hoàng kim.",
+                "",
+                "§f§l[THÔNG SỐ CHIẾN ĐẤU]",
+                "§f▪ Sát thương: §c" + dmgPercent + "% §fST mỗi phát bắn",
+                "§f▪ Số đợt tấn công: §a" + level + " đợt",
+                "",
+                "§d§l❀ HOA PHA LÊ: NỞ RỘ ❀",
+                "§7Mỗi mũi tên khi chạm đích sẽ kiêu hãnh nở rộ thành một",
+                "§7đóa hoa pha lê, quét sạch mọi kẻ địch xung quanh.",
+                "",
+                "§5§o(Mũi tên mang theo ý chí của thiếu nữ thuần khiết nhất)"
         );
     }
 
@@ -87,6 +105,8 @@ public class AerialBombardmentSkill implements ISkill {
 
         player.sendMessage("§d§l[!] TUYỆT KỸ: THIÊN KHÔNG CHI TIỄN!");
         player.setMetadata("Is_Casting", new FixedMetadataValue(plugin, true));
+
+        double dmgMulti = getDamageMultiplier(level);
 
         boolean wasAllowFlight = player.getAllowFlight();
         player.setAllowFlight(true);
@@ -216,9 +236,20 @@ public class AerialBombardmentSkill implements ISkill {
                         player.getWorld().spawnParticle(Particle.DUST, vCenter.clone().add(rightTip.clone().subtract(vCenter).multiply(t)), 1, 0, 0, 0, 0, whiteDust);
                     }
 
-                    if (currentCastTick % 8 == 0) {
-                        float pitch = 1.0f + (currentCastTick / (float)ticksPerCast);
-                        player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1.5f, pitch);
+                    // ==========================================
+                    // GIAI ĐIỆU HOA PHA LÊ NỞ (CRYSTAL MELODY)
+                    // ==========================================
+                    if (currentCastTick % 5 == 0) {
+                        // Dải âm giai ngũ cung (Pentatonic) gồm 8 nốt vút dần lên cao
+                        float[] melody = {0.707f, 0.793f, 0.890f, 1.059f, 1.189f, 1.414f, 1.781f, 2.0f};
+
+                        int noteIndex = (currentCastTick / 5);
+                        if (noteIndex >= melody.length) noteIndex = melody.length - 1;
+
+                        float pitch = melody[noteIndex];
+
+                        player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 1.5f, pitch);
+                        player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_CHIME, 0.8f, pitch);
                     }
 
                     // ==========================================
@@ -227,7 +258,7 @@ public class AerialBombardmentSkill implements ISkill {
                     currentCastTick++;
 
                     if (currentCastTick >= ticksPerCast) {
-                        fireExplosiveBomb(player, 2.5, level);
+                        fireExplosiveBomb(player, dmgMulti);
                         currentArrow++;
                         currentCastTick = 0;
 
@@ -244,7 +275,7 @@ public class AerialBombardmentSkill implements ISkill {
         return true;
     }
 
-    private void fireExplosiveBomb(Player player, double dmgMulti, int level) {
+    private void fireExplosiveBomb(Player player, double dmgMulti) {
         Location eyeLoc = player.getEyeLocation();
         Vector dir = eyeLoc.getDirection().normalize().multiply(3.5);
 
@@ -252,7 +283,7 @@ public class AerialBombardmentSkill implements ISkill {
         arrow.setShooter(player);
 
         arrow.setMetadata("Is_Custom_Skill", new FixedMetadataValue(plugin, true));
-        arrow.setMetadata("Skill_DmgMulti", new FixedMetadataValue(plugin, 2.5));
+        arrow.setMetadata("Skill_DmgMulti", new FixedMetadataValue(plugin, dmgMulti));
         arrow.setMetadata("Skill_ArmorPen", new FixedMetadataValue(plugin, 50.0));
 
         if (player.hasMetadata("Archer_Pierce_Buff")) {
@@ -261,7 +292,10 @@ public class AerialBombardmentSkill implements ISkill {
             arrow.setMetadata("Pierced_Entities", new FixedMetadataValue(plugin, new java.util.ArrayList<java.util.UUID>()));
         }
 
-        player.getWorld().playSound(eyeLoc, Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 2.0f);
+        // Tiếng tên lửa xé gió tút lên cao
+        player.getWorld().playSound(eyeLoc, Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 1.0f, 1.2f);
+        // Tiếng ngân vang ma thuật lấp lánh (Pitch 2.0 tạo độ thanh và sắc)
+        player.getWorld().playSound(eyeLoc, Sound.ITEM_TRIDENT_RETURN, 1.2f, 2.0f);
 
         // [HIỆU ỨNG MỚI]: Bắn ra hoa anh đào rơi lả tả
         player.getWorld().spawnParticle(Particle.CHERRY_LEAVES, eyeLoc, 40, 2.0, 2.0, 2.0, 0.05);
@@ -288,9 +322,14 @@ public class AerialBombardmentSkill implements ISkill {
     private void createCrystalBloom(Player player, Location loc, double dmgMulti) {
         RPGPlayer rpgPlayer = RPGCore.getInstance().getPlayerManager().getRPGPlayer(player.getUniqueId());
 
-        loc.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, loc, 1);
-        loc.getWorld().playSound(loc, Sound.ENTITY_GENERIC_EXPLODE, 1.5f, 0.8f);
-        loc.getWorld().playSound(loc, Sound.BLOCK_AMETHYST_BLOCK_CHIME, 2.0f, 0.5f);
+        // Âm thanh bùng nổ ma thuật thần thánh (Tiếng Totem of Undying cực kỳ uy lực)
+        loc.getWorld().playSound(loc, Sound.ITEM_TOTEM_USE, 1.0f, 1.2f);
+
+        // Tiếng tinh thể pha lê vỡ vụn sắc lẹm (Dùng CLUSTER thay vì BLOCK sẽ nghe giòn và giống thủy tinh hơn)
+        loc.getWorld().playSound(loc, Sound.BLOCK_AMETHYST_CLUSTER_BREAK, 1.5f, 0.8f);
+
+        // Dư âm chuông vang vọng trầm hùng (Tiếng Level Up ép Pitch xuống thấp)
+        loc.getWorld().playSound(loc, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 0.5f);
 
         Location centerBase = loc.clone().subtract(0, 0.5, 0);
         Particle.DustOptions pinkDust = new Particle.DustOptions(org.bukkit.Color.fromRGB(255, 182, 193), 1.2f);

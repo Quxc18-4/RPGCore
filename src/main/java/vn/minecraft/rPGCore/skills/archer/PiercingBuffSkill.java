@@ -41,7 +41,7 @@ public class PiercingBuffSkill implements ISkill {
 
     @Override
     public long getCooldown(int level) {
-        return 20000L;
+        return 25000L;
     }
 
     @Override
