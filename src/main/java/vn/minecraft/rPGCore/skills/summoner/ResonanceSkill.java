@@ -14,6 +14,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
+import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 import vn.minecraft.rPGCore.skills.ISkill;
 import vn.minecraft.rPGCore.skills.summoner.pets.IPetProfile;
@@ -384,22 +385,24 @@ public class ResonanceSkill implements ISkill {
         // ==========================================
         // [CẬP NHẬT 1]: ÁP DỤNG TRỰC TIẾP TỐC ĐỘ CHẠY (WALK SPEED)
         // ==========================================
-        float defaultSpeed = 0.2f;
-        float speedBonus = finalBuffs.getOrDefault("MoveSpeed", 0.0).floatValue();
-        player.setWalkSpeed(Math.min(defaultSpeed * (1.0f + speedBonus), 1.0f));
 
         if (totalEarthShield > 0) {
-            player.setMetadata("Custom_Earth_Shield", new FixedMetadataValue(plugin, totalEarthShield));
-            player.setMetadata("Custom_Earth_Shield_Max", new FixedMetadataValue(plugin, totalEarthShield));
+            player.setMetadata("RPG_Absorption_Shield", new FixedMetadataValue(plugin, totalEarthShield));
+            player.setMetadata("RPG_Absorption_Shield_Max", new FixedMetadataValue(plugin, totalEarthShield));
             player.setAbsorptionAmount(20.0);
             player.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.ABSORPTION, durationSeconds * 20, 4, false, false, false));
         } else {
-            player.removeMetadata("Custom_Earth_Shield", plugin);
-            player.removeMetadata("Custom_Earth_Shield_Max", plugin);
+            player.removeMetadata("RPG_Absorption_Shield", plugin);
+            player.removeMetadata("RPG_Absorption_Shield_Max", plugin);
             player.setAbsorptionAmount(0);
         }
 
         player.setMetadata("Resonance_Stats", new FixedMetadataValue(plugin, finalBuffs));
+
+        RPGPlayer rpgPlayer = RPGCore.getInstance().getPlayerManager().getRPGPlayer(player.getUniqueId());
+        if (rpgPlayer != null) {
+            rpgPlayer.updateMoveSpeed(); // Hệ thống tự động đọc lại 'Tốc độ di chuyển' trong Map
+        }
 
         // ==========================================
         // IN BẢNG DEBUG (Đã thêm Tốc chạy & Kháng)
@@ -438,13 +441,16 @@ public class ResonanceSkill implements ISkill {
             public void run() {
                 if (player.isOnline()) {
                     player.removeMetadata("Resonance_Stats", plugin);
-                    player.removeMetadata("Custom_Earth_Shield", plugin);
-                    player.removeMetadata("Custom_Earth_Shield_Max", plugin);
+                    player.removeMetadata("RPG_Absorption_Shield", plugin);
+                    player.removeMetadata("RPG_Absorption_Shield_Max", plugin);
                     playerStacks.remove(player.getUniqueId());
                     player.setAbsorptionAmount(0);
 
                     // [CẬP NHẬT 2]: Trả lại tốc độ gốc khi hết buff
-                    player.setWalkSpeed(0.2f);
+                    RPGPlayer rp = RPGCore.getInstance().getPlayerManager().getRPGPlayer(player.getUniqueId());
+                    if (rp != null) {
+                        rp.updateMoveSpeed();
+                    }
 
                     player.sendMessage("§7§o(Trạng thái Cộng hưởng đã tan biến...)");
                 }

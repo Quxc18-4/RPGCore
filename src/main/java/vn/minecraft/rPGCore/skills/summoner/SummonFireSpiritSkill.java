@@ -49,7 +49,7 @@ public class SummonFireSpiritSkill implements ISkill {
     @Override
     public double getManaCost(int level) {
         // Tốn nhiều Mana hơn Sói một chút vì là Caster tầm xa
-        return 65.0 + (level * 5.0);
+        return 85.0 + (level * 5.0);
     }
 
     @Override
@@ -91,7 +91,7 @@ public class SummonFireSpiritSkill implements ISkill {
                 "",
                 "§d[Hiệu ứng Cộng Hưởng]",
                 "§f- §b+5% §fXuyên giáp phép",
-                "§f- §6+5% §fTỉ lệ đòn đánh gây Thiêu Đốt"
+                "§f- §6+15% §fTỉ lệ đòn đánh gây Thiêu Đốt"
         );
     }
 

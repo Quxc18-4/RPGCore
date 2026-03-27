@@ -39,7 +39,7 @@ public class SummonWindSpiritSkill implements ISkill {
 
     @Override
     public double getManaCost(int level) {
-        return 60.0 + (level * 10.0);
+        return 65.0 + (level * 10.0);
     }
 
     @Override

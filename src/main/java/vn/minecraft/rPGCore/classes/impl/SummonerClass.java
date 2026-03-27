@@ -99,6 +99,33 @@ public class SummonerClass extends RPGClass {
         double finalMaxMana = this.getMaxResource() + (rpgPlayer.getAttributeData().getAttribute("INT") * 1.0) + currentStats.getOrDefault("Năng lượng tối đa", 0.0);
         currentStats.put("Sát thương Triệu hồi", Math.floor(finalMaxMana / 100.0) * 5.0);
 
+        // ==========================================
+        // [CHUẨN SOLID]: MAP CÁC BUFF CỘNG HƯỞNG TĨNH VÀO HỆ THỐNG
+        // ==========================================
+        Player player = rpgPlayer.getBukkitPlayer();
+        if (player.hasMetadata("Resonance_Stats")) {
+            Object val = player.getMetadata("Resonance_Stats").get(0).value();
+            if (val instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Double> buffs = (Map<String, Double>) val;
+
+                // [Support]: Áp dụng Tỉ lệ hồi phục (RegenRate) để RegenTask đọc được
+                if (buffs.containsKey("RegenRate")) {
+                    currentStats.put("Tỉ lệ hồi phục", currentStats.getOrDefault("Tỉ lệ hồi phục", 0.0) + buffs.get("RegenRate"));
+                }
+
+                // [Wind]: Áp dụng Kháng hiệu ứng
+                if (buffs.containsKey("EffectResistance")) {
+                    currentStats.put("Kháng hiệu ứng", currentStats.getOrDefault("Kháng hiệu ứng", 0.0) + buffs.get("EffectResistance"));
+                }
+
+                // [Swift]: Chuyển đổi MoveSpeed từ Hardcode sang hệ thống Stats của RPGCore
+                if (buffs.containsKey("MoveSpeed")) {
+                    currentStats.put("Tốc độ di chuyển", currentStats.getOrDefault("Tốc độ di chuyển", 0.0) + (buffs.get("MoveSpeed") * 100.0));
+                }
+            }
+        }
+
         super.applyPassiveBonusStats(rpgPlayer, currentStats);
     }
 
@@ -338,25 +365,43 @@ public class SummonerClass extends RPGClass {
 
     @Override
     public double onTakeDamage(Player victim, RPGPlayer rpgPlayer, LivingEntity attacker, double initialDamage) {
+
+        double modifiedDamage = initialDamage;
+
+        // ==========================================
+        // [CHUẨN SOLID]: SUMMONER TỰ XỬ LÝ BUFF VANGUARD CỦA MÌNH
+        // ==========================================
+        if (victim.hasMetadata("Resonance_Stats")) {
+            Object val = victim.getMetadata("Resonance_Stats").get(0).value();
+            if (val instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Double> resonanceBuffs = (Map<String, Double>) val;
+                double damageReduction = resonanceBuffs.getOrDefault("DamageReduction", 0.0);
+
+                if (damageReduction > 0) {
+                    modifiedDamage *= (1.0 - damageReduction);
+                }
+            }
+        }
+
+        // ==========================================
+        // ĐIỀU HƯỚNG MỤC TIÊU CHO ĐỆ TỬ
+        // ==========================================
         if (attacker != null && !attacker.equals(victim) && !(attacker instanceof org.bukkit.entity.ArmorStand) && !attacker.hasMetadata("Summoner_Pet")) {
 
             @SuppressWarnings("unchecked")
-            LinkedList<LivingEntity> targetStack = new LinkedList<>();
+            java.util.LinkedList<LivingEntity> targetStack = new java.util.LinkedList<>();
 
-            // ==========================================
-            // [FIX BUG BẰNG LỚP BẢO VỆ]
-            // ==========================================
             if (victim.hasMetadata("Summoner_Target_Stack")) {
-                List<org.bukkit.metadata.MetadataValue> targetMeta = victim.getMetadata("Summoner_Target_Stack");
+                java.util.List<org.bukkit.metadata.MetadataValue> targetMeta = victim.getMetadata("Summoner_Target_Stack");
                 if (targetMeta != null && !targetMeta.isEmpty()) {
                     Object val = targetMeta.get(0).value();
-                    if (val instanceof LinkedList) {
-                        targetStack = (LinkedList<LivingEntity>) val;
+                    if (val instanceof java.util.LinkedList) {
+                        targetStack = (java.util.LinkedList<LivingEntity>) val;
                     }
                 }
             }
 
-            // [WORLD CHECK] Chặn lỗi khác chiều không gian khi đo khoảng cách
             targetStack.removeIf(e -> !e.isValid() || e.isDead() || !e.getWorld().equals(victim.getWorld()) || e.getLocation().distance(victim.getLocation()) > 35);
             targetStack.remove(attacker);
             targetStack.addFirst(attacker);
@@ -366,10 +411,10 @@ public class SummonerClass extends RPGClass {
             }
             victim.setMetadata("Summoner_Target_Stack", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), targetStack));
 
-            List<org.bukkit.entity.Mob> myPets = new ArrayList<>();
+            java.util.List<org.bukkit.entity.Mob> myPets = new java.util.ArrayList<>();
             for (org.bukkit.entity.Entity e : victim.getNearbyEntities(20, 10, 20)) {
                 if (e.hasMetadata("Summoner_Pet")) {
-                    List<org.bukkit.metadata.MetadataValue> metaList = e.getMetadata("Summoner_Pet");
+                    java.util.List<org.bukkit.metadata.MetadataValue> metaList = e.getMetadata("Summoner_Pet");
 
                     if (metaList != null && !metaList.isEmpty()) {
                         if (metaList.get(0).asString().equals(victim.getUniqueId().toString())) {
@@ -401,7 +446,8 @@ public class SummonerClass extends RPGClass {
             }
         }
 
-        return initialDamage;
+        // Trả về lượng sát thương sau khi đã giảm trừ bởi Vanguard
+        return modifiedDamage;
     }
 
     public void clearAllPets(Player player) {

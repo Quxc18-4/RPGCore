@@ -121,51 +121,29 @@ public class CombatManager {
         }
 
         // ==========================================
-        // [MỚI]: KÍCH HOẠT GIẢM SÁT THƯƠNG TỪ CỘNG HƯỞNG (VANGUARD)
+        // [CHUẨN SOLID]: HỆ THỐNG KHIÊN ẢO DÙNG CHUNG CỦA SERVER
+        // (Bất kỳ class nào set cái Metadata này cũng sẽ được hấp thụ sát thương)
         // ==========================================
-        if (victim.hasMetadata("Resonance_Stats")) {
-            Object val = victim.getMetadata("Resonance_Stats").get(0).value();
-            if (val instanceof Map) {
-                @SuppressWarnings("unchecked")
-                Map<String, Double> resonanceBuffs = (Map<String, Double>) val;
-                double damageReduction = resonanceBuffs.getOrDefault("DamageReduction", 0.0);
-
-                if (damageReduction > 0) {
-                    finalDamage *= (1.0 - damageReduction); // Trừ đi % ST tương ứng
-
-                    // [DEBUG] In ra ST đã được giảm nhờ Vanguard
-                    victim.sendMessage("§e[Debug Vanguard] Đã giảm §c" + (damageReduction * 100) + "% §eST nhận vào (Còn lại: " + String.format("%.1f", finalDamage) + ")");
-                }
-            }
-        }
-
-        // ==========================================
-        // [MỚI]: HẤP THỤ SÁT THƯƠNG VÀO KHIÊN NGẦM
-        // ==========================================
-        if (victim.hasMetadata("Custom_Earth_Shield")) {
-            double currentShield = victim.getMetadata("Custom_Earth_Shield").get(0).asDouble();
-            double maxShield = victim.getMetadata("Custom_Earth_Shield_Max").get(0).asDouble();
+        if (victim.hasMetadata("RPG_Absorption_Shield")) {
+            double currentShield = victim.getMetadata("RPG_Absorption_Shield").get(0).asDouble();
+            double maxShield = victim.getMetadata("RPG_Absorption_Shield_Max").get(0).asDouble();
 
             if (currentShield > 0) {
                 if (finalDamage <= currentShield) {
-                    // Khiên đủ sức đỡ toàn bộ sát thương
                     currentShield -= finalDamage;
-                    finalDamage = 0; // Sát thương truyền vào người = 0
-                    victim.setMetadata("Custom_Earth_Shield", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), currentShield));
+                    finalDamage = 0;
+                    victim.setMetadata("RPG_Absorption_Shield", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), currentShield));
                 } else {
-                    // Sát thương làm vỡ khiên
-                    finalDamage -= currentShield; // Sát thương tràn vào máu đỏ
+                    finalDamage -= currentShield;
                     currentShield = 0;
-                    victim.removeMetadata("Custom_Earth_Shield", vn.minecraft.rPGCore.RPGCore.getInstance());
-                    victim.removeMetadata("Custom_Earth_Shield_Max", vn.minecraft.rPGCore.RPGCore.getInstance());
+                    victim.removeMetadata("RPG_Absorption_Shield", vn.minecraft.rPGCore.RPGCore.getInstance());
+                    victim.removeMetadata("RPG_Absorption_Shield_Max", vn.minecraft.rPGCore.RPGCore.getInstance());
                     victim.setAbsorptionAmount(0);
                     victim.playSound(victim.getLocation(), org.bukkit.Sound.ITEM_SHIELD_BREAK, 1.0f, 1.2f);
                 }
 
-                // Cập nhật lại UI hiển thị tim vàng (Chia tỷ lệ)
                 if (currentShield > 0) {
                     double displayAbsorption = (currentShield / maxShield) * 20.0;
-                    // Đảm bảo dù khiên còn 1 giọt cũng hiển thị ít nhất nửa tim vàng cho người chơi dễ nhìn
                     victim.setAbsorptionAmount(Math.max(1.0, displayAbsorption));
                 }
             }
