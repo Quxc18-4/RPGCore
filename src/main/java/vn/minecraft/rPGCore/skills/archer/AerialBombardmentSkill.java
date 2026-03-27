@@ -103,7 +103,7 @@ public class AerialBombardmentSkill implements ISkill {
         cooldowns.put(player.getUniqueId(), currentTime);
         startCooldownNotifier(player, finalCd);
 
-        player.sendMessage("§d§l[!] TUYỆT KỸ: THIÊN KHÔNG CHI TIỄN!");
+        player.sendMessage("§d§l[!] TUYỆT KỸ TỐI THƯỢNG: CHÂN NGÃ!");
         player.setMetadata("Is_Casting", new FixedMetadataValue(plugin, true));
 
         double dmgMulti = getDamageMultiplier(level);
@@ -111,9 +111,32 @@ public class AerialBombardmentSkill implements ISkill {
         boolean wasAllowFlight = player.getAllowFlight();
         player.setAllowFlight(true);
 
-        // BÙM! Nhảy lên trời
-        player.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, player.getLocation(), 1);
-        player.setVelocity(new Vector(0, 1.2, 0));
+        // Khai báo biến loc lấy vị trí của người chơi
+        Location loc = player.getLocation();
+        // ==========================================
+        // 1. CẤT CÁNH: BÃO HOA HỒNG PASTEL MAGENTA
+        // ==========================================
+        Particle.DustOptions pinkDust = new Particle.DustOptions(org.bukkit.Color.fromRGB(255, 182, 193), 2.0f);
+        Particle.DustOptions magentaDust = new Particle.DustOptions(org.bukkit.Color.fromRGB(255, 153, 255), 1.5f);
+        Particle.DustOptions whiteDust = new Particle.DustOptions(org.bukkit.Color.WHITE, 1.5f);
+
+        player.getWorld().spawnParticle(Particle.DUST, loc, 50, 0.5, 0.5, 0.5, pinkDust);
+        player.getWorld().spawnParticle(Particle.DUST, loc, 30, 1.0, 1.0, 1.0, whiteDust);
+
+        new BukkitRunnable() {
+            int t = 0;
+            @Override
+            public void run() {
+                if (t > 15) { this.cancel(); return; }
+                double radius = 1.0 + t * 0.1;
+                for (int i = 0; i < 5; i++) {
+                    double angle = i * (Math.PI * 2 / 5) + (t * 0.3);
+                    Location pLoc = loc.clone().add(Math.cos(angle) * radius, t * 0.3, Math.sin(angle) * radius);
+                    player.getWorld().spawnParticle(Particle.DUST, pLoc, 1, magentaDust);
+                }
+                t++;
+            }
+        }.runTaskTimer(plugin, 0L, 1L);        player.setVelocity(new Vector(0, 1.2, 0));
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_BREEZE_JUMP, 1.5f, 1.0f);
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.5f);
 
@@ -126,9 +149,48 @@ public class AerialBombardmentSkill implements ISkill {
             int currentCastTick = 0;
 
             private void finishSkill() {
-                player.setGravity(true);
                 player.removeMetadata("Is_Casting", plugin);
-                player.setFallDistance(0);
+                player.setMetadata("No_Fall_Damage", new FixedMetadataValue(plugin, true)); // Cờ báo hiệu cho PlayerListener
+
+                // ==========================================
+                // 2. ĐÁP ĐẤT: RAYCAST HÃM PHANH & MÂY HỒNG ĐỠ
+                // ==========================================
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        if (!player.isOnline() || player.isDead()) {
+                            this.cancel(); return;
+                        }
+
+                        // Nếu đã chạm đất thật sự
+                        if (player.isOnGround()) {
+                            player.removeMetadata("No_Fall_Damage", plugin);
+                            this.cancel(); return;
+                        }
+
+                        // Raycast xuống dưới dò mặt đất
+                        org.bukkit.util.RayTraceResult result = player.getWorld().rayTraceBlocks(player.getLocation(), new Vector(0, -1, 0), 2.5);
+                        if (result != null && result.getHitBlock() != null) {
+                            // Sắp chạm đất! -> Hãm phanh
+                            player.setVelocity(new Vector(0, -0.05, 0));
+                            player.setFallDistance(0);
+
+                            // Bật mây hồng đỡ lấy
+                            Particle.DustOptions cloudDust = new Particle.DustOptions(org.bukkit.Color.fromRGB(255, 228, 225), 3.0f);
+                            player.getWorld().spawnParticle(Particle.DUST, player.getLocation().subtract(0, 0.2, 0), 30, 1.0, 0.2, 1.0, cloudDust);
+                            player.getWorld().spawnParticle(Particle.CLOUD, player.getLocation(), 15, 0.5, 0.1, 0.5, 0.05);
+                            player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_FLAP, 1.0f, 1.5f);
+
+                            new BukkitRunnable() {
+                                @Override public void run() { if (player.isOnline()) player.removeMetadata("No_Fall_Damage", plugin); }
+                            }.runTaskLater(plugin, 20L); // Hủy cờ sau 1s an toàn
+
+                            this.cancel();
+                        }
+                    }
+                }.runTaskTimer(plugin, 0L, 1L);
+
+                player.setGravity(true);
                 if (player.getGameMode() != org.bukkit.GameMode.CREATIVE && player.getGameMode() != org.bukkit.GameMode.SPECTATOR) {
                     player.setFlying(false);
                     player.setAllowFlight(wasAllowFlight);
@@ -275,118 +337,274 @@ public class AerialBombardmentSkill implements ISkill {
         return true;
     }
 
+    // ==========================================
+    // 3. MŨI TÊN PARTICLE & 2 DẢI LỐC XOÁY (VORTEX)
+    // ==========================================
     private void fireExplosiveBomb(Player player, double dmgMulti) {
         Location eyeLoc = player.getEyeLocation();
-        Vector dir = eyeLoc.getDirection().normalize().multiply(3.5);
+        Vector dir = eyeLoc.getDirection().normalize().multiply(2.5);
 
-        Arrow arrow = player.getWorld().spawnArrow(eyeLoc, dir, 3.5f, 0f);
+        Arrow arrow = player.getWorld().spawnArrow(eyeLoc, dir, 2.5f, 0f);
         arrow.setShooter(player);
+        arrow.setGravity(false);
+        arrow.setSilent(true);
 
-        arrow.setMetadata("Is_Custom_Skill", new FixedMetadataValue(plugin, true));
-        arrow.setMetadata("Skill_DmgMulti", new FixedMetadataValue(plugin, dmgMulti));
-        arrow.setMetadata("Skill_ArmorPen", new FixedMetadataValue(plugin, 50.0));
+        player.getWorld().playSound(eyeLoc, Sound.ENTITY_ILLUSIONER_CAST_SPELL, 1.0f, 2.0f);
+        player.getWorld().playSound(eyeLoc, Sound.ITEM_TRIDENT_THROW, 1.0f, 1.5f);
 
-        if (player.hasMetadata("Archer_Pierce_Buff")) {
-            arrow.setMetadata("Is_Piercing_Arrow", new FixedMetadataValue(plugin, true));
-            arrow.setMetadata("Pierce_Hit_Count", new FixedMetadataValue(plugin, 0));
-            arrow.setMetadata("Pierced_Entities", new FixedMetadataValue(plugin, new java.util.ArrayList<java.util.UUID>()));
-        }
-
-        // Tiếng tên lửa xé gió tút lên cao
-        player.getWorld().playSound(eyeLoc, Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 1.0f, 1.2f);
-        // Tiếng ngân vang ma thuật lấp lánh (Pitch 2.0 tạo độ thanh và sắc)
-        player.getWorld().playSound(eyeLoc, Sound.ITEM_TRIDENT_RETURN, 1.2f, 2.0f);
-
-        // [HIỆU ỨNG MỚI]: Bắn ra hoa anh đào rơi lả tả
-        player.getWorld().spawnParticle(Particle.CHERRY_LEAVES, eyeLoc, 40, 2.0, 2.0, 2.0, 0.05);
+        Particle.DustOptions arrowColor = new Particle.DustOptions(org.bukkit.Color.fromRGB(255, 105, 180), 1.2f);
+        Particle.DustOptions vortexColor = new Particle.DustOptions(org.bukkit.Color.fromRGB(255, 228, 225), 1.0f);
 
         new BukkitRunnable() {
+            Location startLoc = arrow.getLocation();
+            int t = 0; // Bộ đếm cho Vortex
+
             @Override
             public void run() {
-                if (!arrow.isValid() || arrow.isOnGround()) {
-                    Location hitLoc = arrow.getLocation();
-                    createCrystalBloom(player, hitLoc, dmgMulti);
+                if (!arrow.isValid() || arrow.isDead()) { this.cancel(); return; }
+
+                double dist = startLoc.distance(arrow.getLocation());
+
+                LivingEntity hitTarget = null;
+                for (org.bukkit.entity.Entity e : arrow.getWorld().getNearbyEntities(arrow.getLocation(), 1.5, 1.5, 1.5)) {
+                    if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) {
+                        hitTarget = (LivingEntity) e; break;
+                    }
+                }
+
+                boolean hitBlock = arrow.isInBlock();
+                boolean outOfRange = dist >= 30.0;
+
+                if (hitTarget != null || hitBlock || outOfRange) {
+                    Location explodeLoc = arrow.getLocation();
+
+                    if (hitTarget != null) {
+                        Location feetLoc = hitTarget.getLocation();
+                        if (feetLoc.clone().subtract(0, 0.5, 0).getBlock().getType().isSolid() || ((org.bukkit.entity.Entity)hitTarget).isOnGround()) {
+                            createCrystalBloom(player, feetLoc, dmgMulti);
+                        } else {
+                            createMidAirLoveArrows(player, hitTarget.getLocation(), dmgMulti);
+                        }
+                    } else if (hitBlock) {
+                        createCrystalBloom(player, explodeLoc, dmgMulti);
+                    } else if (outOfRange) {
+                        createMidAirLoveArrows(player, explodeLoc, dmgMulti);
+                    }
+
+                    arrow.remove();
                     this.cancel();
                     return;
                 }
-                Particle.DustOptions lightPinkDust = new Particle.DustOptions(org.bukkit.Color.fromRGB(255, 182, 193), 1.5f);
-                arrow.getWorld().spawnParticle(Particle.DUST, arrow.getLocation(), 5, 0.1, 0.1, 0.1, 0, lightPinkDust);
-                arrow.getWorld().spawnParticle(Particle.END_ROD, arrow.getLocation(), 2, 0.1, 0.1, 0.1, 0.05);
+
+                // VẼ MŨI TÊN & LỐC XOÁY KÉP (DOUBLE VORTEX)
+                Location current = arrow.getLocation();
+                Vector vDir = arrow.getVelocity().normalize();
+
+                // Trục hạt trung tâm
+                arrow.getWorld().spawnParticle(Particle.END_ROD, current, 1, 0, 0, 0, 0);
+                for (double i = 0; i <= 1.5; i += 0.3) {
+                    arrow.getWorld().spawnParticle(Particle.DUST, current.clone().subtract(vDir.clone().multiply(i)), 1, arrowColor);
+                }
+
+                // Toán học vẽ 2 dải Vortex xoay quanh hướng bay
+                Vector up = new Vector(0, 1, 0);
+                if (Math.abs(vDir.getY()) > 0.9) up = new Vector(1, 0, 0);
+                Vector ortho1 = vDir.clone().crossProduct(up).normalize();
+                Vector ortho2 = vDir.clone().crossProduct(ortho1).normalize();
+
+                double vRadius = 0.6; // Độ rộng của vòng lốc xoáy
+                double angle = t * 0.8; // Tốc độ xoay
+
+                // Điểm xoắn 1
+                Location p1 = current.clone().subtract(vDir.clone().multiply(0.5))
+                        .add(ortho1.clone().multiply(Math.cos(angle) * vRadius))
+                        .add(ortho2.clone().multiply(Math.sin(angle) * vRadius));
+                // Điểm xoắn 2 (Đối xứng 180 độ)
+                Location p2 = current.clone().subtract(vDir.clone().multiply(0.5))
+                        .add(ortho1.clone().multiply(Math.cos(angle + Math.PI) * vRadius))
+                        .add(ortho2.clone().multiply(Math.sin(angle + Math.PI) * vRadius));
+
+                arrow.getWorld().spawnParticle(Particle.DUST, p1, 1, vortexColor);
+                arrow.getWorld().spawnParticle(Particle.DUST, p2, 1, vortexColor);
+                t++;
             }
         }.runTaskTimer(plugin, 0L, 1L);
     }
 
     // ==========================================
-    // TẠO HOA PHA LÊ HÌNH CHÓP (CRYSTAL PYRAMIDS)
+    // 4. VẼ ĐÓA HOA PHA LÊ (NỞ ĐỒNG LOẠT BÙNG NỔ CÓ TỔ CHỨC)
+    // Đã căn chỉnh lại góc độ để hoa vươn cao, thanh thoát hơn
     // ==========================================
     private void createCrystalBloom(Player player, Location loc, double dmgMulti) {
-        RPGPlayer rpgPlayer = RPGCore.getInstance().getPlayerManager().getRPGPlayer(player.getUniqueId());
-
         loc.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, loc, 1);
         loc.getWorld().playSound(loc, Sound.ITEM_TOTEM_USE, 1.0f, 1.2f);
-
-        // Tiếng tinh thể pha lê vỡ vụn sắc lẹm (Dùng CLUSTER thay vì BLOCK sẽ nghe giòn và giống thủy tinh hơn)
         loc.getWorld().playSound(loc, Sound.BLOCK_AMETHYST_CLUSTER_BREAK, 1.5f, 0.8f);
 
-        // Dư âm chuông vang vọng trầm hùng (Tiếng Level Up ép Pitch xuống thấp)
-        loc.getWorld().playSound(loc, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 0.5f);
-
-        Location centerBase = loc.clone().subtract(0, 0.5, 0);
         Particle.DustOptions pinkDust = new Particle.DustOptions(org.bukkit.Color.fromRGB(255, 182, 193), 1.2f);
-        Particle.DustOptions lightMagentaDust = new Particle.DustOptions(org.bukkit.Color.fromRGB(255, 153, 255), 1.0f);
+        Particle.DustOptions lightMagentaDust = new Particle.DustOptions(org.bukkit.Color.fromRGB(255, 153, 255), 1.2f);
         Particle.DustOptions whitePinkDust = new Particle.DustOptions(org.bukkit.Color.fromRGB(255, 228, 225), 1.5f);
 
+        Location centerBase = loc.clone();
+        org.bukkit.util.RayTraceResult centerRay = loc.getWorld().rayTraceBlocks(loc.clone().add(0, 2, 0), new Vector(0, -1, 0), 4.0);
+        if (centerRay != null && centerRay.getHitBlock() != null) {
+            centerBase = centerRay.getHitPosition().toLocation(loc.getWorld());
+        } else {
+            centerBase = loc.clone().subtract(0, 0.5, 0);
+        }
+
+        Location finalCenter = centerBase.clone().add(0, 0.2, 0);
+
+        // NỞ HOA NGAY LẬP TỨC
+
+        // 1. LÕI TRUNG TÂM (Đâm thẳng lên trời)
+        drawCrystalSpike(finalCenter, new Vector(0, 1, 0), 5.5, 1.5, pinkDust, lightMagentaDust, loc.getWorld());
+
+        // 2. LỚP CÁNH TRONG (Góc 60 độ - Ngả đều ra xung quanh)
+        for(int i = 0; i < 6; i++) {
+            double azimuth = i * (Math.PI / 3);
+            double elevation = Math.PI / 3; // ~60 độ (Giảm từ 72 độ)
+            Vector dir = new Vector(Math.cos(elevation)*Math.cos(azimuth), Math.sin(elevation), Math.cos(elevation)*Math.sin(azimuth));
+            drawCrystalSpike(finalCenter, dir, 4.5, 1.5, whitePinkDust, pinkDust, loc.getWorld());
+        }
+
+        // 3. LỚP CÁNH NGOÀI (Góc 30 độ - Tỏa rộng mượt mà)
+        for(int i = 0; i < 8; i++) {
+            double azimuth = i * (Math.PI / 4) + (Math.PI / 8);
+            double elevation = Math.PI / 6; // ~30 độ (Giảm từ ~51 độ)
+            Vector dir = new Vector(Math.cos(elevation)*Math.cos(azimuth), Math.sin(elevation), Math.cos(elevation)*Math.sin(azimuth));
+            drawCrystalSpike(finalCenter, dir, 6.0, 2.2, pinkDust, lightMagentaDust, loc.getWorld());
+        }
+
+        // 4. LỚP CÁNH BỆ ĐỠ BÊN DƯỚI (14 cánh, Góc 10 độ - Đài hoa dày đặc bám đất)
+        for(int i = 0; i < 14; i++) { // Tăng từ 10 lên 14 cánh
+            double azimuth = i * (Math.PI / 7); // Chia đều 14 hướng
+            double elevation = Math.PI / 18; // ~10 độ (Hơi nhích nhẹ khỏi mặt đất)
+            Vector dir = new Vector(Math.cos(elevation)*Math.cos(azimuth), Math.sin(elevation), Math.cos(elevation)*Math.sin(azimuth));
+            drawCrystalSpike(finalCenter, dir, 7.0, 2.8, whitePinkDust, pinkDust, loc.getWorld());
+        }
+
+        loc.getWorld().spawnParticle(Particle.CHERRY_LEAVES, finalCenter.clone().add(0, 2, 0), 50, 4.0, 2.0, 4.0, 0.05);
+
+        applyAoEDamage(player, finalCenter, dmgMulti, 7.0);
+    }
+
+    // ==========================================
+    // 5. NỔ LƠ LỬNG TRÊN KHÔNG & MƯA TÊN (STARBURST 3D)
+    // ==========================================
+    private void createMidAirLoveArrows(Player player, Location loc, double dmgMulti) {
+        loc.getWorld().spawnParticle(Particle.EXPLOSION, loc, 1);
+        loc.getWorld().playSound(loc, Sound.ENTITY_FIREWORK_ROCKET_TWINKLE, 1.5f, 1.2f);
+
+        Particle.DustOptions pinkDust = new Particle.DustOptions(org.bukkit.Color.fromRGB(255, 182, 193), 1.2f);
+        Particle.DustOptions magenta = new Particle.DustOptions(org.bukkit.Color.fromRGB(255, 105, 180), 1.5f);
+
+        // VẼ HOA KHÔNG GIAN BÙNG NỔ (Sea Urchin Style)
+        // Thay vì chỉ vươn lên, đóa hoa lơ lửng sẽ đâm gai đều ra CẢ BÊN TRÊN LẪN BÊN DƯỚI
+        for (int i = 0; i < 14; i++) {
+            double phi = Math.acos(1 - 2 * ((i + 0.5) / 14)); // Phân bổ đều hình cầu
+            double theta = Math.PI * (1 + Math.sqrt(5)) * i;
+            Vector dir = new Vector(Math.sin(phi) * Math.cos(theta), Math.cos(phi), Math.sin(phi) * Math.sin(theta)).normalize();
+
+            drawCrystalSpike(loc, dir, 4.0, 1.5, pinkDust, magenta, loc.getWorld());
+        }
+        loc.getWorld().spawnParticle(Particle.CHERRY_LEAVES, loc, 30, 2.0, 2.0, 2.0, 0.05);
+
+        // TÌM MẶT ĐẤT ĐỂ TẠO MƯA TÊN & NỞ HOA DƯỚI ĐẤT
+        Location groundCenter = loc.clone();
+        org.bukkit.util.RayTraceResult downRay = loc.getWorld().rayTraceBlocks(loc, new Vector(0, -1, 0), 40.0);
+        if (downRay != null && downRay.getHitBlock() != null) {
+            groundCenter = downRay.getHitPosition().toLocation(loc.getWorld());
+        } else {
+            groundCenter.subtract(0, 15, 0);
+        }
+
+        Location finalGround = groundCenter;
+
+        // Gọi hoa nở bùm dưới mặt đất
+        createCrystalBloom(player, finalGround, dmgMulti);
+
+        // Mưa tên dội xuống
         new BukkitRunnable() {
-            int ticks = 0;
+            int arrowCount = 0;
             @Override
             public void run() {
-                if (ticks >= 15) { this.cancel(); return; }
+                if (arrowCount > 25) { this.cancel(); return; }
 
-                // MỖI TICK VẼ 2 KHỐI CHÓP PHA LÊ (PYRAMIDS)
-                for (int i = 0; i < 2; i++) {
-                    // 1. Chọn 1 điểm gốc ngẫu nhiên dưới mặt đất (Bán kính 3 block)
-                    double rBase = Math.random() * 6.0;
-                    double tBase = Math.random() * 2 * Math.PI;
-                    Location baseCenter = centerBase.clone().add(rBase * Math.cos(tBase), 0, rBase * Math.sin(tBase));
+                double offsetX = (Math.random() - 0.5) * 10.0;
+                double offsetZ = (Math.random() - 0.5) * 10.0;
 
-                    // 2. Chọn 1 đỉnh (Apex) ngẫu nhiên trên không trung (Cao 1.5 đến 4 block)
-                    double apexHeight = 1.5 + Math.random() * 2.5;
-                    // Đỉnh hơi lệch khỏi gốc để khối pha lê đâm xéo xéo tự nhiên
-                    Location apex = baseCenter.clone().add((Math.random() - 0.5) * 1.5, apexHeight, (Math.random() - 0.5) * 1.5);
+                Location startDrop = loc.clone().add(offsetX, 0, offsetZ);
+                Location endDrop = finalGround.clone().add(offsetX, 0, offsetZ);
 
-                    // 3. Vẽ khối chóp tứ giác (Square Pyramid)
-                    int sides = 6;
-                    double crystalRadius = 0.3 + Math.random() * 0.6; // Độ dày đáy pha lê
-                    double angleOffset = Math.random() * Math.PI;
-
-                    Particle.DustOptions faceColor = (Math.random() > 0.5) ? pinkDust : whitePinkDust;
-                    Particle.DustOptions edgeColor = (Math.random() > 0.5) ? lightMagentaDust : pinkDust;
-
-                    for (int j = 0; j < sides; j++) {
-                        // Tính góc của điểm dưới đáy
-                        double angle = angleOffset + j * (2 * Math.PI / sides);
-                        Location baseCorner = baseCenter.clone().add(Math.cos(angle) * crystalRadius, 0, Math.sin(angle) * crystalRadius);
-
-                        // Nối từ đáy lên đỉnh
-                        drawParticleLine(baseCorner, apex, faceColor, loc.getWorld());
-
-                        // Nối các điểm đáy với nhau để tạo hình khối
-                        double nextAngle = angleOffset + ((j + 1) % sides) * (2 * Math.PI / sides);
-                        Location nextCorner = baseCenter.clone().add(Math.cos(nextAngle) * crystalRadius, 0, Math.sin(nextAngle) * crystalRadius);
-                        drawParticleLine(baseCorner, nextCorner, edgeColor, loc.getWorld());
-                    }
+                org.bukkit.util.RayTraceResult dropRay = loc.getWorld().rayTraceBlocks(startDrop.clone().add(0, 2, 0), new Vector(0, -1, 0), 40.0);
+                if (dropRay != null && dropRay.getHitBlock() != null) {
+                    endDrop = dropRay.getHitPosition().toLocation(loc.getWorld());
                 }
 
-                if (ticks % 3 == 0) {
-                    loc.getWorld().spawnParticle(Particle.CHERRY_LEAVES, loc, 15, 2.0, 2.0, 2.0, 0.05);
-                    loc.getWorld().spawnParticle(Particle.FIREWORK, loc, 10, 2.0, 2.0, 2.0, 0.1);
-                }
-                ticks++;
+                drawParticleLine(startDrop, endDrop, magenta, loc.getWorld());
+                loc.getWorld().spawnParticle(Particle.HEART, endDrop.clone().add(0, 0.5, 0), 1);
+
+                arrowCount++;
             }
         }.runTaskTimer(plugin, 0L, 1L);
 
-        // [TÍCH HỢP FILTER LỖI MỤC TIÊU CỦA BẠN]
-        for (org.bukkit.entity.Entity e : loc.getWorld().getNearbyEntities(loc, 6, 6, 6)) {
+        // Gây sát thương lơ lửng cho quái bay R=4.0
+        applyAoEDamage(player, loc, dmgMulti, 4.0);
+    }
+
+    // ==========================================
+    // HÀM TOÁN HỌC VẼ 1 CÁNH HOA PHA LÊ (pointed pyramid - Chóp ngũ giác nhọn)
+    // Phối hợp với ảnh reference để tạo khối glowing từ lõi và viền hình học
+    // ==========================================
+    private void drawCrystalSpike(Location center, Vector dir, double length, double baseRadius, Particle.DustOptions faceColor, Particle.DustOptions edgeColor, org.bukkit.World world) {
+        Location topCenter = center.clone().add(dir.clone().multiply(length)); // Đỉnh nhọn (Apex)
+
+        Vector up = new Vector(0, 1, 0);
+        if (Math.abs(dir.getY()) > 0.9) up = new Vector(1, 0, 0); // Đề phòng lỗi chia 0 nếu đâm thẳng đứng
+        Vector ortho1 = dir.clone().crossProduct(up).normalize();
+        Vector ortho2 = dir.clone().crossProduct(ortho1).normalize();
+
+        int sides = 5; // Dùng chóp ngũ giác cho giống ảnh reference
+        double angleOffset = Math.random() * Math.PI; // Xoay nhẹ từng chóp
+
+        // --- VẼ LÕI TRUNG TÂM GLOWING (FACE COLOR - HỒNG/MAGENTA) ---
+        // Nối từ tâm gốc (center) lên đỉnh nhọn (topCenter) của từng chóp
+        drawParticleLine(center, topCenter, faceColor, world);
+
+        for (int j = 0; j < sides; j++) {
+            double angle = angleOffset + j * (2 * Math.PI / sides);
+            double nextAngle = angleOffset + ((j + 1) % sides) * (2 * Math.PI / sides);
+
+            // 1. Tọa độ các góc của 1 cạnh ĐÁY (Nằm sát tâm center)
+            Location baseCorner = center.clone()
+                    .add(ortho1.clone().multiply(Math.cos(angle) * baseRadius))
+                    .add(ortho2.clone().multiply(Math.sin(angle) * baseRadius));
+            Location nextBaseCorner = center.clone()
+                    .add(ortho1.clone().multiply(Math.cos(nextAngle) * baseRadius))
+                    .add(ortho2.clone().multiply(Math.sin(nextAngle) * baseRadius));
+
+            // --- BẮT ĐẦU VẼ CÁC ĐƯỜNG NỐI ---
+
+            // 2. Vẽ viền hình học bên ngoài (EDGE COLOR - TRẮNG/BLUE)
+            // Viền tứ giác ở Đáy
+            drawParticleLine(baseCorner, nextBaseCorner, edgeColor, world);
+            // Viền 5 cạnh bên nối từ Đáy chụm lên Đỉnh nhọn Apex (topCenter)
+            drawParticleLine(baseCorner, topCenter, edgeColor, world);
+
+            // 3. Vẽ các đường nối nội tâm (FACE COLOR - HỒNG/MAGENTA)
+            // Nối từ tâm gốc (center) đến các góc đáy của chóp để lấp đầy không gian faces rỗng
+            drawParticleLine(center, baseCorner, faceColor, world);
+        }
+    }
+
+    // ==========================================
+    // 6. GÂY SÁT THƯƠNG DIỆN RỘNG (ĐÃ FIX LỖI KO GÂY DMG)
+    // ==========================================
+    private void applyAoEDamage(Player player, Location loc, double dmgMulti, double radius) {
+        RPGPlayer rpgPlayer = vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager().getRPGPlayer(player.getUniqueId());
+        boolean hitSomething = false;
+
+        for (org.bukkit.entity.Entity e : loc.getWorld().getNearbyEntities(loc, radius, radius, radius)) {
             if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) {
                 LivingEntity target = (LivingEntity) e;
                 boolean isCrossbow = player.getInventory().getItemInMainHand().getType() == Material.CROSSBOW;
@@ -395,7 +613,13 @@ public class AerialBombardmentSkill implements ISkill {
                 player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(plugin, true));
                 CombatManager.applySkillDamage(player, target, finalDamage);
                 player.removeMetadata("Ghost_L_Blocker", plugin);
+
+                hitSomething = true;
             }
+        }
+
+        if (hitSomething) {
+            loc.getWorld().playSound(loc, Sound.ENTITY_ARROW_HIT_PLAYER, 1.0f, 1.2f);
         }
     }
 

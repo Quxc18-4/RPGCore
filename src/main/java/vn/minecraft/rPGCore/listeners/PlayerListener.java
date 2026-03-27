@@ -385,6 +385,12 @@ public class PlayerListener implements Listener {
             rpgPlayer.setInCombat();
             EntityDamageEvent.DamageCause cause = event.getCause();
             double multiplier = rpgPlayer.getTotalMaxHealth() / 20.0;
+//            if (event.getEntity() instanceof Player && event.getCause() == EntityDamageEvent.DamageCause.FALL) {
+//                if (player.hasMetadata("No_Fall_Damage")) {
+//                    event.setCancelled(true);
+//                    player.setFallDistance(0);
+//                }
+//            }
             if (cause == EntityDamageEvent.DamageCause.FALL || cause == EntityDamageEvent.DamageCause.LAVA || cause == EntityDamageEvent.DamageCause.DROWNING || cause == EntityDamageEvent.DamageCause.STARVATION || cause == EntityDamageEvent.DamageCause.SUFFOCATION || cause == EntityDamageEvent.DamageCause.FREEZE) {
                 event.setDamage(event.getDamage() * multiplier);
             }
