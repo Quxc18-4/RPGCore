@@ -139,7 +139,7 @@ public class SummonFusionSkill implements ISkill {
             }
 
             // Golem Nham Thạch là kết tinh lai tạp hoàn hảo, nhận multiplier mặc định là 1.5
-            final double hybridMultiplier = 2.0;
+            final double hybridMultiplier = 4.0;
 
             // Xử lý nổ và xóa xác chết
             double reservedBefore = rpgPlayer.getReservedResource();

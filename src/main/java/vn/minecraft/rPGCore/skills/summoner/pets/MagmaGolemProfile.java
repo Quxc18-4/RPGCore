@@ -38,7 +38,7 @@ public class MagmaGolemProfile implements IPetProfile, Listener {
 
     @Override
     public double getBaseFlatDamage(int level) {
-        if (level == 10) return 250.0;
+        if (level == 10) return 400.0;
         return 80.0 + (level - 1) * 35.0;
     }
 
@@ -54,7 +54,7 @@ public class MagmaGolemProfile implements IPetProfile, Listener {
 
         // [TOÁN HỌC]: Đã cộng dồn lượng máu khổng lồ của các thú hiến tế (extraArgs[1])
         double finalHpBonus = extraArgs.length > 1 ? extraArgs[1] : 0;
-        double baseHp = 6500 + (level * 1050) + finalHpBonus;
+        double baseHp = 15500 + (level * 1050) + finalHpBonus;
 
         if (pet.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH) != null) {
             pet.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).setBaseValue(baseHp);
@@ -115,7 +115,7 @@ public class MagmaGolemProfile implements IPetProfile, Listener {
                         double dist = pet.getLocation().distance(owner.getLocation());
                         if (dist > 30.0) {
                             pet.teleport(owner.getLocation());
-                        } else if (dist > 5.0) {
+                        } else if (dist > 10.0) {
                             Vector dirToOwner = owner.getLocation().toVector().subtract(pet.getLocation().toVector()).normalize();
                             pet.setVelocity(pet.getVelocity().setX(dirToOwner.getX() * 0.25).setZ(dirToOwner.getZ() * 0.25));
                         }
