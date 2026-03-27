@@ -26,6 +26,9 @@ public class SkillManager {
         SummonPetManager.register(new CopperGolemProfile());
         SummonPetManager.register(new WindSpiritProfile());
         SummonPetManager.register(new GreatWindSpiritProfile());
+        SummonPetManager.register(new FireSpiritProfile());
+        SummonPetManager.register(new GrandFireSpiritProfile());
+        SummonPetManager.register(new MagmaGolemProfile());
 
         // Nơi đăng ký mọi kỹ năng của Server
         registerSkill(new DoubleShotSkill(plugin));
@@ -54,6 +57,8 @@ public class SkillManager {
         registerSkill(new ResonanceSkill(plugin));
         registerSkill(new SummonCopperGolemSkill(plugin));
         registerSkill(new SummonWindSpiritSkill(plugin));
+        registerSkill(new SummonFireSpiritSkill(plugin));
+        registerSkill(new AdvancedFusionSkill());
     }
 
     public void registerSkill(ISkill skill) {

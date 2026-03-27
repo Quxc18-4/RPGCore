@@ -40,7 +40,6 @@ public class SummonFusionSkill implements ISkill {
 
     @Override
     public double getManaCost(int level) {
-        // [CÂN BẰNG MỚI]: Cấp 1: 110 Mana -> Cấp 5: 150 Mana
         return 100.0 + (level * 10.0);
     }
 
@@ -52,9 +51,9 @@ public class SummonFusionSkill implements ISkill {
 
         return Arrays.asList(
                 "§7Khởi động vòng tròn ma thuật, hiến tế các Linh Thú",
-                "§7cùng loại trên sân để triệu hồi Thực Thể Tiến Cấp.",
+                "§7trên sân để triệu hồi Thực Thể Tiến Cấp.",
                 "",
-                "§e[Dung Hợp: Hiến tế]",
+                "§e[Dung Hợp: Cơ Bản]",
                 "§f- Yêu cầu: §aTối thiểu 3 Linh Thú cùng loại",
                 "§f- Bùng nổ: §7Gây §c" + explosionDmg + " Sát thương §7và §eChoáng 1s",
                 "§7  cho toàn bộ kẻ địch đứng gần các tế phẩm.",
@@ -62,7 +61,10 @@ public class SummonFusionSkill implements ISkill {
                 "§d[Dung Hợp: Tái sinh]",
                 "§f- Cấp độ Bonus: §a+1 Lv §f(Mỗi 2 thú hiến tế dư ra)",
                 "§f- Sức mạnh: §cKế thừa Máu, Sát thương & Kích thước",
-                "§f- Sinh mệnh: §6Có thời hạn §f(Tăng theo Máu tế phẩm)"
+                "§f- Sinh mệnh: §6Có thời hạn §f(Tăng theo Máu tế phẩm)",
+                "",
+                "§6[Dung Hợp Lai (Yêu cầu Nội tại)]",
+                "§f- §c2 Tinh Linh Lửa §f+ §61 Golem Đồng §f= §4Golem Nham Thạch"
         );
     }
 
@@ -84,14 +86,27 @@ public class SummonFusionSkill implements ISkill {
             return false;
         }
 
+        SummonerClass sClass = (SummonerClass) rpgPlayer.getCurrentClass();
+        if (sClass == null) return false;
+
+        // ==========================================
+        // QUÉT TOÀN BỘ ĐỆ TỬ CỦA NGƯỜI CHƠI TRÊN SÂN
+        // ==========================================
+        List<Entity> fireSpirits = new ArrayList<>();
+        List<Entity> copperGolems = new ArrayList<>();
         Map<String, List<Entity>> fusableGroups = new HashMap<>();
 
         for (Entity e : player.getNearbyEntities(25, 10, 25)) {
             if (e.hasMetadata("Summoner_Pet") && e instanceof LivingEntity) {
                 if (e.getMetadata("Summoner_Pet").get(0).asString().equals(player.getUniqueId().toString())) {
                     String petType = e.hasMetadata("Pet_Type") ? e.getMetadata("Pet_Type").get(0).asString() : "";
-                    IPetProfile profile = SummonPetManager.getProfile(petType);
 
+                    // Lọc cho Dung hợp Lai
+                    if (petType.equals("FireSpirit")) fireSpirits.add(e);
+                    if (petType.equals("CopperGolem")) copperGolems.add(e);
+
+                    // Lọc cho Dung hợp Cơ bản
+                    IPetProfile profile = SummonPetManager.getProfile(petType);
                     if (profile != null && profile.getFusionTargetId() != null) {
                         fusableGroups.computeIfAbsent(petType, k -> new ArrayList<>()).add(e);
                     }
@@ -99,6 +114,61 @@ public class SummonFusionSkill implements ISkill {
             }
         }
 
+        // ==========================================
+        // LUỒNG 1: DUNG HỢP LAI (HYBRID FUSION) - Golem Nham Thạch
+        // ==========================================
+
+        // [ĐÃ SỬA LỖI]: Gọi getSkillData() trước khi lấy level
+        int advancedFusionLevel = rpgPlayer.getSkillData().getSkillLevel("summoner_advanced_fusion");
+
+        if (advancedFusionLevel > 0 && fireSpirits.size() >= 2 && copperGolems.size() >= 1) {
+
+            List<Entity> hybridSacrifices = new ArrayList<>();
+            hybridSacrifices.add(fireSpirits.get(0));
+            hybridSacrifices.add(fireSpirits.get(1));
+            hybridSacrifices.add(fireSpirits.get(2));
+            hybridSacrifices.add(fireSpirits.get(3));
+            hybridSacrifices.add(copperGolems.get(0));
+
+            double totalHpBonus = 0;
+            for (Entity sac : hybridSacrifices) {
+                LivingEntity le = (LivingEntity) sac;
+                if (le.getAttribute(Attribute.MAX_HEALTH) != null) {
+                    totalHpBonus += le.getAttribute(Attribute.MAX_HEALTH).getValue();
+                }
+            }
+
+            // Golem Nham Thạch là kết tinh lai tạp hoàn hảo, nhận multiplier mặc định là 1.5
+            final double hybridMultiplier = 2.0;
+
+            // Xử lý nổ và xóa xác chết
+            double reservedBefore = rpgPlayer.getReservedResource();
+            for (Entity pet : hybridSacrifices) {
+                Location loc = pet.getLocation();
+                loc.getWorld().strikeLightningEffect(loc);
+
+                for (Entity e : loc.getWorld().getNearbyEntities(loc, 4, 3, 4)) {
+                    if (e instanceof LivingEntity && e != player && !e.hasMetadata("Summoner_Pet")) {
+                        LivingEntity target = (LivingEntity) e;
+                        target.damage(50.0 + (level * 10), player);
+                        target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 30, 5));
+                    }
+                }
+                sClass.unregisterPet(pet.getUniqueId(), rpgPlayer);
+                pet.remove();
+            }
+            double reservedAfter = rpgPlayer.getReservedResource();
+            final double exactManaFreed = reservedBefore - reservedAfter;
+            final double totalRequiredMana = cost + exactManaFreed;
+
+            // Đưa vào nghi thức tiến hóa
+            startRitual(player, rpgPlayer, level, "MagmaGolem", "Golem Nham Thạch", 3, hybridMultiplier, totalHpBonus, totalRequiredMana, exactManaFreed, currentTime, finalCd);
+            return true;
+        }
+
+        // ==========================================
+        // LUỒNG 2: DUNG HỢP CƠ BẢN (TRUYỀN THỐNG)
+        // ==========================================
         String bestGroupType = null;
         int maxCount = 0;
         for (Map.Entry<String, List<Entity>> entry : fusableGroups.entrySet()) {
@@ -108,9 +178,8 @@ public class SummonFusionSkill implements ISkill {
             }
         }
 
-        // [CẬP NHẬT YÊU CẦU]: Đòi tối thiểu 3 thú
         if (bestGroupType == null || maxCount < 3) {
-            player.sendMessage("§c§l[!] §fBạn cần ít nhất 3 Linh Thú cùng loại (chưa tiến hóa) để dung hợp!");
+            player.sendMessage("§c§l[!] §fBạn cần ít nhất 3 Linh Thú cùng loại (hoặc đúng công thức Dung hợp lai) để thực hiện Nghi thức!");
             return false;
         }
 
@@ -138,18 +207,7 @@ public class SummonFusionSkill implements ISkill {
             fusionMultiplier += weight;
         }
 
-        final int petsConsumed = validPets.size();
-        // [CẬP NHẬT LEVEL BONUS]: Cứ dư 2 con mới được +1 Level
-        final int finalFusionLevel = Math.min(level + ((petsConsumed - 3) / 2), 20);
-        final double finalFusionMultiplier = fusionMultiplier;
-        final double finalHpBonus = totalSacrificeHp;
-
-        cooldowns.put(player.getUniqueId(), currentTime);
-        startCooldownNotifier(player, finalCd);
-        SummonerClass sClass = (SummonerClass) rpgPlayer.getCurrentClass();
-
         double reservedBefore = rpgPlayer.getReservedResource();
-
         for (Entity pet : validPets) {
             Location loc = pet.getLocation();
             loc.getWorld().strikeLightningEffect(loc);
@@ -164,10 +222,24 @@ public class SummonFusionSkill implements ISkill {
             sClass.unregisterPet(pet.getUniqueId(), rpgPlayer);
             pet.remove();
         }
-
         double reservedAfter = rpgPlayer.getReservedResource();
         final double exactManaFreed = reservedBefore - reservedAfter;
         final double totalRequiredMana = cost + exactManaFreed;
+
+        startRitual(player, rpgPlayer, level, targetFusionId, targetFusionName, validPets.size(), fusionMultiplier, totalSacrificeHp, totalRequiredMana, exactManaFreed, currentTime, finalCd);
+        return true;
+    }
+
+    // ==========================================
+    // HÀM CHUNG: THỰC THI ANIMATION VÀ GỌI THÚ TIẾN HÓA RA SÂN
+    // ==========================================
+    private void startRitual(Player player, RPGPlayer rpgPlayer, int skillLevel, String targetFusionId, String targetFusionName, int petsConsumed, double finalFusionMultiplier, double finalHpBonus, double totalRequiredMana, double exactManaFreed, long currentTime, long finalCd) {
+
+        final int finalFusionLevel = Math.min(skillLevel + ((petsConsumed - 3) / 2), 20);
+
+        cooldowns.put(player.getUniqueId(), currentTime);
+        startCooldownNotifier(player, finalCd);
+        SummonerClass sClass = (SummonerClass) rpgPlayer.getCurrentClass();
 
         player.sendMessage("§e§l[!] Nghi thức bắt đầu! §c" + petsConsumed + " linh thú §eđã dung hợp...");
         player.sendMessage("§b✦ Cấp độ " + targetFusionName + " dự kiến: §eLv " + finalFusionLevel);
@@ -210,6 +282,8 @@ public class SummonFusionSkill implements ISkill {
                             ((org.bukkit.entity.Tameable) fusionEnt).setTamed(true);
                             ((org.bukkit.entity.Tameable) fusionEnt).setOwner(player);
                         }
+
+                        // [FIX]: Tránh lỗi ép kiểu nếu Golem Nham Thạch (Iron Golem) không phải là Sói
                         if (fusionEnt instanceof org.bukkit.entity.Wolf) {
                             ((org.bukkit.entity.Wolf) fusionEnt).setAngry(true);
                             ((org.bukkit.entity.Wolf) fusionEnt).setCollarColor(DyeColor.WHITE);
@@ -228,6 +302,7 @@ public class SummonFusionSkill implements ISkill {
                                 fusionProfile.onSpawn(player, livingFusion, finalFusionLevel, (double)petsConsumed, finalHpBonus);
                             }
 
+                            // Tính thời gian tồn tại
                             long baseDurSec = Math.min(180, 60 + ((finalFusionLevel - 1) * 30));
                             long bonusDurSec = (long) (finalHpBonus / 100.0);
                             long totalDurationTicks = (baseDurSec + bonusDurSec) * 20L;
@@ -236,18 +311,24 @@ public class SummonFusionSkill implements ISkill {
                                 @Override
                                 public void run() {
                                     if (livingFusion.isValid() && !livingFusion.isDead()) {
-                                        livingFusion.setHealth(0);
+                                        livingFusion.setHealth(0); // Hết hạn là chết tự nhiên (gọi onDeath)
                                     }
                                 }
                             }.runTaskLater(plugin, totalDurationTicks);
                         }
 
                         sClass.registerPet(fusionEnt.getUniqueId(), exactManaFreed, rpgPlayer, targetFusionName);
-                        player.sendMessage("§4§l[Dung Hợp] §f" + targetFusionName + " đã giáng thế!");
+
+                        if (targetFusionId.equals("MagmaGolem")) {
+                            player.sendMessage("§4§l[Dung Hợp Lai] §f" + targetFusionName + " đã giáng thế!");
+                        } else {
+                            player.sendMessage("§4§l[Dung Hợp] §f" + targetFusionName + " đã giáng thế!");
+                        }
                     }
-                } catch (Exception e) {}
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
         }.runTaskTimer(plugin, 0L, 1L);
-        return true;
     }
 }
