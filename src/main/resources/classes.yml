@@ -17,8 +17,8 @@ classes:
       - "&7Bậc thầy cận chiến."
       - "&7Sử dụng kiếm để xẻ đôi kẻ ngáng đường."
     max-health: 1100.0
-    max-resource: 120.0
-    resource-type: STAMINA
+    max-resource: 100.0
+    resource-type: RAGE
     enchanted: false
 
   mage:

@@ -229,6 +229,7 @@ public class SummonerClass extends RPGClass {
 
                 double finalDamage = CombatManager.calculateDamage(player, rpgPlayer, target, 0.45, 0.0, 0.0, 0.0, isMagic, false);
                 CombatManager.applySkillDamage(player, target, finalDamage);
+                this.onAttackLanded(player, target);
             }
             rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() + 2);
         }

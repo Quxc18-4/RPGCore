@@ -6,6 +6,8 @@ import vn.minecraft.rPGCore.skills.archer.*;
 import vn.minecraft.rPGCore.skills.assassin.*;
 import vn.minecraft.rPGCore.skills.summoner.*;
 import vn.minecraft.rPGCore.skills.summoner.pets.*;
+import vn.minecraft.rPGCore.skills.warrior.WarriorAuraSkill;
+import vn.minecraft.rPGCore.skills.warrior.WarriorParrySkill;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,6 +33,7 @@ public class SkillManager {
         SummonPetManager.register(new MagmaGolemProfile());
 
         // Nơi đăng ký mọi kỹ năng của Server
+        // Archer
         registerSkill(new DoubleShotSkill(plugin));
         registerSkill(new TripleShotSkill(plugin));
         registerSkill(new QuadrupleShotSkill(plugin));
@@ -42,6 +45,7 @@ public class SkillManager {
         registerSkill(new SniperPassiveSkill(plugin));
         registerSkill(new PiercingBeamSkill(plugin));
         registerSkill(new AerialBombardmentSkill(plugin));
+        // Assassin
         registerSkill(new DoubleSlashSkill(plugin));
         registerSkill(new SmokeBombSkill(plugin));
         registerSkill(new PoisonDartSkill(plugin));
@@ -52,6 +56,7 @@ public class SkillManager {
         registerSkill(new BloodlustStrikeSkill(plugin));
         registerSkill(new ShadowDecoySkill(plugin));
         registerSkill(new KillingIntentSkill(plugin));
+        // Summoner
         registerSkill(new SummonWolfSkill(plugin));
         registerSkill(new SummonFusionSkill(plugin));
         registerSkill(new ResonanceSkill(plugin));
@@ -59,6 +64,9 @@ public class SkillManager {
         registerSkill(new SummonWindSpiritSkill(plugin));
         registerSkill(new SummonFireSpiritSkill(plugin));
         registerSkill(new AdvancedFusionSkill());
+        // Warrior
+        registerSkill(new WarriorAuraSkill());
+        registerSkill(new WarriorParrySkill());
     }
 
     public void registerSkill(ISkill skill) {

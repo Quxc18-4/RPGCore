@@ -2,6 +2,7 @@ package vn.minecraft.rPGCore.listeners;
 
 import org.bukkit.Material;
 import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
@@ -43,12 +44,13 @@ public class PlayerListener implements Listener {
 
         if (mainType == Material.BOW || mainType == Material.CROSSBOW) return cId.equals("archer");
         if (mainType == Material.SHEARS) return cId.equals("assassin");
-        if (mainType == Material.STICK || mainType == Material.BLAZE_ROD) return cId.equals("mage");
+        if (mainType == Material.STICK || mainType == Material.BLAZE_ROD || mainType == Material.BREEZE_ROD) return cId.equals("mage");
         if (mainType == Material.LEAD) return cId.equals("summoner");
-        if (mainType.name().endsWith("_HOE")) return cId.equals("reaper");
-        if (mainType.name().endsWith("_SWORD") || mainType.name().endsWith("_AXE")) {
-            return cId.equals("warrior") || cId.equals("guardian") || cId.equals("commoner");
-        }
+        if (mainType.name().endsWith("_HOE")) return cId.equals("reaper") || cId.equals("commoner");
+        if (mainType.name().endsWith("_SWORD")) return cId.equals("warrior") || cId.equals("commoner");
+        if (mainType.name().endsWith("_AXE")) return cId.equals("paladin") || cId.equals("commoner");
+        if (mainType == Material.SHIELD) return cId.equals("tanker") || cId.equals("commoner");
+
         return false; // Cầm đất, đá, lúa mì... không tính là vũ khí
     }
 
@@ -474,6 +476,52 @@ public class PlayerListener implements Listener {
                 if (profile != null && ent instanceof org.bukkit.entity.LivingEntity) {
                     profile.onInteract(event.getPlayer(), (org.bukkit.entity.LivingEntity) ent, event.getPlayer().getInventory().getItemInMainHand());
                     event.setCancelled(true); // Chặn hành động mặc định của Vanilla
+                }
+            }
+        }
+    }
+
+    // ==========================================
+    // CƠ CHẾ: GIẾT QUÁI HỒI NỘ KHÍ CHO WARRIOR
+    // ==========================================
+    @org.bukkit.event.EventHandler
+    public void onEntityKilledByPlayer(org.bukkit.event.entity.EntityDeathEvent event) {
+        if (event.getEntity().getKiller() != null) {
+            Player killer = event.getEntity().getKiller();
+            RPGPlayer rpgKiller = playerManager.getRPGPlayer(killer.getUniqueId());
+
+            if (rpgKiller != null && rpgKiller.getCurrentClass() != null) {
+                // Nếu là phái xài Nộ (Warrior) -> Thưởng 15 Nộ Khí khi kết liễu!
+                if (rpgKiller.getCurrentClass().getResourceType() == vn.minecraft.rPGCore.classes.ResourceType.RAGE) {
+                    rpgKiller.setCurrentResource(rpgKiller.getCurrentResource() + 15);
+                    killer.getWorld().spawnParticle(Particle.FLAME, killer.getLocation().add(0, 1, 0), 10, 0.3, 0.3, 0.3, 0.05);
+                    killer.playSound(killer.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.5f);
+                }
+            }
+        }
+    }
+
+    // ==========================================
+    // CỔNG ĐIỀU PHỐI ĐỔI TAY (PHÍM F - SWAP ITEM)
+    // ==========================================
+    @org.bukkit.event.EventHandler
+    public void onPlayerSwapHandItems(org.bukkit.event.player.PlayerSwapHandItemsEvent event) {
+        Player player = event.getPlayer();
+        RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
+
+        if (rpgPlayer != null && rpgPlayer.getCurrentClass() != null) {
+            ItemStack mainHandItem = event.getMainHandItem();
+
+            // 1. CHỈ cho phép kích hoạt kỹ năng phím F nếu đang cầm đúng vũ khí phái mình
+            // (Warrior phải cầm Kiếm, Mage phải cầm Trượng...)
+            if (isValidWeaponForClass(mainHandItem, rpgPlayer.getCurrentClass().getId())) {
+
+                // 2. Giao quyền cho Class xử lý.
+                boolean isSkillUsed = rpgPlayer.getCurrentClass().onSwapItem(player, rpgPlayer, mainHandItem);
+
+                // 3. NẾU Class trả về TRUE (Dùng chiêu thành công) -> Hủy việc vứt đồ qua tay trái!
+                if (isSkillUsed) {
+                    event.setCancelled(true);
                 }
             }
         }

@@ -21,6 +21,7 @@ public final class RPGCore extends JavaPlugin {
 
     private BoredomManager boredomManager;
     private FoodBuffManager foodBuffManager;
+    private SkillManager skillManager; // [THÊM DÒNG NÀY VÀO ĐÂY]
 
     @Override
     public void onEnable() {
@@ -32,7 +33,7 @@ public final class RPGCore extends JavaPlugin {
         bossBarManager = new BossBarManager();
         ClassGUI classGUI = new ClassGUI();
         AttrGUI attrGUI = new AttrGUI(playerManager);
-        SkillManager skillManager = new SkillManager(this);
+        this.skillManager = new SkillManager(this);
         SkillUIManager skillUI = new SkillUIManager(playerManager, skillManager);
         BlacksmithGUI blacksmithGUI = new BlacksmithGUI();
 
@@ -141,4 +142,6 @@ public final class RPGCore extends JavaPlugin {
     public BoredomManager getBoredomManager() {
         return this.boredomManager;
     }
+
+    public SkillManager getSkillManager() { return this.skillManager; }
 }

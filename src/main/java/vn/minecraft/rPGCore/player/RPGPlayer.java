@@ -467,13 +467,23 @@ public class RPGPlayer {
     }
 
     // ==========================================
-    // [ĐÃ CHỈNH SỬA] Tăng điểm Mana/Stamina từ 0.5 lên 1.0 cho mỗi STR / INT
+    // [ĐÃ CHỈNH SỬA] Tỷ lệ Resource: Mana = 1.0 INT, Rage = 0.5 STR, Khác = 1.0 STR
     // ==========================================
     public double getTotalMaxResource() {
         double baseRes = this.currentClass != null ? this.currentClass.getMaxResource() : 100.0;
-        boolean isMana = this.currentClass != null && this.currentClass.getResourceType().name().equals("MANA");
-        double attrBonus = isMana ? (this.attributeData.getAttribute("INT") * 1.0) : (this.attributeData.getAttribute("STR") * 1.0);
 
+        boolean isMana = this.currentClass != null && this.currentClass.getResourceType().name().equals("MANA");
+        boolean isRage = this.currentClass != null && this.currentClass.getResourceType().name().equals("RAGE");
+
+        double attrBonus;
+        if (isMana) {
+            attrBonus = this.attributeData.getAttribute("INT") * 1.0;
+        } else if (isRage) {
+            // [CƠ CHẾ WARRIOR]: Nộ khí chỉ nhận 0.5 mỗi điểm STR để tránh lạm phát
+            attrBonus = this.attributeData.getAttribute("STR") * 0.5;
+        } else {
+            attrBonus = this.attributeData.getAttribute("STR") * 1.0;
+        }
         // [MỚI]: Cộng thêm lượng Năng lượng bonus từ nội tại Class
         double bonusFromPassives = getTotalStatsMap().getOrDefault("Năng lượng tối đa", 0.0);
 

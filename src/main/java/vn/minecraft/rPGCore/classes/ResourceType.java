@@ -1,8 +1,11 @@
 package vn.minecraft.rPGCore.classes;
 
+import org.bukkit.boss.BarColor;
+
 public enum ResourceType {
     STAMINA("Stamina", org.bukkit.boss.BarColor.YELLOW),
-    MANA("Mana", org.bukkit.boss.BarColor.BLUE);
+    MANA("Mana", org.bukkit.boss.BarColor.BLUE),
+    RAGE("Rage", BarColor.PURPLE);
 
     private final String name;
     private final org.bukkit.boss.BarColor color;

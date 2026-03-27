@@ -9,6 +9,7 @@ import vn.minecraft.rPGCore.classes.impl.ArcherClass;
 import vn.minecraft.rPGCore.classes.impl.AssassinClass;
 import vn.minecraft.rPGCore.classes.impl.DefaultClass;
 import vn.minecraft.rPGCore.classes.impl.SummonerClass;
+import vn.minecraft.rPGCore.classes.impl.WarriorClass;
 
 import java.io.File;
 import java.util.HashMap;
@@ -61,6 +62,9 @@ public class ClassManager {
                     break;
                 case "summoner":
                     rpgClass = new SummonerClass(key, displayName, icon, desc, maxHp, maxRes, resType, regen, enchanted);
+                    break;
+                case "warrior":
+                    rpgClass = new WarriorClass(key, displayName, icon, desc, maxHp, maxRes, resType, regen, enchanted);
                     break;
                 default:
                     // Các phái chưa code riêng sẽ xài khung mặc định

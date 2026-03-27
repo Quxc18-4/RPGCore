@@ -170,4 +170,6 @@ public abstract class RPGClass {
      * Hook 4: Truyền chỉ số động cho Đệ tử (Dành cho Summoner)
      */
     public void applyPetDynamicStats(Player owner, RPGPlayer rpgOwner, org.bukkit.entity.Entity pet, java.util.Map<String, Double> petStats) { }
+
+    public boolean onSwapItem(Player player, RPGPlayer rpgPlayer, ItemStack weapon) { return false; }
 }
