@@ -46,9 +46,9 @@ public class WarriorAuraSkill extends AbstractHitCounterSkill {
         double empowerDmg = (1.4 + (level * 0.1)) * 100;
 
         return Arrays.asList(
-                "§7Nghệ thuật chém gió thành bão của Chiến Binh.",
+                "§7Đỉnh cao kỹ thuật của Chiến Binh, vết chém xuyên thấu.",
                 "",
-                "§e[Nội Tại: Chuỗi Combo]",
+                "§e[Kích hoạt: Chuỗi Combo]",
                 "§f- Đạt §a4 điểm Combo§f, quét một luồng Kiếm Khí.",
                 "§f  gây §e" + (int)normalDmg + "% Sát thương vật lý§f.",
                 "",

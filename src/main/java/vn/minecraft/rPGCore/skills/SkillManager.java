@@ -7,6 +7,7 @@ import vn.minecraft.rPGCore.skills.assassin.*;
 import vn.minecraft.rPGCore.skills.summoner.*;
 import vn.minecraft.rPGCore.skills.summoner.pets.*;
 import vn.minecraft.rPGCore.skills.warrior.WarriorAuraSkill;
+import vn.minecraft.rPGCore.skills.warrior.WarriorBladeStormSkill;
 import vn.minecraft.rPGCore.skills.warrior.WarriorEarthshatterSkill;
 import vn.minecraft.rPGCore.skills.warrior.WarriorParrySkill;
 
@@ -69,6 +70,7 @@ public class SkillManager {
         registerSkill(new WarriorAuraSkill());
         registerSkill(new WarriorParrySkill());
         registerSkill(new WarriorEarthshatterSkill());
+        registerSkill(new WarriorBladeStormSkill());
     }
 
     public void registerSkill(ISkill skill) {

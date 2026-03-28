@@ -38,7 +38,7 @@ public class WarriorParrySkill implements ISkill {
                 "§7Kỹ năng phòng ngự đỉnh cao của Chiến Binh.",
                 "§7Tôn vinh sự phản xạ và kỹ năng cá nhân.",
                 "",
-                "§e[Kích hoạt: Bấm phím F (Đổi tay)]",
+                "§e[Kích hoạt: Đỡ Đòn]",
                 "§f- Đưa bản thân vào trạng thái Đỡ Đòn trong §a0.75s§f.",
                 "§f- Nếu bị tấn công trong thời gian này:",
                 "§f  + Giảm §c50% Sát thương§f nhận vào.",
