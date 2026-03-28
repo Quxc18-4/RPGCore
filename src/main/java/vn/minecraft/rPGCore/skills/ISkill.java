@@ -51,5 +51,6 @@ public interface ISkill {
     Map<String, Integer> getRequiredSkills();
     // Thêm hàm để quy định cấp độ tối thiểu của người chơi (Mặc định là 1 nếu không cài đặt)
     default int getRequiredPlayerLevel() { return 1; }
-
+    // [MỚI]: Phân biệt Kỹ năng Nội tại (Passive) và Chủ động (Active)
+    default boolean isPassiveSkill() { return false; }
 }

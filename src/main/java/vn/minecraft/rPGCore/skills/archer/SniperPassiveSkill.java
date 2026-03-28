@@ -27,6 +27,7 @@ public class SniperPassiveSkill implements ISkill {
     @Override public int getUpgradeCost(int currentLevel) { return 1; }
     @Override public int getRequiredPlayerLevel() { return 18; }
     @Override public Map<String, Integer> getRequiredSkills() { return new HashMap<>(); }
+    @Override public boolean isPassiveSkill() { return true; }
 
     @Override public double getManaCost(int level) { return 0; }
     @Override public long getCooldown(int level) { return 0; }

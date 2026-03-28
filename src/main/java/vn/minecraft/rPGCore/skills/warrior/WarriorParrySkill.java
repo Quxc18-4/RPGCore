@@ -27,7 +27,10 @@ public class WarriorParrySkill implements ISkill {
     @Override public Map<String, Integer> getRequiredSkills() { return new HashMap<>(); }
 
     @Override public double getManaCost(int level) { return 0; }
-    @Override public long getCooldown(int level) { return 4000L; } // Cooldown 4 giây
+    @Override public long getCooldown(int level) { return 7000L; } // Cooldown 7 giây
+
+    @Override public boolean isPassiveSkill() { return true; }
+
 
     @Override
     public List<String> getDescription(int level) {
@@ -39,18 +42,24 @@ public class WarriorParrySkill implements ISkill {
                 "§f- Đưa bản thân vào trạng thái Đỡ Đòn trong §a0.75s§f.",
                 "§f- Nếu bị tấn công trong thời gian này:",
                 "§f  + Giảm §c50% Sát thương§f nhận vào.",
-                "§f  + Lập tức hồi §c25 Nộ Khí§f."
+                "§f  + Lập tức hồi §c15 Nộ Khí§f."
         );
     }
 
     @Override
     public boolean execute(Player player, RPGPlayer rpgPlayer, int level) {
-        if (player.hasMetadata("Warrior_Parry_Cooldown")) return false;
+        // Đếm Cooldown bằng Dấu thời gian (Timestamp) để dễ dàng bẻ cong thời gian
+        if (player.hasMetadata("Warrior_Parry_CD_Time")) {
+            long cdEnd = player.getMetadata("Warrior_Parry_CD_Time").get(0).asLong();
+            if (System.currentTimeMillis() < cdEnd) {
+                return false; // Vẫn đang hồi chiêu
+            }
+        }
 
-        // Kích hoạt Khung giờ Parry
+        // Kích hoạt Khung giờ Parry 0.75s
         player.setMetadata("Warrior_Parry_Window", new FixedMetadataValue(RPGCore.getInstance(), true));
         player.getWorld().playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_IRON, 1.0f, 1.2f);
-        player.getWorld().spawnParticle(Particle.ENCHANTED_HIT, player.getLocation().add(0, 1, 0), 20, 0.5, 0.5, 0.5, 0.1);
+        player.getWorld().spawnParticle(Particle.ENCHANT, player.getLocation().add(0, 1, 0), 20, 0.5, 0.5, 0.5, 0.1);
 
         new BukkitRunnable() {
             @Override
@@ -62,18 +71,28 @@ public class WarriorParrySkill implements ISkill {
         }.runTaskLater(RPGCore.getInstance(), 15L);
 
         // Đặt Cooldown
-        player.setMetadata("Warrior_Parry_Cooldown", new FixedMetadataValue(RPGCore.getInstance(), true));
         long finalCd = getFinalCooldown(rpgPlayer, getCooldown(level));
-        startCooldownNotifier(player, finalCd);
+        player.setMetadata("Warrior_Parry_CD_Time", new FixedMetadataValue(RPGCore.getInstance(), System.currentTimeMillis() + finalCd));
 
+        // Task theo dõi linh hoạt: Nếu CD bị giảm 50%, nó sẽ báo xong sớm hơn!
         new BukkitRunnable() {
             @Override
             public void run() {
-                if (player.hasMetadata("Warrior_Parry_Cooldown")) {
-                    player.removeMetadata("Warrior_Parry_Cooldown", RPGCore.getInstance());
+                if (!player.isOnline()) { this.cancel(); return; }
+
+                if (player.hasMetadata("Warrior_Parry_CD_Time")) {
+                    long end = player.getMetadata("Warrior_Parry_CD_Time").get(0).asLong();
+                    if (System.currentTimeMillis() >= end) {
+                        player.sendMessage("§a§l[!] §fKỹ năng §e" + getName() + " §fđã sẵn sàng!");
+                        player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 1.0f, 2.0f);
+                        player.removeMetadata("Warrior_Parry_CD_Time", RPGCore.getInstance());
+                        this.cancel();
+                    }
+                } else {
+                    this.cancel();
                 }
             }
-        }.runTaskLater(RPGCore.getInstance(), finalCd / 50L);
+        }.runTaskTimer(RPGCore.getInstance(), 10L, 5L); // Quét 0.25s một lần
 
         return true;
     }

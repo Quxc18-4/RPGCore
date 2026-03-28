@@ -65,8 +65,30 @@ public class SkillUIManager implements Listener {
 
             List<String> lore = new ArrayList<>();
             lore.add("§fCấp độ: §e" + skillLevel + "/" + skill.getMaxLevel());
-            lore.add("§fTiêu hao: §b" + skill.getManaCost(skillLevel) + " Mana");
-            lore.add("§fHồi chiêu: §6" + (skill.getCooldown(skillLevel)/1000.0) + "s");
+
+            // 1. LẤY LINH HOẠT TÊN TÀI NGUYÊN (Mana, Rage, Stamina...)
+            String resourceName = rpgPlayer.getCurrentClass().getResourceType().getName();
+            double cost = skill.getManaCost(skillLevel);
+
+            if (cost > 0) {
+                // Đổi màu hiển thị cho hợp lý: Nộ (Đỏ/Tím), Mana (Xanh), Stamina (Vàng)
+                String costColor = resourceName.equals("Rage") ? "§c" : (resourceName.equals("Stamina") ? "§e" : "§b");
+
+                // [ĐÃ FIX]: Nếu là Nội tại mà có tốn năng lượng -> Ghi chú thêm (Khi Bật)
+                String condition = skill.isPassiveSkill() ? " §7(Khi Bật)" : "";
+
+                lore.add("§fTiêu hao: " + costColor + cost + " " + resourceName + condition);
+            } else {
+                // Nếu thực sự không tốn năng lượng
+                lore.add("§fTiêu hao: §aKhông");
+            }
+
+            // 2. CHỈ HIỂN THỊ HỒI CHIÊU NẾU > 0
+            long cooldown = skill.getCooldown(skillLevel);
+            if (cooldown > 0) {
+                lore.add("§fHồi chiêu: §6" + (cooldown / 1000.0) + "s");
+            }
+
             lore.add("");
             lore.addAll(skill.getDescription(skillLevel));
 
@@ -76,8 +98,14 @@ public class SkillUIManager implements Listener {
             Material paneMat = Material.GRAY_STAINED_GLASS_PANE;
             String status = "§7Chưa mở khóa";
             if (skillLevel > 0) {
-                paneMat = (boundCombo != null) ? Material.LIME_STAINED_GLASS_PANE : Material.RED_STAINED_GLASS_PANE;
-                status = (boundCombo != null) ? "§aĐã gán: §l" + boundCombo : "§cChưa gán phím";
+                if (skill.isPassiveSkill()) {
+                    boolean isOff = "OFF".equals(rpgPlayer.getSkillData().getBinds().get("TOGGLE_" + skillId));
+                    paneMat = isOff ? Material.RED_STAINED_GLASS_PANE : Material.LIME_STAINED_GLASS_PANE;
+                    status = isOff ? "§cĐang Tắt" : "§aĐang Bật";
+                } else {
+                    paneMat = (boundCombo != null) ? Material.LIME_STAINED_GLASS_PANE : Material.RED_STAINED_GLASS_PANE;
+                    status = (boundCombo != null) ? "§aĐã gán: §l" + boundCombo : "§cChưa gán phím";
+                }
             }
 
             // 1. KIỂM TRA ĐIỀU KIỆN MỞ KHÓA (SKILL TREE)
@@ -111,10 +139,26 @@ public class SkillUIManager implements Listener {
 
             // 2. VẼ UI DỰA TRÊN TRẠNG THÁI
             if (targetComboToBind != null) {
-                inv.setItem(PANE_SLOTS[i], createItem(Material.YELLOW_STAINED_GLASS_PANE, "§e§lCLICK ĐỂ CHỌN", "§7Gán vào nút: §b" + targetComboToBind));
+                // CHẶN GÁN PASSIVE VÀO COMBO HOẶC KỸ NĂNG KHÔNG CHO GÁN
+                if (skill.isPassiveSkill()) {
+                    inv.setItem(PANE_SLOTS[i], createItem(Material.BARRIER, "§c§lKHÔNG THỂ GÁN", "§7Kỹ năng nội tại hoặc không dùng phím."));
+                } else {
+                    inv.setItem(PANE_SLOTS[i], createItem(Material.YELLOW_STAINED_GLASS_PANE, "§e§lCLICK ĐỂ CHỌN", "§7Gán vào nút: §b" + targetComboToBind));
+                }
             } else {
+
+                // ==========================================
+                // [ĐÃ SỬA]: KIỂM TRA ACTION CHUỘT PHẢI HIỂN THỊ TRÊN LORE
+                // ==========================================
+                String rightClickAction;
+                if (skill.isPassiveSkill()) {
+                    rightClickAction = "§f[Chuột Phải] §bBật/Tắt nội tại";
+                } else {
+                    rightClickAction = "§f[Chuột Phải] §bGán phím";
+                }
+
                 if (skillLevel >= skill.getMaxLevel()) {
-                    inv.setItem(PANE_SLOTS[i], createItem(paneMat, status, "§6§l✦ ĐÃ THÀNH THẠO ✦", "", "§f[Chuột Phải] §bGán phím"));
+                    inv.setItem(PANE_SLOTS[i], createItem(paneMat, status, "§6§l✦ ĐÃ THÀNH THẠO ✦", "", rightClickAction));
                 } else if (!meetsRequirements && skillLevel == 0) {
                     // NẾU CHƯA ĐẠT YÊU CẦU: Khóa nâng cấp và hiện dòng chữ đỏ
                     List<String> lockedLore = new ArrayList<>();
@@ -129,7 +173,7 @@ public class SkillUIManager implements Listener {
                     upgLore.addAll(reqLore); // Hiện list yêu cầu (Màu xanh) cho đẹp
                     upgLore.add("");
                     upgLore.add("§f[Chuột Trái] §aNâng cấp");
-                    upgLore.add("§f[Chuột Phải] §bGán phím");
+                    upgLore.add(rightClickAction); // Lắp text đã lọc vào đây
 
                     inv.setItem(PANE_SLOTS[i], createItem(paneMat, status, upgLore.toArray(new String[0])));
                 }
@@ -207,13 +251,25 @@ public class SkillUIManager implements Listener {
                 String skillId = availableSkills.get(skillIndex).getId();
                 String pendingCombo = pendingComboBind.get(player.getUniqueId());
 
+                // Kéo biến skill lên trên cùng để tất cả các nhánh đều có thể kiểm tra
+                ISkill skill = availableSkills.get(skillIndex);
+
                 if (pendingCombo != null) {
+                    // ==========================================
+                    // [ĐÃ FIX]: CHẶN LỖ HỔNG GÁN KỸ NĂNG NỘI TẠI TỪ LỆNH /BINDS
+                    // ==========================================
+                    if (skill.isPassiveSkill()) {
+                        player.sendMessage("§c§l[!] §fKỹ năng này là Nội tại hoặc không hỗ trợ dùng phím tắt!");
+                        player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_VILLAGER_NO, 1f, 1f);
+                        return; // Ngừng chạy tiếp, không cho gán!
+                    }
+
                     rpgPlayer.getSkillData().bindCombo(pendingCombo, skillId);
                     player.sendMessage("§aĐã gán kỹ năng vào tổ hợp " + pendingCombo);
                     openBindsGUI(player, null);
                 } else {
+                    // Nhánh Click Trái / Phải để nâng cấp hoặc Bật/Tắt
                     if (event.getClick() == ClickType.LEFT) {
-                        ISkill skill = availableSkills.get(skillIndex);
                         int currentLevel = rpgPlayer.getSkillData().getSkillLevel(skillId);
 
                         int upgradeCost = skill.getUpgradeCost(currentLevel);
@@ -244,8 +300,27 @@ public class SkillUIManager implements Listener {
                             player.sendMessage("§cKhông đủ điểm Kỹ Năng (SP)! Cần " + upgradeCost + " SP.");
                         }
                     } else if (event.getClick() == ClickType.RIGHT) {
-                        if (rpgPlayer.getSkillData().getSkillLevel(skillId) > 0) openBindsGUI(player, skillId);
-                        else player.sendMessage("§cBạn phải nâng cấp kỹ năng này trước khi gán phím!");
+                        if (rpgPlayer.getSkillData().getSkillLevel(skillId) > 0) {
+
+                            // NẾU LÀ NỘI TẠI -> THỰC HIỆN BẬT / TẮT
+                            if (skill.isPassiveSkill()) {
+                                boolean isOff = "OFF".equals(rpgPlayer.getSkillData().getBinds().get("TOGGLE_" + skillId));
+                                if (isOff) {
+                                    rpgPlayer.getSkillData().getBinds().remove("TOGGLE_" + skillId); // Bật lại
+                                    player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_BELL, 1f, 1.2f);
+                                } else {
+                                    rpgPlayer.getSkillData().getBinds().put("TOGGLE_" + skillId, "OFF"); // Tắt
+                                    player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_BASS, 1f, 0.8f);
+                                }
+                                openSkillGUI(player, null, page);
+                            }
+                            // NẾU LÀ CHỦ ĐỘNG -> MỞ MENU GÁN PHÍM
+                            else {
+                                openBindsGUI(player, skillId);
+                            }
+                        } else {
+                            player.sendMessage("§cBạn phải nâng cấp kỹ năng này trước khi thao tác!");
+                        }
                     }
                 }
             }

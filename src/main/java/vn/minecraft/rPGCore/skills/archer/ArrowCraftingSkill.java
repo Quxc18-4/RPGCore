@@ -24,6 +24,7 @@ public class ArrowCraftingSkill implements ISkill {
     @Override public Material getIcon() { return Material.FLETCHING_TABLE; }
     @Override public int getMaxLevel() { return 1; } // Kỹ năng bị động, max lv 1
     @Override public int getUpgradeCost(int currentLevel) { return 1; }
+    @Override public boolean isPassiveSkill() { return true; }
 
     @Override public int getRequiredPlayerLevel() { return 16; } // Yêu cầu lv 16
 

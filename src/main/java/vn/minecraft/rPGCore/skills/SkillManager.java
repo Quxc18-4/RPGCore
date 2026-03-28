@@ -7,6 +7,7 @@ import vn.minecraft.rPGCore.skills.assassin.*;
 import vn.minecraft.rPGCore.skills.summoner.*;
 import vn.minecraft.rPGCore.skills.summoner.pets.*;
 import vn.minecraft.rPGCore.skills.warrior.WarriorAuraSkill;
+import vn.minecraft.rPGCore.skills.warrior.WarriorEarthshatterSkill;
 import vn.minecraft.rPGCore.skills.warrior.WarriorParrySkill;
 
 import java.util.ArrayList;
@@ -67,6 +68,7 @@ public class SkillManager {
         // Warrior
         registerSkill(new WarriorAuraSkill());
         registerSkill(new WarriorParrySkill());
+        registerSkill(new WarriorEarthshatterSkill());
     }
 
     public void registerSkill(ISkill skill) {

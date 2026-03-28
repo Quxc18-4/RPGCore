@@ -228,6 +228,12 @@ public class PlayerListener implements Listener {
 
                 rpgAttacker.setInCombat();
 
+                // [FIX LỖI AOE]: Chặn hoàn toàn sát thương lan (Sweep Attack) của kiếm Vanilla
+                if (event.getCause() == EntityDamageEvent.DamageCause.ENTITY_SWEEP_ATTACK) {
+                    event.setCancelled(true);
+                    return;
+                }
+
                 if (event.getCause() == EntityDamageEvent.DamageCause.ENTITY_ATTACK || event.getCause() == EntityDamageEvent.DamageCause.ENTITY_SWEEP_ATTACK) {
 
                     // ==========================================
@@ -510,14 +516,15 @@ public class PlayerListener implements Listener {
         RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
 
         if (rpgPlayer != null && rpgPlayer.getCurrentClass() != null) {
-            ItemStack mainHandItem = event.getMainHandItem();
+
+            // [ĐÃ FIX LỖI API]: Lấy trực tiếp vũ khí đang cầm Ở TAY PHẢI lúc bấm F
+            ItemStack weapon = player.getInventory().getItemInMainHand();
 
             // 1. CHỈ cho phép kích hoạt kỹ năng phím F nếu đang cầm đúng vũ khí phái mình
-            // (Warrior phải cầm Kiếm, Mage phải cầm Trượng...)
-            if (isValidWeaponForClass(mainHandItem, rpgPlayer.getCurrentClass().getId())) {
+            if (isValidWeaponForClass(weapon, rpgPlayer.getCurrentClass().getId())) {
 
                 // 2. Giao quyền cho Class xử lý.
-                boolean isSkillUsed = rpgPlayer.getCurrentClass().onSwapItem(player, rpgPlayer, mainHandItem);
+                boolean isSkillUsed = rpgPlayer.getCurrentClass().onSwapItem(player, rpgPlayer, weapon);
 
                 // 3. NẾU Class trả về TRUE (Dùng chiêu thành công) -> Hủy việc vứt đồ qua tay trái!
                 if (isSkillUsed) {

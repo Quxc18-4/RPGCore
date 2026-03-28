@@ -33,6 +33,9 @@ public class AdvancedFusionSkill implements ISkill {
     @Override
     public int getRequiredPlayerLevel() { return 24; } // Yêu cầu cấp 24
 
+    // [KHAI BÁO]: Đây là kỹ năng Nội Tại!
+    @Override public boolean isPassiveSkill() { return true; }
+
     @Override
     public Map<String, Integer> getRequiredSkills() {
         Map<String, Integer> req = new HashMap<>();

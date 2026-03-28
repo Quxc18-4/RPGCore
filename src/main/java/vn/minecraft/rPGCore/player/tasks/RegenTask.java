@@ -112,6 +112,19 @@ public class RegenTask extends BukkitRunnable {
             }
 
             // ==========================================
+            // 6.5. CƠ CHẾ ĐỘC QUYỀN CỦA NỘ KHÍ (RAGE)
+            // ==========================================
+            if (rpgPlayer.getCurrentClass() != null && rpgPlayer.getCurrentClass().getResourceType() == vn.minecraft.rPGCore.classes.ResourceType.RAGE) {
+                // Khóa van: Không cho tự hồi Nộ từ đồ ăn hay dòng chỉ số "Hồi Năng lượng"
+                resourceRegen = 0.0;
+
+                // [YÊU CẦU MỚI]: Hồi 1 nộ/giây TRONG combat, không bị tụt ngoài combat
+                if (inCombat && currentRes < maxRes) {
+                    resourceRegen = 1.0;
+                }
+            }
+
+            // ==========================================
             // 7. CẬP NHẬT UI
             // ==========================================
             if (resourceRegen > 0 && currentRes < maxRes) {
