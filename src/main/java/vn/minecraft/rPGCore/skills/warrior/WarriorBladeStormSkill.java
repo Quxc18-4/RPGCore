@@ -50,8 +50,10 @@ public class WarriorBladeStormSkill implements ISkill {
 
     @Override
     public List<String> getDescription(int level) {
-        int baseDmg = (int) ((0.4 + (level * 0.05)) * 100);
-        int awakenDmg = (int) ((0.7 + (level * 0.12)) * 100);
+        int normalHiltDmg = (int) ((0.20 + (level * 0.02)) * 100);
+        int normalSweetDmg = (int) ((0.35 + (level * 0.04)) * 100);
+        int awakenHiltDmg = (int) ((0.40 + (level * 0.03)) * 100); // Cán thức tỉnh
+        int awakenSweetDmg = (int) ((0.80 + (level * 0.04)) * 100); // Mũi thức tỉnh
 
         int spearCount = 3 + (level / 3);
 
@@ -69,13 +71,14 @@ public class WarriorBladeStormSkill implements ISkill {
                 "§f- Gọi §e" + spearCount + "§f cây giáo xoay quanh trong §a3 giây§f.",
                 "§f- Tốc độ cưa: §e" + String.format("%.1f", hitPerSec) + " hit/giây§f.",
                 "§f- Bán kính quét: §a2.8 Block§f.",
-                "§f- Quẹt trúng Cán giáo: Gây §7" + (int)(baseDmg * 0.6) + "% Sát thương§f.",
-                "§f- Quẹt trúng Rìa Mũi: Gây §c" + (int)(baseDmg * 1.5) + "% Sát thương§f.",
+                "§f- Quẹt trúng Cán: Gây §7" + normalHiltDmg + "% ST§f.",
+                "§f- Quẹt trúng Mũi: Gây §c" + normalSweetDmg + "% ST§f.",
                 "",
                 "§c[Thức Tỉnh Kỹ Năng] (Tiêu hao 50 Nộ)",
                 "§f- Giáo hóa Kim Cương, duy trì §a4 giây§f.",
                 "§f- Lưỡi cắt kim cương bỏ qua §e30% Giáp§f.",
-                "§f- Quẹt Mũi giáo Thức tỉnh: §c" + (int)(awakenDmg * 1.5) + "% ST§f."
+                "§f- Quẹt Cán Thức tỉnh: §7" + awakenHiltDmg + "% ST§f.",
+                "§f- Quẹt Mũi Thức tỉnh: §c" + awakenSweetDmg + "% ST§f."
         );
     }
 
@@ -99,11 +102,9 @@ public class WarriorBladeStormSkill implements ISkill {
         boolean isEmpowered = rpgPlayer.getCurrentResource() >= cost;
 
         long durationTicks;
-        double baseDmgMultiplier;
-
-        // [ĐÃ SỬA LỖI ĐỎ]: Chỉ khai báo, KHÔNG gán giá trị mặc định ở đây
+        double hiltDmgMulti;
+        double sweetSpotDmgMulti;
         double armorPenetration;
-
         ItemStack weaponItem;
 
         int spearCount = 3 + (level / 3);
@@ -121,39 +122,30 @@ public class WarriorBladeStormSkill implements ISkill {
         int ticksPerRevolution = hitIntervalTicks * spearCount;
         double anglePerTick = (Math.PI * 2) / ticksPerRevolution;
 
-        weaponItem = new ItemStack(Material.IRON_SWORD);
-        org.bukkit.inventory.meta.ItemMeta meta = weaponItem.getItemMeta();
-
         if (isEmpowered) {
             rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - cost);
             player.sendMessage("§c§l[THỨC TỈNH] §fGiáo Trận Cường Hóa!");
             player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.2f, 1.5f);
 
             durationTicks = 80;
-            baseDmgMultiplier = 0.7 + (level * 0.12);
 
-            // Gán giá trị 1 lần duy nhất cho nhánh Thức Tỉnh
+            // Sát thương Thức Tỉnh
+            hiltDmgMulti = 0.40 + (level * 0.03);      // Cán nộ: 40% + 3%/cấp
+            sweetSpotDmgMulti = 0.80 + (level * 0.04); // Mũi nộ: 80% + 4%/cấp
+
             armorPenetration = 0.30;
-
-            if (meta != null) meta.setCustomModelData(1005);
+            weaponItem = new ItemStack(Material.valueOf("DIAMOND_SPEAR"));
         } else {
             player.getWorld().playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_IRON, 1.0f, 1.0f);
             durationTicks = 60;
-            baseDmgMultiplier = 0.4 + (level * 0.05);
 
-            // Gán giá trị 1 lần duy nhất cho nhánh Thường
+            // Sát thương Thường
+            hiltDmgMulti = 0.20 + (level * 0.02);      // Cán thường: 20% + 2%/cấp
+            sweetSpotDmgMulti = 0.35 + (level * 0.04); // Mũi thường: 35% + 4%/cấp
+
             armorPenetration = 0.0;
-
-            int modelIdToSet = 1001;
-            if (spearCount == 3) modelIdToSet = 1001;
-            else if (spearCount == 4) modelIdToSet = 1002;
-            else if (spearCount == 5) modelIdToSet = 1003;
-            else if (spearCount >= 6) modelIdToSet = 1004;
-
-            if (meta != null) meta.setCustomModelData(modelIdToSet);
+            weaponItem = new ItemStack(Material.IRON_SPEAR);
         }
-
-        if (meta != null) weaponItem.setItemMeta(meta);
 
         List<ItemDisplay> displays = new ArrayList<>();
         Location spawnLoc = player.getLocation().clone();
@@ -165,14 +157,17 @@ public class WarriorBladeStormSkill implements ISkill {
             display.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
             display.setPersistent(false);
 
-            AxisAngle4f pointOut = new AxisAngle4f((float) Math.toRadians(-90), 0, 0, 1);
+            // ==========================================
+            // [TRẢ LẠI CODE MŨI GIÁO]: Dùng lại đoạn nghiêng 45 độ chuẩn xác của bạn
+            // ==========================================
             AxisAngle4f layFlat = new AxisAngle4f((float) Math.toRadians(90), 1, 0, 0);
+            AxisAngle4f tilt45 = new AxisAngle4f((float) Math.toRadians(45), 0, 0, 1);
 
             Transformation trans = new Transformation(
                     new Vector3f(0, 0, scaleSize * 0.5f),
                     layFlat,
                     new Vector3f(scaleSize, scaleSize, scaleSize),
-                    pointOut
+                    tilt45
             );
 
             display.setTransformation(trans);
@@ -183,7 +178,7 @@ public class WarriorBladeStormSkill implements ISkill {
         activeDisplays.put(player.getUniqueId(), displays);
 
         // ==========================================
-        // VÒNG LẶP XOAY VÀ HITBOX (Java sẽ không báo lỗi nữa)
+        // VÒNG LẶP XOAY VÀ HITBOX
         // ==========================================
         new BukkitRunnable() {
             int ticks = 0;
@@ -218,8 +213,11 @@ public class WarriorBladeStormSkill implements ISkill {
 
                     Location weaponLoc = center.clone().add(x, 0, z);
 
+                    // ==========================================
+                    // [TRẢ LẠI CODE MŨI GIÁO]: Bù trừ Yaw -45 độ để mũi hướng thẳng ra ngoài
+                    // ==========================================
                     weaponLoc.setPitch(0f);
-                    weaponLoc.setYaw((float) Math.toDegrees(angleOffset));
+                    weaponLoc.setYaw((float) Math.toDegrees(angleOffset) - 45);
 
                     display.teleport(weaponLoc);
 
@@ -239,18 +237,21 @@ public class WarriorBladeStormSkill implements ISkill {
                             LivingEntity target = (LivingEntity) e;
 
                             double distanceToTarget = center.distance(target.getLocation());
-                            double finalDmgMulti = baseDmgMultiplier;
+                            double finalDmgMulti;
 
+                            // Trúng Rìa Mũi (Sweet Spot)
                             if (distanceToTarget >= maxReach - 2.0 && distanceToTarget <= maxReach) {
-                                finalDmgMulti *= 1.5;
+                                finalDmgMulti = sweetSpotDmgMulti; // Lấy DMG Mũi
                                 player.getWorld().playSound(target.getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, 1.0f, 1.2f);
                                 player.getWorld().spawnParticle(Particle.ENCHANTED_HIT, target.getLocation().add(0, 1, 0), 15, 0.3, 0.3, 0.3, 0.1);
-                            } else if (distanceToTarget < maxReach - 2.0) {
-                                finalDmgMulti *= 0.6;
+                            }
+                            // Trúng Cán Giáo (Hilt)
+                            else {
+                                finalDmgMulti = hiltDmgMulti; // Lấy DMG Cán
                                 player.getWorld().spawnParticle(Particle.ASH, target.getLocation().add(0, 1, 0), 10, 0.3, 0.3, 0.3, 0);
                             }
 
-                            // Biến armorPenetration bây giờ là "effectively final" nên dùng thoải mái ở đây
+                            // Đưa vào tính toán
                             double dmg = CombatManager.calculateDamage(player, rpgPlayer, target, finalDmgMulti, armorPenetration * 100, false, false);
 
                             player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(RPGCore.getInstance(), true));
