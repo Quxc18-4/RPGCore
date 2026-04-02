@@ -55,20 +55,28 @@ public class WarriorBladeStormSkill implements ISkill {
 
         int spearCount = 3 + (level / 3);
 
+        // Hiển thị tốc độ đánh (Hit/s) theo công thức của bạn để người chơi thấy sự thăng tiến
+        double hitPerSec;
+        if (spearCount <= 3) hitPerSec = 2.5;       // 1 / 0.4s
+        else if (spearCount == 4) hitPerSec = 3.3;  // 1 / 0.3s
+        else if (spearCount == 5) hitPerSec = 5.0;  // 1 / 0.2s
+        else hitPerSec = 6.7;                      // 1 / 0.2s
+
         return Arrays.asList(
                 "§7Triệu hồi các mũi giáo bay quanh bản thân.",
                 "§7Yêu cầu kỹ năng giữ khoảng cách (Spacing).",
                 "",
                 "§e[Kích hoạt: Giáo Trận]",
                 "§f- Gọi §e" + spearCount + "§f cây giáo xoay quanh trong §a3 giây§f.",
+                "§f- Tốc độ cưa: §e" + String.format("%.1f", hitPerSec) + " hit/giây§f.",
                 "§f- Bán kính quét: §a2.8 Block§f.",
                 "§f- Quẹt trúng Cán giáo: Gây §7" + (int)(baseDmg * 0.6) + "% Sát thương§f.",
                 "§f- Quẹt trúng Mũi giáo: Gây §c" + (int)(baseDmg * 1.5) + "% Sát thương§f.",
                 "",
                 "§c[Thức Tỉnh Kỹ Năng] (Tiêu hao 50 Nộ)",
                 "§f- Giáo hóa Kim Cương, sắc bén và uy lực hơn.",
-                "§f- Tầm quét mở rộng lên §c4.5 Block§f.",
-                "§f- Thời gian duy trì: §a5 giây§f.",
+                "§f- Tầm quét mở rộng lên §c2.8 Block§f.",
+                "§f- Thời gian duy trì: §a6 giây§f.",
                 "§f- Quẹt Mũi giáo Thức tỉnh: §c" + (int)(awakenDmg * 1.5) + "% ST§f."
         );
     }
@@ -97,28 +105,38 @@ public class WarriorBladeStormSkill implements ISkill {
         ItemStack weaponItem;
 
         int spearCount = 3 + (level / 3);
-        double hiltRadius = 0.8; // Cán giáo cách người 0.8 block
-        double maxReach; // Hitbox mũi giáo xa nhất
+        double hiltRadius = 0.8;
+        double maxReach;
+        float scaleSize;
 
-        float scaleSize; // Dùng Scale Đều để giữ nguyên tỷ lệ model
+        // ==========================================
+        // [ĐÃ SỬA]: TOÁN HỌC TÍNH TỐC ĐỘ XOAY DỰA THEO SỐ GIÁO
+        // ==========================================
+        int hitIntervalTicks;
+        if (spearCount <= 3) hitIntervalTicks = 8;      // 0.4s / hit
+        else if (spearCount == 4) hitIntervalTicks = 6; // 0.3s / hit
+        else if (spearCount == 5) hitIntervalTicks = 4; // 0.2s / hit
+        else hitIntervalTicks = 3;                       // 0.2s / hit (spearCount >= 6)
+
+        // Tính góc xoay mỗi tick để đảm bảo khớp đúng chu kỳ hit
+        int ticksPerRevolution = hitIntervalTicks * spearCount;
+        double anglePerTick = (Math.PI * 2) / ticksPerRevolution;
 
         if (isEmpowered) {
             rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - cost);
             player.sendMessage("§c§l[THỨC TỈNH] §fGiáo Trận Cường Hóa!");
             player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.2f, 1.5f);
-            durationTicks = 100; // 5s
+            durationTicks = 120; // 6s
 
-            scaleSize = 2.0f; // Phóng to đều model lên gấp đôi
-            maxReach = hiltRadius + 3.7; // Tầm với thức tỉnh
+            scaleSize = 1.5f;
+            maxReach = hiltRadius + 2.0;
             baseDmgMultiplier = 0.5 + (level * 0.1);
-
-            // Ép thành giáo kim cương
             weaponItem = new ItemStack(Material.valueOf("DIAMOND_SPEAR"));
         } else {
             player.getWorld().playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_IRON, 1.0f, 1.0f);
             durationTicks = 60; // 3s
 
-            scaleSize = 1.3f; // Model thường chỉ phóng nhẹ
+            scaleSize = 1.5f;
             maxReach = hiltRadius + 2.0;
             baseDmgMultiplier = 0.3 + (level * 0.05);
             weaponItem = new ItemStack(Material.IRON_SPEAR);
@@ -137,18 +155,17 @@ public class WarriorBladeStormSkill implements ISkill {
             display.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
             display.setPersistent(false);
 
+            // [ĐÃ SỬA MŨI GIÁO]: Xoay +45 độ (Sang trái) để dựng đứng sprite chéo 15 độ của Minecraft
+            AxisAngle4f alignStraight = new AxisAngle4f((float) Math.toRadians(15), 0, 0, 1);
+
             // Xoay ngang mặt đất
             AxisAngle4f layFlat = new AxisAngle4f((float) Math.toRadians(90), 1, 0, 0);
-            // Nghiêng chéo 45 độ cho chuẩn hình dáng giáo
-            AxisAngle4f tilt45 = new AxisAngle4f((float) Math.toRadians(45), 0, 0, 1);
 
             Transformation trans = new Transformation(
-                    // Tịnh tiến đẩy tâm item ra phía trước một chút để cán ôm vào trong
                     new Vector3f(0, 0, scaleSize * 0.5f),
                     layFlat,
-                    // BẮT BUỘC SCALE ĐỀU 3 TRỤC ĐỂ GIỮ CHUẨN MODEL CUSTOM
                     new Vector3f(scaleSize, scaleSize, scaleSize),
-                    tilt45
+                    alignStraight   // Áp dụng bẻ thẳng trước tiên
             );
 
             display.setTransformation(trans);
@@ -163,7 +180,7 @@ public class WarriorBladeStormSkill implements ISkill {
         activeDisplays.put(player.getUniqueId(), displays);
 
         // ==========================================
-        // 2. VÒNG LẶP XOAY VÀ HITBOX
+        // 2. VÒNG LẶP XOAY VÀ HITBOX VỚI TỐC ĐỘ DYNAMIC
         // ==========================================
         new BukkitRunnable() {
             int ticks = 0;
@@ -184,9 +201,10 @@ public class WarriorBladeStormSkill implements ISkill {
 
                 Location center = player.getLocation().clone();
                 center.setPitch(0f);
-                center.add(0, 1.2, 0); // Vòng xoay ngang ngực
+                center.add(0, 1.2, 0);
 
-                currentAngle -= Math.PI / 10;
+                // Sử dụng tốc độ xoay tăng dần theo số lượng giáo
+                currentAngle -= anglePerTick;
 
                 for (int i = 0; i < spearCount; i++) {
                     ItemDisplay display = displays.get(i);
@@ -199,8 +217,7 @@ public class WarriorBladeStormSkill implements ISkill {
                     Location weaponLoc = center.clone().add(x, 0, z);
 
                     weaponLoc.setPitch(0f);
-                    // Góc Yaw trừ 45 độ để mũi giáo custom đâm thẳng ra ngoài
-                    weaponLoc.setYaw((float) Math.toDegrees(angleOffset) - 45);
+                    weaponLoc.setYaw((float) Math.toDegrees(angleOffset)); // Góc chuẩn không cần bù trừ nữa vì đã bẻ thẳng sprite
 
                     display.teleport(weaponLoc);
 
@@ -212,7 +229,8 @@ public class WarriorBladeStormSkill implements ISkill {
                     }
                 }
 
-                if (ticks % 10 == 0) {
+                // Cưa máu dựa trên hitIntervalTicks (Tần suất tăng theo cấp độ)
+                if (ticks % hitIntervalTicks == 0) {
                     player.getWorld().playSound(center, Sound.ENTITY_PLAYER_ATTACK_SWEEP, 0.8f, 1.5f);
 
                     for (Entity e : center.getWorld().getNearbyEntities(center, maxReach, 1.5, maxReach)) {
@@ -222,7 +240,6 @@ public class WarriorBladeStormSkill implements ISkill {
                             double distanceToTarget = center.distance(target.getLocation());
                             double finalDmgMulti = baseDmgMultiplier;
 
-                            // Vùng Sweet Spot: 1.5 Block ngoài cùng
                             if (distanceToTarget >= maxReach - 1.5 && distanceToTarget <= maxReach) {
                                 finalDmgMulti *= 1.5;
                                 player.getWorld().playSound(target.getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, 1.0f, 1.2f);
