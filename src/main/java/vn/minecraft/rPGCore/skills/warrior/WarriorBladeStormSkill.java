@@ -50,17 +50,16 @@ public class WarriorBladeStormSkill implements ISkill {
 
     @Override
     public List<String> getDescription(int level) {
-        int baseDmg = (int) ((0.3 + (level * 0.05)) * 100);
-        int awakenDmg = (int) ((0.5 + (level * 0.1)) * 100);
+        int baseDmg = (int) ((0.4 + (level * 0.05)) * 100);
+        int awakenDmg = (int) ((0.7 + (level * 0.12)) * 100);
 
         int spearCount = 3 + (level / 3);
 
-        // Hiển thị tốc độ đánh (Hit/s) theo công thức của bạn để người chơi thấy sự thăng tiến
         double hitPerSec;
-        if (spearCount <= 3) hitPerSec = 2.5;       // 1 / 0.4s
-        else if (spearCount == 4) hitPerSec = 3.3;  // 1 / 0.3s
-        else if (spearCount == 5) hitPerSec = 5.0;  // 1 / 0.2s
-        else hitPerSec = 6.7;                      // 1 / 0.2s
+        if (spearCount <= 3) hitPerSec = 2.5;
+        else if (spearCount == 4) hitPerSec = 3.3;
+        else if (spearCount == 5) hitPerSec = 5.0;
+        else hitPerSec = 6.7;
 
         return Arrays.asList(
                 "§7Triệu hồi các mũi giáo bay quanh bản thân.",
@@ -71,12 +70,11 @@ public class WarriorBladeStormSkill implements ISkill {
                 "§f- Tốc độ cưa: §e" + String.format("%.1f", hitPerSec) + " hit/giây§f.",
                 "§f- Bán kính quét: §a2.8 Block§f.",
                 "§f- Quẹt trúng Cán giáo: Gây §7" + (int)(baseDmg * 0.6) + "% Sát thương§f.",
-                "§f- Quẹt trúng Mũi giáo: Gây §c" + (int)(baseDmg * 1.5) + "% Sát thương§f.",
+                "§f- Quẹt trúng Rìa Mũi: Gây §c" + (int)(baseDmg * 1.5) + "% Sát thương§f.",
                 "",
                 "§c[Thức Tỉnh Kỹ Năng] (Tiêu hao 50 Nộ)",
-                "§f- Giáo hóa Kim Cương, sắc bén và uy lực hơn.",
-                "§f- Tầm quét mở rộng lên §c2.8 Block§f.",
-                "§f- Thời gian duy trì: §a6 giây§f.",
+                "§f- Giáo hóa Kim Cương, duy trì §a4 giây§f.",
+                "§f- Lưỡi cắt kim cương bỏ qua §e30% Giáp§f.",
                 "§f- Quẹt Mũi giáo Thức tỉnh: §c" + (int)(awakenDmg * 1.5) + "% ST§f."
         );
     }
@@ -102,49 +100,61 @@ public class WarriorBladeStormSkill implements ISkill {
 
         long durationTicks;
         double baseDmgMultiplier;
+
+        // [ĐÃ SỬA LỖI ĐỎ]: Chỉ khai báo, KHÔNG gán giá trị mặc định ở đây
+        double armorPenetration;
+
         ItemStack weaponItem;
 
         int spearCount = 3 + (level / 3);
         double hiltRadius = 0.8;
-        double maxReach;
-        float scaleSize;
 
-        // ==========================================
-        // [ĐÃ SỬA]: TOÁN HỌC TÍNH TỐC ĐỘ XOAY DỰA THEO SỐ GIÁO
-        // ==========================================
+        float scaleSize = 1.5f;
+        double maxReach = hiltRadius + 2.0;
+
         int hitIntervalTicks;
-        if (spearCount <= 3) hitIntervalTicks = 8;      // 0.4s / hit
-        else if (spearCount == 4) hitIntervalTicks = 6; // 0.3s / hit
-        else if (spearCount == 5) hitIntervalTicks = 4; // 0.2s / hit
-        else hitIntervalTicks = 3;                       // 0.2s / hit (spearCount >= 6)
+        if (spearCount <= 3) hitIntervalTicks = 8;
+        else if (spearCount == 4) hitIntervalTicks = 6;
+        else if (spearCount == 5) hitIntervalTicks = 4;
+        else hitIntervalTicks = 3;
 
-        // Tính góc xoay mỗi tick để đảm bảo khớp đúng chu kỳ hit
         int ticksPerRevolution = hitIntervalTicks * spearCount;
         double anglePerTick = (Math.PI * 2) / ticksPerRevolution;
+
+        weaponItem = new ItemStack(Material.IRON_SWORD);
+        org.bukkit.inventory.meta.ItemMeta meta = weaponItem.getItemMeta();
 
         if (isEmpowered) {
             rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - cost);
             player.sendMessage("§c§l[THỨC TỈNH] §fGiáo Trận Cường Hóa!");
             player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.2f, 1.5f);
-            durationTicks = 120; // 6s
 
-            scaleSize = 1.5f;
-            maxReach = hiltRadius + 2.0;
-            baseDmgMultiplier = 0.5 + (level * 0.1);
-            weaponItem = new ItemStack(Material.valueOf("DIAMOND_SPEAR"));
+            durationTicks = 80;
+            baseDmgMultiplier = 0.7 + (level * 0.12);
+
+            // Gán giá trị 1 lần duy nhất cho nhánh Thức Tỉnh
+            armorPenetration = 0.30;
+
+            if (meta != null) meta.setCustomModelData(1005);
         } else {
             player.getWorld().playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_IRON, 1.0f, 1.0f);
-            durationTicks = 60; // 3s
+            durationTicks = 60;
+            baseDmgMultiplier = 0.4 + (level * 0.05);
 
-            scaleSize = 1.5f;
-            maxReach = hiltRadius + 2.0;
-            baseDmgMultiplier = 0.3 + (level * 0.05);
-            weaponItem = new ItemStack(Material.IRON_SPEAR);
+            // Gán giá trị 1 lần duy nhất cho nhánh Thường
+            armorPenetration = 0.0;
+
+            int modelIdToSet = 1001;
+            if (spearCount == 3) modelIdToSet = 1001;
+            else if (spearCount == 4) modelIdToSet = 1002;
+            else if (spearCount == 5) modelIdToSet = 1003;
+            else if (spearCount >= 6) modelIdToSet = 1004;
+
+            if (meta != null) meta.setCustomModelData(modelIdToSet);
         }
 
-        // ==========================================
-        // 1. MA TRẬN SCALE ĐỀU VÀ ĐẨY TÂM (Tránh béo phì)
-        // ==========================================
+        if (meta != null) weaponItem.setItemMeta(meta);
+
         List<ItemDisplay> displays = new ArrayList<>();
         Location spawnLoc = player.getLocation().clone();
         spawnLoc.setPitch(0f);
@@ -155,32 +165,25 @@ public class WarriorBladeStormSkill implements ISkill {
             display.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
             display.setPersistent(false);
 
-            // [ĐÃ SỬA MŨI GIÁO]: Xoay +45 độ (Sang trái) để dựng đứng sprite chéo 15 độ của Minecraft
-            AxisAngle4f alignStraight = new AxisAngle4f((float) Math.toRadians(15), 0, 0, 1);
-
-            // Xoay ngang mặt đất
+            AxisAngle4f pointOut = new AxisAngle4f((float) Math.toRadians(-90), 0, 0, 1);
             AxisAngle4f layFlat = new AxisAngle4f((float) Math.toRadians(90), 1, 0, 0);
 
             Transformation trans = new Transformation(
                     new Vector3f(0, 0, scaleSize * 0.5f),
                     layFlat,
                     new Vector3f(scaleSize, scaleSize, scaleSize),
-                    alignStraight   // Áp dụng bẻ thẳng trước tiên
+                    pointOut
             );
 
             display.setTransformation(trans);
             display.setInvulnerable(true);
 
-            if (isEmpowered) {
-                display.setGlowing(true);
-                display.setGlowColorOverride(Color.AQUA);
-            }
             displays.add(display);
         }
         activeDisplays.put(player.getUniqueId(), displays);
 
         // ==========================================
-        // 2. VÒNG LẶP XOAY VÀ HITBOX VỚI TỐC ĐỘ DYNAMIC
+        // VÒNG LẶP XOAY VÀ HITBOX (Java sẽ không báo lỗi nữa)
         // ==========================================
         new BukkitRunnable() {
             int ticks = 0;
@@ -203,7 +206,6 @@ public class WarriorBladeStormSkill implements ISkill {
                 center.setPitch(0f);
                 center.add(0, 1.2, 0);
 
-                // Sử dụng tốc độ xoay tăng dần theo số lượng giáo
                 currentAngle -= anglePerTick;
 
                 for (int i = 0; i < spearCount; i++) {
@@ -217,7 +219,7 @@ public class WarriorBladeStormSkill implements ISkill {
                     Location weaponLoc = center.clone().add(x, 0, z);
 
                     weaponLoc.setPitch(0f);
-                    weaponLoc.setYaw((float) Math.toDegrees(angleOffset)); // Góc chuẩn không cần bù trừ nữa vì đã bẻ thẳng sprite
+                    weaponLoc.setYaw((float) Math.toDegrees(angleOffset));
 
                     display.teleport(weaponLoc);
 
@@ -225,11 +227,10 @@ public class WarriorBladeStormSkill implements ISkill {
                     if (isEmpowered) {
                         display.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, tipLoc, 1, 0, 0, 0, 0);
                     } else {
-                        display.getWorld().spawnParticle(Particle.CRIT, tipLoc, 1, 0, 0, 0, 0);
+                        display.getWorld().spawnParticle(Particle.FLAME, tipLoc, 1, 0, 0, 0, 0);
                     }
                 }
 
-                // Cưa máu dựa trên hitIntervalTicks (Tần suất tăng theo cấp độ)
                 if (ticks % hitIntervalTicks == 0) {
                     player.getWorld().playSound(center, Sound.ENTITY_PLAYER_ATTACK_SWEEP, 0.8f, 1.5f);
 
@@ -240,16 +241,18 @@ public class WarriorBladeStormSkill implements ISkill {
                             double distanceToTarget = center.distance(target.getLocation());
                             double finalDmgMulti = baseDmgMultiplier;
 
-                            if (distanceToTarget >= maxReach - 1.5 && distanceToTarget <= maxReach) {
+                            if (distanceToTarget >= maxReach - 2.0 && distanceToTarget <= maxReach) {
                                 finalDmgMulti *= 1.5;
                                 player.getWorld().playSound(target.getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, 1.0f, 1.2f);
                                 player.getWorld().spawnParticle(Particle.ENCHANTED_HIT, target.getLocation().add(0, 1, 0), 15, 0.3, 0.3, 0.3, 0.1);
-                            } else if (distanceToTarget < maxReach - 1.5) {
+                            } else if (distanceToTarget < maxReach - 2.0) {
                                 finalDmgMulti *= 0.6;
                                 player.getWorld().spawnParticle(Particle.ASH, target.getLocation().add(0, 1, 0), 10, 0.3, 0.3, 0.3, 0);
                             }
 
-                            double dmg = CombatManager.calculateDamage(player, rpgPlayer, target, finalDmgMulti, 0.0, false, false);
+                            // Biến armorPenetration bây giờ là "effectively final" nên dùng thoải mái ở đây
+                            double dmg = CombatManager.calculateDamage(player, rpgPlayer, target, finalDmgMulti, armorPenetration * 100, false, false);
+
                             player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(RPGCore.getInstance(), true));
                             CombatManager.applySkillDamage(player, target, dmg);
                             player.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
