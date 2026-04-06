@@ -18,7 +18,7 @@ import java.util.Map;
 public class WarriorParrySkill implements ISkill {
 
     @Override public String getId() { return "warrior_parry"; }
-    @Override public String getName() { return "§6§lThủ Thế (Parry)"; }
+    @Override public String getName() { return "§6§lChặn Đòn"; }
     @Override public String getRequiredClass() { return "warrior"; }
     @Override public Material getIcon() { return Material.SHIELD; }
 
@@ -38,7 +38,7 @@ public class WarriorParrySkill implements ISkill {
                 "§7Kỹ năng phòng ngự đỉnh cao của Chiến Binh.",
                 "§7Tôn vinh sự phản xạ và kỹ năng cá nhân.",
                 "",
-                "§e[Kích hoạt: Đỡ Đòn]",
+                "§e[Kích hoạt: Chặn đòn]",
                 "§f- Đưa bản thân vào trạng thái Đỡ Đòn trong §a0.75s§f.",
                 "§f- Nếu bị tấn công trong thời gian này:",
                 "§f  + Giảm §c50% Sát thương§f nhận vào.",

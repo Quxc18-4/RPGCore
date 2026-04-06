@@ -31,7 +31,7 @@ public class WarriorEarthshatterSkill implements ISkill {
     private final Random random = new Random();
 
     @Override public String getId() { return "warrior_earthshatter"; }
-    @Override public String getName() { return "§6§lĐại Địa Chấn"; }
+    @Override public String getName() { return "§6§lĐịa Chấn"; }
     @Override public String getRequiredClass() { return "warrior"; }
     @Override public Material getIcon() { return Material.ANVIL; }
 
@@ -90,7 +90,7 @@ public class WarriorEarthshatterSkill implements ISkill {
 
         if (isEmpowered) {
             rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - cost);
-            player.sendMessage("§c§l[THỨC TỈNH] §fĐại Địa Chấn!");
+            player.sendMessage("§c§l[THỨC TỈNH] §fĐịa Chấn!");
 
             // Bật nhảy mạnh hơn một chút để tạo độ Impact (0.7 -> 0.8 Y)
             Vector leapDir = player.getLocation().getDirection().setY(0).normalize().multiply(0.4).setY(0.8);

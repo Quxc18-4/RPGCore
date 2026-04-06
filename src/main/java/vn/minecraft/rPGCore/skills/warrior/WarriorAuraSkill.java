@@ -23,7 +23,7 @@ import java.util.Map;
 public class WarriorAuraSkill extends AbstractHitCounterSkill {
 
     @Override public String getId() { return "warrior_aura"; }
-    @Override public String getName() { return "§c§lKiếm Khí Huyết Sát"; }
+    @Override public String getName() { return "§c§lKiếm Khí"; }
     @Override public String getRequiredClass() { return "warrior"; }
     @Override public Material getIcon() { return Material.IRON_SWORD; }
 
@@ -72,7 +72,7 @@ public class WarriorAuraSkill extends AbstractHitCounterSkill {
 
         if (isEmpowered) {
             rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - 30);
-            player.sendMessage("§c§l[THỨC TỈNH] §fKiếm Khí Huyết Sát!");
+            player.sendMessage("§c§l[THỨC TỈNH] §fKiếm Khí!");
         }
 
         Location startLoc = player.getLocation().add(0, 1.2, 0);

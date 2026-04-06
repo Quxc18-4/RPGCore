@@ -34,7 +34,7 @@ public class WarriorBladeStormSkill implements ISkill {
     private final Map<UUID, List<ItemDisplay>> activeDisplays = new HashMap<>();
 
     @Override public String getId() { return "warrior_bladestorm"; }
-    @Override public String getName() { return "§b§lGiáo Trận"; }
+    @Override public String getName() { return "§b§lNghiền Ép"; }
     @Override public String getRequiredClass() { return "warrior"; }
     @Override public Material getIcon() { return Material.IRON_SPEAR; }
 
@@ -67,14 +67,14 @@ public class WarriorBladeStormSkill implements ISkill {
                 "§7Triệu hồi các mũi giáo bay quanh bản thân.",
                 "§7Yêu cầu kỹ năng giữ khoảng cách (Spacing).",
                 "",
-                "§e[Kích hoạt: Giáo Trận]",
+                "§e[Kích hoạt: Nghiền ép]",
                 "§f- Gọi §e" + spearCount + "§f cây giáo xoay quanh trong §a3 giây§f.",
                 "§f- Tốc độ cưa: §e" + String.format("%.1f", hitPerSec) + " hit/giây§f.",
                 "§f- Bán kính quét: §a2.8 Block§f.",
                 "§f- Quẹt trúng Cán: Gây §7" + normalHiltDmg + "% ST§f.",
                 "§f- Quẹt trúng Mũi: Gây §c" + normalSweetDmg + "% ST§f.",
                 "",
-                "§c[Thức Tỉnh Kỹ Năng] (Tiêu hao 50 Nộ)",
+                "§c[Thức Tỉnh Kỹ Năng]",
                 "§f- Giáo hóa Kim Cương, duy trì §a4 giây§f.",
                 "§f- Lưỡi cắt kim cương bỏ qua §e30% Giáp§f.",
                 "§f- Quẹt Cán Thức tỉnh: §7" + awakenHiltDmg + "% ST§f.",
@@ -124,7 +124,7 @@ public class WarriorBladeStormSkill implements ISkill {
 
         if (isEmpowered) {
             rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - cost);
-            player.sendMessage("§c§l[THỨC TỈNH] §fGiáo Trận Cường Hóa!");
+            player.sendMessage("§c§l[THỨC TỈNH] §fNghiền Ép Cường Hóa!");
             player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.2f, 1.5f);
 
             durationTicks = 80;
