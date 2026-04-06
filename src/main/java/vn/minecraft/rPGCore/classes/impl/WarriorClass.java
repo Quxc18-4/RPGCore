@@ -6,6 +6,7 @@ import org.bukkit.Sound;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.potion.PotionEffectType;
 import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.classes.RPGClass;
 import vn.minecraft.rPGCore.classes.ResourceType;
@@ -134,5 +135,69 @@ public class WarriorClass extends RPGClass {
                 }
             }
         }
+    }
+
+    // ==========================================
+    // CAN THIỆP SÁT THƯƠNG ĐÁNH TAY (MELEE HIT HOOK)
+    // Xả Buff của các kỹ năng Cường hóa vũ khí tại đây
+    // ==========================================
+    @Override
+    public double onMeleeHit(Player attacker, RPGPlayer rpgAttacker, LivingEntity target, double rawDamage) {
+
+        // 1. KIỂM TRA XEM CÓ BUFF "ĐÁNH BẬT" KHÔNG
+        if (attacker.hasMetadata("Warrior_Knockup_Buff")) {
+            String buffData = attacker.getMetadata("Warrior_Knockup_Buff").get(0).asString();
+
+            // Xóa Buff ngay lập tức để không bị lạm dụng chém nhiều nhát
+            attacker.removeMetadata("Warrior_Knockup_Buff", RPGCore.getInstance());
+
+            String[] parts = buffData.split("_");
+            int level = Integer.parseInt(parts[0]);
+            boolean isEmpowered = Boolean.parseBoolean(parts[1]);
+
+            double dmgMulti = isEmpowered ? (2.2 + (level - 1) * 0.25) : (0.4 + (level - 1) * 0.1);
+
+            // 2. XỬ LÝ VẬT LÝ & HIỆU ỨNG (PHYSICS)
+            if (isEmpowered) {
+                target.setVelocity(new org.bukkit.util.Vector(0, 1.1, 0)); // Bay cỡ 8 block
+                attacker.getWorld().playSound(target.getLocation(), Sound.ENTITY_IRON_GOLEM_ATTACK, 1.2f, 0.8f);
+
+                new org.bukkit.scheduler.BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        if (target.isOnGround() || target.isDead()) {
+                            target.getWorld().spawnParticle(Particle.EXPLOSION, target.getLocation(), 1);
+                            target.getWorld().playSound(target.getLocation(), Sound.BLOCK_STONE_BREAK, 1f, 0.5f);
+
+                            for (org.bukkit.entity.Entity nearby : target.getNearbyEntities(1.5, 1.5, 1.5)) {
+                                if (nearby instanceof LivingEntity && vn.minecraft.rPGCore.managers.CombatManager.canTarget(attacker, nearby)) {
+                                    vn.minecraft.rPGCore.managers.StatusEffectManager.applyEffect((LivingEntity) nearby, PotionEffectType.SLOWNESS, 40, 10);
+                                }
+                            }
+                            this.cancel();
+                        }
+                    }
+                }.runTaskTimer(RPGCore.getInstance(), 5L, 2L);
+            } else {
+                org.bukkit.util.Vector push = target.getLocation().toVector().subtract(attacker.getLocation().toVector()).normalize().multiply(1.2).setY(0.2);
+                target.setVelocity(push);
+                attacker.getWorld().playSound(target.getLocation(), Sound.ENTITY_PLAYER_ATTACK_KNOCKBACK, 1.0f, 1.0f);
+            }
+
+            // 3. TÁI SỬ DỤNG CHUẨN MỰC COMBAT MANAGER
+            // Tính toán sát thương tổng lực
+            double finalDmg = vn.minecraft.rPGCore.managers.CombatManager.calculateDamage(attacker, rpgAttacker, target, dmgMulti, 0.0, false, false);
+
+            // Cắm cờ chặn đệ quy (Ghost Blocker) và Apply
+            attacker.setMetadata("Ghost_L_Blocker", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), true));
+            vn.minecraft.rPGCore.managers.CombatManager.applySkillDamage(attacker, target, finalDmg);
+            attacker.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
+
+            // 4. TRẢ VỀ 0: Vì chúng ta đã gây sát thương Kỹ Năng rồi, nên đòn chém tay gốc sẽ bị triệt tiêu sát thương (để tránh x2 Damage)
+            return 0.0;
+        }
+
+        // Nếu không có Buff gì, trả về lượng sát thương tay nguyên bản cho hệ thống xử lý tiếp
+        return super.onMeleeHit(attacker, rpgAttacker, target, rawDamage);
     }
 }

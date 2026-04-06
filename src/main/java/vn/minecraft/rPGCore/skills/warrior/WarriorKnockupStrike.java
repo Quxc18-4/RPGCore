@@ -31,36 +31,38 @@ public class WarriorKnockupStrike extends AbstractEnhancementSkill {
     @Override
     public Map<String, Integer> getRequiredSkills() {
         Map<String, Integer> reqs = new HashMap<>();
-        reqs.put("warrior_earthshatter", 3); // Yêu cầu Dậm Đất lv 3
+        // Yêu cầu kỹ năng "Địa Chấn" đạt cấp độ 3
+        reqs.put("warrior_earthshatter", 3);
         return reqs;
     }
 
     @Override public boolean isPassiveSkill() { return false; }
 
-    @Override public double getManaCost(int level) { return 0; } // Cost ghi là 0 vì skill này tự trừ Nộ (Rage) theo điều kiện
+    // Viết rõ để SkillUIManager hiển thị "Tiêu hao: 65 Rage"
+    @Override public double getManaCost(int level) { return 65.0; }
 
     @Override public long getCooldown(int level) {
-        // 18s giảm 0.4s mỗi cấp
+        // 18s, mỗi cấp giảm 0.4s
         return (long) ((18.0 - (level - 1) * 0.4) * 1000);
     }
 
     @Override
     public List<String> getDescription(int level) {
+        // Chỉ mô tả hiệu ứng, các chỉ số Mana/CD/Level đã có UI lo
         int normalDmg = 40 + (level - 1) * 10;
         int awakenDmg = 220 + (level - 1) * 25;
 
-        // UI Manager đã tự vẽ Level, Cost và CD, nên ở đây chỉ tập trung vào cốt truyện và hiệu ứng
         return Arrays.asList(
-                "§7Kỹ thuật chém ngược cơ bản nhưng được",
-                "§7tôi luyện đến mức hoàn mỹ.",
+                "§7Kỹ thuật kiếm thuật cơ bản nhưng được",
+                "§7tôi luyện đến mức phá vỡ giới hạn.",
                 "",
                 "§8[Cường Hóa Đòn Đánh Tiếp Theo]:",
                 "§f- Chém mạnh tới trước, gây §e" + normalDmg + "% ST Vật lý§f.",
-                "§f- §6Đẩy lùi§f mục tiêu văng ra xa.",
+                "§f- §6Đẩy lùi§f mục tiêu.",
                 "",
                 "§c[Thức Tỉnh Kỹ Năng]",
                 "§f- Sát thương tăng vọt lên §c" + awakenDmg + "% ST Vật lý§f.",
-                "§f- §cKéo cao lưỡi kiếm, hất văng mục tiêu lên trời.",
+                "§f- §cChém ngược cực mạnh, hất tung mục tiêu lên trời.",
                 "§f- Gây §8Choáng (2s)§f diện rộng 3x3 khi mục tiêu chạm đất."
         );
     }
@@ -69,28 +71,26 @@ public class WarriorKnockupStrike extends AbstractEnhancementSkill {
     public boolean execute(Player player, RPGPlayer rpgPlayer, int level) {
         String cdKey = "CD_" + getId();
         if (player.hasMetadata(cdKey)) {
-            List<org.bukkit.metadata.MetadataValue> metaList = player.getMetadata(cdKey);
-            if (!metaList.isEmpty()) {
-                long cdEnd = metaList.get(0).asLong();
-                if (System.currentTimeMillis() < cdEnd) {
-                    player.sendMessage("§cKỹ năng đang hồi chiêu!");
-                    return false;
-                }
-            } else { player.removeMetadata(cdKey, plugin); }
+            if (System.currentTimeMillis() < player.getMetadata(cdKey).get(0).asLong()) {
+                player.sendMessage("§cKỹ năng đang hồi chiêu!");
+                return false;
+            }
         }
 
-        // Kiểm tra Nộ tại thời điểm BẤM CHIÊU
-        boolean isEmpowered = rpgPlayer.getCurrentResource() >= 40.0;
-        String buffValue = level + "_" + isEmpowered; // Đóng gói data để Listener đọc (VD: "6_true")
+        double cost = getManaCost(level);
+        // Kiểm tra tài nguyên Nộ (Rage) giống WarriorEarthshatter
+        boolean isEmpowered = rpgPlayer.getCurrentResource() >= cost;
+
+        // Dữ liệu truyền xuống Listener: "level_isEmpowered"
+        String buffValue = level + "_" + isEmpowered;
 
         if (isEmpowered) {
-            rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - 40.0);
-
-            // Gọi hàm của AbstractEnhancementSkill để lưu Buff vào Pool trong 5 giây (100 ticks)
+            rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - cost);
             applyWeaponEnhancement(player, "Warrior_Knockup_Buff", buffValue, 100L,
                     "§c§l[THỨC TỈNH] §fCường hóa: Đánh Bật",
                     "§8§o(Đòn đánh bật đã hủy bỏ...)");
         } else {
+            // Không đủ Nộ vẫn cho dùng nhưng chỉ là đòn thường
             applyWeaponEnhancement(player, "Warrior_Knockup_Buff", buffValue, 100L,
                     "§e§l[!] §fCường hóa: Đẩy Lùi",
                     "§8§o(Đòn đẩy lùi đã hủy bỏ...)");
