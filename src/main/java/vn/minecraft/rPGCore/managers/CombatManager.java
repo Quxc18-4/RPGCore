@@ -8,6 +8,7 @@ import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
+import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 
 import java.util.Map;
@@ -152,7 +153,11 @@ public class CombatManager {
         return finalDamage;
     }
 
-    public static void applyLifeSteal(Player attacker, RPGPlayer rpgPlayer, double damageDealt, double extraLifeStealPct, boolean isMagic) {
+    // ==========================================
+    // MÁY ÉP HÚT MÁU 12 TẦNG (12-TIER LIFESTEAL COMPRESSOR)
+    // Thêm tham số boolean isSkill vào cuối
+    // ==========================================
+    public static void applyLifeSteal(Player attacker, RPGPlayer rpgPlayer, double damageDealt, double extraLifeStealPct, boolean isMagic, boolean isSkill) {
         if (attacker.hasMetadata("Status_AntiHeal")) {
             long expire = attacker.getMetadata("Status_AntiHeal").get(0).asLong();
             if (System.currentTimeMillis() < expire) return;
@@ -160,9 +165,6 @@ public class CombatManager {
 
         double finalExtraLifesteal = extraLifeStealPct;
 
-        // ==========================================
-        // [CHUẨN SOLID]: LẤY LIFESTEAL TỪ CLASS
-        // ==========================================
         if (rpgPlayer.getCurrentClass() != null) {
             finalExtraLifesteal += rpgPlayer.getCurrentClass().getDynamicLifeSteal(attacker, rpgPlayer);
         }
@@ -173,31 +175,65 @@ public class CombatManager {
 
         if (totalLifeSteal <= 0) return;
 
-        double healAmount = damageDealt * (totalLifeSteal / 100.0);
-        if (healAmount <= 0) return;
+        double effectiveDamage = 0;
+        double remaining = damageDealt;
 
-        double maxHp = attacker.getAttribute(Attribute.MAX_HEALTH).getValue();
-        attacker.setHealth(Math.min(maxHp, attacker.getHealth() + healAmount));
+        // Mảng 11 mốc đầu (Đạt đỉnh 1 Triệu sát thương)
+        double[][] tiers = {
+                {2000, 1.00},   // Mốc 1: 0 - 2k
+                {3000, 0.85},   // Mốc 2: 2k - 5k (Size: 3k)
+                {5000, 0.70},   // Mốc 3: 5k - 10k (Size: 5k)
+                {10000, 0.55},  // Mốc 4: 10k - 20k (Size: 10k)
+                {20000, 0.40},  // Mốc 5: 20k - 40k (Size: 20k)
+                {30000, 0.25},  // Mốc 6: 40k - 70k (Size: 30k)
+                {50000, 0.15},  // Mốc 7: 70k - 120k (Size: 50k)
+                {80000, 0.10},  // Mốc 8: 120k - 200k (Size: 80k)
+                {150000, 0.06}, // Mốc 9: 200k - 350k (Size: 150k)
+                {250000, 0.03}, // Mốc 10: 350k - 600k (Size: 250k)
+                {400000, 0.01}  // Mốc 11: 600k - 1M (Size: 400k)
+        };
 
-        Particle pType = isMagic ? Particle.SOUL : Particle.HEART;
-        attacker.getWorld().spawnParticle(pType, attacker.getLocation().add(0, 2, 0), 1, 0.3, 0.3, 0.3, 0);
+        for (double[] tier : tiers) {
+            if (remaining <= 0) break;
+            double chunk = Math.min(remaining, tier[0]);
+            effectiveDamage += chunk * tier[1];
+            remaining -= chunk;
+        }
+
+        // Mốc 12: Trên 1 Triệu sát thương
+        if (remaining > 0) {
+            effectiveDamage += remaining * 0.002; // Chỉ còn 0.2%
+        }
+
+        double theoreticalHeal = effectiveDamage * (totalLifeSteal / 100.0);
+
+        // Kỹ năng bị bóp nghẹt chỉ còn 10% hiệu suất
+        if (isSkill) theoreticalHeal *= 0.10;
+
+        if (theoreticalHeal <= 0) return;
+
+        // CỘNG DỒN VÀO HỒ CHỨA MÁU (POOL) THAY VÌ HỒI TRỰC TIẾP
+        double currentPool = 0.0;
+        if (attacker.hasMetadata("Lifesteal_Pool")) {
+            currentPool = attacker.getMetadata("Lifesteal_Pool").get(0).asDouble();
+        }
+        attacker.setMetadata("Lifesteal_Pool", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), currentPool + theoreticalHeal));
     }
 
     // ==========================================
     // HỆ THỐNG GÂY SÁT THƯƠNG KỸ NĂNG (DÙNG CHUNG CHO MỌI CLASS)
     // ==========================================
     public static void applySkillDamage(Player attacker, LivingEntity target, double finalDamage) {
-        // 1. Xóa I-Frame (Giây bất tử của Vanilla) để chiêu thức chạm là ăn sát thương
         target.setNoDamageTicks(0);
-
-        // 2. Cắm cờ Khóa Sát Thương để PlayerListener không tính lặp thành đòn đánh tay
-        attacker.setMetadata("Skill_Damage_Lock", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), true));
-
-        // 3. Gây sát thương (Ghi nhận người ra đòn để quái dí theo và tính Kill)
+        attacker.setMetadata("Skill_Damage_Lock", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), true));
         target.damage(finalDamage, attacker);
+        attacker.removeMetadata("Skill_Damage_Lock", RPGCore.getInstance());
 
-        // 4. Rút cờ Khóa Sát Thương ra
-        attacker.removeMetadata("Skill_Damage_Lock", vn.minecraft.rPGCore.RPGCore.getInstance());
+        // [TỰ ĐỘNG]: Tất cả kỹ năng gọi hàm này đều sẽ tự động kích hoạt Hút Máu dạng Kỹ năng (isSkill = true)
+        RPGPlayer rpgPlayer = RPGCore.getInstance().getPlayerManager().getRPGPlayer(attacker.getUniqueId());
+        if (rpgPlayer != null) {
+            applyLifeSteal(attacker, rpgPlayer, finalDamage, 0.0, false, true);
+        }
     }
 
     // ==========================================

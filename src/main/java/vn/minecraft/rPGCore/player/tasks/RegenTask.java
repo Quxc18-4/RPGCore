@@ -46,6 +46,49 @@ public class RegenTask extends BukkitRunnable {
             double currentRes = rpgPlayer.getCurrentResource();
 
             // ==========================================
+            // [MỚI]: HỆ THỐNG XẢ HỒ MÁU (LIFESTEAL POOL DRAINER)
+            // (Chạy độc lập, không bị ảnh hưởng bởi In-Combat Debuff)
+            // ==========================================
+            if (player.hasMetadata("Lifesteal_Pool")) {
+                double pool = player.getMetadata("Lifesteal_Pool").get(0).asDouble();
+
+                if (pool > 0) {
+                    // RÚT CỐ ĐỊNH: 20% Max HP từ Pool mỗi giây (Chống abuse hồi máu vụn vặt)
+                    double drainAmount = Math.min(pool, maxHp * 0.20);
+
+                    pool -= drainAmount;
+                    player.setMetadata("Lifesteal_Pool", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), pool));
+
+                    double currentHp = player.getHealth();
+                    if (currentHp < maxHp) {
+                        // Bơm thẳng máu vào người
+                        player.setHealth(Math.min(maxHp, currentHp + drainAmount));
+
+                        // Nếu heal xong mà đầy bình -> Set cờ
+                        if (player.getHealth() >= maxHp) {
+                            player.setMetadata("Lifesteal_Full_Timer", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), true));
+                        } else {
+                            player.removeMetadata("Lifesteal_Full_Timer", RPGCore.getInstance());
+                        }
+
+                        player.getWorld().spawnParticle(org.bukkit.Particle.HEART, player.getLocation().add(0, 2, 0), 1, 0.3, 0.3, 0.3, 0);
+                    } else {
+                        // NẾU ĐANG FULL MÁU
+                        if (player.hasMetadata("Lifesteal_Full_Timer")) {
+                            // Đã trôi qua 1s đầy máu -> XÓA SẠCH POOL
+                            player.removeMetadata("Lifesteal_Pool", RPGCore.getInstance());
+                            player.removeMetadata("Lifesteal_Full_Timer", RPGCore.getInstance());
+                        } else {
+                            // Mới đầy máu giây này, cho 1s ân hạn
+                            player.setMetadata("Lifesteal_Full_Timer", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), true));
+                        }
+                    }
+                } else {
+                    player.removeMetadata("Lifesteal_Pool", RPGCore.getInstance());
+                    player.removeMetadata("Lifesteal_Full_Timer", RPGCore.getInstance());
+                }
+            }
+            // ==========================================
             // 1. CƠ CHẾ TỤT THANH ĐÓI (ĐÃ NERF MẠNH)
             // ==========================================
             if (!hasFullnessBuff) {

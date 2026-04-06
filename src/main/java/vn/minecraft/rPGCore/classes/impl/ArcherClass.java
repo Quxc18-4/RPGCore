@@ -348,7 +348,7 @@ public class ArcherClass extends RPGClass implements Listener {
                 }
 
                 double finalDamage = CombatManager.calculateDamage(shooter, rpgShooter, target, dmgMulti, extraArmorPen, 0.0, 0.0, false, isCrossbow);
-                CombatManager.applyLifeSteal(shooter, rpgShooter, finalDamage, extraLifeSteal, false);
+                CombatManager.applyLifeSteal(shooter, rpgShooter, finalDamage, extraLifeSteal, false, isCustomSkill);
 
                 if (!arrow.hasMetadata("Is_Piercing_Arrow") || arrow.getMetadata("Pierce_Hit_Count").get(0).asInt() == 1) {
                     DurabilityManager.damageItem(shooter, rpgShooter, weapon, durabilityLoss);
