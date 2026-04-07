@@ -429,11 +429,30 @@ public class CombatManager {
             // boolean isSameGuild = RPGGuildAPI.isSameGuild(attacker, victimOwner);
             // if (isSameGuild) return false;
             // ==========================================
+            for (IAllyChecker checker : allyCheckers) {
+                if (checker.isAlly(attacker, victimOwner)) {
+                    return false; // Nếu 1 trong các plugin (Guild/Party) bảo là Đồng Minh -> Cấm đánh!
+                }
+            }
 
             return true; // Khác Guild -> Cho phép tàn sát
         }
 
         // 4. Nếu là quái vật hoang dã bình thường
         return true;
+    }
+
+    // ==========================================
+    // [HỆ THỐNG HOOK ĐỒNG MINH - DECOUPLED API]
+    // ==========================================
+    public interface IAllyChecker {
+        boolean isAlly(Player p1, Player p2);
+    }
+
+    public static final java.util.List<IAllyChecker> allyCheckers = new java.util.ArrayList<>();
+
+    // Các Plugin con (Party, Guild) sẽ gọi hàm này để đăng ký logic của họ vào đây
+    public static void registerAllyChecker(IAllyChecker checker) {
+        allyCheckers.add(checker);
     }
 }

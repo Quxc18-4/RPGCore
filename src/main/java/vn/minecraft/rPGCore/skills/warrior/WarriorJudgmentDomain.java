@@ -128,10 +128,16 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
                 }
 
                 Location loc = player.getLocation();
+
+                // VFX 1: Vòng tròn thu hẹp
                 double radius = 2.0 - (1.5 * ((double) ticks / channelTicks));
                 double x = Math.cos(ticks) * radius;
                 double z = Math.sin(ticks) * radius;
-                player.getWorld().spawnParticle(Particle.ENCHANT, loc.add(x, 0.1, z), 2, 0, 0, 0, 0);
+                player.getWorld().spawnParticle(Particle.ENCHANT, loc.clone().add(x, 0.1, z), 2, 0, 0, 0, 0);
+
+                // VFX 2: Năng lượng vàng (Totem) xoáy trôn ốc bốc lên người Caster
+                double ySwirl = (ticks % 20) * 0.1; // Chạy từ 0 đến 2 block theo chiều cao
+                player.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, loc.clone().add(x, ySwirl, z), 1, 0, 0, 0, 0);
 
                 ticks++;
                 if (ticks >= channelTicks) {
@@ -183,8 +189,26 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
                     return;
                 }
 
-                if (ticks % 20 == 0) { // Mỗi giây quét 1 lần
-                    // Quét đồng minh và kẻ địch để áp buff (Tự động hết khi ra khỏi vùng nhờ thời gian tồn tại ngắn)
+                // Quét mỗi 10 tick (0.5 giây)
+                if (ticks % 10 == 0) {
+                    // VFX 3: Vẽ viền Trận pháp bằng Bụi Vàng (Dust) an toàn cho 1.21+
+                    Particle.DustOptions goldDust = new Particle.DustOptions(org.bukkit.Color.fromRGB(255, 215, 0), 1.2f);
+                    for (int i = 0; i < 360; i += 15) {
+                        double rad = Math.toRadians(i);
+                        Location pLoc = center.clone().add(Math.cos(rad) * 10, 0.2, Math.sin(rad) * 10);
+                        center.getWorld().spawnParticle(Particle.DUST, pLoc, 1, 0, 0, 0, 0, goldDust);
+                    }
+
+                    // VFX 4: Dựng 4 Cột Trụ Ánh Sáng lờ mờ ở 4 góc
+                    for (int i = 0; i < 360; i += 90) { // 0, 90, 180, 270 độ
+                        double rad = Math.toRadians(i);
+                        Location pillarLoc = center.clone().add(Math.cos(rad) * 10, 0, Math.sin(rad) * 10);
+                        for(double y = 0; y < 5; y += 0.8) { // Cột cao 5 block
+                            center.getWorld().spawnParticle(Particle.END_ROD, pillarLoc.clone().add(0, y, 0), 1, 0, 0, 0, 0.01);
+                        }
+                    }
+
+                    // Quét Buff/Debuff
                     for (Entity e : center.getWorld().getNearbyEntities(center, 10, 10, 10)) {
                         if (e instanceof LivingEntity) {
                             LivingEntity le = (LivingEntity) e;
@@ -238,13 +262,29 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
             LivingEntity victim = entry.getKey();
             int hitCount = entry.getValue();
 
-            // Khóa chân (Root) bằng Slow cực mạnh
-            StatusEffectManager.applyEffect(victim, PotionEffectType.SLOWNESS, 40, 10);
+            // Khóa chân (Root)
+            vn.minecraft.rPGCore.managers.StatusEffectManager.applyEffect(victim, PotionEffectType.SLOWNESS, 40, 10);
 
-            // VFX Sét đánh (Nhiều kiếm thì bùm to hơn)
-            victim.getWorld().spawnParticle(Particle.FLASH, victim.getLocation(), hitCount, 0.5, 2, 0.5, 0);
+            // ==========================================
+            // VFX 5: SẤM SÉT VÀ SÓNG XUNG KÍCH (Không dùng FLASH)
+            // ==========================================
+            // Vẽ 1 tia sét điện quang đâm thẳng từ độ cao 15 block xuống
+            for (double y = 15; y >= 0; y -= 0.5) {
+                Location pLoc = victim.getLocation().clone().add(0, y, 0);
+                victim.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, pLoc, 5, 0.2, 0.5, 0.2, 0);
+                victim.getWorld().spawnParticle(Particle.END_ROD, pLoc, 2, 0.1, 0.1, 0.1, 0); // Lõi trắng của sét
+            }
+
+            // Vụ nổ trung tâm (Nhiều kiếm = nổ càng to)
+            victim.getWorld().spawnParticle(Particle.EXPLOSION, victim.getLocation(), hitCount, 0.5, 0.5, 0.5, 0);
+
+            // Sóng Xung Kích của Warden (SONIC_BOOM) tạo cảm giác nén áp lực cực mạnn
+            victim.getWorld().spawnParticle(Particle.SONIC_BOOM, victim.getLocation().clone().add(0, 1, 0), 1, 0, 0, 0, 0);
+
+            // Âm thanh Sét đánh
             victim.getWorld().playSound(victim.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.5f, 0.8f);
 
+            // Gây sát thương
             double totalDmgMulti = damagePerSwordMultiplier * hitCount;
             double finalDmg = CombatManager.calculateDamage(caster, rpgCaster, victim, totalDmgMulti, 0.0, false, false);
 
@@ -252,7 +292,7 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
             CombatManager.applySkillDamage(caster, victim, finalDmg);
             caster.removeMetadata("Ghost_L_Blocker", plugin);
 
-            // Kiểm tra tử vong để sinh ra Kiếm Ánh Sáng (Chỉ sinh 1 cây dù ăn nhiều hit)
+            // Sinh Kiếm Kế Thừa
             if (victim.isDead() || victim.getHealth() <= 0) {
                 spawnInheritanceSword(caster, victim.getLocation());
             }
@@ -369,11 +409,33 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
     }
 
     private boolean isAlly(Player caster, LivingEntity target) {
+        // 1. Bản thân
         if (caster.equals(target)) return true;
-        if (target.hasMetadata("Summoner_Pet")) {
-            String ownerId = target.getMetadata("Summoner_Pet").get(0).asString();
-            return caster.getUniqueId().toString().equals(ownerId);
+
+        Player targetOwner = null;
+
+        // 2. Phân loại mục tiêu
+        if (target instanceof Player) {
+            targetOwner = (Player) target;
+        } else if (target.hasMetadata("Summoner_Pet")) {
+            try {
+                if (target.getMetadata("Summoner_Pet").isEmpty()) return false;
+                String ownerId = target.getMetadata("Summoner_Pet").get(0).asString();
+
+                // Nếu là thú của chính mình
+                if (caster.getUniqueId().toString().equals(ownerId)) return true;
+
+                targetOwner = Bukkit.getPlayer(UUID.fromString(ownerId));
+            } catch (Exception ignored) {}
         }
+
+        // 3. Chạy qua "Ổ cắm" của CombatManager để hỏi các plugin khác (Party, Guild)
+        if (targetOwner != null && targetOwner.isOnline()) {
+            for (CombatManager.IAllyChecker checker : CombatManager.allyCheckers) {
+                if (checker.isAlly(caster, targetOwner)) return true; // Có 1 plugin bảo là đồng minh -> Chốt!
+            }
+        }
+
         return false;
     }
 
