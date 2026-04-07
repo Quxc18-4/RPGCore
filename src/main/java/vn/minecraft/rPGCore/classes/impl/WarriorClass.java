@@ -148,7 +148,7 @@ public class WarriorClass extends RPGClass {
         if (attacker.hasMetadata("Warrior_Knockup_Buff")) {
             String buffData = attacker.getMetadata("Warrior_Knockup_Buff").get(0).asString();
 
-            // Xóa Buff ngay lập tức để không bị lạm dụng chém nhiều nhát
+            // Xóa Buff ngay lập tức để không bị lạm dụng
             attacker.removeMetadata("Warrior_Knockup_Buff", RPGCore.getInstance());
 
             String[] parts = buffData.split("_");
@@ -157,16 +157,47 @@ public class WarriorClass extends RPGClass {
 
             double dmgMulti = isEmpowered ? (2.2 + (level - 1) * 0.25) : (0.4 + (level - 1) * 0.1);
 
+            // ==========================================
+            // VFX 1: ĐƯỜNG KIẾM CRIT HẤT CHÉO 30 ĐỘ LÊN TRÊN
+            // ==========================================
+            org.bukkit.Location startLoc = attacker.getLocation().clone().add(0, 0.2, 0);
+            org.bukkit.util.Vector forward = startLoc.getDirection().setY(0).normalize();
+
+            for (int i = 0; i <= 20; i++) {
+                double t = i / 20.0;
+                double distance = t * 3.5; // Chém vút tới trước 3.5 block
+                double height = Math.sin(t * Math.PI / 2) * 1.8; // Tạo độ cong mềm mại hất lên 1.8 block
+
+                org.bukkit.Location pLoc = startLoc.clone()
+                        .add(forward.clone().multiply(distance))
+                        .add(0, height, 0);
+
+                attacker.getWorld().spawnParticle(Particle.CRIT, pLoc, 2, 0.1, 0.1, 0.1, 0.05);
+            }
+
+            // ==========================================
+            // VFX 2: KHÓI TRẮNG BỘC PHÁT TRÊN MỤC TIÊU BỊ CHÉM TRÚNG
+            // ==========================================
+            target.getWorld().spawnParticle(Particle.CLOUD, target.getLocation().add(0, 1, 0), 20, 0.4, 0.4, 0.4, 0.1);
+
             // 2. XỬ LÝ VẬT LÝ & HIỆU ỨNG (PHYSICS)
             if (isEmpowered) {
-                target.setVelocity(new org.bukkit.util.Vector(0, 1.1, 0)); // Bay cỡ 8 block
+                target.setVelocity(new org.bukkit.util.Vector(0, 1.1, 0)); // Hất lên trời
                 attacker.getWorld().playSound(target.getLocation(), Sound.ENTITY_IRON_GOLEM_ATTACK, 1.2f, 0.8f);
 
+                // Chờ mục tiêu chạm đất để kích hoạt Chấn động
                 new org.bukkit.scheduler.BukkitRunnable() {
                     @Override
                     public void run() {
                         if (target.isOnGround() || target.isDead()) {
-                            target.getWorld().spawnParticle(Particle.EXPLOSION, target.getLocation(), 1);
+
+                            // ==========================================
+                            // VFX 3: MỤC TIÊU CHẠM ĐẤT -> NỔ + KHÓI MÙ MỊCH
+                            // ==========================================
+                            target.getWorld().spawnParticle(Particle.EXPLOSION, target.getLocation(), 2, 0.5, 0.1, 0.5, 0);
+                            target.getWorld().spawnParticle(Particle.CAMPFIRE_COSY_SMOKE, target.getLocation(), 40, 2.0, 0.5, 2.0, 0.05); // Khói đen xám bay lờ mờ
+                            target.getWorld().spawnParticle(Particle.CLOUD, target.getLocation(), 30, 1.5, 0.2, 1.5, 0.1); // Khói trắng bốc lên
+
                             target.getWorld().playSound(target.getLocation(), Sound.BLOCK_STONE_BREAK, 1f, 0.5f);
 
                             for (org.bukkit.entity.Entity nearby : target.getNearbyEntities(1.5, 1.5, 1.5)) {
@@ -178,26 +209,26 @@ public class WarriorClass extends RPGClass {
                         }
                     }
                 }.runTaskTimer(RPGCore.getInstance(), 5L, 2L);
+
             } else {
+                // Đẩy lùi
                 org.bukkit.util.Vector push = target.getLocation().toVector().subtract(attacker.getLocation().toVector()).normalize().multiply(1.2).setY(0.2);
                 target.setVelocity(push);
                 attacker.getWorld().playSound(target.getLocation(), Sound.ENTITY_PLAYER_ATTACK_KNOCKBACK, 1.0f, 1.0f);
             }
 
             // 3. TÁI SỬ DỤNG CHUẨN MỰC COMBAT MANAGER
-            // Tính toán sát thương tổng lực
             double finalDmg = vn.minecraft.rPGCore.managers.CombatManager.calculateDamage(attacker, rpgAttacker, target, dmgMulti, 0.0, false, false);
 
-            // Cắm cờ chặn đệ quy (Ghost Blocker) và Apply
             attacker.setMetadata("Ghost_L_Blocker", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), true));
             vn.minecraft.rPGCore.managers.CombatManager.applySkillDamage(attacker, target, finalDmg);
             attacker.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
 
-            // 4. TRẢ VỀ 0: Vì chúng ta đã gây sát thương Kỹ Năng rồi, nên đòn chém tay gốc sẽ bị triệt tiêu sát thương (để tránh x2 Damage)
+            // 4. TRẢ VỀ 0: Triệt tiêu sát thương chém tay gốc
             return 0.0;
         }
 
-        // Nếu không có Buff gì, trả về lượng sát thương tay nguyên bản cho hệ thống xử lý tiếp
+        // Nếu không có Buff, xử lý chém tay bình thường
         return super.onMeleeHit(attacker, rpgAttacker, target, rawDamage);
     }
 }
