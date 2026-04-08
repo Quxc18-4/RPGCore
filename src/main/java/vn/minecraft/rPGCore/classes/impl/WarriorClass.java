@@ -176,56 +176,114 @@ public class WarriorClass extends RPGClass {
             }
 
             // ==========================================
-            // VFX 2: KHÓI TRẮNG BỘC PHÁT TRÊN MỤC TIÊU BỊ CHÉM TRÚNG
+            // 2. XỬ LÝ VẬT LÝ & HIỆU ỨNG (PHYSICS) - MỨC ĐỘ TÀN PHÁ CỰC HẠN
             // ==========================================
-            target.getWorld().spawnParticle(Particle.CLOUD, target.getLocation().add(0, 1, 0), 20, 0.4, 0.4, 0.4, 0.1);
-
-            // 2. XỬ LÝ VẬT LÝ & HIỆU ỨNG (PHYSICS)
             if (isEmpowered) {
-                target.setVelocity(new org.bukkit.util.Vector(0, 1.1, 0)); // Hất lên trời
-                attacker.getWorld().playSound(target.getLocation(), Sound.ENTITY_IRON_GOLEM_ATTACK, 1.2f, 0.8f);
+                // [HẤT VĂNG CHÍN TẦNG MÂY]
+                org.bukkit.util.Vector trajectory = target.getLocation().toVector().subtract(attacker.getLocation().toVector()).normalize();
+
+                // Lực ngang x2.5, Hất tung Y = 3.0 (Tương đương bay bổng lên cỡ 40-50 blocks!)
+                trajectory.multiply(2.5).setY(3.0);
+                target.setVelocity(trajectory);
+
+                attacker.getWorld().playSound(target.getLocation(), Sound.ENTITY_IRON_GOLEM_ATTACK, 1.5f, 0.5f); // Chỉnh pitch thấp xuống để nghe "nặng" hơn
 
                 // Chờ mục tiêu chạm đất để kích hoạt Chấn động
                 new org.bukkit.scheduler.BukkitRunnable() {
                     @Override
                     public void run() {
                         if (target.isOnGround() || target.isDead()) {
+                            // VFX: MỤC TIÊU CHẠM ĐẤT -> NỔ + KHÓI MÙ MỊCH
+                            target.getWorld().spawnParticle(Particle.EXPLOSION, target.getLocation(), 4, 1.0, 0.2, 1.0, 0);
+                            target.getWorld().spawnParticle(Particle.CAMPFIRE_COSY_SMOKE, target.getLocation(), 60, 3.0, 1.0, 3.0, 0.1);
+                            target.getWorld().spawnParticle(Particle.CLOUD, target.getLocation(), 50, 2.0, 0.5, 2.0, 0.2);
 
-                            // ==========================================
-                            // VFX 3: MỤC TIÊU CHẠM ĐẤT -> NỔ + KHÓI MÙ MỊCH
-                            // ==========================================
-                            target.getWorld().spawnParticle(Particle.EXPLOSION, target.getLocation(), 2, 0.5, 0.1, 0.5, 0);
-                            target.getWorld().spawnParticle(Particle.CAMPFIRE_COSY_SMOKE, target.getLocation(), 40, 2.0, 0.5, 2.0, 0.05); // Khói đen xám bay lờ mờ
-                            target.getWorld().spawnParticle(Particle.CLOUD, target.getLocation(), 30, 1.5, 0.2, 1.5, 0.1); // Khói trắng bốc lên
+                            target.getWorld().playSound(target.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1.2f, 0.8f);
 
-                            target.getWorld().playSound(target.getLocation(), Sound.BLOCK_STONE_BREAK, 1f, 0.5f);
-
-                            for (org.bukkit.entity.Entity nearby : target.getNearbyEntities(1.5, 1.5, 1.5)) {
+                            for (org.bukkit.entity.Entity nearby : target.getNearbyEntities(2.5, 2.5, 2.5)) { // Tăng nhẹ tầm nổ
                                 if (nearby instanceof LivingEntity && vn.minecraft.rPGCore.managers.CombatManager.canTarget(attacker, nearby)) {
-                                    vn.minecraft.rPGCore.managers.StatusEffectManager.applyEffect((LivingEntity) nearby, PotionEffectType.SLOWNESS, 40, 10);
+                                    vn.minecraft.rPGCore.managers.StatusEffectManager.applyEffect((LivingEntity) nearby, PotionEffectType.SLOWNESS, 60, 10);
                                 }
                             }
                             this.cancel();
                         }
                     }
-                }.runTaskTimer(RPGCore.getInstance(), 5L, 2L);
+                }.runTaskTimer(RPGCore.getInstance(), 10L, 2L); // Bắt đầu check sau nửa giây vì bay quá cao
 
             } else {
-                // Đẩy lùi
-                org.bukkit.util.Vector push = target.getLocation().toVector().subtract(attacker.getLocation().toVector()).normalize().multiply(1.2).setY(0.2);
+                // [ĐẨY LÙI NHƯ XE TẢI TÔNG]
+                org.bukkit.util.Vector push = target.getLocation().toVector().subtract(attacker.getLocation().toVector()).normalize();
+
+                // Nhấc bổng bứt mặt đất (Y=0.8) và đẩy lùi với vận tốc ngang khổng lồ (multiply=6.0)
+                // Cú đánh này sẽ ném quái vật bay xa khoảng 15-20 blocks trong chớp mắt
+                push.multiply(6.0).setY(0.8);
+
                 target.setVelocity(push);
-                attacker.getWorld().playSound(target.getLocation(), Sound.ENTITY_PLAYER_ATTACK_KNOCKBACK, 1.0f, 1.0f);
+
+                attacker.getWorld().playSound(target.getLocation(), Sound.ENTITY_ZOMBIE_BREAK_WOODEN_DOOR, 1.0f, 0.8f); // Đổi tiếng đập cửa nghe cho bạo lực
             }
 
-            // 3. TÁI SỬ DỤNG CHUẨN MỰC COMBAT MANAGER
+            // 1. TÍNH TOÁN VÀ GÂY SÁT THƯƠNG TRƯỚC (Để Vanilla Knockback xảy ra trước)
             double finalDmg = vn.minecraft.rPGCore.managers.CombatManager.calculateDamage(attacker, rpgAttacker, target, dmgMulti, 0.0, false, false);
 
             attacker.setMetadata("Ghost_L_Blocker", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), true));
             vn.minecraft.rPGCore.managers.CombatManager.applySkillDamage(attacker, target, finalDmg);
             attacker.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
 
-            // 4. TRẢ VỀ 0: Triệt tiêu sát thương chém tay gốc
-            return 0.0;
+            // ==========================================
+            // 2. DELAY 1 TICK RỒI MỚI ÁP DỤNG VẬT LÝ
+            // ==========================================
+            new org.bukkit.scheduler.BukkitRunnable() {
+                @Override
+                public void run() {
+                    // Kiểm tra xem mục tiêu còn sống không sau khi ăn sát thương
+                    if (target.isDead() || !target.isValid()) return;
+
+                    if (isEmpowered) {
+                        // [HẤT VĂNG CÓ NỘ: TẦM TRUNG - XA]
+                        org.bukkit.util.Vector trajectory = target.getLocation().toVector().subtract(attacker.getLocation().toVector()).normalize();
+
+                        // Ngang: 2.25 | Dọc: 1.54 (-30% cao, +50% xa)
+                        trajectory.multiply(2.25).setY(1.54);
+                        target.setVelocity(trajectory);
+
+                        attacker.getWorld().playSound(target.getLocation(), Sound.ENTITY_IRON_GOLEM_ATTACK, 1.5f, 0.5f);
+
+                        // Task phụ: Chờ mục tiêu chạm đất để nổ
+                        new org.bukkit.scheduler.BukkitRunnable() {
+                            @Override
+                            public void run() {
+                                if (target.isOnGround() || target.isDead()) {
+                                    target.getWorld().spawnParticle(Particle.EXPLOSION, target.getLocation(), 4, 1.0, 0.2, 1.0, 0);
+                                    target.getWorld().spawnParticle(Particle.CAMPFIRE_COSY_SMOKE, target.getLocation(), 60, 3.0, 1.0, 3.0, 0.1);
+                                    target.getWorld().spawnParticle(Particle.CLOUD, target.getLocation(), 50, 2.0, 0.5, 2.0, 0.2);
+
+                                    target.getWorld().playSound(target.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1.2f, 0.8f);
+
+                                    for (org.bukkit.entity.Entity nearby : target.getNearbyEntities(2.5, 2.5, 2.5)) {
+                                        if (nearby instanceof LivingEntity && vn.minecraft.rPGCore.managers.CombatManager.canTarget(attacker, nearby)) {
+                                            vn.minecraft.rPGCore.managers.StatusEffectManager.applyEffect((LivingEntity) nearby, PotionEffectType.SLOWNESS, 60, 10);
+                                        }
+                                    }
+                                    this.cancel();
+                                }
+                            }
+                        }.runTaskTimer(RPGCore.getInstance(), 10L, 2L);
+
+                    } else {
+                        // [ĐẨY LÙI KHÔNG NỘ: TRƯỢT DÀI TRÊN ĐẤT]
+                        org.bukkit.util.Vector push = target.getLocation().toVector().subtract(attacker.getLocation().toVector()).normalize();
+
+                        // Ngang: 5.25 | Dọc: 0.42 (-30% cao, +50% xa)
+                        push.multiply(5.25).setY(0.42);
+                        target.setVelocity(push);
+
+                        attacker.getWorld().playSound(target.getLocation(), Sound.ENTITY_ZOMBIE_BREAK_WOODEN_DOOR, 1.0f, 0.8f);
+                    }
+                }
+            }.runTaskLater(RPGCore.getInstance(), 1L); // <--- Vẫn giữ chìa khóa 1 Tick
+
+            return 0.0; // Triệt tiêu sát thương tay gốc
         }
 
         // Nếu không có Buff, xử lý chém tay bình thường

@@ -79,4 +79,68 @@ public class StatusEffectManager {
         double factor = Math.max(0.0, 1.0 - (resistance / 100.0));
         return originalVelocity.multiply(factor);
     }
+
+    // ==========================================
+    // [UNIVERSAL CC] KHÓA DI CHUYỂN & KHÁNG ĐẨY LÙI TUYỆT ĐỐI
+    // ==========================================
+    public static void applyAbsoluteRoot(org.bukkit.entity.Player player, int durationTicks) {
+        long expireTime = System.currentTimeMillis() + (durationTicks * 50L);
+        player.setMetadata("RPGCore_Rooted", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), expireTime));
+
+        // 1. Khóa tốc độ và khóa nút Nhảy
+        player.setWalkSpeed(0f);
+        player.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.JUMP_BOOST, durationTicks, 250, false, false, false));
+
+        // 2. Tắt va chạm thực thể (CHÌA KHÓA CHỐNG QUÁI HÚC/ĐẨY LÙI)
+        player.setCollidable(false);
+
+        // 3. Kháng Knockback (Chuẩn 1.21+, không dùng valueOf để tránh lỗi báo vàng)
+        org.bukkit.attribute.AttributeInstance kbAttr = player.getAttribute(org.bukkit.attribute.Attribute.KNOCKBACK_RESISTANCE);
+        if (kbAttr != null) kbAttr.setBaseValue(1.0);
+
+        org.bukkit.Location anchor = player.getLocation().clone();
+
+        // Task neo vị trí (Đè gia tốc)
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!player.isOnline() || !player.hasMetadata("RPGCore_Rooted")) {
+                    this.cancel();
+                    return;
+                }
+                long currentExpire = player.getMetadata("RPGCore_Rooted").get(0).asLong();
+                if (System.currentTimeMillis() >= currentExpire) {
+                    removeAbsoluteRoot(player);
+                    this.cancel();
+                    return;
+                }
+
+                // Ép gia tốc về 0
+                player.setVelocity(new org.bukkit.util.Vector(0, 0, 0));
+
+                // Nếu client cố tình lách vị trí > 0.1 block, giật lại ngay
+                org.bukkit.Location current = player.getLocation();
+                if (current.distanceSquared(anchor) > 0.01) {
+                    org.bukkit.Location tp = anchor.clone();
+                    tp.setYaw(current.getYaw());
+                    tp.setPitch(current.getPitch());
+                    player.teleport(tp);
+                }
+            }
+        }.runTaskTimer(vn.minecraft.rPGCore.RPGCore.getInstance(), 0L, 1L);
+    }
+
+    public static void removeAbsoluteRoot(org.bukkit.entity.Player player) {
+        if (player.hasMetadata("RPGCore_Rooted")) {
+            player.removeMetadata("RPGCore_Rooted", vn.minecraft.rPGCore.RPGCore.getInstance());
+
+            // Trả lại trạng thái bình thường
+            player.setWalkSpeed(0.2f);
+            player.removePotionEffect(org.bukkit.potion.PotionEffectType.JUMP_BOOST);
+            player.setCollidable(true);
+
+            org.bukkit.attribute.AttributeInstance kbAttr = player.getAttribute(org.bukkit.attribute.Attribute.KNOCKBACK_RESISTANCE);
+            if (kbAttr != null) kbAttr.setBaseValue(0.0);
+        }
+    }
 }
