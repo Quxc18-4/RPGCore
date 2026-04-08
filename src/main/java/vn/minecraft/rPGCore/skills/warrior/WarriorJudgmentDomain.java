@@ -49,7 +49,7 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
     @Override public Map<String, Integer> getRequiredSkills() { return new HashMap<>(); }
     @Override public boolean isPassiveSkill() { return false; }
     @Override public double getManaCost(int level) { return 110.0; }
-    @Override public long getCooldown(int level) { return 9000L; } //9s cd để test
+    @Override public long getCooldown(int level) { return 90000L; }
 
     @Override
     public List<String> getDescription(int level) {
@@ -70,7 +70,7 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
                 "§f- Niệm §a2.5s§f. Chịu được §c5 Hit§f.",
                 "§f- Hiệu quả Buff/Debuff tăng thành §e" + String.format("%.1f", awakenRate) + "%§f.",
                 "§f- Cứ giết §c5 địch§f trong Vùng = Tích 1 Mảnh Sấm Sét.",
-                "§f- Khi hết hạn: Tạo Ma Trận Thiên Lôi giáng xuống.",
+                "§f- Khi hết hạn: Dựng Ma Trận Thiên Lôi giáng xuống.",
                 "§f- Nhặt Mảnh Sấm Sét để x2 ST và giáng lôi đòn tới."
         );
     }
@@ -95,7 +95,6 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
         final int channelTicks = isEmpowered ? 50 : 100;
         final int maxHits = isEmpowered ? 5 : 3;
 
-        // [MỚI]: Sử dụng Universal Root & Anti-Knockback từ StatusEffectManager
         StatusEffectManager.applyAbsoluteRoot(player, channelTicks);
 
         player.setMetadata("Domain_Channeling", new FixedMetadataValue(plugin, true));
@@ -103,8 +102,8 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
 
         player.sendMessage("§e§l[!] §fĐang hiệu triệu Thánh Vực...");
         player.getWorld().playSound(player.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 1.2f, 0.5f);
-        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 0.5f);
 
+        // GIAI ĐOẠN 1: HÚT NĂNG LƯỢNG MẠNH MẼ
         new BukkitRunnable() {
             int ticks = 0;
             final Particle.DustOptions goldDust = new Particle.DustOptions(Color.fromRGB(255, 215, 0), 1.0f);
@@ -127,26 +126,26 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
 
                 Location loc = player.getLocation();
 
-                // VFX 1: Hút Năng Lượng Trời Đất (Hạt từ xa bay ngược vào tâm)
+                // NÂNG CẤP LỰC HÚT: Tăng gia tốc hút bằng vector multiply(0.8)
                 if (ticks % 2 == 0) {
-                    for (int i = 0; i < 3; i++) {
+                    for (int i = 0; i < 6; i++) {
                         double angle = Math.random() * Math.PI * 2;
-                        double radius = 3.0 + Math.random() * 3.0;
-                        Location spawnLoc = loc.clone().add(Math.cos(angle) * radius, Math.random() * 2, Math.sin(angle) * radius);
+                        double r = 5.0 + Math.random() * 3.0; // Xuất hiện từ xa
+                        Location spawnLoc = loc.clone().add(Math.cos(angle) * r, 0.5 + Math.random() * 2, Math.sin(angle) * r);
 
-                        // Tính vector hướng vào người chơi
-                        org.bukkit.util.Vector dir = loc.clone().add(0, 1, 0).toVector().subtract(spawnLoc.toVector()).normalize().multiply(0.3);
-                        // Dùng END_ROD với vector để nó bắn về phía người chơi
-                        player.getWorld().spawnParticle(Particle.END_ROD, spawnLoc, 0, dir.getX(), dir.getY(), dir.getZ(), 0.1);
+                        // Vector hướng về người chơi với tốc độ cao
+                        org.bukkit.util.Vector dir = loc.clone().add(0, 1, 0).toVector().subtract(spawnLoc.toVector()).normalize().multiply(0.8);
+                        player.getWorld().spawnParticle(Particle.END_ROD, spawnLoc, 0, dir.getX(), dir.getY(), dir.getZ(), 0.5);
+                        player.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, spawnLoc, 0, dir.getX(), dir.getY(), dir.getZ(), 0.5);
                     }
                 }
 
-                // Vòng tròn dưới chân
+                // Vòng xoáy dưới chân
                 for (int i = 0; i < 3; i++) {
-                    double angle = Math.toRadians(ticks * 15 + (i * 120));
+                    double angle = Math.toRadians(ticks * 20 + (i * 120));
                     double x = Math.cos(angle) * 1.5;
                     double z = Math.sin(angle) * 1.5;
-                    player.getWorld().spawnParticle(Particle.DUST, loc.clone().add(x, 0.1, z), 1, 0, 0, 0, 0, goldDust);
+                    player.getWorld().spawnParticle(Particle.DUST, loc.clone().add(x, 0.1, z), 2, 0, 0, 0, 0, goldDust);
                 }
 
                 ticks++;
@@ -175,31 +174,29 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
 
     private void activateDomain(Player caster, RPGPlayer rpgCaster, int level, boolean isEmpowered) {
         Location center = caster.getLocation().clone();
-        int finalRadius = 12 + (level * 4); // 16, 20, 24
+        int finalRadius = 12 + (level * 4);
         int durationTicks = (15 + (level * 3)) * 20;
+        double finalBuffRate = (0.05 + (level * 0.05)) * (isEmpowered ? 1.5 : 1.0);
 
-        double baseRate = 0.05 + (level * 0.05);
-        double rateMulti = isEmpowered ? 1.5 : 1.0;
-        double finalBuffRate = baseRate * rateMulti;
-
-        // Âm thanh bùng nổ khi khai mở Lãnh Vực
         center.getWorld().playSound(center, Sound.ENTITY_GENERIC_EXPLODE, 2.0f, 0.5f);
-        center.getWorld().playSound(center, Sound.BLOCK_BEACON_ACTIVATE, 2.0f, 1.5f);
         caster.sendMessage("§e§l[!] THÁNH VỰC KHAI MỞ!");
 
+        // GIAI ĐOẠN 2: BUNG LÃNH VỰC BẰNG HẠT GLITTERING
         new BukkitRunnable() {
             double currentR = 2.0;
+            final Particle.DustOptions cyan = new Particle.DustOptions(Color.fromRGB(0, 255, 255), 1.5f);
+
             @Override
             public void run() {
                 if (currentR >= finalRadius) { this.cancel(); return; }
 
-                Particle.DustOptions cyan = new Particle.DustOptions(Color.fromRGB(0, 255, 255), 1.5f);
-                for (int i = 0; i < 360; i += 8) {
+                for (int i = 0; i < 360; i += 6) {
                     double rad = Math.toRadians(i);
                     Location pLoc = center.clone().add(Math.cos(rad) * currentR, 0.2, Math.sin(rad) * currentR);
                     center.getWorld().spawnParticle(Particle.DUST, pLoc, 1, 0, 0, 0, 0, cyan);
-                    if (Math.random() > 0.5) {
-                        center.getWorld().spawnParticle(Particle.GLOW, pLoc, 1, 0.1, 0.1, 0.1, 0); // Glittering
+                    if (Math.random() > 0.3) {
+                        // Trộn hạt GLOW lấp lánh như sương mù
+                        center.getWorld().spawnParticle(Particle.GLOW, pLoc, 1, 0.1, 0.1, 0.1, 0);
                     }
                 }
                 currentR += (finalRadius / 10.0);
@@ -215,39 +212,18 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
             public void run() {
                 if (ticks >= durationTicks || !caster.isOnline()) {
                     activeDomains.remove(caster.getUniqueId());
-                    triggerJudgmentStrike(caster, rpgCaster, data);
+                    transitionToSkyMatrix(caster, rpgCaster, data); // Chuyển sang Giai đoạn 3
                     this.cancel();
                     return;
                 }
 
-                // Cập nhật hoạt ảnh liên tục (Vẽ mỗi 2 tick để xoay mượt)
-                double rotation = (ticks * 2.5) % 360; // Góc xoay của Trụ
+                drawDomainEdge(center, finalRadius, ticks);
 
-                Particle.DustOptions cyan = new Particle.DustOptions(Color.fromRGB(0, 255, 255), 1.0f);
-
-                // Vẽ biên giới lấp lánh
-                for (int i = 0; i < 360; i += 15) {
-                    double rad = Math.toRadians(i);
-                    Location edge = center.clone().add(Math.cos(rad) * finalRadius, 0.2, Math.sin(rad) * finalRadius);
-                    center.getWorld().spawnParticle(Particle.DUST, edge, 1, 0, 0, 0, 0, cyan);
-                }
-
-                // Vẽ 8 Cột Ánh Sáng XOAY VÒNG quanh biên giới
-                for (int i = 0; i < 360; i += 45) { // 360 / 45 = 8 cột
-                    double rad = Math.toRadians(i + rotation);
-                    Location pLoc = center.clone().add(Math.cos(rad) * finalRadius, 0, Math.sin(rad) * finalRadius);
-                    for (double y = 0; y < 7; y += 0.8) {
-                        center.getWorld().spawnParticle(Particle.END_ROD, pLoc.clone().add(0, y, 0), 1, 0, 0, 0, 0);
-                    }
-                }
-
-                // Cấp Buff/Debuff (Quét mỗi 20 tick = 1 giây)
                 if (ticks % 20 == 0) {
                     for (Entity e : center.getWorld().getNearbyEntities(center, finalRadius, 15, finalRadius)) {
                         if (e instanceof LivingEntity) {
                             LivingEntity le = (LivingEntity) e;
                             if (isAlly(caster, le)) {
-                                // [ĐÃ SỬA]: Sử dụng chuẩn SOLID Abstract Manager
                                 StatusEffectManager.applyEffect(le, PotionEffectType.SPEED, 40, isEmpowered ? 1 : 0);
                                 le.setMetadata("Domain_Ally_Buff", new FixedMetadataValue(plugin, finalBuffRate));
                             } else if (CombatManager.canTarget(caster, e)) {
@@ -256,102 +232,180 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
                         }
                     }
                 }
-                ticks += 2; // Tăng 2 tick để loop mượt
+                ticks += 2;
             }
         }.runTaskTimer(plugin, 0L, 2L);
     }
 
-    private void drawDomainCircle(Location center, int radius) {
-        Particle.DustOptions gold = new Particle.DustOptions(Color.fromRGB(255, 223, 0), 1.5f);
-        for (int i = 0; i < 360; i += 4) {
+    private void drawDomainEdge(Location center, int radius, int currentTick) {
+        Particle.DustOptions cyanDust = new Particle.DustOptions(Color.fromRGB(0, 255, 255), 1.0f);
+        double rotation = (currentTick * 1.5) % 360;
+
+        for (int i = 0; i < 360; i += 12) {
             double rad = Math.toRadians(i);
-            center.getWorld().spawnParticle(Particle.DUST, center.clone().add(Math.cos(rad) * radius, 0.2, Math.sin(rad) * radius), 1, 0, 0, 0, 0, gold);
-            center.getWorld().spawnParticle(Particle.DUST, center.clone().add(Math.cos(rad) * (radius - 0.5), 0.2, Math.sin(rad) * (radius - 0.5)), 1, 0, 0, 0, 0, gold);
+            Location edgeLoc = center.clone().add(Math.cos(rad) * radius, 0.2, Math.sin(rad) * radius);
+            center.getWorld().spawnParticle(Particle.DUST, edgeLoc, 1, 0, 0, 0, 0, cyanDust);
+        }
+
+        // 8 Cột ánh sáng xoay quanh biên giới
+        for (int i = 0; i < 360; i += 45) {
+            double runeRad = Math.toRadians(i + rotation);
+            Location runeLoc = center.clone().add(Math.cos(runeRad) * radius, 0, Math.sin(runeRad) * radius);
+            for(double y = 0; y < 6; y += 0.8) {
+                center.getWorld().spawnParticle(Particle.END_ROD, runeLoc.clone().add(0, y, 0), 1, 0, 0, 0, 0);
+            }
         }
     }
 
-    private void triggerJudgmentStrike(Player caster, RPGPlayer rpgCaster, DomainData data) {
+    // GIAI ĐOẠN 3: CỘT ÁNH SÁNG BAY LÊN TRỜI
+    private void transitionToSkyMatrix(Player caster, RPGPlayer rpgCaster, DomainData data) {
         if (!data.isEmpowered) return;
-
-        int orbs = data.killCount / 5; // Yêu cầu 5 mạng
+        int orbs = data.killCount / 5;
         if (orbs <= 0) return;
 
         caster.sendMessage("§e§l[!] §fHiệu triệu Ma Trận Lôi Phạt...");
+        data.center.getWorld().playSound(data.center, Sound.BLOCK_BEACON_DEACTIVATE, 2.0f, 0.5f);
 
-        // BƯỚC 1: BẮN TIA NĂNG LƯỢNG LÊN TRỜI
-        for (int i = 0; i < 5; i++) {
-            Location beamLoc = data.center.clone().add((Math.random()-0.5)*8, 0, (Math.random()-0.5)*8);
+        new BukkitRunnable() {
+            double currentY = 0;
+            @Override
+            public void run() {
+                if (currentY >= 25) {
+                    this.cancel();
+                    buildSkyMatrix(caster, rpgCaster, data, orbs); // Chuyển sang Giai đoạn 4
+                    return;
+                }
+
+                // 8 cột sáng hội tụ dần dần vào tâm trên bầu trời
+                double progress = currentY / 25.0; // 0.0 -> 1.0
+                double currentRadius = data.radius * (1.0 - (progress * 0.5)); // Hẹp dần lại
+
+                for (int i = 0; i < 360; i += 45) {
+                    double rad = Math.toRadians(i);
+                    Location pLoc = data.center.clone().add(Math.cos(rad) * currentRadius, currentY, Math.sin(rad) * currentRadius);
+                    pLoc.getWorld().spawnParticle(Particle.END_ROD, pLoc, 3, 0.2, 0.2, 0.2, 0.05);
+                    pLoc.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, pLoc, 5, 0.2, 0.2, 0.2, 0);
+                }
+                currentY += 1.5;
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
+    }
+
+    // GIAI ĐOẠN 4: VẼ MA TRẬN ỔN ĐỊNH TRONG 2 GIÂY
+    private void buildSkyMatrix(Player caster, RPGPlayer rpgCaster, DomainData data, int orbs) {
+        Location skyCenter = data.center.clone().add(0, 25, 0);
+        skyCenter.getWorld().playSound(skyCenter, Sound.ENTITY_WITHER_SPAWN, 2.0f, 1.5f);
+
+        // 40 ticks = 2 giây
+        new BukkitRunnable() {
+            int ticks = 0;
+            @Override
+            public void run() {
+                if (ticks >= 40) {
+                    this.cancel();
+                    executeHomingStrikes(caster, rpgCaster, data, orbs, skyCenter); // Giai đoạn 5
+                    return;
+                }
+
+                drawComplexGeometricMatrix(skyCenter, data.radius * 0.8, ticks);
+                ticks += 2;
+            }
+        }.runTaskTimer(plugin, 0L, 2L);
+    }
+
+    // THUẬT TOÁN VẼ MA TRẬN HÌNH HỌC (CIRCLE + SQUARES)
+    private void drawComplexGeometricMatrix(Location center, double radius, int currentTick) {
+        Particle.DustOptions cyan = new Particle.DustOptions(Color.fromRGB(0, 255, 255), 1.0f);
+        Particle.DustOptions gold = new Particle.DustOptions(Color.fromRGB(255, 215, 0), 1.0f);
+
+        double rot = Math.toRadians(currentTick);
+
+        // 1. Vòng tròn ngoài cùng (Xoay)
+        for (int i = 0; i < 360; i += 8) {
+            double rad = Math.toRadians(i + currentTick * 2);
+            center.getWorld().spawnParticle(Particle.DUST, center.clone().add(Math.cos(rad)*radius, 0, Math.sin(rad)*radius), 1, 0,0,0,0, cyan);
+        }
+
+        // 2. Vòng tròn trong tĩnh
+        double innerRadius = radius * 0.7;
+        for (int i = 0; i < 360; i += 12) {
+            double rad = Math.toRadians(i);
+            center.getWorld().spawnParticle(Particle.DUST, center.clone().add(Math.cos(rad)*innerRadius, 0, Math.sin(rad)*innerRadius), 1, 0,0,0,0, gold);
+        }
+
+        // 3. Hai hình vuông lồng nhau tạo thành sao 8 cánh
+        // Dùng thuật toán tham số hóa đường thẳng để vẽ cạnh hình vuông
+        for (int i = 0; i < 8; i++) { // 8 đỉnh của sao
+            double rad1 = Math.toRadians((i * 45) + currentTick);
+            double rad2 = Math.toRadians(((i + 2) % 8 * 45) + currentTick); // Nối đỉnh cách 1 đỉnh (tạo 2 hình vuông)
+
+            Location p1 = center.clone().add(Math.cos(rad1)*innerRadius, 0, Math.sin(rad1)*innerRadius);
+            Location p2 = center.clone().add(Math.cos(rad2)*innerRadius, 0, Math.sin(rad2)*innerRadius);
+
+            // Interpolate vẽ đường nối giữa 2 đỉnh
+            org.bukkit.util.Vector dir = p2.toVector().subtract(p1.toVector());
+            double length = dir.length();
+            dir.normalize();
+            for (double step = 0; step < length; step += 1.5) {
+                Location lineLoc = p1.clone().add(dir.clone().multiply(step));
+                center.getWorld().spawnParticle(Particle.END_ROD, lineLoc, 1, 0,0,0, 0);
+            }
+        }
+    }
+
+    // GIAI ĐOẠN 5: BẮN HẠT RƠI XUỐNG VÀ GIÁNG LÔI
+    private void executeHomingStrikes(Player caster, RPGPlayer rpgCaster, DomainData data, int orbs, Location skyCenter) {
+        List<LivingEntity> targets = getNearbyEnemies(caster, data);
+        if (targets.isEmpty()) return;
+
+        double damagePerOrbMultiplier = 5.0 + (data.level * 1.0);
+        Random rand = new Random();
+
+        Map<LivingEntity, Integer> hitsMap = new HashMap<>();
+        if (targets.size() == 1) {
+            hitsMap.put(targets.get(0), orbs);
+        } else {
+            for (int i = 0; i < orbs; i++) {
+                LivingEntity t = targets.get(rand.nextInt(targets.size()));
+                hitsMap.put(t, hitsMap.getOrDefault(t, 0) + 1);
+            }
+        }
+
+        for (Map.Entry<LivingEntity, Integer> entry : hitsMap.entrySet()) {
+            LivingEntity victim = entry.getKey();
+            int hitCount = entry.getValue();
+
+            // Trói chân mục tiêu ngay khi bắt đầu nhắm bắn
+            if (victim instanceof Player) {
+                StatusEffectManager.applyAbsoluteRoot((Player) victim, 40);
+            } else {
+                StatusEffectManager.applyEffect(victim, PotionEffectType.SLOWNESS, 40, 10);
+            }
+
+            // Hoạt ảnh tia sáng lao từ trên Ma Trận xuống mục tiêu
+            Location vLoc = victim.getLocation();
+            org.bukkit.util.Vector fallDir = vLoc.toVector().subtract(skyCenter.toVector()).normalize().multiply(1.5); // Tốc độ rơi 1.5 block/tick
+
             new BukkitRunnable() {
-                double y = 0;
+                Location current = skyCenter.clone();
                 @Override
                 public void run() {
-                    if (y >= 25) { this.cancel(); return; }
-                    beamLoc.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, beamLoc.clone().add(0, y, 0), 5, 0.1, 0.1, 0.1, 0.05);
-                    beamLoc.getWorld().spawnParticle(Particle.END_ROD, beamLoc.clone().add(0, y, 0), 2, 0, 0, 0, 0.02);
-                    y += 2.0;
+                    // Nếu chạm đất hoặc mục tiêu
+                    if (current.getY() <= vLoc.getY() || current.distanceSquared(vLoc) < 2.0) {
+                        this.cancel();
+                        executeFinalLightning(caster, rpgCaster, victim, hitCount, damagePerOrbMultiplier);
+                        return;
+                    }
+                    current.add(fallDir);
+                    current.getWorld().spawnParticle(Particle.END_ROD, current, 5, 0.2, 0.2, 0.2, 0.05);
+                    current.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, current, 10, 0.5, 0.5, 0.5, 0);
                 }
             }.runTaskTimer(plugin, 0L, 1L);
         }
-        data.center.getWorld().playSound(data.center, Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 2.0f, 0.5f);
-
-        // BƯỚC 2: TẠO MA TRẬN BẦU TRỜI & GIÁNG SÉT (Chờ 1.25 giây để tia sáng bay lên)
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                // Vẽ Ma trận lấp lánh trên cao
-                Location skyCenter = data.center.clone().add(0, 25, 0);
-                for (int i = 0; i < 360; i += 8) {
-                    double rad = Math.toRadians(i);
-                    skyCenter.getWorld().spawnParticle(Particle.GLOW, skyCenter.clone().add(Math.cos(rad)*10, 0, Math.sin(rad)*10), 10, 1, 1, 1, 0.1);
-                }
-                skyCenter.getWorld().playSound(skyCenter, Sound.ENTITY_WITHER_DEATH, 1.5f, 1.5f);
-
-                // Lấy danh sách quái
-                List<LivingEntity> targets = getNearbyEnemies(caster, data);
-                if (targets.isEmpty()) return;
-
-                double damagePerOrbMultiplier = 5.0 + (data.level * 1.0);
-                Random rand = new Random();
-
-                Map<LivingEntity, Integer> hitsMap = new HashMap<>();
-                if (targets.size() == 1) {
-                    hitsMap.put(targets.get(0), orbs);
-                } else {
-                    for (int i = 0; i < orbs; i++) {
-                        LivingEntity t = targets.get(rand.nextInt(targets.size()));
-                        hitsMap.put(t, hitsMap.getOrDefault(t, 0) + 1);
-                    }
-                }
-
-                // Giáng sét từ Ma Trận xuống từng con
-                for (Map.Entry<LivingEntity, Integer> entry : hitsMap.entrySet()) {
-                    executeSkyStrike(caster, rpgCaster, entry.getKey(), entry.getValue(), damagePerOrbMultiplier);
-                }
-            }
-        }.runTaskLater(plugin, 25L);
     }
 
-    // Hàm Phụ trợ: Quét lấy danh sách kẻ địch (SỬA LỖI MÀ BẠN GẶP PHẢI)
-    private List<LivingEntity> getNearbyEnemies(Player caster, DomainData data) {
-        List<LivingEntity> targets = new ArrayList<>();
-        for (Entity e : data.center.getWorld().getNearbyEntities(data.center, data.radius, 15, data.radius)) {
-            if (e instanceof LivingEntity && CombatManager.canTarget(caster, e) && !e.isDead()) {
-                targets.add((LivingEntity) e);
-            }
-        }
-        return targets;
-    }
-
-    // Hàm Phụ trợ: Thực thi Sét đánh
-    private void executeSkyStrike(Player caster, RPGPlayer rpgCaster, LivingEntity victim, int hitCount, double dmgMultiplier) {
+    private void executeFinalLightning(Player caster, RPGPlayer rpgCaster, LivingEntity victim, int hitCount, double dmgMultiplier) {
         Location vLoc = victim.getLocation();
-        StatusEffectManager.applyEffect(victim, PotionEffectType.SLOWNESS, 40, 10);
-
-        // Tia sét dày giáng từ Y=25 (Ma Trận) xuống
-        for (double y = 25; y >= 0; y -= 0.5) {
-            vLoc.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, vLoc.clone().add(0, y, 0), 10, 0.2, 0.5, 0.2, 0.1);
-            vLoc.getWorld().spawnParticle(Particle.END_ROD, vLoc.clone().add(0, y, 0), 5, 0.1, 0.1, 0.1, 0.02);
-        }
 
         vLoc.getWorld().spawnParticle(Particle.EXPLOSION, vLoc, hitCount, 0.5, 0.5, 0.5, 0);
         vLoc.getWorld().strikeLightningEffect(vLoc);
@@ -367,6 +421,16 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
         if (victim.isDead() || victim.getHealth() <= 0) {
             spawnInheritanceOrb(caster, vLoc);
         }
+    }
+
+    private List<LivingEntity> getNearbyEnemies(Player caster, DomainData data) {
+        List<LivingEntity> targets = new ArrayList<>();
+        for (Entity e : data.center.getWorld().getNearbyEntities(data.center, data.radius, 15, data.radius)) {
+            if (e instanceof LivingEntity && CombatManager.canTarget(caster, e) && !e.isDead()) {
+                targets.add((LivingEntity) e);
+            }
+        }
+        return targets;
     }
 
     private void spawnInheritanceOrb(Player owner, Location loc) {
