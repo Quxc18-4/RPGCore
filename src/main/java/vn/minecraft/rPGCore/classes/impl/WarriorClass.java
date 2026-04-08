@@ -125,7 +125,7 @@ public class WarriorClass extends RPGClass {
         RPGPlayer rpgPlayer = RPGCore.getInstance().getPlayerManager().getRPGPlayer(attacker.getUniqueId());
         if (rpgPlayer != null) {
             // [YÊU CẦU MỚI]: Chém trúng địch hồi 3 Nộ
-            rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() + 3);
+            rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() + 2);
 
             int skillLevel = rpgPlayer.getSkillData().getSkillLevel("warrior_aura");
             if (skillLevel > 0) {
@@ -143,6 +143,76 @@ public class WarriorClass extends RPGClass {
     // ==========================================
     @Override
     public double onMeleeHit(Player attacker, RPGPlayer rpgAttacker, LivingEntity target, double rawDamage) {
+
+        // ==========================================
+        // [KIẾM ĐIỆN STATIKK] - MẢNH SẤM SÉT (TỐI ĐA 8 STACK)
+        // ==========================================
+        if (attacker.hasMetadata("Warrior_Judgment_Stacks")) {
+            int stacks = attacker.getMetadata("Warrior_Judgment_Stacks").get(0).asInt();
+
+            if (stacks <= 1) {
+                attacker.removeMetadata("Warrior_Judgment_Stacks", RPGCore.getInstance());
+            } else {
+                attacker.setMetadata("Warrior_Judgment_Stacks", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), stacks - 1));
+            }
+
+            // Sát thương 145% AOE
+            double statikkDmg = vn.minecraft.rPGCore.managers.CombatManager.calculateDamage(attacker, rpgAttacker, target, 1.45, 0.0, false, false);
+
+            java.util.List<LivingEntity> chainTargets = new java.util.ArrayList<>();
+            chainTargets.add(target);
+            for (org.bukkit.entity.Entity e : target.getNearbyEntities(6, 6, 6)) {
+                if (chainTargets.size() >= 3) break; // Lan tối đa 3 mục tiêu
+                if (e instanceof LivingEntity && e != target && vn.minecraft.rPGCore.managers.CombatManager.canTarget(attacker, e)) {
+                    chainTargets.add((LivingEntity) e);
+                }
+            }
+
+            attacker.setMetadata("Ghost_L_Blocker", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), true));
+
+            // Lấy điểm bắt đầu từ tay của người chơi
+            org.bukkit.Location prevLoc = attacker.getLocation().clone().add(0, 1.2, 0);
+
+            for (LivingEntity chainTarget : chainTargets) {
+                // 1. Gây sát thương
+                vn.minecraft.rPGCore.managers.CombatManager.applySkillDamage(attacker, chainTarget, statikkDmg);
+
+                // [ĐÃ XÓA]: chainTarget.getWorld().strikeLightningEffect(...)
+
+                // Âm thanh điện giật trúng mục tiêu (thay thế cho tiếng sét Vanilla ồn ào)
+                chainTarget.getWorld().playSound(chainTarget.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_IMPACT, 0.8f, 2.0f);
+
+                // 2. Thuật toán vẽ tia chớp điện Zíc-Zắc (Chain Lightning)
+                org.bukkit.Location currentLoc = chainTarget.getLocation().clone().add(0, 1.0, 0);
+                org.bukkit.util.Vector dir = currentLoc.toVector().subtract(prevLoc.toVector());
+                double length = dir.length();
+
+                if (length > 0) {
+                    dir.normalize();
+                    // Dày hạt hơn (0.3 thay vì 0.5)
+                    for (double i = 0; i < length; i += 0.3) {
+                        org.bukkit.Location lineLoc = prevLoc.clone().add(dir.clone().multiply(i));
+
+                        // Thêm độ nhiễu ngẫu nhiên để tia điện giật zíc-zắc thay vì đường thẳng
+                        double offsetX = (Math.random() - 0.5) * 0.5;
+                        double offsetY = (Math.random() - 0.5) * 0.5;
+                        double offsetZ = (Math.random() - 0.5) * 0.5;
+                        lineLoc.add(offsetX, offsetY, offsetZ);
+
+                        // Vẽ tia lửa điện và lõi trắng
+                        chainTarget.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, lineLoc, 3, 0.05, 0.05, 0.05, 0);
+                        chainTarget.getWorld().spawnParticle(Particle.END_ROD, lineLoc, 1, 0, 0, 0, 0);
+                    }
+                }
+                prevLoc = currentLoc;
+            }
+            attacker.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
+
+            // Âm thanh chém sấm sét tổng (Giữ lại để có lực)
+            attacker.playSound(attacker.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 0.6f, 1.8f);
+
+            return 0.0; // Triệt tiêu đòn đánh tay
+        }
 
         // 1. KIỂM TRA XEM CÓ BUFF "ĐÁNH BẬT" KHÔNG
         if (attacker.hasMetadata("Warrior_Knockup_Buff")) {

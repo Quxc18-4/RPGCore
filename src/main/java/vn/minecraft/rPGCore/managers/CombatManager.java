@@ -455,4 +455,33 @@ public class CombatManager {
     public static void registerAllyChecker(IAllyChecker checker) {
         allyCheckers.add(checker);
     }
+
+    // ==========================================
+    // [HỆ THỐNG HOOK BUFF/DEBUFF SÁT THƯƠNG]
+    // ==========================================
+    public interface ICombatModifier {
+        // Trả về lượng % sát thương GÂY RA cộng thêm (VD: +0.2 là tăng 20%)
+        double getOutgoingDamageModifier(LivingEntity attacker, LivingEntity victim);
+
+        // Trả về lượng % sát thương NHẬN VÀO được giảm (VD: 0.15 là giảm 15%)
+        double getIncomingDamageReduction(LivingEntity victim, LivingEntity attacker);
+    }
+
+    public static final java.util.List<ICombatModifier> combatModifiers = new java.util.ArrayList<>();
+
+    // Các Kỹ năng (Skill) sẽ tự gọi hàm này để đăng ký Buff của nó vào Core
+    public static void registerCombatModifier(ICombatModifier modifier) {
+        combatModifiers.add(modifier);
+    }
+
+    // ==========================================
+    // 2. [HỆ THỐNG HOOK CHỈ SỐ TĨNH] (BẠN THÊM CÁI MỚI NÀY VÀO BÊN DƯỚI)
+    // ==========================================
+    public interface IStatModifier {
+        void applyBonusStats(Player player, java.util.Map<String, Double> stats);
+    }
+    public static final java.util.List<IStatModifier> statModifiers = new java.util.ArrayList<>();
+    public static void registerStatModifier(IStatModifier modifier) {
+        statModifiers.add(modifier);
+    }
 }

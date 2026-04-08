@@ -499,7 +499,7 @@ public class PlayerListener implements Listener {
             if (rpgKiller != null && rpgKiller.getCurrentClass() != null) {
                 // Nếu là phái xài Nộ (Warrior) -> Thưởng 15 Nộ Khí khi kết liễu!
                 if (rpgKiller.getCurrentClass().getResourceType() == vn.minecraft.rPGCore.classes.ResourceType.RAGE) {
-                    rpgKiller.setCurrentResource(rpgKiller.getCurrentResource() + 15);
+                    rpgKiller.setCurrentResource(rpgKiller.getCurrentResource() + 5);
                     killer.getWorld().spawnParticle(Particle.FLAME, killer.getLocation().add(0, 1, 0), 10, 0.3, 0.3, 0.3, 0.05);
                     killer.playSound(killer.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.5f);
                 }

@@ -37,6 +37,49 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
         super(plugin);
         Bukkit.getPluginManager().registerEvents(this, plugin);
         startOrbPickupTask();
+
+        // [CHUẨN SOLID]: TỰ ĐĂNG KÝ CÁCH ĐỌC BUFF CỦA RIÊNG KỸ NĂNG NÀY VÀO CORE
+        CombatManager.registerCombatModifier(new CombatManager.ICombatModifier() {
+            @Override
+            public double getOutgoingDamageModifier(LivingEntity attacker, LivingEntity victim) {
+                double bonus = 0.0;
+                // Nếu mình là đồng minh đứng trong vòng -> Tăng sát thương gây ra
+                if (attacker.hasMetadata("Domain_Ally_Buff")) bonus += attacker.getMetadata("Domain_Ally_Buff").get(0).asDouble();
+                // Nếu mình là quái bị dính debuff vòng -> Giảm sát thương đánh trả
+                if (attacker.hasMetadata("Domain_Enemy_Debuff")) bonus -= attacker.getMetadata("Domain_Enemy_Debuff").get(0).asDouble();
+                return bonus;
+            }
+
+            @Override
+            public double getIncomingDamageReduction(LivingEntity victim, LivingEntity attacker) {
+                double reduction = 0.0;
+                // Nếu mình là đồng minh -> Nhận ít sát thương hơn
+                if (victim.hasMetadata("Domain_Ally_Buff")) reduction += victim.getMetadata("Domain_Ally_Buff").get(0).asDouble();
+                // Nếu thằng đánh mình là quái bị dính debuff vòng -> Sát thương của nó tới mình bị giảm
+                if (attacker != null && attacker.hasMetadata("Domain_Enemy_Debuff")) reduction += attacker.getMetadata("Domain_Enemy_Debuff").get(0).asDouble();
+                return reduction;
+            }
+        });
+
+        // 2. [CHUẨN SOLID]: HOOK CHỈ SỐ TĨNH (Tốc Chạy)
+        CombatManager.registerStatModifier(new CombatManager.IStatModifier() {
+            @Override
+            public void applyBonusStats(Player player, Map<String, Double> stats) {
+                // Tự Kỹ năng này kiểm tra Metadata của chính nó
+                if (player.hasMetadata("Domain_Ally_Buff") && player.hasMetadata("Domain_Ally_Expire")) {
+                    if (System.currentTimeMillis() <= player.getMetadata("Domain_Ally_Expire").get(0).asLong()) {
+                        double buff = player.getMetadata("Domain_Ally_Buff").get(0).asDouble();
+
+                        // Buff 0.15 -> +15 Tốc chạy
+                        stats.put("Tốc độ di chuyển", stats.getOrDefault("Tốc độ di chuyển", 0.0) + (buff * 100.0));
+                    } else {
+                        // Nếu hết hạn thì dọn dẹp rác luôn
+                        player.removeMetadata("Domain_Ally_Buff", RPGCore.getInstance());
+                        player.removeMetadata("Domain_Ally_Expire", RPGCore.getInstance());
+                    }
+                }
+            }
+        });
     }
 
     @Override public String getId() { return "warrior_judgment_domain"; }
@@ -44,34 +87,41 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
     @Override public String getRequiredClass() { return "warrior"; }
     @Override public Material getIcon() { return Material.BEACON; }
     @Override public int getMaxLevel() { return 3; }
-    @Override public int getUpgradeCost(int currentLevel) { return 3; }
-    @Override public int getRequiredPlayerLevel() { return 40; }
+    @Override public int getUpgradeCost(int currentLevel) { return 2; }
+    @Override public int getRequiredPlayerLevel() { return 45; }
     @Override public Map<String, Integer> getRequiredSkills() { return new HashMap<>(); }
     @Override public boolean isPassiveSkill() { return false; }
     @Override public double getManaCost(int level) { return 110.0; }
-    @Override public long getCooldown(int level) { return 90000L; }
+    @Override public long getCooldown(int level) { return 75000L; }
 
+    // [CẬP NHẬT]: MÔ TẢ ĐẦY ĐỦ CHI TIẾT VÀ CHỈ SỐ ĐỘNG THEO LEVEL
     @Override
     public List<String> getDescription(int level) {
-        int radius = 12 + (level * 4); // 16, 20, 24
-        int buffRate = 5 + (level * 5);
-        double awakenRate = buffRate * 1.5;
+        int radius = 12 + (level * 4); // Cấp 1: 16m | Cấp 2: 20m | Cấp 3: 24m
+        int buffRate = 5 + (level * 5); // Cấp 1: 10% | Cấp 2: 15% | Cấp 3: 20%
+        double awakenRate = buffRate * 1.5; // Cấp 1: 15% | Cấp 2: 22.5% | Cấp 3: 30%
+        // [MỚI]: Biến hiển thị sát thương Lôi Phạt (600%, 800%, 1000%)
+        int strikeDmg = 400 + (level * 200);
 
         return Arrays.asList(
-                "§7Thiết lập một thánh vực khổng lồ duy trì trật tự.",
-                "§7Tầm xa: §e" + radius + "m§7. Niệm tại chỗ.",
+                "§7Thiết lập một Thánh Vực khổng lồ để tăng cường sức mạnh cho đồng minh.",
+                "§7Bán kính lãnh vực: §e" + radius + " block§7. Niệm chú tại chỗ.",
                 "",
-                "§e[Kích hoạt: Thánh vực]",
-                "§f- Đứng im §a5s§f. §bKháng 100% Đẩy lùi§f. Chịu 3 Hit.",
-                "§f- Phe ta: Tăng §e" + buffRate + "% ST §fvà Tốc chạy.",
-                "§f- Kẻ địch: Bị áp chế, giảm §c" + buffRate + "% ST §fgây ra.",
+                "§e[Kích hoạt: Thánh Vực]",
+                "§f- Hút thần lực §a5s§f. §bKháng 100% Đẩy lùi§f. Chịu tối đa §c3 §fđòn tấn công.",
+                "§f- §aĐồng minh§f: Tăng §e" + buffRate + "% Sát thương §fvà §b" + buffRate + "% Tốc chạy§f.",
+                "§f- §cKẻ địch§f: Bị áp chế, giảm §c" + buffRate + "% Sát thương §fgây ra.",
                 "",
                 "§c[Thức Tỉnh Kỹ Năng]",
-                "§f- Niệm §a2.5s§f. Chịu được §c5 Hit§f.",
-                "§f- Hiệu quả Buff/Debuff tăng thành §e" + String.format("%.1f", awakenRate) + "%§f.",
-                "§f- Cứ giết §c5 địch§f trong Vùng = Tích 1 Mảnh Sấm Sét.",
-                "§f- Khi hết hạn: Dựng Ma Trận Thiên Lôi giáng xuống.",
-                "§f- Nhặt Mảnh Sấm Sét để x2 ST và giáng lôi đòn tới."
+                "§f- Thời gian niệm chú giảm §a50%§f. Chịu tối đa §c5 §fđòn tấn công.",
+                "§f- Hiệu quả Buff/Debuff tăng cường lên §e" + String.format("%.1f", awakenRate) + "%§f.",
+                "§f- Mỗi §c5 kẻ địch bị giết§f trong lãnh vực, tích trữ §e1 Mảnh Sấm§f.",
+                "§f- Khi lãnh vực khép lại: Dựng Ma Trận Thiên Lôi giáng phạt",
+                "§f  vào kẻ địch ngẫu nhiên (Làm tê liệt và gây §c\" + strikeDmg + \"% Sát thương§f).",
+                "",
+                "§b[Mảnh Sấm Sét] §8(Tối đa 8 tích trữ)",
+                "§f- Chém thường tiêu hao 1 đơn vị tích trữ, dẫn sấm sét vào lưỡi kiếm",
+                "§f  giật sét lan (Max 3 mục tiêu), gây §c145% Sát thương AOE§f."
         );
     }
 
@@ -118,7 +168,7 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
 
                 int hitsTaken = player.getMetadata("Domain_HitCount").get(0).asInt();
                 if (hitsTaken >= maxHits) {
-                    player.sendMessage("§c§l[!] §fTập trung bị ngắt quãng!");
+                    player.sendMessage("§c§l[!] §fNiệm chú bị ngắt quãng!");
                     cancelChanneling(player, false);
                     this.cancel();
                     return;
@@ -176,28 +226,29 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
         Location center = caster.getLocation().clone();
         int finalRadius = 12 + (level * 4);
         int durationTicks = (15 + (level * 3)) * 20;
+
+        // =================================================================
+        // [TESTING]: HARDCODE BUFF LÊN 2000% (20.0) ĐỂ BẠN TEST CHO RÕ
+        // Khi test xong, hãy xóa dòng này và mở comment dòng dưới nhé!
+        // =================================================================
         double finalBuffRate = (0.05 + (level * 0.05)) * (isEmpowered ? 1.5 : 1.0);
 
         center.getWorld().playSound(center, Sound.ENTITY_GENERIC_EXPLODE, 2.0f, 0.5f);
-        caster.sendMessage("§e§l[!] THÁNH VỰC KHAI MỞ!");
+        caster.sendMessage("§e§l[!] TRIỂN KHAI THÁNH VỰC!");
 
-        // GIAI ĐOẠN 2: BUNG LÃNH VỰC BẰNG HẠT GLITTERING
         new BukkitRunnable() {
             double currentR = 2.0;
-            final Particle.DustOptions cyan = new Particle.DustOptions(Color.fromRGB(0, 255, 255), 1.5f);
+            final Particle.DustOptions cyan = new Particle.DustOptions(Color.fromRGB(0, 255, 255), 1.0f);
+            final Particle.DustOptions white = new Particle.DustOptions(Color.WHITE, 1.0f);
 
             @Override
             public void run() {
                 if (currentR >= finalRadius) { this.cancel(); return; }
-
                 for (int i = 0; i < 360; i += 6) {
                     double rad = Math.toRadians(i);
                     Location pLoc = center.clone().add(Math.cos(rad) * currentR, 0.2, Math.sin(rad) * currentR);
-                    center.getWorld().spawnParticle(Particle.DUST, pLoc, 1, 0, 0, 0, 0, cyan);
-                    if (Math.random() > 0.3) {
-                        // Trộn hạt GLOW lấp lánh như sương mù
-                        center.getWorld().spawnParticle(Particle.GLOW, pLoc, 1, 0.1, 0.1, 0.1, 0);
-                    }
+                    center.getWorld().spawnParticle(Particle.GLOW, pLoc, 1, 0.1, 0.1, 0.1, 0);
+                    center.getWorld().spawnParticle(Particle.DUST, pLoc, 1, 0, 0, 0, 0, Math.random() > 0.5 ? cyan : white);
                 }
                 currentR += (finalRadius / 10.0);
             }
@@ -212,22 +263,32 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
             public void run() {
                 if (ticks >= durationTicks || !caster.isOnline()) {
                     activeDomains.remove(caster.getUniqueId());
-                    transitionToSkyMatrix(caster, rpgCaster, data); // Chuyển sang Giai đoạn 3
+                    transitionToSkyMatrix(caster, rpgCaster, data);
                     this.cancel();
                     return;
                 }
 
                 drawDomainEdge(center, finalRadius, ticks);
 
+                // [CHUẨN SOLID]: Ép cập nhật Tốc Chạy/Sát Thương qua cờ Expire, XÓA BỎ HOÀN TOÀN POTION EFFECT SPEED.
                 if (ticks % 20 == 0) {
+                    long expireTime = System.currentTimeMillis() + 1500L; // Hạn 1.5 giây
+
                     for (Entity e : center.getWorld().getNearbyEntities(center, finalRadius, 15, finalRadius)) {
                         if (e instanceof LivingEntity) {
                             LivingEntity le = (LivingEntity) e;
                             if (isAlly(caster, le)) {
-                                StatusEffectManager.applyEffect(le, PotionEffectType.SPEED, 40, isEmpowered ? 1 : 0);
                                 le.setMetadata("Domain_Ally_Buff", new FixedMetadataValue(plugin, finalBuffRate));
+                                le.setMetadata("Domain_Ally_Expire", new FixedMetadataValue(plugin, expireTime));
+
+                                // Ép cập nhật Stats (Tốc Chạy) vào Server ngay lập tức!
+                                if (le instanceof Player) {
+                                    RPGPlayer targetRpg = RPGCore.getInstance().getPlayerManager().getRPGPlayer(le.getUniqueId());
+                                    if (targetRpg != null) targetRpg.updateMaxStats();
+                                }
                             } else if (CombatManager.canTarget(caster, e)) {
                                 le.setMetadata("Domain_Enemy_Debuff", new FixedMetadataValue(plugin, finalBuffRate));
+                                le.setMetadata("Domain_Enemy_Expire", new FixedMetadataValue(plugin, expireTime));
                             }
                         }
                     }
@@ -358,7 +419,7 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
         List<LivingEntity> targets = getNearbyEnemies(caster, data);
         if (targets.isEmpty()) return;
 
-        double damagePerOrbMultiplier = 5.0 + (data.level * 1.0);
+        double damagePerOrbMultiplier = 4.0 + (data.level * 2.0); // Cấp 1 = 6.0, Cấp 2 = 8.0, Cấp 3 = 10.0
         Random rand = new Random();
 
         Map<LivingEntity, Integer> hitsMap = new HashMap<>();
@@ -384,21 +445,25 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
 
             // Hoạt ảnh tia sáng lao từ trên Ma Trận xuống mục tiêu
             Location vLoc = victim.getLocation();
-            org.bukkit.util.Vector fallDir = vLoc.toVector().subtract(skyCenter.toVector()).normalize().multiply(1.5); // Tốc độ rơi 1.5 block/tick
+
+            // Ép tốc độ rơi cực nhanh (3.5 blocks/tick)
+            org.bukkit.util.Vector fallDir = vLoc.toVector().subtract(skyCenter.toVector()).normalize().multiply(3.5);
 
             new BukkitRunnable() {
                 Location current = skyCenter.clone();
                 @Override
                 public void run() {
-                    // Nếu chạm đất hoặc mục tiêu
-                    if (current.getY() <= vLoc.getY() || current.distanceSquared(vLoc) < 2.0) {
+                    // Nếu chạm đất hoặc chạm mục tiêu
+                    if (current.getY() <= vLoc.getY() || current.distanceSquared(vLoc) < 4.0) {
                         this.cancel();
                         executeFinalLightning(caster, rpgCaster, victim, hitCount, damagePerOrbMultiplier);
                         return;
                     }
                     current.add(fallDir);
-                    current.getWorld().spawnParticle(Particle.END_ROD, current, 5, 0.2, 0.2, 0.2, 0.05);
-                    current.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, current, 10, 0.5, 0.5, 0.5, 0);
+
+                    // [TINH CHỈNH]: Radius cực mỏng (0.02) và giảm số lượng hạt lại để tia không bị "Béo"
+                    current.getWorld().spawnParticle(Particle.END_ROD, current, 1, 0.02, 0.02, 0.02, 0);
+                    current.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, current, 2, 0.05, 0.05, 0.05, 0);
                 }
             }.runTaskTimer(plugin, 0L, 1L);
         }
@@ -435,7 +500,8 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
 
     private void spawnInheritanceOrb(Player owner, Location loc) {
         Location spawnLoc = loc.clone().add(0, 0.5, 0);
-        activeOrbs.add(new InheritanceOrbData(spawnLoc, owner.getUniqueId(), System.currentTimeMillis() + 15000L));
+        // Tăng thời gian Mảnh rớt dưới đất lên 60 giây (60000L)
+        activeOrbs.add(new InheritanceOrbData(spawnLoc, owner.getUniqueId(), System.currentTimeMillis() + 30000L));
         spawnLoc.getWorld().playSound(spawnLoc, Sound.BLOCK_AMETHYST_BLOCK_CHIME, 1.0f, 1.5f);
     }
 
@@ -459,13 +525,19 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
                     if (owner != null && owner.isOnline() && owner.getWorld().equals(orb.loc.getWorld())) {
                         if (owner.getLocation().distance(orb.loc) <= 1.5) {
                             int currentStacks = owner.hasMetadata("Warrior_Judgment_Stacks") ? owner.getMetadata("Warrior_Judgment_Stacks").get(0).asInt() : 0;
-                            applyWeaponEnhancement(owner, "Warrior_Judgment_Stacks", currentStacks + 1, 200L,
-                                    "§e§l[!] §fHấp thu Mảnh Sấm Sét! (Stack: " + (currentStacks + 1) + ")",
-                                    "§8§o(Sức mạnh Phán Quyết đã tàn lụi...)");
 
-                            owner.getWorld().playSound(owner.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 2.0f);
-                            owner.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, owner.getLocation().add(0, 1, 0), 30, 0.5, 0.5, 0.5, 0.1);
-                            it.remove();
+                            if (currentStacks < 8) {
+                                owner.setMetadata("Warrior_Judgment_Stacks", new FixedMetadataValue(plugin, currentStacks + 1));
+
+                                // Tăng thời gian giữ Stack trên người lên 60 GIÂY (1200L)
+                                applyWeaponEnhancement(owner, "Warrior_Judgment_Stacks", currentStacks + 1, 1200L,
+                                        "§e§l[!] §fHấp thu Mảnh Sấm Sét! (Stack: " + (currentStacks + 1) + "/8)",
+                                        "§8§o(Sức mạnh Phán Quyết đã tàn lụi...)");
+
+                                owner.getWorld().playSound(owner.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 2.0f);
+                                owner.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, owner.getLocation().add(0, 1, 0), 30, 0.5, 0.5, 0.5, 0.1);
+                                it.remove();
+                            }
                         }
                     }
                 }
@@ -499,28 +571,6 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
                         data.killCount++;
                     }
                 }
-            }
-        }
-    }
-
-    @EventHandler(priority = EventPriority.HIGH)
-    public void onDomainDamage(EntityDamageByEntityEvent event) {
-        if (event.isCancelled() || !(event.getEntity() instanceof LivingEntity)) return;
-        Entity damager = event.getDamager();
-
-        if (damager.hasMetadata("Domain_Ally_Buff")) {
-            java.util.List<org.bukkit.metadata.MetadataValue> meta = damager.getMetadata("Domain_Ally_Buff");
-            if (!meta.isEmpty()) {
-                double rate = meta.get(0).asDouble();
-                event.setDamage(event.getDamage() * (1.0 + rate));
-            }
-        }
-
-        if (damager.hasMetadata("Domain_Enemy_Debuff")) {
-            java.util.List<org.bukkit.metadata.MetadataValue> meta = damager.getMetadata("Domain_Enemy_Debuff");
-            if (!meta.isEmpty()) {
-                double rate = meta.get(0).asDouble();
-                event.setDamage(event.getDamage() * (1.0 - rate));
             }
         }
     }

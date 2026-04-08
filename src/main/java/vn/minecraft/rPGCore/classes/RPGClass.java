@@ -63,11 +63,25 @@ public abstract class RPGClass {
     public boolean onRightClick(Player player, RPGPlayer rpgPlayer, ItemStack weapon) { return false; }
 
     public double onMeleeHit(Player attacker, RPGPlayer rpgAttacker, LivingEntity target, double rawDamage) {
-        return rawDamage;
+        double multiplier = rawDamage; // Đầu vào thường là 1.0
+
+        // Chạy qua tất cả các Buff của Server đang cắm ở CombatManager
+        for (vn.minecraft.rPGCore.managers.CombatManager.ICombatModifier mod : vn.minecraft.rPGCore.managers.CombatManager.combatModifiers) {
+            multiplier += mod.getOutgoingDamageModifier(attacker, target);
+        }
+
+        return Math.max(0.1, multiplier);
     }
 
     public double onTakeDamage(Player victim, RPGPlayer rpgVictim, LivingEntity attacker, double incomingDamage) {
-        return incomingDamage;
+        double damage = incomingDamage;
+
+        for (vn.minecraft.rPGCore.managers.CombatManager.ICombatModifier mod : vn.minecraft.rPGCore.managers.CombatManager.combatModifiers) {
+            double reduction = mod.getIncomingDamageReduction(victim, attacker);
+            damage *= (1.0 - reduction);
+        }
+
+        return Math.max(0.0, damage);
     }
 
     // ==========================================
@@ -105,6 +119,9 @@ public abstract class RPGClass {
     // ==========================================
     public void applyPassiveBonusStats(RPGPlayer rpgPlayer, java.util.Map<String, Double> stats) {
         // Sau khi Class con cộng xong nội tại, hàm cha sẽ ép tất cả về đúng Cap
+        for (vn.minecraft.rPGCore.managers.CombatManager.IStatModifier mod : vn.minecraft.rPGCore.managers.CombatManager.statModifiers) {
+            mod.applyBonusStats(rpgPlayer.getBukkitPlayer(), stats);
+        }
         applyOffensivePassives(stats);
     }
 
