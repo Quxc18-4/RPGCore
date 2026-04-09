@@ -27,6 +27,26 @@ public class WarriorClass extends RPGClass {
     @Override
     public void applyPassiveBonusStats(RPGPlayer rpgPlayer, Map<String, Double> stats) {
         stats.put("Tỉ lệ hút máu", stats.getOrDefault("Tỉ lệ hút máu", 0.0) + 12.0);
+
+        // ==========================================
+        // [HUYẾT GIÁP BẠO PHÁ]: ÉP TỈ LỆ HÚT MÁU TRỰC TIẾP
+        // Đẩy vào đây để hàm Cha bên dưới tự động chặn Overflow!
+        // ==========================================
+        Player player = rpgPlayer.getBukkitPlayer();
+        if (player.hasMetadata("BloodShield_Active")) {
+            int level = player.getMetadata("BloodShield_Active").get(0).asInt();
+            double extraLifesteal = 12.0 + (level - 1) * 2.0; // Cấp 1: 12%, Cấp 10: 30%
+            stats.put("Tỉ lệ hút máu", stats.getOrDefault("Tỉ lệ hút máu", 0.0) + extraLifesteal);
+        }
+
+        // [MỚI]: Cộng 8% Hút máu nếu đang có Giáp Ảo (RPG_Absorption_Shield)
+        if (player.hasMetadata("RPG_Absorption_Shield")) {
+            double currentShield = player.getMetadata("RPG_Absorption_Shield").get(0).asDouble();
+            if (currentShield > 0) {
+                stats.put("Tỉ lệ hút máu", stats.getOrDefault("Tỉ lệ hút máu", 0.0) + 8.0);
+            }
+        }
+
         super.applyPassiveBonusStats(rpgPlayer, stats);
     }
 

@@ -70,6 +70,8 @@ public class SkillManager {
         registerSkill(new WarriorBladeStormSkill());
         registerSkill(new WarriorKnockupStrike(plugin));
         registerSkill(new WarriorJudgmentDomain(plugin));
+        registerSkill(new WarriorBloodShield(plugin));
+        registerSkill(new WarriorMeditation(plugin));
     }
 
     public void registerSkill(ISkill skill) {

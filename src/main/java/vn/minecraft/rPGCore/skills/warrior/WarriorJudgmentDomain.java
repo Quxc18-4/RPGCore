@@ -226,14 +226,9 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
         Location center = caster.getLocation().clone();
         int finalRadius = 12 + (level * 4);
         int durationTicks = (15 + (level * 3)) * 20;
-
-        // =================================================================
-        // [TESTING]: HARDCODE BUFF LÊN 2000% (20.0) ĐỂ BẠN TEST CHO RÕ
-        // Khi test xong, hãy xóa dòng này và mở comment dòng dưới nhé!
-        // =================================================================
         double finalBuffRate = (0.05 + (level * 0.05)) * (isEmpowered ? 1.5 : 1.0);
 
-        center.getWorld().playSound(center, Sound.ENTITY_GENERIC_EXPLODE, 2.0f, 0.5f);
+        caster.getWorld().playSound(center, Sound.ENTITY_GENERIC_EXPLODE, 2.0f, 0.5f);
         caster.sendMessage("§e§l[!] TRIỂN KHAI THÁNH VỰC!");
 
         new BukkitRunnable() {
@@ -254,7 +249,16 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
             }
         }.runTaskTimer(plugin, 0L, 1L);
 
-        DomainData data = new DomainData(center, caster.getUniqueId(), level, isEmpowered, finalBuffRate, finalRadius);
+        // =================================================================
+        // [TỐI ƯU]: Tính toán viền 1 LẦN DUY NHẤT rồi lưu lại (Cache)
+        // =================================================================
+        List<Location> cachedEdges = new ArrayList<>();
+        for (int i = 0; i < 360; i += 8) { // Khoảng cách hạt viền
+            double rad = Math.toRadians(i);
+            cachedEdges.add(center.clone().add(Math.cos(rad) * finalRadius, 0.2, Math.sin(rad) * finalRadius));
+        }
+
+        DomainData data = new DomainData(center, caster.getUniqueId(), level, isEmpowered, finalBuffRate, finalRadius, cachedEdges);
         activeDomains.put(caster.getUniqueId(), data);
 
         new BukkitRunnable() {
@@ -268,12 +272,11 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
                     return;
                 }
 
-                drawDomainEdge(center, finalRadius, ticks);
+                // Truyền hẳn Cục Data vào để nó dùng list tọa độ đã tính
+                drawDomainEdge(data, ticks);
 
-                // [CHUẨN SOLID]: Ép cập nhật Tốc Chạy/Sát Thương qua cờ Expire, XÓA BỎ HOÀN TOÀN POTION EFFECT SPEED.
                 if (ticks % 20 == 0) {
-                    long expireTime = System.currentTimeMillis() + 1500L; // Hạn 1.5 giây
-
+                    long expireTime = System.currentTimeMillis() + 1500L;
                     for (Entity e : center.getWorld().getNearbyEntities(center, finalRadius, 15, finalRadius)) {
                         if (e instanceof LivingEntity) {
                             LivingEntity le = (LivingEntity) e;
@@ -281,7 +284,6 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
                                 le.setMetadata("Domain_Ally_Buff", new FixedMetadataValue(plugin, finalBuffRate));
                                 le.setMetadata("Domain_Ally_Expire", new FixedMetadataValue(plugin, expireTime));
 
-                                // Ép cập nhật Stats (Tốc Chạy) vào Server ngay lập tức!
                                 if (le instanceof Player) {
                                     RPGPlayer targetRpg = RPGCore.getInstance().getPlayerManager().getRPGPlayer(le.getUniqueId());
                                     if (targetRpg != null) targetRpg.updateMaxStats();
@@ -298,22 +300,30 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
         }.runTaskTimer(plugin, 0L, 2L);
     }
 
-    private void drawDomainEdge(Location center, int radius, int currentTick) {
+    private void drawDomainEdge(DomainData data, int currentTick) {
         Particle.DustOptions cyanDust = new Particle.DustOptions(Color.fromRGB(0, 255, 255), 1.0f);
-        double rotation = (currentTick * 1.5) % 360;
 
-        for (int i = 0; i < 360; i += 12) {
-            double rad = Math.toRadians(i);
-            Location edgeLoc = center.clone().add(Math.cos(rad) * radius, 0.2, Math.sin(rad) * radius);
-            center.getWorld().spawnParticle(Particle.DUST, edgeLoc, 1, 0, 0, 0, 0, cyanDust);
+        // 1. Vẽ Vòng Tròn Viền Tĩnh (Chỉ vẽ mỗi 6 ticks để giảm render cho client)
+        if (currentTick % 6 == 0) {
+            for (Location edgeLoc : data.edgePoints) {
+                edgeLoc.getWorld().spawnParticle(Particle.DUST, edgeLoc, 1, 0, 0, 0, 0, cyanDust);
+            }
         }
 
-        // 8 Cột ánh sáng xoay quanh biên giới
-        for (int i = 0; i < 360; i += 45) {
-            double runeRad = Math.toRadians(i + rotation);
-            Location runeLoc = center.clone().add(Math.cos(runeRad) * radius, 0, Math.sin(runeRad) * radius);
-            for(double y = 0; y < 6; y += 0.8) {
-                center.getWorld().spawnParticle(Particle.END_ROD, runeLoc.clone().add(0, y, 0), 1, 0, 0, 0, 0);
+        // 2. TƯỜNG ẢO ẢNH (Holographic Wall) siêu nhẹ
+        // Thay vì xoay 8 cột khổng lồ, bốc ngẫu nhiên vài điểm trên viền bắn hạt vút lên trời
+        Random rand = new Random();
+        int particleCount = data.radius; // Lãnh vực càng to thì Tường hạt bắn lên càng nhiều
+
+        for (int i = 0; i < particleCount; i++) {
+            Location randomEdge = data.edgePoints.get(rand.nextInt(data.edgePoints.size()));
+
+            // Hạt END_ROD với vector (0, 0.08, 0) tạo hiệu ứng hạt sáng lơ lửng bay lên trên cực ảo
+            randomEdge.getWorld().spawnParticle(Particle.END_ROD, randomEdge, 0, 0, 0.08, 0, 1.0);
+
+            // Thêm các hạt GLOW lấp lánh ẩn hiện trong tường
+            if (Math.random() > 0.6) {
+                randomEdge.getWorld().spawnParticle(Particle.GLOW, randomEdge.clone().add(0, Math.random() * 4, 0), 1, 0.1, 0.1, 0.1, 0);
             }
         }
     }
@@ -615,8 +625,13 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
     private static class DomainData {
         Location center; UUID casterId; int level; boolean isEmpowered; double buffRate; int radius;
         int killCount = 0;
-        public DomainData(Location center, UUID casterId, int level, boolean isEmpowered, double buffRate, int radius) {
+
+        // [TỐI ƯU]: Lưu sẵn danh sách điểm viền để khỏi phải tính Toán học mỗi tick
+        List<Location> edgePoints;
+
+        public DomainData(Location center, UUID casterId, int level, boolean isEmpowered, double buffRate, int radius, List<Location> edgePoints) {
             this.center = center; this.casterId = casterId; this.level = level; this.isEmpowered = isEmpowered; this.buffRate = buffRate; this.radius = radius;
+            this.edgePoints = edgePoints;
         }
     }
 
