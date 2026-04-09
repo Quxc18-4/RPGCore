@@ -193,6 +193,7 @@ public class WarriorMeditation extends AbstractEnhancementSkill implements Liste
         // Tính toán với hệ số giảm hồi chiêu của Server (Nếu có)
         long finalCd = getFinalCooldown(rpgPlayer, baseCd);
         player.setMetadata("CD_" + getId(), new FixedMetadataValue(plugin, System.currentTimeMillis() + finalCd));
+        startCooldownNotifier(player, finalCd);
     }
 
     // ==========================================

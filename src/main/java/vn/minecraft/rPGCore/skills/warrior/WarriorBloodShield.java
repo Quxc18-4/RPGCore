@@ -275,6 +275,7 @@ public class WarriorBloodShield extends AbstractEnhancementSkill {
         // Tính CD
         long finalCd = getFinalCooldown(rpgPlayer, getCooldown(level));
         player.setMetadata("CD_" + getId(), new FixedMetadataValue(plugin, System.currentTimeMillis() + finalCd));
+        startCooldownNotifier(player, finalCd);
     }
 
     // ==========================================

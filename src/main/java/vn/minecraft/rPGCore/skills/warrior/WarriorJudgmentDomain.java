@@ -207,7 +207,9 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
             }
         }.runTaskTimer(plugin, 0L, 1L);
 
-        player.setMetadata(cdKey, new FixedMetadataValue(plugin, System.currentTimeMillis() + getCooldown(level)));
+        long finalCd = getFinalCooldown(rpgPlayer, getCooldown(level));
+        player.setMetadata(cdKey, new FixedMetadataValue(plugin, System.currentTimeMillis() + finalCd));
+        startCooldownNotifier(player, finalCd);
         return true;
     }
 
