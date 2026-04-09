@@ -117,7 +117,7 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
                 "§f- Hiệu quả Buff/Debuff tăng cường lên §e" + String.format("%.1f", awakenRate) + "%§f.",
                 "§f- Mỗi §c5 kẻ địch bị giết§f trong lãnh vực, tích trữ §e1 Mảnh Sấm§f.",
                 "§f- Khi lãnh vực khép lại: Dựng Ma Trận Thiên Lôi giáng phạt",
-                "§f  vào kẻ địch ngẫu nhiên (Làm tê liệt và gây §c\" + strikeDmg + \"% Sát thương§f).",
+                "§f  vào kẻ địch ngẫu nhiên (Làm tê liệt và gây §c" + strikeDmg + "% Sát thương§f).",
                 "",
                 "§b[Mảnh Sấm Sét] §8(Tối đa 8 tích trữ)",
                 "§f- Chém thường tiêu hao 1 đơn vị tích trữ, dẫn sấm sét vào lưỡi kiếm",

@@ -371,6 +371,14 @@ public class SkillUIManager implements Listener {
         if (meta != null) {
             meta.setDisplayName(name);
             meta.setLore(Arrays.asList(lore));
+
+            // [MỚI]: Ép các cờ (Flags) ẩn toàn bộ chỉ số Vanilla rườm rà để UI chuyên nghiệp
+            meta.addItemFlags(
+                    org.bukkit.inventory.ItemFlag.HIDE_ATTRIBUTES,
+                    org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS,
+                    org.bukkit.inventory.ItemFlag.HIDE_UNBREAKABLE
+            );
+
             item.setItemMeta(meta);
         }
         return item;

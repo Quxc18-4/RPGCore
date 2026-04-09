@@ -82,8 +82,8 @@ public class WarriorMeditation extends AbstractEnhancementSkill implements Liste
                 "§f- Mỗi giây phục hồi §c" + rage + " Nộ khí§f.",
                 "§f- Kỹ năng sẽ bị ngắt nếu bạn §eNgồi (Shift)§f hoặc §cbị tấn công§f.",
                 "",
-                "§e[Phần Thưởng Hoàn Thành]",
-                "§f- Nếu duy trì đủ 8 giây không bị ngắt, bạn sẽ",
+                "§e[Nội tại: Tịnh Tâm]",
+                "§f- Nếu duy trì đủ 8 giây không bị ngắt quãng, bạn sẽ",
                 "§f  nhận thêm §c" + buff + "% Sát thương§f trong §a7 giây§f.",
                 "",
                 "§8(Mẹo: Nếu ngắt thiền sớm, thời gian hồi chiêu sẽ được",
@@ -110,7 +110,7 @@ public class WarriorMeditation extends AbstractEnhancementSkill implements Liste
         player.setMetadata("Meditation_Channeling", new FixedMetadataValue(plugin, true));
         player.removeMetadata("Meditation_Interrupted", plugin);
 
-        player.sendMessage("§b§l[!] §fBắt đầu thiền định...");
+        player.sendMessage("§b§l[!] §fBắt đầu thiền...");
         player.getWorld().playSound(player.getLocation(), Sound.BLOCK_BEACON_AMBIENT, 1.0f, 1.5f);
 
         int rageAmount = RAGE_GEN[level];
@@ -171,7 +171,7 @@ public class WarriorMeditation extends AbstractEnhancementSkill implements Liste
 
         if (success) {
             // THÀNH CÔNG: Cấp Buff
-            player.sendMessage("§a§l[!] §fThiền định hoàn mãn! Nhận " + (int)(BUFF_DMG[level] * 100) + "% Sát thương trong 7s.");
+            player.sendMessage("§a§l[!] §fThiền hoàn tất! Nhận " + (int)(BUFF_DMG[level] * 100) + "% Sát thương trong 7s.");
             player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.5f);
             player.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, player.getLocation().add(0, 1, 0), 30, 0.5, 0.5, 0.5, 0.1);
 
@@ -186,7 +186,7 @@ public class WarriorMeditation extends AbstractEnhancementSkill implements Liste
             // Ví dụ: Thiền 8s, ngắt lúc 1s -> Giảm 7s CD. CD = 18 - 7 = 11s.
             baseCd = baseCd - (remainingSec * 1000L);
 
-            player.sendMessage("§c§l[!] §fThiền định bị gián đoạn!");
+            player.sendMessage("§c§l[!] §fThiền bị gián đoạn!");
             player.playSound(player.getLocation(), Sound.BLOCK_GLASS_BREAK, 1.0f, 0.8f);
         }
 

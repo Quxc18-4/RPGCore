@@ -311,12 +311,29 @@ public class RPGPlayer {
 
     private void updateSetVisuals() {
         ItemStack[] armor = bukkitPlayer.getInventory().getArmorContents();
-        for (ItemStack item : armor) {
+        ItemStack mainHand = bukkitPlayer.getInventory().getItemInMainHand();
+
+        // Gộp cả Giáp và Vũ khí vào chung một mảng để xử lý
+        ItemStack[] allEquips = new ItemStack[5];
+        System.arraycopy(armor, 0, allEquips, 0, 4);
+        allEquips[4] = mainHand;
+
+        for (ItemStack item : allEquips) {
             if (item == null || !item.hasItemMeta() || !item.getItemMeta().hasLore()) continue;
             ItemMeta meta = item.getItemMeta();
-            List<String> lore = meta.getLore();
             boolean updated = false;
 
+            // [MỚI]: Tự động ép cờ ẩn các thông số mặc định của Minecraft (Main Hand, Attributes...)
+            if (!meta.hasItemFlag(org.bukkit.inventory.ItemFlag.HIDE_ATTRIBUTES)) {
+                meta.addItemFlags(
+                        org.bukkit.inventory.ItemFlag.HIDE_ATTRIBUTES,
+                        org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS,
+                        org.bukkit.inventory.ItemFlag.HIDE_UNBREAKABLE
+                );
+                updated = true;
+            }
+
+            List<String> lore = meta.getLore();
             String currentLineage = null;
             for (String l : lore) {
                 String clean = ChatColor.stripColor(l).trim();
@@ -343,6 +360,7 @@ public class RPGPlayer {
                     }
                 }
             }
+
             if (updated) {
                 meta.setLore(lore);
                 item.setItemMeta(meta);
