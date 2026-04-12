@@ -120,6 +120,28 @@ public class SkillUIManager implements Listener {
                 reqLore.add("§a✔ Đạt yêu cầu: Cấp độ " + skill.getRequiredPlayerLevel());
             }
 
+            // ==========================================
+            // [MỚI]: KIỂM TRA YÊU CẦU NGUYÊN TỐ
+            // ==========================================
+            List<String> reqElements = skill.getRequiredElements();
+            if (reqElements != null && !reqElements.isEmpty()) {
+                for (String reqEl : reqElements) {
+                    if (!rpgPlayer.hasElement(reqEl)) {
+                        meetsRequirements = false;
+
+                        // Lấy tên tiếng Việt của Nguyên tố cho đẹp
+                        String elName = reqEl;
+                        try { elName = vn.minecraft.rPGCore.classes.impl.mage.MageElement.valueOf(reqEl.toUpperCase()).getDisplayName(); } catch (Exception ignored){}
+
+                        reqLore.add("§c✖ Yêu cầu Thức tỉnh: " + elName);
+                    } else {
+                        String elName = reqEl;
+                        try { elName = vn.minecraft.rPGCore.classes.impl.mage.MageElement.valueOf(reqEl.toUpperCase()).getDisplayName(); } catch (Exception ignored){}
+                        reqLore.add("§a✔ Đã Thức tỉnh: " + elName);
+                    }
+                }
+            }
+
             Map<String, Integer> reqs = skill.getRequiredSkills();
             if (reqs != null && !reqs.isEmpty()) {
                 reqLore.add("§8-----------------");
@@ -281,6 +303,16 @@ public class SkillUIManager implements Listener {
                         if (skill.getRequiredSkills() != null) {
                             for (Map.Entry<String, Integer> req : skill.getRequiredSkills().entrySet()) {
                                 if (rpgPlayer.getSkillData().getSkillLevel(req.getKey()) < req.getValue()) {
+                                    canUpgrade = false;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // [MỚI]: Check thêm nguyên tố khi click nâng cấp
+                        if (skill.getRequiredElements() != null) {
+                            for (String reqEl : skill.getRequiredElements()) {
+                                if (!rpgPlayer.hasElement(reqEl)) {
                                     canUpgrade = false;
                                     break;
                                 }

@@ -41,13 +41,17 @@ public class ElementalSwapSkill implements ISkill {
     public List<String> getDescription(int level) {
         return Arrays.asList(
                 "§7Cơ chế đặc quyền của hệ phái Pháp Sư.",
-                "§7Cho phép cộng hưởng và luân chuyển nguyên tố.",
+                "§7Cho phép luân chuyển giữa các Nguyên tố.",
                 "",
-                "§e[Nội tại: Chuyển Hóa]",
-                "§f- Nhấn §a[F] §fkhi cầm vũ khí Pháp Sư (1.5s cooldown)",
-                "§f  để xoay vòng sang Nguyên tố tiếp theo.",
-                "§f- Các kỹ năng phép thuật sẽ thay đổi hiệu ứng",
-                "§f  và sát thương dựa trên Nguyên tố đang kích hoạt."
+                "§e[Nội tại - Chuyển Hóa]:",
+                "§cLửa: §f90% Sát thương, 25% tỷ lệ thiêu đốt mục tiêu.",
+                "§bNước: §f40% Sát thương, đạn bay xuyên qua tối đa 5 mục tiêu.",
+                "§aGió: §f70% Sát thương, đẩy lùi, 10% tạo lốc hút quái.",
+                "§2Tự Nhiên: §f80% Sát thương, 15% trói chân, tạo bãi lầy làm chậm.",
+                "§5Bóng Tối: §f80% Sát thương, 25% tỷ lệ gây mù lòa.",
+                "§eÁnh Sáng: §fTia sáng xuyên 3 mục tiêu, gây Phơi nhiễm (+15% ST).",
+                "",
+                "§8(Nhấn [F] để đổi nguyên tố - Hồi chiêu: 1.5s)"
         );
     }
 
@@ -88,7 +92,7 @@ public class ElementalSwapSkill implements ISkill {
         player.getWorld().spawnParticle(elementEnum.getParticle(), player.getLocation().add(0, 1, 0), 15, 0.3, 0.5, 0.3, 0.05);
 
         player.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR,
-                net.md_5.bungee.api.chat.TextComponent.fromLegacyText("§f[Thế]: " + elementEnum.getDisplayName()));
+                net.md_5.bungee.api.chat.TextComponent.fromLegacyText("§f[Nguyên Tố]: " + elementEnum.getDisplayName()));
 
         // Lưu Cooldown 1.5s
         long finalCd = getFinalCooldown(rpgPlayer, getCooldown(level));

@@ -4,7 +4,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.checkerframework.checker.units.qual.C;
 import vn.minecraft.rPGCore.skills.archer.*;
 import vn.minecraft.rPGCore.skills.assassin.*;
-import vn.minecraft.rPGCore.skills.mage.ElementalSwapSkill;
+import vn.minecraft.rPGCore.skills.mage.*;
 import vn.minecraft.rPGCore.skills.summoner.*;
 import vn.minecraft.rPGCore.skills.summoner.pets.*;
 import vn.minecraft.rPGCore.skills.warrior.*;
@@ -78,6 +78,7 @@ public class SkillManager {
         registerSkill(new WarriorSunderArmor(plugin));
         // Mage
         registerSkill(new ElementalSwapSkill());
+        registerSkill(new FocusSkill(plugin));
     }
 
     public void registerSkill(ISkill skill) {

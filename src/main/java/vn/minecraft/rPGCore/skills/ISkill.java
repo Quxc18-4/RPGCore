@@ -53,4 +53,11 @@ public interface ISkill {
     default int getRequiredPlayerLevel() { return 1; }
     // [MỚI]: Phân biệt Kỹ năng Nội tại (Passive) và Chủ động (Active)
     default boolean isPassiveSkill() { return false; }
+
+    // ==========================================
+    // [MỚI]: YÊU CẦU NGUYÊN TỐ (Dành cho Kỹ năng chuyên biệt của Mage)
+    // ==========================================
+    default List<String> getRequiredElements() {
+        return java.util.Collections.emptyList(); // Mặc định không yêu cầu nguyên tố nào
+    }
 }
