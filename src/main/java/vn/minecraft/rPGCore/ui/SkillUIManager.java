@@ -151,7 +151,9 @@ public class SkillUIManager implements Listener {
                 // [ĐÃ SỬA]: KIỂM TRA ACTION CHUỘT PHẢI HIỂN THỊ TRÊN LORE
                 // ==========================================
                 String rightClickAction;
-                if (skill.isPassiveSkill()) {
+                if (skillId.equals("mage_elemental_swap")) {
+                    rightClickAction = "§f[Chuột Phải] §bMở bảng sắp xếp Nguyên tố";
+                } else if (skill.isPassiveSkill()) {
                     rightClickAction = "§f[Chuột Phải] §bBật/Tắt nội tại";
                 } else {
                     rightClickAction = "§f[Chuột Phải] §bGán phím";

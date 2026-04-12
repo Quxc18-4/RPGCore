@@ -33,7 +33,8 @@ public class ItemManager {
     public enum ItemType {
         COOKING("Nguyên liệu nấu ăn"),
         MATERIAL("Vật phẩm"),
-        CURRENCY("Tiền tệ");
+        CURRENCY("Tiền tệ"),
+        CONSUMABLE("Vật phẩm tiêu hao");
 
         public final String displayName;
         ItemType(String displayName) { this.displayName = displayName; }
@@ -166,6 +167,15 @@ public class ItemManager {
         register(new ItemData("misc_steel_string", Rarity.UNCOMMON, Category.MISC, 0.0, Material.STRING, "Sợi Tơ Thép", null, "Cứng cáp lạ thường, cực kỳ bền bỉ.")); // Rớt từ: Nhện Con
         register(new ItemData("misc_wolf_fang", Rarity.UNCOMMON, Category.MISC, 0.0, Material.IRON_NUGGET, "Nanh Sói", null, "Một chiếc nanh vô cùng sắc nhọn,", "thường được dùng để chế tạo vũ khí.")); // Rớt từ: Sói Hoang
         register(new ItemData("misc_leather_pouch_piece", Rarity.COMMON, Category.MISC, 0.0, Material.ARMADILLO_SCUTE, "Mảnh Túi Da Đạo Tặc", null, "Một mảnh da cắt ra từ túi của bọn Đạo Tặc.", "Có vẻ như chúng dùng nó để giấu tiền vàng...")); // Rớt từ: Đạo Tặc
+
+        // --- 10. CÁC VẬT PHẨM TIÊU THỤ ---
+        // Tinh thể ma thuật
+        register(new ItemData("crystal_fire", Rarity.EPIC, Category.MISC, 0.0, Material.BLAZE_POWDER, "Ngọn Lửa Khởi Nguyên", "Thức tỉnh Nguyên Tố Lửa", "Vật phẩm bí ẩn chứa đựng sức mạnh nguyên tố tương ứng."));
+        register(new ItemData("crystal_water", Rarity.EPIC, Category.MISC, 0.0, Material.HEART_OF_THE_SEA, "Nước Mắt Nữ Thần", "Thức tỉnh Nguyên Tố Nước", "Vật phẩm bí ẩn chứa đựng sức mạnh nguyên tố tương ứng."));
+        register(new ItemData("crystal_nature", Rarity.EPIC, Category.MISC, 0.0, Material.OAK_SAPLING, "Mầm Cây Thế Giới", "Thức tỉnh Nguyên Tố Tự Nhiên", "Vật phẩm bí ẩn chứa đựng sức mạnh nguyên tố tương ứng."));
+        register(new ItemData("crystal_wind", Rarity.EPIC, Category.MISC, 0.0, Material.WIND_CHARGE, "Hơi Tàn Của Tinh Linh Gió", "Thức tỉnh Nguyên Tố Gió", "Vật phẩm bí ẩn chứa đựng sức mạnh nguyên tố tương ứng."));
+        register(new ItemData("crystal_light", Rarity.EPIC, Category.MISC, 0.0, Material.NETHER_STAR, "Hào Quang Ánh Sáng", "Thức tỉnh Nguyên Tố Ánh Sáng", "Vật phẩm bí ẩn chứa đựng sức mạnh nguyên tố tương ứng."));
+        register(new ItemData("crystal_dark", Rarity.EPIC, Category.MISC, 0.0, Material.ECHO_SHARD, "Tinh Thể Hỗn Độn", "Thức tỉnh Nguyên Tố Bóng Tối", "Vật phẩm bí ẩn chứa đựng sức mạnh nguyên tố tương ứng."));
     }
 
     private void register(ItemData data) {

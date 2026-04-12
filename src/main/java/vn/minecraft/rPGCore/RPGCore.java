@@ -74,6 +74,8 @@ public final class RPGCore extends JavaPlugin {
         // [MỚI]: ĐĂNG KÝ SỰ KIỆN CHO CỬA HÀNG (SHOP)
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.ShopListener(shopManager, currencyManager, playerManager), this);
         getServer().getPluginManager().registerEvents(elementRotationGUI, this);
+        // Đăng ký Listener cho Hệ thống Vật phẩm tiêu hao (Bình máu, Tinh thể...)
+        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.ConsumableListener(ingredientManager), this);
 
         new RegenTask(playerManager, bossBarManager).runTaskTimer(this, 0L, 20L);
 

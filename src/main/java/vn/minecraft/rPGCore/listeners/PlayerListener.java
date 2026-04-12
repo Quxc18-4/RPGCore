@@ -517,19 +517,19 @@ public class PlayerListener implements Listener {
 
         if (rpgPlayer != null && rpgPlayer.getCurrentClass() != null) {
 
-            // [ĐÃ FIX LỖI API]: Lấy trực tiếp vũ khí đang cầm Ở TAY PHẢI lúc bấm F
+            // Lấy trực tiếp vũ khí đang cầm Ở TAY PHẢI lúc bấm F
             ItemStack weapon = player.getInventory().getItemInMainHand();
 
-            // 1. CHỈ cho phép kích hoạt kỹ năng phím F nếu đang cầm đúng vũ khí phái mình
+            // 1. Kiểm tra xem có đang cầm đúng vũ khí phái mình không
             if (isValidWeaponForClass(weapon, rpgPlayer.getCurrentClass().getId())) {
 
-                // 2. Giao quyền cho Class xử lý.
-                boolean isSkillUsed = rpgPlayer.getCurrentClass().onSwapItem(player, rpgPlayer, weapon);
+                // [FIX TRIỆT ĐỂ]: Đã cầm vũ khí chính của phái thì TUYỆT ĐỐI KHÔNG CHO quăng sang tay trái (phím F).
+                // Bất kể kỹ năng có đang cooldown hay không, phải cản lại ngay lập tức!
+                event.setCancelled(true);
 
-                // 3. NẾU Class trả về TRUE (Dùng chiêu thành công) -> Hủy việc vứt đồ qua tay trái!
-                if (isSkillUsed) {
-                    event.setCancelled(true);
-                }
+                // 2. Sau khi đã cản, mới giao quyền cho Class xử lý kỹ năng (Đổi nguyên tố, buff, v.v...)
+                // Kỹ năng chạy được hay không (do Cooldown) giờ không còn ảnh hưởng tới việc văng đồ nữa.
+                rpgPlayer.getCurrentClass().onSwapItem(player, rpgPlayer, weapon);
             }
         }
     }
