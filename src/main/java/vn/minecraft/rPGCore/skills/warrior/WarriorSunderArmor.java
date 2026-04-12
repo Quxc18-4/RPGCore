@@ -63,7 +63,6 @@ public class WarriorSunderArmor implements ISkill {
     public List<String> getDescription(int level) {
         int dropPerStack = getReductionPerStack(level);
         return Arrays.asList(
-                "§7Kỹ năng Nội Tại.",
                 "§7Mỗi nhát chém đều mài mòn dần giáp trụ của kẻ thù.",
                 "",
                 "§e[Nội tại: Phá Giáp]",
@@ -137,7 +136,11 @@ public class WarriorSunderArmor implements ISkill {
         else if (reduction >= 0.30) {
             // [MỐC 30%]: Bắt đầu vỡ mảnh sắt lớn
             target.getWorld().playSound(loc, Sound.ITEM_SHIELD_BREAK, 1.0f, 0.8f);
-            target.getWorld().spawnParticle(Particle.BLOCK, loc, 15, 0.3, 0.3, 0.3, 0, Material.CHAINMAIL_CHESTPLATE.createBlockData()); // Mảnh giáp văng ra
+
+            // [ĐÃ SỬA LỖI]: Dùng Particle.ITEM thay vì BLOCK cho Vật phẩm (Áo giáp xích)
+            org.bukkit.inventory.ItemStack armorPiece = new org.bukkit.inventory.ItemStack(Material.CHAINMAIL_CHESTPLATE);
+            target.getWorld().spawnParticle(Particle.ITEM, loc, 15, 0.3, 0.3, 0.3, 0.05, armorPiece);
+
             Particle.DustOptions red = new Particle.DustOptions(Color.RED, 1.5f);
             target.getWorld().spawnParticle(Particle.DUST, loc, 10, 0.3, 0.3, 0.3, 0, red);
         }

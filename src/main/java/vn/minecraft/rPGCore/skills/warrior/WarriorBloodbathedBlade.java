@@ -32,7 +32,6 @@ public class WarriorBloodbathedBlade implements ISkill {
         double bonusLifesteal = level * 2.0;
 
         return Arrays.asList(
-                "§7Kỹ năng Nội Tại.",
                 "§7Mỗi nhát chém đều khao khát máu tươi của kẻ thù.",
                 "",
                 "§4[Nội tại: Hút máu]",
