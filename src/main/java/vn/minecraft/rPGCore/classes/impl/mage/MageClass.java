@@ -6,6 +6,7 @@ import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.WindCharge;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -34,7 +35,7 @@ public class MageClass extends RPGClass {
         super(id, displayName, icon, description, maxHealth, maxResource, resourceType, regenRate, isEnchanted);
         this.magicPenCap = 80.0;
 
-        // [HOOK ÁNH SÁNG]: +15% DMG xuyên mục tiêu
+        // [HOOK ÁNH SÁNG]: +15% DMG xuyên mục tiêu [cite: 35]
         CombatManager.registerCombatModifier(new CombatManager.ICombatModifier() {
             @Override
             public double getOutgoingDamageModifier(LivingEntity attacker, LivingEntity target) {
@@ -79,7 +80,7 @@ public class MageClass extends RPGClass {
     }
 
     // ==========================================
-    // SIÊU HÀM: ĐÒN ĐÁNH THƯỜNG CỦA PHÁP SƯ V5.0
+    // SIÊU HÀM: ĐÒN ĐÁNH THƯỜNG CỦA PHÁP SƯ V6.0
     // ==========================================
     @Override
     public boolean onLeftClick(Player player, RPGPlayer rpgPlayer, ItemStack weapon) {
@@ -109,10 +110,11 @@ public class MageClass extends RPGClass {
             boolean hasHit = false;
             java.util.Set<java.util.UUID> hitSet = new java.util.HashSet<>();
 
-            for (int i = 0; i < 40; i++) {
+            // [FIX TẦM BAY]: Tăng từ 40 lên 80 (Tầm bắn ~40 blocks)
+            for (int i = 0; i < 80; i++) {
                 currentLoc.add(dir);
 
-                // [FIX TẦM NHÌN]: Chỉ vẽ tia sáng sau khi đã bay xa mặt 4 blocks (i > 8)
+                // Chỉ vẽ tia sáng sau khi đã bay xa mặt 4 blocks (i > 8)
                 if (i > 8) {
                     currentLoc.getWorld().spawnParticle(Particle.END_ROD, currentLoc, 1, 0, 0, 0, 0);
                 }
@@ -120,7 +122,7 @@ public class MageClass extends RPGClass {
                 if (currentLoc.getBlock().getType().isSolid()) break;
 
                 for (org.bukkit.entity.Entity ent : currentLoc.getWorld().getNearbyEntities(currentLoc, 0.5, 0.5, 0.5)) {
-                    if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent) && !hitSet.contains(ent.getUniqueId())) {
+                    if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent) && !hitSet.contains(ent.getUniqueId())) { // [cite: 38]
                         LivingEntity hitTarget = (LivingEntity) ent;
                         hitSet.add(hitTarget.getUniqueId());
                         pierceCount++;
@@ -135,9 +137,9 @@ public class MageClass extends RPGClass {
                         }
 
                         ReactionEngine.applyMarkOnly(hitTarget, element);
-                        player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(plugin, true));
-                        CombatManager.applySkillDamage(player, hitTarget, damage);
-                        player.removeMetadata("Ghost_L_Blocker", plugin);
+                        player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(plugin, true)); // [cite: 39]
+                        CombatManager.applySkillDamage(player, hitTarget, damage); // [cite: 35]
+                        player.removeMetadata("Ghost_L_Blocker", plugin); // [cite: 39]
 
                         if (pierceCount >= 3) break;
                     }
@@ -164,48 +166,53 @@ public class MageClass extends RPGClass {
             case DARK: player.getWorld().playSound(startLoc, Sound.ENTITY_WITHER_SHOOT, 0.5f, 2.0f); break;
         }
 
-        // CHỈ KHỞI TẠO ITEM DISPLAY CHO HỆ THẢO, TỐI VÀ GIÓ (WIND CHARGE 1.21)
+        // KHỞI TẠO ITEM DISPLAY CHO HỆ THẢO, TỐI
         org.bukkit.entity.ItemDisplay coreDisplay = null;
-        if (element == MageElement.NATURE || element == MageElement.DARK || element == MageElement.WIND) {
+        if (element == MageElement.NATURE || element == MageElement.DARK) {
             try {
                 coreDisplay = player.getWorld().spawn(startLoc, org.bukkit.entity.ItemDisplay.class, display -> {
-                    ItemStack displayItem;
-                    if (element == MageElement.WIND) displayItem = new ItemStack(Material.WIND_CHARGE);
-                    else if (element == MageElement.NATURE) displayItem = new ItemStack(Material.MOSS_BLOCK);
-                    else displayItem = new ItemStack(Material.CRYING_OBSIDIAN);
-
+                    ItemStack displayItem = new ItemStack(element == MageElement.NATURE ? Material.MOSS_BLOCK : Material.CRYING_OBSIDIAN);
                     display.setItemStack(displayItem);
                     display.setItemDisplayTransform(org.bukkit.entity.ItemDisplay.ItemDisplayTransform.HEAD);
                     display.setTeleportDuration(1);
 
-                    // Thu nhỏ kích thước
                     org.bukkit.util.Transformation transform = display.getTransformation();
-                    if (element == MageElement.WIND) transform.getScale().set(0.6f, 0.6f, 0.6f);
-                    else transform.getScale().set(0.4f, 0.4f, 0.4f);
+                    transform.getScale().set(0.4f, 0.4f, 0.4f);
                     display.setTransformation(transform);
                 });
             } catch(Exception ignored) {}
         }
         final org.bukkit.entity.ItemDisplay finalCore = coreDisplay;
 
+        // [SIÊU PHẨM]: KHỞI TẠO THỰC THỂ WIND CHARGE 3D GỐC CỦA VANILLA 1.21
+        WindCharge realWindCharge = null;
+        if (element == MageElement.WIND) {
+            try {
+                realWindCharge = player.launchProjectile(WindCharge.class, direction);
+                realWindCharge.setGravity(false);
+                // Khóa sát thương nổ mặc định của Vanilla bằng Metadata
+                realWindCharge.setMetadata("Fake_Mage_Wind", new FixedMetadataValue(plugin, true));
+            } catch(Exception ignored) {}
+        }
+        final WindCharge finalWindCore = realWindCharge;
+
         new BukkitRunnable() {
             int ticks = 0;
             Location currentLoc = startLoc.clone();
             Location lastLoc = startLoc.clone();
 
-            // [FIX LỖI XUYÊN THẤU]: Set lưu trữ quái đã trúng đạn
             java.util.Set<java.util.UUID> hitSet = new java.util.HashSet<>();
             boolean hasDamagedWeapon = false;
 
             @Override
             public void run() {
                 ticks++;
-                if (ticks > 40) { this.cancel(); return; } // Lifespan
+                if (ticks > 40) { this.cancel(); return; }
 
                 lastLoc = currentLoc.clone();
                 currentLoc.add(direction);
 
-                // Cập nhật Item Display xoay vòng
+                // Cập nhật Item Display xoay vòng (Thảo, Tối)
                 if (finalCore != null && finalCore.isValid()) {
                     Location displayLoc = currentLoc.clone();
                     displayLoc.setYaw(displayLoc.getYaw() + (ticks * 30));
@@ -213,35 +220,43 @@ public class MageClass extends RPGClass {
                     finalCore.teleport(displayLoc);
                 }
 
-                // [FIX TẦM NHÌN]: Chỉ vẽ Particle sau 3 ticks (Đã bay cách người 6 blocks)
+                // Cập nhật Vị trí Wind Charge
+                if (finalWindCore != null && finalWindCore.isValid()) {
+                    finalWindCore.teleport(currentLoc);
+                }
+
+                // CHỈ VẼ PARTICLE KHI BAY RA KHỎI TẦM MẮT (Sau 3 ticks)
                 if (ticks > 3) {
                     switch (element) {
                         case FIRE:
-                            currentLoc.getWorld().spawnParticle(Particle.FLAME, currentLoc, 3, 0.1, 0.1, 0.1, 0.02);
-                            currentLoc.getWorld().spawnParticle(Particle.SMOKE, currentLoc, 1, 0, 0, 0, 0);
+                            // [FIX LỬA]: Làm "mập" quả cầu lửa bằng cách tăng hạt và thêm LAVA/SMOKE
+                            currentLoc.getWorld().spawnParticle(Particle.FLAME, currentLoc, 6, 0.2, 0.2, 0.2, 0.02);
+                            currentLoc.getWorld().spawnParticle(Particle.LAVA, currentLoc, 1, 0.1, 0.1, 0.1, 0);
+                            currentLoc.getWorld().spawnParticle(Particle.CAMPFIRE_COSY_SMOKE, currentLoc, 1, 0.1, 0.1, 0.1, 0);
                             break;
                         case WATER:
-                            // Lưỡi liềm chữ V (Crescent)
+                            // [FIX NƯỚC]: Dùng BUBBLE (Bong bóng) chống trọng lực, vẽ lưỡi liềm mượt
                             for (double d = -0.8; d <= 0.8; d += 0.2) {
-                                double backOffset = Math.abs(d) * 0.8; // Cánh lùi về phía sau
+                                double backOffset = Math.abs(d) * 0.8;
                                 Location pLoc = currentLoc.clone().add(rightVec.clone().multiply(d)).subtract(direction.clone().normalize().multiply(backOffset));
-                                currentLoc.getWorld().spawnParticle(Particle.FALLING_WATER, pLoc, 1, 0, 0, 0, 0);
+                                currentLoc.getWorld().spawnParticle(Particle.BUBBLE, pLoc, 1, 0, 0, 0, 0);
+                                currentLoc.getWorld().spawnParticle(Particle.BUBBLE_POP, pLoc, 1, 0, 0, 0, 0);
                             }
                             break;
                         case WIND:
-                            // Đã có nhân ItemDisplay (Wind Charge) nên chỉ thêm xíu gió nhẹ
+                            // Model 3D đã gánh, chỉ thêm vài hạt mây nhỏ lác đác
                             currentLoc.getWorld().spawnParticle(Particle.CLOUD, currentLoc, 1, 0.1, 0.1, 0.1, 0);
                             break;
                         case NATURE:
                             currentLoc.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, currentLoc, 1, 0.1, 0.1, 0.1, 0);
                             break;
                         case DARK:
-                            // Nội Suy (Interpolation) lấp đầy khoảng trống đạn bay nhanh
+                            // [FIX BÓNG TỐI]: Tăng Step nội suy từ 0.25 lên 0.5 để thanh thoát, bớt đặc sệt
                             double dist = lastLoc.distance(currentLoc);
-                            Vector step = direction.clone().normalize().multiply(0.25);
+                            Vector step = direction.clone().normalize().multiply(0.5);
                             Location tempLoc = lastLoc.clone();
-                            for (double d = 0; d < dist; d += 0.25) {
-                                tempLoc.getWorld().spawnParticle(Particle.PORTAL, tempLoc, 2, 0.1, 0.1, 0.1, 0);
+                            for (double d = 0; d < dist; d += 0.5) {
+                                tempLoc.getWorld().spawnParticle(Particle.PORTAL, tempLoc, 1, 0.05, 0.05, 0.05, 0);
                                 tempLoc.getWorld().spawnParticle(Particle.SQUID_INK, tempLoc, 1, 0, 0, 0, 0);
                                 tempLoc.add(step);
                             }
@@ -265,18 +280,15 @@ public class MageClass extends RPGClass {
 
                 // VA CHẠM QUÁI VẬT
                 for (org.bukkit.entity.Entity ent : currentLoc.getWorld().getNearbyEntities(currentLoc, 0.8, 0.8, 0.8)) {
-                    if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent) && !hitSet.contains(ent.getUniqueId())) {
+                    if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent) && !hitSet.contains(ent.getUniqueId())) { // [cite: 38]
                         LivingEntity target = (LivingEntity) ent;
 
-                        // Lưu con quái này lại để không bị cắn sát thương 2 lần (Cho đạn Nước xuyên qua)
                         hitSet.add(target.getUniqueId());
 
-                        // [MỚI]: Chỉ có hệ Thủy (Water) mới có khả năng bay xuyên (Không bị hủy)
                         if (element != MageElement.WATER) {
                             this.cancel();
                         }
 
-                        // Trừ độ bền vũ khí 1 LẦN DUY NHẤT
                         if (!hasDamagedWeapon) {
                             DurabilityManager.damageItem(player, rpgPlayer, weapon, 1);
                             hasDamagedWeapon = true;
@@ -295,22 +307,19 @@ public class MageClass extends RPGClass {
                                 break;
                             case WATER:
                                 dmgMulti = 0.4;
-                                // Không dùng isAoE = true nữa vì đạn Nước đã bay xuyên quét sạch theo đường thẳng
                                 target.getWorld().playSound(target.getLocation(), Sound.ENTITY_PLAYER_SPLASH, 1f, 1f);
-                                target.getWorld().spawnParticle(Particle.FALLING_WATER, target.getLocation(), 20, 1, 0.5, 1, 0.1);
+                                target.getWorld().spawnParticle(Particle.SPLASH, target.getLocation(), 20, 1, 0.5, 1, 0.1);
                                 break;
                             case WIND:
                                 dmgMulti = 0.7;
                                 target.getWorld().playSound(target.getLocation(), Sound.ENTITY_WIND_CHARGE_WIND_BURST, 1f, 1f);
                                 target.getWorld().spawnParticle(Particle.GUST_EMITTER_SMALL, target.getLocation(), 1, 0, 0, 0, 0);
 
-                                // Ghi đè Knockback sau 1 tick để Override Vanilla Knockback
                                 Vector push = currentLoc.getDirection().normalize().multiply(1.2).setY(0.4);
                                 org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
                                     if (target.isValid()) target.setVelocity(push);
                                 }, 1L);
 
-                                // Hạt nhân gió hút nhẹ
                                 if (random.nextDouble() <= 0.10 && !player.hasMetadata("Wind_Tornado_CD")) {
                                     player.setMetadata("Wind_Tornado_CD", new FixedMetadataValue(plugin, true));
                                     spawnSimpleWindTornado(target.getLocation(), player);
@@ -336,24 +345,23 @@ public class MageClass extends RPGClass {
                                 break;
                         }
 
-                        // Gây sát thương & Gắn Ấn
-                        player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(plugin, true));
+                        player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(plugin, true)); // [cite: 39]
                         if (isAoE) {
                             for (org.bukkit.entity.Entity aoeEnt : target.getWorld().getNearbyEntities(target.getLocation(), 1.5, 1.5, 1.5)) {
-                                if (aoeEnt instanceof LivingEntity && CombatManager.canTarget(player, aoeEnt)) {
-                                    double aoeDmg = CombatManager.calculateDamage(player, rpgPlayer, (LivingEntity) aoeEnt, dmgMulti, 0.0, true, false);
-                                    CombatManager.applySkillDamage(player, (LivingEntity) aoeEnt, aoeDmg);
+                                if (aoeEnt instanceof LivingEntity && CombatManager.canTarget(player, aoeEnt)) { // [cite: 38]
+                                    double aoeDmg = CombatManager.calculateDamage(player, rpgPlayer, (LivingEntity) aoeEnt, dmgMulti, 0.0, true, false); // [cite: 48]
+                                    CombatManager.applySkillDamage(player, (LivingEntity) aoeEnt, aoeDmg); // [cite: 35]
                                     ReactionEngine.applyMarkOnly((LivingEntity) aoeEnt, element);
                                 }
                             }
                         } else {
-                            double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, dmgMulti, 0.0, true, false);
-                            CombatManager.applySkillDamage(player, target, finalDmg);
+                            double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, dmgMulti, 0.0, true, false); // [cite: 48]
+                            CombatManager.applySkillDamage(player, target, finalDmg); // [cite: 35]
                             ReactionEngine.applyMarkOnly(target, element);
                         }
-                        player.removeMetadata("Ghost_L_Blocker", plugin);
+                        player.removeMetadata("Ghost_L_Blocker", plugin); // [cite: 39]
 
-                        if (element != MageElement.WATER) return; // Các đạn khác xử lý 1 con quái rồi thoát
+                        if (element != MageElement.WATER) return;
                     }
                 }
             }
@@ -362,6 +370,7 @@ public class MageClass extends RPGClass {
             public synchronized void cancel() {
                 super.cancel();
                 if (finalCore != null && finalCore.isValid()) finalCore.remove();
+                if (finalWindCore != null && finalWindCore.isValid()) finalWindCore.remove();
             }
         }.runTaskTimer(plugin, 0L, 1L);
 
@@ -378,7 +387,7 @@ public class MageClass extends RPGClass {
             int time = 0;
             @Override
             public void run() {
-                if (time >= 30) { this.cancel(); return; } // 1.5s
+                if (time >= 30) { this.cancel(); return; }
 
                 for (int i = 0; i < 3; i++) {
                     double angle = Math.random() * Math.PI * 2;
@@ -389,7 +398,7 @@ public class MageClass extends RPGClass {
 
                 if (time % 5 == 0) {
                     for (org.bukkit.entity.Entity ent : ground.getWorld().getNearbyEntities(ground, 1.5, 1.0, 1.5)) {
-                        if (ent instanceof LivingEntity && CombatManager.canTarget(shooter, ent)) {
+                        if (ent instanceof LivingEntity && CombatManager.canTarget(shooter, ent)) { // [cite: 38]
                             StatusEffectManager.applyEffect((LivingEntity) ent, org.bukkit.potion.PotionEffectType.SLOWNESS, 20, 1);
                         }
                     }
@@ -405,11 +414,11 @@ public class MageClass extends RPGClass {
             int time = 0;
             @Override
             public void run() {
-                if (time >= 20) { this.cancel(); return; } // Tồn tại 1s ngắn gọn
+                if (time >= 20) { this.cancel(); return; }
                 loc.getWorld().spawnParticle(Particle.GUST, loc, 3, 1.0, 0.5, 1.0, 0);
 
                 for (org.bukkit.entity.Entity ent : loc.getWorld().getNearbyEntities(loc, 2.0, 2.0, 2.0)) {
-                    if (ent instanceof LivingEntity && CombatManager.canTarget(shooter, ent)) {
+                    if (ent instanceof LivingEntity && CombatManager.canTarget(shooter, ent)) { // [cite: 38]
                         Vector diff = loc.toVector().subtract(ent.getLocation().toVector());
                         if (diff.lengthSquared() > 0.0001) {
                             Vector pull = diff.normalize().multiply(0.1); // Kéo nhẹ
