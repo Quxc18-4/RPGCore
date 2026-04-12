@@ -42,7 +42,6 @@ public class MageClass extends RPGClass {
                 if (target.hasMetadata("Mage_Exposure_Debuff")) {
                     target.removeMetadata("Mage_Exposure_Debuff", RPGCore.getInstance());
                     target.getWorld().playSound(target.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1f, 1.5f);
-                    // [FIX LỖI FLASH]: Dùng FIREWORK cực kỳ an toàn và đẹp mắt
                     target.getWorld().spawnParticle(Particle.FIREWORK, target.getLocation().add(0, 1, 0), 10, 0.2, 0.2, 0.2, 0.05);
                     return 0.15; // +15% DMG
                 }
@@ -81,7 +80,7 @@ public class MageClass extends RPGClass {
     }
 
     // ==========================================
-    // SIÊU HÀM: ĐÒN ĐÁNH THƯỜNG CỦA PHÁP SƯ V6.2
+    // SIÊU HÀM: ĐÒN ĐÁNH THƯỜNG CỦA PHÁP SƯ V6.3
     // ==========================================
     @Override
     public boolean onLeftClick(Player player, RPGPlayer rpgPlayer, ItemStack weapon) {
@@ -373,7 +372,6 @@ public class MageClass extends RPGClass {
         while (!ground.getBlock().getType().isSolid() && ground.getY() > ground.getWorld().getMinHeight()) {
             ground.subtract(0, 1, 0);
         }
-        // [FIX TRỒI LÊN]: Bắt đầu từ sát mặt đất
         ground.add(0, 0.1, 0);
 
         new BukkitRunnable() {
@@ -385,10 +383,8 @@ public class MageClass extends RPGClass {
                 for (int i = 0; i < 3; i++) {
                     double angle = Math.random() * Math.PI * 2;
                     double r = Math.random() * 1.5;
-                    // Random Y offset để tạo cảm giác lá bắn/trồi lên từ dưới đất
                     Location pLoc = ground.clone().add(Math.cos(angle)*r, Math.random() * 0.6, Math.sin(angle)*r);
 
-                    // Dùng Particle BLOCK không bị rơi tự do như BLOCK_CRUMBLE
                     ground.getWorld().spawnParticle(Particle.BLOCK, pLoc, 1, 0, 0.1, 0, 0, org.bukkit.Bukkit.createBlockData(Material.OAK_LEAVES));
                     ground.getWorld().spawnParticle(Particle.COMPOSTER, pLoc, 1, 0, 0.1, 0, 0);
                 }
@@ -405,7 +401,7 @@ public class MageClass extends RPGClass {
         }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
     }
 
-    // --- HÀM HỖ TRỢ HIỆU ỨNG GIÓ (MẮT BÃO QUỸ ĐẠO - ORBITAL TORNADO) ---
+    // --- HÀM HỖ TRỢ HIỆU ỨNG GIÓ (MẮT BÃO XANH TRẮNG - ANEMO STYLE) ---
     private void spawnOrbitalWindTornado(Location loc, Player shooter) {
         Location center = loc.clone().add(0, 1, 0); // Đưa tâm bão lên ngang ngực quái
 
@@ -415,26 +411,29 @@ public class MageClass extends RPGClass {
             public void run() {
                 if (time >= 30) { this.cancel(); return; } // Tồn tại 1.5s
 
-                // 1. Lõi Mắt Bão (Hạt Nhân Đen)
-                center.getWorld().spawnParticle(Particle.SQUID_INK, center, 3, 0.1, 0.1, 0.1, 0);
-                center.getWorld().spawnParticle(Particle.SMOKE, center, 1, 0.1, 0.1, 0.1, 0);
+                // 1. Lõi Mắt Bão (Trắng / Xanh Nhạt) thay vì Hố Đen
+                Particle.DustOptions windCoreColor = new Particle.DustOptions(org.bukkit.Color.fromRGB(173, 216, 230), 1.2f); // Xanh dương nhạt lấp lánh
+                center.getWorld().spawnParticle(Particle.DUST, center, 3, 0.1, 0.1, 0.1, 0, windCoreColor);
+                center.getWorld().spawnParticle(Particle.WHITE_ASH, center, 2, 0.2, 0.2, 0.2, 0);
 
-                // 2. Vòng Quỹ Đạo (Orbital)
+                // 2. Vòng Quỹ Đạo (Orbital Mây trắng bay cực nhanh)
                 double radius = 1.5;
-                double angle1 = time * 0.5; // Tốc độ xoay cực nhanh
-                double angle2 = angle1 + Math.PI; // Đối xứng 180 độ
+                double angle1 = time * 0.5;
+                double angle2 = angle1 + Math.PI;
 
                 Location p1 = center.clone().add(Math.cos(angle1) * radius, Math.sin(time * 0.3) * 0.5, Math.sin(angle1) * radius);
                 Location p2 = center.clone().add(Math.cos(angle2) * radius, Math.sin(time * 0.3) * 0.5, Math.sin(angle2) * radius);
 
-                center.getWorld().spawnParticle(Particle.CLOUD, p1, 1, 0, 0, 0, 0);
-                center.getWorld().spawnParticle(Particle.CLOUD, p2, 1, 0, 0, 0, 0);
+                center.getWorld().spawnParticle(Particle.CLOUD, p1, 1, 0, 0, 0, 0.01);
+                center.getWorld().spawnParticle(Particle.CLOUD, p2, 1, 0, 0, 0, 0.01);
 
+                // Hiệu ứng gió rít xé không gian
                 if (time % 5 == 0) {
-                    center.getWorld().spawnParticle(Particle.SWEEP_ATTACK, center, 1, 0.5, 0.5, 0.5, 0); // Vết chém gió
+                    center.getWorld().spawnParticle(Particle.SWEEP_ATTACK, center, 1, 0.5, 0.5, 0.5, 0);
+                    center.getWorld().spawnParticle(Particle.GUST, center, 1, 0.2, 0.2, 0.2, 0); // Xoáy gió 1.21
                 }
 
-                // 3. Hút quái (Black Hole Pull)
+                // 3. Hút quái (Wind Pull)
                 for (org.bukkit.entity.Entity ent : center.getWorld().getNearbyEntities(center, 3.5, 3.5, 3.5)) {
                     if (ent instanceof LivingEntity && CombatManager.canTarget(shooter, ent)) {
                         Vector pull = center.toVector().subtract(ent.getLocation().toVector());
