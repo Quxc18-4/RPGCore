@@ -80,7 +80,7 @@ public class MageClass extends RPGClass {
     }
 
     // ==========================================
-    // SIÊU HÀM: ĐÒN ĐÁNH THƯỜNG CỦA PHÁP SƯ V6.3
+    // SIÊU HÀM: ĐÒN ĐÁNH THƯỜNG CỦA PHÁP SƯ - BẢN HOÀN THIỆN
     // ==========================================
     @Override
     public boolean onLeftClick(Player player, RPGPlayer rpgPlayer, ItemStack weapon) {
@@ -117,7 +117,12 @@ public class MageClass extends RPGClass {
                     currentLoc.getWorld().spawnParticle(Particle.END_ROD, currentLoc, 1, 0, 0, 0, 0);
                 }
 
-                if (currentLoc.getBlock().getType().isSolid()) break;
+                // [CẬP NHẬT TƯƠNG TÁC TƯỜNG]: Tia sáng khi đập tường sẽ nổ tia lửa
+                if (currentLoc.getBlock().getType().isSolid()) {
+                    currentLoc.getWorld().spawnParticle(Particle.FIREWORK, currentLoc, 3, 0.05, 0.05, 0.05, 0.02);
+                    currentLoc.getWorld().playSound(currentLoc, Sound.BLOCK_AMETHYST_BLOCK_HIT, 0.5f, 1.5f);
+                    break;
+                }
 
                 for (org.bukkit.entity.Entity ent : currentLoc.getWorld().getNearbyEntities(currentLoc, 0.5, 0.5, 0.5)) {
                     if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent) && !hitSet.contains(ent.getUniqueId())) {
@@ -253,15 +258,36 @@ public class MageClass extends RPGClass {
                     }
                 }
 
-                // VA CHẠM ĐỊA HÌNH
+                // ==========================================
+                // [CẬP NHẬT TƯƠNG TÁC TƯỜNG ĐỊA HÌNH]
+                // Mọi nguyên tố đều sẽ có tiếng và hạt văng ra khi va chạm tường
+                // ==========================================
                 if (currentLoc.getBlock().getType().isSolid()) {
-                    if (element == MageElement.FIRE) {
-                        currentLoc.getWorld().playSound(currentLoc, Sound.ENTITY_GENERIC_EXPLODE, 0.5f, 1.5f);
-                        currentLoc.getWorld().spawnParticle(Particle.EXPLOSION, currentLoc, 1, 0, 0, 0, 0);
-                    } else if (element == MageElement.WIND) {
-                        currentLoc.getWorld().playSound(currentLoc, Sound.ENTITY_WIND_CHARGE_WIND_BURST, 1f, 1f);
-                    } else if (element == MageElement.NATURE && random.nextDouble() <= 0.33) {
-                        spawnEmergingNatureSludge(currentLoc.clone().add(0, 1, 0), player);
+                    switch (element) {
+                        case FIRE:
+                            currentLoc.getWorld().playSound(currentLoc, Sound.ENTITY_GENERIC_EXPLODE, 0.5f, 1.5f);
+                            currentLoc.getWorld().spawnParticle(Particle.EXPLOSION, currentLoc, 1, 0, 0, 0, 0);
+                            break;
+                        case WATER:
+                            currentLoc.getWorld().playSound(currentLoc, Sound.ENTITY_PLAYER_SPLASH, 0.8f, 1.2f);
+                            currentLoc.getWorld().spawnParticle(Particle.SPLASH, currentLoc, 15, 0.5, 0.5, 0.5, 0.1);
+                            break;
+                        case WIND:
+                            currentLoc.getWorld().playSound(currentLoc, Sound.ENTITY_WIND_CHARGE_WIND_BURST, 1f, 1f);
+                            currentLoc.getWorld().spawnParticle(Particle.GUST_EMITTER_SMALL, currentLoc, 1, 0, 0, 0, 0);
+                            break;
+                        case NATURE:
+                            currentLoc.getWorld().playSound(currentLoc, Sound.BLOCK_GRASS_BREAK, 0.8f, 0.8f);
+                            currentLoc.getWorld().spawnParticle(Particle.BLOCK, currentLoc, 15, 0.3, 0.3, 0.3, 0, org.bukkit.Bukkit.createBlockData(Material.OAK_LEAVES));
+                            if (random.nextDouble() <= 0.33) {
+                                spawnEmergingNatureSludge(currentLoc.clone().add(0, 1, 0), player);
+                            }
+                            break;
+                        case DARK:
+                            currentLoc.getWorld().playSound(currentLoc, Sound.ENTITY_ENDER_PEARL_THROW, 0.8f, 0.5f);
+                            currentLoc.getWorld().spawnParticle(Particle.SQUID_INK, currentLoc, 10, 0.2, 0.2, 0.2, 0.05);
+                            currentLoc.getWorld().spawnParticle(Particle.PORTAL, currentLoc, 15, 0.2, 0.2, 0.2, 0.1);
+                            break;
                     }
                     this.cancel();
                     return;
@@ -274,7 +300,9 @@ public class MageClass extends RPGClass {
 
                         hitSet.add(target.getUniqueId());
 
-                        if (element != MageElement.WATER) {
+                        // [CẬP NHẬT - GIỚI HẠN XUYÊN THẤU]:
+                        // Các hệ khác đập vào 1 con là nổ. Nước (WATER) đập vào con thứ 5 sẽ nổ.
+                        if (element != MageElement.WATER || hitSet.size() >= 5) {
                             this.cancel();
                         }
 
@@ -286,7 +314,6 @@ public class MageClass extends RPGClass {
                         double dmgMulti = 1.0;
                         boolean isAoE = false;
 
-                        // HIT SOUNDS & EFFECTS
                         switch (element) {
                             case FIRE:
                                 dmgMulti = 0.9;
@@ -350,7 +377,8 @@ public class MageClass extends RPGClass {
                         }
                         player.removeMetadata("Ghost_L_Blocker", plugin);
 
-                        if (element != MageElement.WATER) return;
+                        // [CẬP NHẬT]: Nước trúng đủ 5 mục tiêu thì kết thúc luôn, không xuyên nữa
+                        if (element != MageElement.WATER || hitSet.size() >= 5) return;
                     }
                 }
             }
