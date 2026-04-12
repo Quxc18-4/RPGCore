@@ -304,6 +304,14 @@ public class SkillUIManager implements Listener {
 
                             // NẾU LÀ NỘI TẠI -> THỰC HIỆN BẬT / TẮT
                             if (skill.isPassiveSkill()) {
+                                // [MỚI]: Bắt riêng sự kiện cho Kỹ năng Chuyển Hóa Nguyên Tố
+                                if (skillId.equals("mage_elemental_swap")) {
+                                    vn.minecraft.rPGCore.ui.ElementRotationGUI.openGUI(player, rpgPlayer);
+                                    player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_CHEST_OPEN, 1f, 1.2f);
+                                    return;
+                                }
+
+                                // Logic bật tắt cũ giữ nguyên
                                 boolean isOff = "OFF".equals(rpgPlayer.getSkillData().getBinds().get("TOGGLE_" + skillId));
                                 if (isOff) {
                                     rpgPlayer.getSkillData().getBinds().remove("TOGGLE_" + skillId); // Bật lại
@@ -333,6 +341,17 @@ public class SkillUIManager implements Listener {
             String pendingSkill = pendingSkillBind.get(player.getUniqueId());
 
             if (pendingSkill != null) {
+                // ==========================================
+                // [PHÒNG THỦ KÉP]: Chặn đứng mọi nỗ lực gán Passive
+                // ==========================================
+                ISkill targetSkill = skillManager.getSkill(pendingSkill);
+                if (targetSkill != null && targetSkill.isPassiveSkill()) {
+                    player.sendMessage("§c§l[!] §fLỗi hệ thống: Kỹ năng nội tại không thể gán phím!");
+                    player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_VILLAGER_NO, 1f, 1f);
+                    pendingSkillBind.remove(player.getUniqueId()); // Xóa rác
+                    openSkillGUI(player, null, 0);
+                    return;
+                }
                 rpgPlayer.getSkillData().bindCombo(comboName, pendingSkill);
                 player.sendMessage("§aĐã gán kỹ năng vào tổ hợp " + comboName);
                 openSkillGUI(player, null, 0);

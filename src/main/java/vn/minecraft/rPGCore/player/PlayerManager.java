@@ -68,6 +68,10 @@ public class PlayerManager {
             rpgPlayer.getAttributeData().setAttribute("VIT", config.getInt(uuid + ".attr.VIT", 0));
             rpgPlayer.getAttributeData().setAttribute("AGI", config.getInt(uuid + ".attr.AGI", 0));
             rpgPlayer.getAttributeData().setAttribute("LUK", config.getInt(uuid + ".attr.LUK", 0));
+
+            if (config.contains(uuid + ".elements")) {
+                rpgPlayer.setUnlockedElements(config.getStringList(uuid + ".elements"));
+            }
         } else {
             rpgPlayer.setClass(defaultClass);
         }
@@ -115,6 +119,10 @@ public class PlayerManager {
             config.set(uuid + ".attr.VIT", rpgPlayer.getAttributeData().getAttribute("VIT"));
             config.set(uuid + ".attr.AGI", rpgPlayer.getAttributeData().getAttribute("AGI"));
             config.set(uuid + ".attr.LUK", rpgPlayer.getAttributeData().getAttribute("LUK"));
+
+            // [MỚI]: Lưu dữ liệu Nguyên tố (Dành cho Mage)
+            // Nếu list rỗng, YML sẽ tự động lưu là mảng rỗng `elements: []` rất gọn gàng.
+            config.set(uuid + ".elements", rpgPlayer.getUnlockedElements());
 
             // LƯU HỆ THỐNG KỸ NĂNG VÀ COMBO
             config.set(uuid + ".sp", rpgPlayer.getSkillData().getSkillPoints());

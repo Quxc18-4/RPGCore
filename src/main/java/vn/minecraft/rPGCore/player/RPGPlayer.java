@@ -28,6 +28,9 @@ public class RPGPlayer {
     // [MỚI]: Biến lưu trữ tổng số Năng lượng đang bị thế chấp bởi thú triệu hồi
     private double reservedResource = 0;
 
+    // [MỚI]: Danh sách lưu trữ các Nguyên tố đã mở khóa (Dành riêng cho Mage)
+    private java.util.List<String> unlockedElements = new java.util.ArrayList<>();
+
     private final PlayerAttributeData attributeData;
     private final PlayerSkillData skillData;
 
@@ -465,6 +468,51 @@ public class RPGPlayer {
             this.bukkitPlayer.sendMessage("§b⟳ Toàn bộ Kỹ năng và Phím tắt đã được reset! Hoàn trả §e" + currentLevel + " SP§b.");
         }
 
+        // ==========================================
+        // [CƠ CHẾ MAGE]: ROLL NGUYÊN TỐ LẦN ĐẦU TIÊN (Gacha Hệ Thống)
+        // ==========================================
+        if (newClass.getId().equalsIgnoreCase("mage") && this.unlockedElements.isEmpty()) {
+            String[] availableElements = {"FIRE", "WATER", "WIND", "NATURE", "LIGHT", "DARK"};
+
+            java.util.Random rand = new java.util.Random();
+            int roll = rand.nextInt(100); // Tạo số ngẫu nhiên từ 0 đến 99
+            int amountToRoll;
+
+            // Thuật toán Tỉ lệ phân tầng (Weighted Random)
+            // 1%: 6 NT | 2%: 5 NT | 5%: 4 NT | 10%: 3 NT | 32%: 2 NT | 50%: 1 NT
+            if (roll < 1) {             // 0 (1%)
+                amountToRoll = 6;
+            } else if (roll < 3) {      // 1, 2 (2%)
+                amountToRoll = 5;
+            } else if (roll < 8) {      // 3 đến 7 (5%)
+                amountToRoll = 4;
+            } else if (roll < 18) {     // 8 đến 17 (10%)
+                amountToRoll = 3;
+            } else if (roll < 50) {     // 18 đến 49 (32%)
+                amountToRoll = 2;
+            } else {                    // 50 đến 99 (50%)
+                amountToRoll = 1;
+            }
+
+            // Trộn mảng và lấy số lượng nguyên tố tương ứng
+            java.util.List<String> elementList = java.util.Arrays.asList(availableElements);
+            java.util.Collections.shuffle(elementList);
+            for (int i = 0; i < amountToRoll; i++) {
+                this.unlockedElements.add(elementList.get(i));
+            }
+
+            // Hiệu ứng và Thông báo
+            if (amountToRoll >= 4) {
+                // Nếu roll ra từ 4 nguyên tố trở lên -> Thông báo toàn Server!
+                org.bukkit.Bukkit.broadcastMessage("§e§l[Máy Chủ] §fNgười chơi §a" + this.bukkitPlayer.getName() + " §fvừa thức tỉnh §d" + amountToRoll + " Nguyên Tố §fma thuật!");
+                this.bukkitPlayer.playSound(this.bukkitPlayer.getLocation(), org.bukkit.Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+            } else {
+                this.bukkitPlayer.playSound(this.bukkitPlayer.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 0.5f);
+            }
+
+            this.bukkitPlayer.sendMessage("§d§l[Thức Tỉnh Nguyên Tố] §fMa lực của bạn cộng hưởng với: §a" + String.join(", ", this.unlockedElements));
+        }
+
         // Sau khi reset xong thì gọi hàm Gán Class bên dưới
         setClass(newClass);
     }
@@ -526,5 +574,16 @@ public class RPGPlayer {
     // Hàm lấy Max Mana thực tế được phép sử dụng
     public double getUsableMaxResource() {
         return Math.max(0, getTotalMaxResource() - this.reservedResource);
+    }
+
+    public java.util.List<String> getUnlockedElements() { return unlockedElements; }
+    public void setUnlockedElements(java.util.List<String> elements) { this.unlockedElements = elements; }
+    public void addElement(String element) {
+        if (!this.unlockedElements.contains(element.toUpperCase())) {
+            this.unlockedElements.add(element.toUpperCase());
+        }
+    }
+    public boolean hasElement(String element) {
+        return this.unlockedElements.contains(element.toUpperCase());
     }
 }
