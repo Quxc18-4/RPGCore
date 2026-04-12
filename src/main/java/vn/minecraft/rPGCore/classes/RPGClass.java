@@ -49,11 +49,11 @@ public abstract class RPGClass {
     protected double armorPenCap = 50.0;
     protected double magicPenCap = 50.0;
     protected double cdrPenCap = 40.0;
-    protected double dodgeCap = 30.0;
-    protected double blockCap = 30.0;
+    protected double dodgeCap = 20.0;
+    protected double blockCap = 20.0;
     protected double lifeStealCap = 50.0;
     protected double effectResistCap = 80.0;
-    protected double moveSpeedCap = 400.0;
+    protected double moveSpeedCap = 500.0;
 
     // ==========================================
     // CÁC HÀM SỰ KIỆN (HOOKS) CHO PHÉP OVERRIDE

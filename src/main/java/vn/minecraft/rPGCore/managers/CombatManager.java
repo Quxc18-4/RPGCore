@@ -74,10 +74,25 @@ public class CombatManager {
             if (armorAttr != null) targetDefense = armorAttr.getValue();
         }
 
-        double penToUse = isMagic ? finalMagicPen : finalArmorPen;
-        double finalDefenseMulti = 1.0 - (penToUse / 100.0);
-        targetDefense *= finalDefenseMulti;
+        // [LỚP 1 - CHUẨN SOLID]: Áp dụng Phá Giáp Toàn Cục TRƯỚC
+        double totalReductionPct = 0.0;
+        for (ICombatModifier modifier : combatModifiers) {
+            if (isMagic) {
+                totalReductionPct += modifier.getTargetMagicResistReductionPercentage(target);
+            } else {
+                totalReductionPct += modifier.getTargetArmorReductionPercentage(target);
+            }
+        }
+        if (totalReductionPct > 0) {
+            totalReductionPct = Math.min(1.0, totalReductionPct);
+            targetDefense *= (1.0 - totalReductionPct);
+        }
 
+        // [LỚP 2]: Xuyên Giáp Cá Nhân Của Người Chơi Áp dụng SAU
+        double penToUse = isMagic ? finalMagicPen : finalArmorPen;
+        targetDefense *= (1.0 - (penToUse / 100.0));
+
+        // Tính sát thương cuối cùng
         double finalDamage = Math.max(1.0, (rawDamage - targetDefense) * dmgMultiplier);
 
         // Code Dummy Test
@@ -328,18 +343,35 @@ public class CombatManager {
             owner.playSound(owner.getLocation(), Sound.ENTITY_WOLF_GROWL, 0.5f, 1.5f);
         }
 
-        // 6. TRỪ PHÒNG THỦ
+        // 6. TRỪ PHÒNG THỦ VÀ PHÁ GIÁP
         double targetDefense = 0;
         if (isMagicPet && target instanceof Player) {
             RPGPlayer targetRpg = vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager().getRPGPlayer(target.getUniqueId());
             if (targetRpg != null) targetDefense = targetRpg.getTotalStatsMap().getOrDefault("Kháng phép", 0.0);
-            targetDefense *= (1.0 - (petMagicPen / 100.0));
         } else if (!isMagicPet) {
             org.bukkit.attribute.AttributeInstance armorAttr = target.getAttribute(org.bukkit.attribute.Attribute.ARMOR);
             if (armorAttr != null) targetDefense = armorAttr.getValue();
-            targetDefense *= (1.0 - (petArmorPen / 100.0));
         }
 
+        // [LỚP 1 - CHUẨN SOLID]: Áp dụng Phá Giáp Toàn Cục TRƯỚC
+        double totalReductionPct = 0.0;
+        for (ICombatModifier modifier : combatModifiers) {
+            if (isMagicPet) {
+                totalReductionPct += modifier.getTargetMagicResistReductionPercentage(target);
+            } else {
+                totalReductionPct += modifier.getTargetArmorReductionPercentage(target);
+            }
+        }
+        if (totalReductionPct > 0) {
+            totalReductionPct = Math.min(1.0, totalReductionPct);
+            targetDefense *= (1.0 - totalReductionPct);
+        }
+
+        // [LỚP 2]: Xuyên Giáp Cá Nhân Của Pet Áp dụng SAU
+        double penToUse = isMagicPet ? petMagicPen : petArmorPen;
+        targetDefense *= (1.0 - (penToUse / 100.0));
+
+        // Tính sát thương cuối cùng
         double finalDamage = Math.max(1.0, rawDamage - targetDefense);
 
         // ==========================================
@@ -461,10 +493,14 @@ public class CombatManager {
     // ==========================================
     public interface ICombatModifier {
         // Trả về lượng % sát thương GÂY RA cộng thêm (VD: +0.2 là tăng 20%)
-        double getOutgoingDamageModifier(LivingEntity attacker, LivingEntity victim);
+        default double getOutgoingDamageModifier(LivingEntity attacker, LivingEntity victim) { return 0.0; }
 
         // Trả về lượng % sát thương NHẬN VÀO được giảm (VD: 0.15 là giảm 15%)
-        double getIncomingDamageReduction(LivingEntity victim, LivingEntity attacker);
+        default double getIncomingDamageReduction(LivingEntity victim, LivingEntity attacker) { return 0.0; }
+
+        // [CHUẨN SOLID]: Tách bạch Phá Giáp (Vật lý) và Phân Rã (Phép thuật)
+        default double getTargetArmorReductionPercentage(LivingEntity target) { return 0.0; }
+        default double getTargetMagicResistReductionPercentage(LivingEntity target) { return 0.0; }
     }
 
     public static final java.util.List<ICombatModifier> combatModifiers = new java.util.ArrayList<>();

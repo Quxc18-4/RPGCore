@@ -14,6 +14,7 @@ import vn.minecraft.rPGCore.player.RPGPlayer;
 import vn.minecraft.rPGCore.skills.ISkill;
 import vn.minecraft.rPGCore.skills.warrior.WarriorAuraSkill;
 import org.bukkit.Location;
+import vn.minecraft.rPGCore.skills.warrior.WarriorSunderArmor;
 
 import java.util.Map;
 
@@ -27,6 +28,15 @@ public class WarriorClass extends RPGClass {
     @Override
     public void applyPassiveBonusStats(RPGPlayer rpgPlayer, Map<String, Double> stats) {
         stats.put("Tỉ lệ hút máu", stats.getOrDefault("Tỉ lệ hút máu", 0.0) + 12.0);
+
+        // ==========================================
+        // [NỘI TẠI MỚI]: LƯỠI GƯƠM NHUỘM MÁU
+        // ==========================================
+        int bloodBladeLevel = rpgPlayer.getSkillData().getSkillLevel("warrior_bloodbathed_blade");
+        if (bloodBladeLevel > 0) {
+            double passiveLifesteal = bloodBladeLevel * 2.0; // Mỗi cấp +2%
+            stats.put("Tỉ lệ hút máu", stats.getOrDefault("Tỉ lệ hút máu", 0.0) + passiveLifesteal);
+        }
 
         // ==========================================
         // [HUYẾT GIÁP BẠO PHÁ]: ÉP TỈ LỆ HÚT MÁU TRỰC TIẾP
@@ -152,6 +162,16 @@ public class WarriorClass extends RPGClass {
                 ISkill skill = RPGCore.getInstance().getSkillManager().getSkill("warrior_aura");
                 if (skill instanceof WarriorAuraSkill) {
                     ((WarriorAuraSkill) skill).addStack(attacker, rpgPlayer, target, skillLevel);
+                }
+            }
+            // ==========================================
+            // 2. [MỚI]: TÍCH ĐIỂM TOÁI GIÁP (SUNDER ARMOR)
+            // ==========================================
+            int sunderLevel = rpgPlayer.getSkillData().getSkillLevel("warrior_sunder_armor");
+            if (sunderLevel > 0) {
+                ISkill skill = RPGCore.getInstance().getSkillManager().getSkill("warrior_sunder_armor");
+                if (skill instanceof WarriorSunderArmor) {
+                    ((WarriorSunderArmor) skill).processAttackLanded(attacker, target, sunderLevel);
                 }
             }
         }
