@@ -116,4 +116,23 @@ public class ReactionEngine {
         target.removeMetadata(MARK_PREFIX + "Type", RPGCore.getInstance());
         target.removeMetadata(MARK_PREFIX + "Expire", RPGCore.getInstance());
     }
+
+    // ==========================================
+    // CƠ CHẾ MỚI: ĐÁNH THƯỜNG GẮN ẤN (KHÔNG KÍCH NỔ)
+    // ==========================================
+    public static void applyMarkOnly(LivingEntity target, MageElement element) {
+        // Nếu đang trong thời gian miễn nhiễm sau phản ứng (ICD) -> Không cho gắn ấn mới
+        if (target.hasMetadata("Reaction_Immunity")) {
+            long immunityTime = target.getMetadata("Reaction_Immunity").get(0).asLong();
+            if (System.currentTimeMillis() < immunityTime) return;
+        }
+
+        // Trực tiếp gắn (hoặc đè) Ấn mới
+        applyMark(target, element);
+    }
+
+    // Hàm gọi khi 1 Kỹ năng (Skill) kích nổ thành công phản ứng
+    public static void triggerReactionImmunity(LivingEntity target) {
+        target.setMetadata("Reaction_Immunity", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), System.currentTimeMillis() + 1500L)); // Miễn nhiễm 1.5s
+    }
 }
