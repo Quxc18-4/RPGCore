@@ -4,6 +4,7 @@ import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+import vn.minecraft.rPGCore.classes.impl.mage.MageElement;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 import vn.minecraft.rPGCore.skills.AbstractEnhancementSkill;
 
@@ -21,13 +22,10 @@ public class FocusSkill extends AbstractEnhancementSkill {
     @Override public String getId() { return "mage_focus"; }
     @Override public String getName() { return "Tụ Lực"; }
     @Override public String getRequiredClass() { return "mage"; }
-    @Override public Material getIcon() { return Material.NETHER_STAR; }
+    @Override public Material getIcon() { return Material.BEACON; }
 
     @Override public int getMaxLevel() { return 10; }
-
-    // [ĐÃ SỬA]: Luôn tốn 1 SP mỗi lần nâng cấp
     @Override public int getUpgradeCost(int currentLevel) { return 1; }
-
     @Override public Map<String, Integer> getRequiredSkills() { return new HashMap<>(); }
 
     @Override
@@ -41,39 +39,85 @@ public class FocusSkill extends AbstractEnhancementSkill {
         return (long) (Math.max(4.0, cd) * 1000);
     }
 
+    // Hàm mặc định (Phòng hờ lỗi nếu lấy Lore mà không truyền Player)
     @Override
     public List<String> getDescription(int level) {
+        return getDescription(null, level);
+    }
+
+    // ==========================================
+    // [MỚI]: HÀM LORE ĐỘNG - THAY ĐỔI THEO NGUYÊN TỐ ĐANG CHỌN
+    // ==========================================
+    @Override
+    public List<String> getDescription(Player player, int level) {
         List<String> lore = new ArrayList<>();
         int displayLevel = Math.max(1, level);
 
-        // Sát thương dao động: Level 1 = 200%, Level 10 = 335%
+        // Công thức Scale tổng (VD: Lv1 = 200%, Lv10 = 335%)
         int totalDmg = 200 + ((displayLevel - 1) * 15);
 
-        lore.add("§7Pháp sư tập trung tinh thần, nén lượng");
-        lore.add("§7ma lực khổng lồ vào đòn tấn công kế tiếp.");
+        MageElement element = MageElement.FIRE; // Mặc định
+        if (player != null) {
+            element = ElementalSwapSkill.getActiveElement(player);
+        }
+
+        lore.add("§7Pháp sư nén lượng ma lực khổng lồ");
+        lore.add("§7vào đòn tấn công kế tiếp, tạo ra hiệu");
+        lore.add("§7ứng đặc biệt tùy theo Nguyên tố.");
         lore.add("");
-        lore.add("§fSát thương: §c" + totalDmg + "%");
         lore.add("§fThời gian duy trì tụ lực: §68.0 Giây");
+        lore.add("§fTrạng thái hiện tại: " + element.getDisplayName());
         lore.add("");
-        lore.add("§e[Nội tại - Phản Ứng Thuật Pháp]:");
-        lore.add("§8Đòn tấn công này sẽ áp dụng §nẤn Nguyên Tố§8 lên mục tiêu");
-        lore.add("§8hiện tại và KÍCH NỔ các Ấn đang tồn tại của mục tiêu.");
+        lore.add("§e[Hiệu ứng Tụ Lực - " + element.getDisplayName() + "§e]:");
+
+        // HIỂN THỊ CHI TIẾT DỰA VÀO NGUYÊN TỐ ĐANG CẦM TRÊN TAY
+        switch (element) {
+            case FIRE:
+                int minFire = (int)(totalDmg * 0.30);
+                lore.add("§c🔥 Hỏa Cầu Nổ Lan:");
+                lore.add("§7Bắn quả cầu lửa khổng lồ, phát nổ");
+                lore.add("§7chia đều sát thương cho kẻ địch (Tối");
+                lore.add("§7thiểu §c" + minFire + "%§7, Tối đa §c" + totalDmg + "%§7).");
+                break;
+            case WATER:
+                int waterDmg = (int)(totalDmg * 0.33);
+                lore.add("§b💧 Thủy Đao Boomerang:");
+                lore.add("§7Phóng lưỡi đao nước bay đi và quay");
+                lore.add("§7trở lại, xuyên thấu tối đa 3 mục tiêu.");
+                lore.add("§7Mỗi lần chạm gây §c" + waterDmg + "% §7Sát thương.");
+                break;
+            case WIND:
+                int minWind = (int)(totalDmg * 0.30);
+                lore.add("§a🌪 Mắt Bão Cào Xé:");
+                lore.add("§7Tạo tâm bão hút quái liên tục trong 4s.");
+                lore.add("§7Chia đều sát thương mỗi giây (Tối");
+                lore.add("§7thiểu §c" + (minWind/4) + "%§7, Tối đa §c" + (totalDmg/4) + "%§7/s).");
+                break;
+            case NATURE:
+                int minNature = (int)(totalDmg * 0.30);
+                lore.add("§2🌿 Bom Hạt Trói Chân:");
+                lore.add("§7Ném hạt giống nổ tung, trói chân 2s");
+                lore.add("§7và chia đều sát thương (Tối thiểu");
+                lore.add("§c" + minNature + "%§7, Tối đa §c" + totalDmg + "%§7).");
+                break;
+            case DARK:
+                lore.add("§5🌌 Cầu Hắc Ám:");
+                lore.add("§7Xuyên thấu mọi mục tiêu. Kẻ đầu tiên");
+                lore.add("§7nhận §c" + totalDmg + "% §7sát thương. Các mục");
+                lore.add("§7tiêu phía sau bị Mù Lòa và Xóa Aggro.");
+                break;
+            case LIGHT:
+                int lightTick = (int)(totalDmg * 0.20);
+                lore.add("§e✨ Ụ Sáng Thanh Tẩy:");
+                lore.add("§7Triệu hồi tinh cầu lơ lửng, liên tục bắn");
+                lore.add("§7laser xuống kẻ địch gần nhất. Gây");
+                lore.add("§c" + lightTick + "% §7Sát thương/tia.");
+                break;
+        }
+
         lore.add("");
-        lore.add("§e[Bảng Phản Ứng Thuật Pháp]:");
-        lore.add("§8• §7Cùng Nguyên Tố: §bBùng Nổ Thuật Pháp");
-        lore.add("  §7(Gây 115% Sát Thương)");
-        lore.add("§8• §cLửa §f+ §bNước: §cBốc Hơi");
-        lore.add("  §7(Gây 150% Sát Thương)");
-        lore.add("§8• §eÁnh Sáng §f+ §5Bóng Tối: §dHỗn Độn");
-        lore.add("  §7(150% Sát Thương + Phá 20% Giáp/Giáp phép trong 5s)");
-        lore.add("§8• §cLửa §f+ §eÁnh Sáng: §eChớp Giật");
-        lore.add("  §7(150% Sát Thương + Tê liệt diện rộng)");
-        lore.add("§8• §cLửa §f+ §5Bóng Tối: §5Hắc Hỏa");
-        lore.add("  §7(Gây DOT theo % Máu đã mất của mục tiêu trong 4s)");
-        lore.add("§8• §cLửa §f+ §2Tự Nhiên: §6Thiêu Rụi");
-        lore.add("  §7(Đốt cháy kẻ địch trong 7s)");
-        lore.add("§8• §bNước §f+ §2Tự Nhiên: §aSinh Sôi");
-        lore.add("  §7(Trói buộc diện rộng 3s + Hồi 5% HP nếu kết liễu)");
+        lore.add("§8➥ Đòn Tụ lực sẽ Kích Nổ Phản Ứng");
+        lore.add("§8  Nguyên Tố đang có trên mục tiêu.");
 
         return lore;
     }
@@ -99,12 +143,12 @@ public class FocusSkill extends AbstractEnhancementSkill {
         player.setMetadata(cdKey, new org.bukkit.metadata.FixedMetadataValue(plugin, System.currentTimeMillis() + finalCd));
         startCooldownNotifier(player, finalCd);
 
-        // Kế thừa hệ thống Buff (Lưu lại Level của chiêu để chốc nữa truyền vào sát thương)
+        // Đánh dấu người chơi đã Bật Tụ Lực (160 ticks = 8 giây)
         applyWeaponEnhancement(
                 player,
                 "Mage_Focus_Level",
                 level,
-                160L, // 8.0 Giây (160 ticks)
+                160L,
                 "§d§l[!] §fVũ khí đã §eTụ Lực§f, sẵn sàng Kích nổ!",
                 "§8§o(Ma lực Tụ Lực đã tiêu tán...)"
         );

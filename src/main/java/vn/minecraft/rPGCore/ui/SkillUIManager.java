@@ -90,7 +90,7 @@ public class SkillUIManager implements Listener {
             }
 
             lore.add("");
-            lore.addAll(skill.getDescription(skillLevel));
+            lore.addAll(skill.getDescription(player, skillLevel));
 
             ItemStack icon = createItem(skill.getIcon(), "§a§l" + skill.getName(), lore.toArray(new String[0]));
             inv.setItem(ICON_SLOTS[i], icon);

@@ -5,7 +5,6 @@ import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.metadata.FixedMetadataValue;
@@ -20,9 +19,7 @@ import vn.minecraft.rPGCore.managers.DurabilityManager;
 import vn.minecraft.rPGCore.managers.StatusEffectManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
@@ -32,62 +29,19 @@ public class NatureAttack implements IMageBasicAttack {
 
     @Override
     public void cast(Player player, RPGPlayer rpgPlayer, ItemStack weapon) {
+
+        // 1. TRẠM ĐIỀU PHỐI TỤ LỰC
+        if (player.hasMetadata("Mage_Focus_Level")) {
+            int focusLevel = player.getMetadata("Mage_Focus_Level").get(0).asInt();
+            new vn.minecraft.rPGCore.skills.mage.focus.FocusNature().castFocus(player, rpgPlayer, weapon, focusLevel);
+            return;
+        }
+
+        // 2. LOGIC ĐÁNH THƯỜNG
         RPGCore plugin = RPGCore.getInstance();
         Location startLoc = player.getEyeLocation();
         Vector direction = startLoc.getDirection().normalize().multiply(2.0);
 
-        // ==========================================
-        // [CƠ CHẾ CƯỜNG HÓA]: BOM HẠT (SEED BOMB)
-        // ==========================================
-        if (player.hasMetadata("Mage_Focus_Level")) {
-            int focusLevel = player.getMetadata("Mage_Focus_Level").get(0).asInt();
-            player.removeMetadata("Mage_Focus_Level", plugin);
-            player.removeMetadata("Active_Weapon_Enhancement", plugin);
-
-            // Tính sát thương (VD: 335% -> 3.35)
-            double totalFocusMulti = 2.0 + ((focusLevel - 1) * 0.15);
-
-            player.getWorld().playSound(startLoc, Sound.ENTITY_SLIME_JUMP, 1.0f, 0.8f);
-
-            new BukkitRunnable() {
-                int ticks = 0;
-                Location currentLoc = startLoc.clone();
-
-                @Override
-                public void run() {
-                    ticks++;
-                    if (ticks > 40) { explodeSeed(currentLoc, totalFocusMulti, player, rpgPlayer); this.cancel(); return; }
-                    currentLoc.add(direction);
-
-                    // [VISUAL]: Hạt giống bằng Dust màu xanh lá bay đi
-                    Particle.DustOptions seedColor = new Particle.DustOptions(org.bukkit.Color.LIME, 2.0f);
-                    currentLoc.getWorld().spawnParticle(Particle.DUST, currentLoc, 3, 0.1, 0.1, 0.1, seedColor);
-                    currentLoc.getWorld().spawnParticle(Particle.COMPOSTER, currentLoc, 1, 0.1, 0.1, 0.1, 0);
-
-                    // Va chạm nổ
-                    if (currentLoc.getBlock().getType().isSolid()) {
-                        explodeSeed(currentLoc, totalFocusMulti, player, rpgPlayer);
-                        this.cancel();
-                        return;
-                    }
-
-                    for (org.bukkit.entity.Entity ent : currentLoc.getWorld().getNearbyEntities(currentLoc, 0.8, 0.8, 0.8)) {
-                        if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent)) {
-                            explodeSeed(currentLoc, totalFocusMulti, player, rpgPlayer);
-                            this.cancel();
-                            return;
-                        }
-                    }
-                }
-            }.runTaskTimer(plugin, 0L, 1L);
-
-            DurabilityManager.damageItem(player, rpgPlayer, weapon, 3);
-            return;
-        }
-
-        // ==========================================
-        // ĐÒN ĐÁNH THƯỜNG CŨ
-        // ==========================================
         player.getWorld().playSound(startLoc, Sound.ITEM_CROP_PLANT, 0.8f, 0.8f);
 
         org.bukkit.entity.ItemDisplay coreDisplay = null;
@@ -166,42 +120,6 @@ public class NatureAttack implements IMageBasicAttack {
                 if (finalCore != null && finalCore.isValid()) finalCore.remove();
             }
         }.runTaskTimer(plugin, 0L, 1L);
-    }
-
-    // ==========================================
-    // HÀM NỔ BOM HẠT TRÓI CHÂN & CHIA SÁT THƯƠNG
-    // ==========================================
-    private void explodeSeed(Location hitLoc, double totalDmgMulti, Player player, RPGPlayer rpgPlayer) {
-        hitLoc.getWorld().playSound(hitLoc, Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.5f);
-        hitLoc.getWorld().playSound(hitLoc, Sound.BLOCK_GRASS_BREAK, 1.5f, 0.5f);
-        hitLoc.getWorld().spawnParticle(Particle.BLOCK, hitLoc, 50, 2.0, 0.5, 2.0, org.bukkit.Bukkit.createBlockData(Material.MOSS_BLOCK));
-        hitLoc.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, hitLoc, 30, 2.0, 1.0, 2.0, 0);
-
-        List<LivingEntity> validTargets = new ArrayList<>();
-        for (org.bukkit.entity.Entity ent : hitLoc.getWorld().getNearbyEntities(hitLoc, 3.5, 2.5, 3.5)) {
-            if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent)) {
-                validTargets.add((LivingEntity) ent);
-            }
-        }
-
-        if (validTargets.isEmpty()) return;
-
-        double dmgPerTarget = Math.max(totalDmgMulti / validTargets.size(), totalDmgMulti * 0.30);
-
-        for (LivingEntity target : validTargets) {
-            // Trói chân diện rộng 2 giây
-            StatusEffectManager.applyEffect(target, PotionEffectType.SLOWNESS, 40, 10);
-
-            ReactionEngine.ReactionResult reaction = ReactionEngine.processHit(player, target, MageElement.NATURE);
-            double finalDmgMulti = dmgPerTarget * reaction.damageMultiplier;
-
-            player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(RPGCore.getInstance(), true));
-            double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, finalDmgMulti, 0.0, true, false);
-            CombatManager.applySkillDamage(player, target, finalDmg);
-            player.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
-
-            if (reaction.isReacted) ReactionEngine.triggerReactionImmunity(target);
-        }
     }
 
     private void spawnEmergingNatureSludge(Location loc, Player shooter) {

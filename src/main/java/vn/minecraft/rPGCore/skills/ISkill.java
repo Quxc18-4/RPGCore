@@ -43,6 +43,13 @@ public interface ISkill {
     // Tự động sinh mô tả dựa trên cấp độ hiện tại
     List<String> getDescription(int level);
 
+    // ==========================================
+    // [MỚI]: HÀM SINH LORE ĐỘNG THEO NGƯỜI CHƠI (DYNAMIC LORE)
+    // ==========================================
+    default List<String> getDescription(Player player, int level) {
+        return getDescription(level);
+    }
+
     // Hàm thực thi chính khi bấm đúng Combo
     boolean execute(Player player, RPGPlayer rpgPlayer, int level);
     // Thêm hàm này để mỗi kỹ năng tự quyết định giá SP khi nâng cấp

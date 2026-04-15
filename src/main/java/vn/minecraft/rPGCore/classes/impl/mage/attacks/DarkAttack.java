@@ -5,7 +5,6 @@ import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.metadata.FixedMetadataValue;
@@ -30,98 +29,19 @@ public class DarkAttack implements IMageBasicAttack {
 
     @Override
     public void cast(Player player, RPGPlayer rpgPlayer, ItemStack weapon) {
+
+        // 1. TRẠM ĐIỀU PHỐI TỤ LỰC
+        if (player.hasMetadata("Mage_Focus_Level")) {
+            int focusLevel = player.getMetadata("Mage_Focus_Level").get(0).asInt();
+            new vn.minecraft.rPGCore.skills.mage.focus.FocusDark().castFocus(player, rpgPlayer, weapon, focusLevel);
+            return;
+        }
+
+        // 2. LOGIC ĐÁNH THƯỜNG
         RPGCore plugin = RPGCore.getInstance();
         Location startLoc = player.getEyeLocation();
         Vector direction = startLoc.getDirection().normalize().multiply(2.0);
 
-        // ==========================================
-        // [CƠ CHẾ CƯỜNG HÓA]: CẦU HẮC ÁM (XUYÊN THẤU & MÙ LÒA)
-        // ==========================================
-        if (player.hasMetadata("Mage_Focus_Level")) {
-            int focusLevel = player.getMetadata("Mage_Focus_Level").get(0).asInt();
-            player.removeMetadata("Mage_Focus_Level", plugin);
-            player.removeMetadata("Active_Weapon_Enhancement", plugin);
-
-            double totalFocusMulti = 2.0 + ((focusLevel - 1) * 0.15);
-
-            player.getWorld().playSound(startLoc, Sound.ENTITY_WITHER_SHOOT, 1.0f, 0.5f); // Âm trầm uy lực
-
-            new BukkitRunnable() {
-                int ticks = 0;
-                Location currentLoc = startLoc.clone();
-                Location lastLoc = startLoc.clone();
-                Set<UUID> hitSet = new HashSet<>();
-                boolean isFirstHit = true;
-
-                @Override
-                public void run() {
-                    ticks++;
-                    if (ticks > 40) { this.cancel(); return; } // Tầm bay khá xa
-
-                    lastLoc = currentLoc.clone();
-                    currentLoc.add(direction);
-
-                    // [VISUAL]: Cầu hắc ám to và đặc sệt
-                    double dist = lastLoc.distance(currentLoc);
-                    Vector step = direction.clone().normalize().multiply(0.5);
-                    Location tempLoc = lastLoc.clone();
-                    for (double d = 0; d < dist; d += 0.5) {
-                        tempLoc.getWorld().spawnParticle(Particle.SQUID_INK, tempLoc, 3, 0.3, 0.3, 0.3, 0);
-                        tempLoc.getWorld().spawnParticle(Particle.PORTAL, tempLoc, 10, 0.4, 0.4, 0.4, 0);
-                        tempLoc.getWorld().spawnParticle(Particle.LARGE_SMOKE, tempLoc, 1, 0.2, 0.2, 0.2, 0);
-                        tempLoc.add(step);
-                    }
-
-                    // Chạm tường -> Vỡ sương mù
-                    if (currentLoc.getBlock().getType().isSolid()) {
-                        currentLoc.getWorld().playSound(currentLoc, Sound.ENTITY_ENDER_PEARL_THROW, 1f, 0.5f);
-                        currentLoc.getWorld().spawnParticle(Particle.SQUID_INK, currentLoc, 30, 0.5, 0.5, 0.5, 0.05);
-                        this.cancel();
-                        return;
-                    }
-
-                    // Va chạm Quái (XUYÊN THẤU: KHÔNG CANCEL KHI TRÚNG)
-                    for (org.bukkit.entity.Entity ent : currentLoc.getWorld().getNearbyEntities(currentLoc, 1.2, 1.2, 1.2)) {
-                        if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent) && !hitSet.contains(ent.getUniqueId())) {
-                            LivingEntity target = (LivingEntity) ent;
-                            hitSet.add(target.getUniqueId());
-
-                            // Bất kể là ai, đều bị Mù Lòa 100% trong 4 giây và Xóa Aggro
-                            StatusEffectManager.applyEffect(target, PotionEffectType.BLINDNESS, 80, 0);
-                            if (target instanceof Mob) {
-                                ((Mob) target).setTarget(null); // Xóa thù hận
-                            }
-
-                            target.getWorld().playSound(target.getLocation(), Sound.ENTITY_ZOMBIE_VILLAGER_CURE, 1.0f, 0.5f);
-                            target.getWorld().spawnParticle(Particle.SQUID_INK, target.getLocation().add(0, 1, 0), 15, 0.5, 0.5, 0.5, 0);
-
-                            // Kẻ đầu tiên ăn trọn Sát thương và Nổ phản ứng
-                            if (isFirstHit) {
-                                isFirstHit = false;
-
-                                ReactionEngine.ReactionResult reaction = ReactionEngine.processHit(player, target, MageElement.DARK);
-                                double finalDmgMulti = totalFocusMulti * reaction.damageMultiplier;
-
-                                player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(plugin, true));
-                                double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, finalDmgMulti, 0.0, true, false);
-                                CombatManager.applySkillDamage(player, target, finalDmg);
-                                player.removeMetadata("Ghost_L_Blocker", plugin);
-
-                                if (reaction.isReacted) ReactionEngine.triggerReactionImmunity(target);
-                            }
-                            // Mấy kẻ sau chỉ bị mù, đạn tiếp tục bay...
-                        }
-                    }
-                }
-            }.runTaskTimer(plugin, 0L, 1L);
-
-            DurabilityManager.damageItem(player, rpgPlayer, weapon, 3);
-            return;
-        }
-
-        // ==========================================
-        // ĐÒN ĐÁNH THƯỜNG CŨ
-        // ==========================================
         player.getWorld().playSound(startLoc, Sound.ENTITY_WITHER_SHOOT, 0.5f, 2.0f);
 
         org.bukkit.entity.ItemDisplay coreDisplay = null;
