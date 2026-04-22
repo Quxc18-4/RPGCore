@@ -541,4 +541,15 @@ public class PlayerListener implements Listener {
             }
         }
     }
+
+    @org.bukkit.event.EventHandler
+    public void onPlayerSneak(org.bukkit.event.player.PlayerToggleSneakEvent event) {
+        if (event.isSneaking()) {
+            Player player = event.getPlayer();
+            if (player.hasMetadata("RPGCore_Hovering")) {
+                vn.minecraft.rPGCore.managers.StatusEffectManager.removeCustomHover(player);
+                player.sendMessage("§a§o(Đã hủy trạng thái lơ lửng)");
+            }
+        }
+    }
 }

@@ -79,6 +79,7 @@ public class SkillManager {
         // Mage
         registerSkill(new ElementalSwapSkill());
         registerSkill(new FocusSkill(plugin));
+        registerSkill(new BlinkSkill(plugin));
     }
 
     public void registerSkill(ISkill skill) {
