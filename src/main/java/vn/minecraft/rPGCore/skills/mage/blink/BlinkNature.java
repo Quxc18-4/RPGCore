@@ -28,7 +28,7 @@ public class BlinkNature implements IBlink {
         new BukkitRunnable() {
             int ticks = 0;
             double radius = 6.0;
-            int durationTicks = (8 + (skillLevel * 2)) * 20;
+            int durationTicks = (6 + (skillLevel / 2)) * 20;
             int slownessLevel = Math.min(3, (15 + (skillLevel * 5)) / 15); // Tỷ lệ làm chậm ~ Cấp độ 1->3
 
             int killCounter = 0;
@@ -65,8 +65,8 @@ public class BlinkNature implements IBlink {
                     if (killCounter >= 5) {
                         int levelUps = killCounter / 5;
                         killCounter = killCounter % 5;
-                        radius += (1.0 * levelUps); // Tăng 1m bán kính
-                        durationTicks += (40 * levelUps); // Cộng thêm 2 giây
+                        radius += (0.5 * levelUps); // Tăng 1m bán kính
+                        durationTicks += (20 * levelUps); // Cộng thêm 2 giây
                         center.getWorld().playSound(center, Sound.ENTITY_PLAYER_LEVELUP, 1f, 2f);
                         center.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, center.clone().add(0, 1, 0), 50, radius, 0.5, radius, 0.1);
                         player.sendMessage("§a§l[Kết Giới] §fĐã hấp thụ sinh mệnh! Mở rộng & Kéo dài thời gian.");
@@ -103,7 +103,7 @@ public class BlinkNature implements IBlink {
                                 Block b = center.clone().add(x, y, z).getBlock();
                                 if (b.getBlockData() instanceof Ageable) {
                                     Ageable ageable = (Ageable) b.getBlockData();
-                                    if (ageable.getAge() < ageable.getMaximumAge() && Math.random() < 0.25) { // 25% tỷ lệ lớn lên mỗi giây
+                                    if (ageable.getAge() < ageable.getMaximumAge() && Math.random() < 0.5) { // 50% tỷ lệ lớn lên mỗi giây
                                         ageable.setAge(ageable.getAge() + 1);
                                         b.setBlockData(ageable);
                                         b.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, b.getLocation().add(0.5, 0.5, 0.5), 3, 0.2, 0.2, 0.2, 0);

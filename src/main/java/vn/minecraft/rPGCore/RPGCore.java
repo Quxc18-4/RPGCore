@@ -148,4 +148,8 @@ public final class RPGCore extends JavaPlugin {
     }
 
     public SkillManager getSkillManager() { return this.skillManager; }
+
+    public vn.minecraft.rPGCore.ui.BossBarManager getBossBarManager() {
+        return this.bossBarManager;
+    }
 }

@@ -115,15 +115,15 @@ public class RegenTask extends BukkitRunnable {
 
             if (foodLevel >= 18) {
                 hpRegen = baseHpRegen + (maxHp * (inCombat ? 0.005 : 0.015));
-                resourceRegen = maxRes * 0.08;
+                resourceRegen = maxRes * 0.06; // [ĐÃ SỬA]: 8% -> 6%
             }
             else if (foodLevel >= 12) {
                 hpRegen = baseHpRegen;
-                resourceRegen = maxRes * 0.05;
+                resourceRegen = maxRes * 0.04; // [ĐÃ SỬA]: 5% -> 4%
             }
             else if (foodLevel >= 4) {
                 hpRegen = baseHpRegen * 0.5;
-                resourceRegen = maxRes * 0.02;
+                resourceRegen = maxRes * 0.02; // [ĐÃ SỬA]: 2% -> 2%
             }
 
             // ==========================================
@@ -131,11 +131,11 @@ public class RegenTask extends BukkitRunnable {
             // ==========================================
             Map<String, Double> stats = rpgPlayer.getTotalStatsMap();
             double bonusHpRegenPct = stats.getOrDefault("Tỉ lệ hồi phục", 0.0);
-            double flatManaRegen = stats.getOrDefault("Hồi Năng lượng", 0.0);
+            double bonusManaRegenPct = stats.getOrDefault("Hồi Năng lượng", 0.0);
 
             // Khuếch đại máu và cộng thẳng Năng lượng
             hpRegen *= (1.0 + (bonusHpRegenPct / 100.0));
-            resourceRegen += flatManaRegen;
+            resourceRegen *= (1.0 + (bonusManaRegenPct / 100.0));
 
             // ==========================================
             // 5. HÌNH PHẠT GIAO TRANH

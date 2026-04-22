@@ -12,9 +12,10 @@ public class BlinkWind implements IBlink {
     @Override
     public void executeBlink(Player player, RPGPlayer rpgPlayer, int skillLevel) {
         Location start = player.getLocation();
-        // [ĐÃ SỬA]: Lướt thẳng về phía trước song song với mặt đất
+
         double yaw = Math.toRadians(start.getYaw());
-        Vector dir = new Vector(-Math.sin(yaw), 0, Math.cos(yaw));
+        // [ĐÃ SỬA]: X=sin, Z=-cos để lùi lại. Y=1.0 để hất lên 45 độ
+        Vector dir = new Vector(Math.sin(yaw), 1.0, -Math.cos(yaw)).normalize();
 
         Location targetLoc = start.clone();
         for (double d = 0; d <= 6.0; d += 0.5) {
@@ -36,8 +37,8 @@ public class BlinkWind implements IBlink {
         targetLoc.getWorld().playSound(targetLoc, Sound.ENTITY_WIND_CHARGE_WIND_BURST, 1f, 1.2f);
         targetLoc.getWorld().spawnParticle(Particle.GUST, targetLoc.add(0, 1, 0), 10, 0.5, 0.5, 0.5, 0.1);
 
-        // Cấp quyền lơ lửng an toàn (Duration: 3s -> 8s tùy cấp)
-        int hoverSeconds = 3 + skillLevel;
+        // Hover 2s -> 5s
+        int hoverSeconds = 2 + (skillLevel / 2);
         StatusEffectManager.applyCustomHover(player, hoverSeconds * 20, 0.02f, true);
     }
 }

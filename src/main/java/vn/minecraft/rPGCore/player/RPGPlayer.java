@@ -530,6 +530,11 @@ public class RPGPlayer {
     public void setCurrentResource(double currentResource) {
         // [ĐÃ SỬA]: Giới hạn tối đa không còn là Tổng Mana, mà là (Tổng - Thế chấp)
         this.currentResource = Math.max(0, Math.min(currentResource, getUsableMaxResource()));
+
+        // [FIX BUG UI]: Ép BossBar cập nhật ngay lập tức
+        if (this.bukkitPlayer != null && this.bukkitPlayer.isOnline()) {
+            vn.minecraft.rPGCore.RPGCore.getInstance().getBossBarManager().updateBars(this.bukkitPlayer, this);
+        }
     }
 
     // ==========================================

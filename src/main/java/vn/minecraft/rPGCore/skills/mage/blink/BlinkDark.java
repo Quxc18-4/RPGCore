@@ -41,7 +41,7 @@ public class BlinkDark implements IBlink {
 
         targetLoc.getWorld().spawnParticle(Particle.SQUID_INK, targetLoc.add(0, 1, 0), 50, 0.5, 0.5, 0.5, 0.1);
 
-        int durationSeconds = 4 + skillLevel;
+        int durationSeconds = 3 + (skillLevel / 2);
 
         // Tạo bãi khói mù tại điểm xuất phát
         new BukkitRunnable() {

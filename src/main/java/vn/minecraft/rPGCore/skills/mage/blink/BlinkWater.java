@@ -38,7 +38,7 @@ public class BlinkWater implements IBlink {
         player.teleport(targetLoc);
         targetLoc.getWorld().spawnParticle(Particle.SPLASH, targetLoc.add(0, 1, 0), 50, 0.5, 0.5, 0.5, 0.1);
 
-        int durationSeconds = 4 + skillLevel; // 5s -> 10s
+        int durationSeconds = 3 + (skillLevel / 2); // 3.5s -> 6s
 
         // Tạo bãi mây sương mù tại điểm BẮT ĐẦU (chứ không phải điểm đến)
         new BukkitRunnable() {
