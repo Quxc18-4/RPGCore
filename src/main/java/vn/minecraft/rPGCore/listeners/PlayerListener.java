@@ -393,15 +393,23 @@ public class PlayerListener implements Listener {
             rpgPlayer.setInCombat();
             EntityDamageEvent.DamageCause cause = event.getCause();
             double multiplier = rpgPlayer.getTotalMaxHealth() / 20.0;
-//            if (event.getEntity() instanceof Player && event.getCause() == EntityDamageEvent.DamageCause.FALL) {
-//                if (player.hasMetadata("No_Fall_Damage")) {
-//                    event.setCancelled(true);
-//                    player.setFallDistance(0);
-//                }
-//            }
+            // ==========================================
+            // [CƠ CHẾ UNIVERSAL]: CHỐNG SỐC SÁT THƯƠNG NGÃ
+            // ==========================================
+            if (cause == EntityDamageEvent.DamageCause.FALL) {
+                if (player.hasMetadata("RPGCore_SafeFall")) {
+                    event.setCancelled(true);
+                    player.setFallDistance(0);
+                    // Xóa cờ sau khi đã tiếp đất an toàn
+                    player.removeMetadata("RPGCore_SafeFall", vn.minecraft.rPGCore.RPGCore.getInstance());
+                    return;
+                }
+            }
+
             if (cause == EntityDamageEvent.DamageCause.FALL || cause == EntityDamageEvent.DamageCause.LAVA || cause == EntityDamageEvent.DamageCause.DROWNING || cause == EntityDamageEvent.DamageCause.STARVATION || cause == EntityDamageEvent.DamageCause.SUFFOCATION || cause == EntityDamageEvent.DamageCause.FREEZE) {
                 event.setDamage(event.getDamage() * multiplier);
             }
+
             new org.bukkit.scheduler.BukkitRunnable() {
                 @Override public void run() { bossBarManager.updateBars(player, rpgPlayer); }
             }.runTaskLater(RPGCore.getInstance(), 1L);

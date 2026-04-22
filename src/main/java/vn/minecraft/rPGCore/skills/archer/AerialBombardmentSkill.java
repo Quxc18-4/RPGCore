@@ -12,6 +12,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 import vn.minecraft.rPGCore.RPGCore;
+import vn.minecraft.rPGCore.managers.StatusEffectManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 import vn.minecraft.rPGCore.skills.ISkill;
 import vn.minecraft.rPGCore.managers.CombatManager;
@@ -108,9 +109,6 @@ public class AerialBombardmentSkill implements ISkill {
 
         double dmgMulti = getDamageMultiplier(level);
 
-        boolean wasAllowFlight = player.getAllowFlight();
-        player.setAllowFlight(true);
-
         // Khai báo biến loc lấy vị trí của người chơi
         Location loc = player.getLocation();
         // ==========================================
@@ -150,7 +148,12 @@ public class AerialBombardmentSkill implements ISkill {
 
             private void finishSkill() {
                 player.removeMetadata("Is_Casting", plugin);
-                player.setMetadata("No_Fall_Damage", new FixedMetadataValue(plugin, true)); // Cờ báo hiệu cho PlayerListener
+
+                // Gắn cờ Universal Safe Fall thay vì cờ cũ
+                player.setMetadata("RPGCore_SafeFall", new FixedMetadataValue(plugin, true));
+
+                // Thu hồi quyền bay của CustomHover nếu nó chưa kịp hết
+                vn.minecraft.rPGCore.managers.StatusEffectManager.removeCustomHover(player);
 
                 // ==========================================
                 // 2. ĐÁP ĐẤT: RAYCAST HÃM PHANH & MÂY HỒNG ĐỠ
@@ -162,39 +165,32 @@ public class AerialBombardmentSkill implements ISkill {
                             this.cancel(); return;
                         }
 
-                        // Nếu đã chạm đất thật sự
                         if (player.isOnGround()) {
-                            player.removeMetadata("No_Fall_Damage", plugin);
+                            // Cờ SafeFall sẽ do PlayerListener tự xóa khi chạm đất
                             this.cancel(); return;
                         }
 
-                        // Raycast xuống dưới dò mặt đất
                         org.bukkit.util.RayTraceResult result = player.getWorld().rayTraceBlocks(player.getLocation(), new Vector(0, -1, 0), 2.5);
                         if (result != null && result.getHitBlock() != null) {
-                            // Sắp chạm đất! -> Hãm phanh
                             player.setVelocity(new Vector(0, -0.05, 0));
                             player.setFallDistance(0);
 
-                            // Bật mây hồng đỡ lấy
                             Particle.DustOptions cloudDust = new Particle.DustOptions(org.bukkit.Color.fromRGB(255, 228, 225), 3.0f);
                             player.getWorld().spawnParticle(Particle.DUST, player.getLocation().subtract(0, 0.2, 0), 30, 1.0, 0.2, 1.0, cloudDust);
                             player.getWorld().spawnParticle(Particle.CLOUD, player.getLocation(), 15, 0.5, 0.1, 0.5, 0.05);
                             player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_FLAP, 1.0f, 1.5f);
 
+                            // Dự phòng: Xóa cờ sau 2s nếu nhảy xuống vực sâu không chạm đất ngay
                             new BukkitRunnable() {
-                                @Override public void run() { if (player.isOnline()) player.removeMetadata("No_Fall_Damage", plugin); }
-                            }.runTaskLater(plugin, 20L); // Hủy cờ sau 1s an toàn
+                                @Override public void run() { if (player.isOnline() && player.hasMetadata("RPGCore_SafeFall")) player.removeMetadata("RPGCore_SafeFall", plugin); }
+                            }.runTaskLater(plugin, 40L);
 
                             this.cancel();
                         }
                     }
                 }.runTaskTimer(plugin, 0L, 1L);
 
-                player.setGravity(true);
-                if (player.getGameMode() != org.bukkit.GameMode.CREATIVE && player.getGameMode() != org.bukkit.GameMode.SPECTATOR) {
-                    player.setFlying(false);
-                    player.setAllowFlight(wasAllowFlight);
-                }
+                // KHÔNG CẦN DÙNG setGravity(true) nữa!
                 this.cancel();
             }
 
@@ -205,13 +201,15 @@ public class AerialBombardmentSkill implements ISkill {
                     return;
                 }
 
+                // Dùng hệ thống Hover Universal (An toàn 100% khi Disconnect)
                 if (globalTicks == 10) {
-                    player.setGravity(false);
-                    player.setFlying(true);
                     player.setVelocity(new Vector(0, 0, 0));
+                    // Cho lơ lửng bằng thời gian cast (ticksPerCast) + 10 tick trễ
+                    StatusEffectManager.applyCustomHover(player, ticksPerCast + 10, 0.0f, true);
                 }
 
                 if (globalTicks >= 10) {
+                    // Ép vị trí liên tục thay vì tắt Gravity
                     player.setVelocity(new Vector(0, 0, 0));
 
                     Location eyeLoc = player.getEyeLocation();
