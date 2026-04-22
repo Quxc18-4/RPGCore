@@ -67,4 +67,93 @@ public interface ISkill {
     default List<String> getRequiredElements() {
         return java.util.Collections.emptyList(); // Mặc định không yêu cầu nguyên tố nào
     }
+
+    // ==========================================
+    // [HỆ THỐNG CHARGE TỔNG QUÁT]: SỐ LƯỢT TÍCH TRỮ
+    // ==========================================
+    // Trả về số lượt tích trữ tối đa. (Truyền Player để lỡ có check theo Buff/Nguyên tố)
+    default int getMaxCharges(Player player, int level) { return 1; }
+
+    // ==========================================
+    // [SIÊU HÀM]: KIỂM TRA & TRỪ MANA / COOLDOWN / CHARGE
+    // Dùng cái này ở đầu hàm execute() của MỌI KỸ NĂNG để tiết kiệm hàng chục dòng code.
+    // ==========================================
+    default boolean handleCostAndCooldown(Player player, RPGPlayer rpgPlayer, int level) {
+        int maxCharges = getMaxCharges(player, level);
+        String cdKey = "CD_" + getId();
+        String chargeKey = "Charges_" + getId();
+
+        int currentCharges = maxCharges;
+        if (maxCharges > 1 && player.hasMetadata(chargeKey)) {
+            currentCharges = player.getMetadata(chargeKey).get(0).asInt();
+        }
+
+        // 1. Kiểm tra Cooldown (Dành cho Skill thường, hoặc Skill Charge nhưng đã xài hết lượt)
+        if ((maxCharges <= 1 || currentCharges <= 0) && player.hasMetadata(cdKey)) {
+            long expire = player.getMetadata(cdKey).get(0).asLong();
+            if (System.currentTimeMillis() < expire) {
+                double timeLeft = (expire - System.currentTimeMillis()) / 1000.0;
+                player.sendMessage("§cKỹ năng đang hồi chiêu (" + String.format("%.1f", timeLeft) + "s)");
+                return false;
+            }
+        }
+
+        // 2. Kiểm tra Mana
+        double cost = getManaCost(level);
+        if (rpgPlayer.getCurrentResource() < cost) {
+            player.sendMessage("§cKhông đủ Năng lượng!");
+            return false;
+        }
+
+        // 3. Thực thi (Trừ Mana)
+        rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - cost);
+        long finalCd = getFinalCooldown(rpgPlayer, getCooldown(level));
+
+        // 4. Xử lý Trừ Charge & Kích hoạt Hồi chiêu
+        if (maxCharges > 1) {
+            currentCharges--;
+            player.setMetadata(chargeKey, new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), currentCharges));
+
+            if (currentCharges == maxCharges - 1) {
+                // Vừa xài 1 charge từ mốc đầy -> Bắt đầu đếm ngược hồi Charge
+                startRechargeTask(player, rpgPlayer, level);
+            }
+            if (currentCharges == 0) {
+                // Xài cạn sạch -> Đánh dấu Cooldown cứng lên UI
+                player.setMetadata(cdKey, new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), System.currentTimeMillis() + finalCd));
+            }
+        } else {
+            // Kỹ năng bình thường (Max Charge = 1)
+            player.setMetadata(cdKey, new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), System.currentTimeMillis() + finalCd));
+            startCooldownNotifier(player, finalCd);
+        }
+
+        return true;
+    }
+
+    // Task tự động hồi Charge ngầm
+    default void startRechargeTask(Player player, RPGPlayer rpgPlayer, int level) {
+        long finalCd = getFinalCooldown(rpgPlayer, getCooldown(level));
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!player.isOnline()) return;
+                String chargeKey = "Charges_" + getId();
+                int maxCharges = getMaxCharges(player, level);
+                int current = player.hasMetadata(chargeKey) ? player.getMetadata(chargeKey).get(0).asInt() : 0;
+
+                if (current < maxCharges) {
+                    current++;
+                    player.setMetadata(chargeKey, new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), current));
+
+                    if (current == maxCharges) {
+                        player.sendMessage("§a§l[!] §fKỹ năng §e" + getName() + " §fđã hồi đủ §e" + maxCharges + " Lượt§f!");
+                    } else {
+                        // Vẫn chưa đầy, tiếp tục hồi lượt tiếp theo
+                        startRechargeTask(player, rpgPlayer, level);
+                    }
+                }
+            }
+        }.runTaskLater(vn.minecraft.rPGCore.RPGCore.getInstance(), finalCd / 50L);
+    }
 }

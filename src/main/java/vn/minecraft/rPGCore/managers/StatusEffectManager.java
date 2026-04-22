@@ -143,4 +143,52 @@ public class StatusEffectManager {
             if (kbAttr != null) kbAttr.setBaseValue(0.0);
         }
     }
+
+    // ==========================================
+    // [UNIVERSAL]: BAY LƠ LỬNG AN TOÀN (CUSTOM HOVER)
+    // ==========================================
+    public static void applyCustomHover(org.bukkit.entity.Player player, int durationTicks, float flySpeed, boolean safeFall) {
+        player.setAllowFlight(true);
+        player.setFlying(true);
+        player.setFlySpeed(flySpeed);
+
+        // Gắn cờ SafeFall để chống sốc sát thương ngã
+        if (safeFall) {
+            player.setMetadata("RPGCore_SafeFall", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), true));
+        }
+
+        player.setMetadata("RPGCore_Hovering", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), System.currentTimeMillis() + (durationTicks * 50L)));
+
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!player.isOnline() || !player.hasMetadata("RPGCore_Hovering")) {
+                    this.cancel();
+                    return;
+                }
+                long expire = player.getMetadata("RPGCore_Hovering").get(0).asLong();
+                if (System.currentTimeMillis() >= expire) {
+                    removeCustomHover(player);
+                    this.cancel();
+                }
+            }
+        }.runTaskTimer(vn.minecraft.rPGCore.RPGCore.getInstance(), 0L, 2L);
+    }
+
+    public static void removeCustomHover(org.bukkit.entity.Player player) {
+        if (player.hasMetadata("RPGCore_Hovering")) {
+            player.removeMetadata("RPGCore_Hovering", vn.minecraft.rPGCore.RPGCore.getInstance());
+
+            // Xóa quyền bay (trừ phi đang Sáng Tạo)
+            if (player.getGameMode() != org.bukkit.GameMode.CREATIVE && player.getGameMode() != org.bukkit.GameMode.SPECTATOR) {
+                player.setFlying(false);
+                player.setAllowFlight(false);
+            }
+            player.setFlySpeed(0.1f); // Trả về tốc độ bay Vanilla
+            player.setFallDistance(0f); // Xóa khoảng cách rơi tích lũy
+
+            // Note: Để an toàn tuyệt đối, bên PlayerListener bắt sự kiện EntityDamageEvent (FALL),
+            // check nếu có meta RPGCore_SafeFall thì hủy sát thương ngã và xóa cờ đó đi.
+        }
+    }
 }

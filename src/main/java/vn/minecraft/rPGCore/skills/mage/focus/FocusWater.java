@@ -29,8 +29,6 @@ public class FocusWater implements IFocusAttack {
         player.removeMetadata("Active_Weapon_Enhancement", plugin);
 
         double totalFocusMulti = 2.0 + ((focusLevel - 1) * 0.15);
-        double damagePerHit = totalFocusMulti * 0.33;
-
         Location startLoc = player.getEyeLocation();
         player.getWorld().playSound(startLoc, Sound.ENTITY_PLAYER_SPLASH_HIGH_SPEED, 1.2f, 0.8f);
 
@@ -39,7 +37,8 @@ public class FocusWater implements IFocusAttack {
         new BukkitRunnable() {
             int ticks = 0;
             Location currentLoc = startLoc.clone();
-            Set<UUID> hitSet = new HashSet<>();
+            Set<UUID> hitOutward = new HashSet<>();
+            Set<UUID> hitInward = new HashSet<>();
             boolean isReturning = false;
 
             @Override
@@ -52,12 +51,12 @@ public class FocusWater implements IFocusAttack {
                     return;
                 }
 
-                if (!isReturning && ticks > 25) {
+                // Bay khoảng 13 tick * 1.5 tốc độ = ~19.5 blocks thì quay đầu
+                if (!isReturning && ticks > 13) {
                     isReturning = true;
-                    hitSet.clear();
                 }
 
-                if (ticks > 80) { this.cancel(); return; }
+                if (ticks > 60) { this.cancel(); return; }
 
                 Vector travelDir;
                 if (isReturning) {
@@ -82,20 +81,27 @@ public class FocusWater implements IFocusAttack {
                     currentLoc.getWorld().playSound(currentLoc, Sound.ENTITY_PLAYER_SPLASH, 0.8f, 1.2f);
                     currentLoc.getWorld().spawnParticle(Particle.SPLASH, currentLoc, 15, 0.5, 0.5, 0.5, 0.1);
                     isReturning = true;
-                    hitSet.clear();
                 }
 
-                if (hitSet.size() < 3) {
+                Set<UUID> currentHitSet = isReturning ? hitInward : hitOutward;
+
+                if (currentHitSet.size() < 10) {
                     for (org.bukkit.entity.Entity ent : currentLoc.getWorld().getNearbyEntities(currentLoc, 1.5, 1.5, 1.5)) {
-                        if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent) && !hitSet.contains(ent.getUniqueId())) {
+                        if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent) && !currentHitSet.contains(ent.getUniqueId())) {
                             LivingEntity target = (LivingEntity) ent;
-                            hitSet.add(target.getUniqueId());
+                            currentHitSet.add(target.getUniqueId());
 
                             target.getWorld().playSound(target.getLocation(), Sound.ENTITY_PLAYER_SPLASH, 1f, 1f);
                             target.getWorld().spawnParticle(Particle.SPLASH, target.getLocation(), 30, 1, 1, 1, 0.1);
 
+                            // Tính sát thương: Đi 60%. Về: Nếu đã trúng thì 30%, nếu chưa trúng thì 60%.
+                            double appliedDamage = totalFocusMulti * 0.60;
+                            if (isReturning && hitOutward.contains(target.getUniqueId())) {
+                                appliedDamage = totalFocusMulti * 0.30;
+                            }
+
                             ReactionEngine.ReactionResult reaction = ReactionEngine.processHit(player, target, MageElement.WATER);
-                            double finalDmgMulti = damagePerHit * reaction.damageMultiplier;
+                            double finalDmgMulti = appliedDamage * reaction.damageMultiplier;
 
                             player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(plugin, true));
                             double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, finalDmgMulti, 0.0, true, false);
@@ -103,7 +109,7 @@ public class FocusWater implements IFocusAttack {
                             player.removeMetadata("Ghost_L_Blocker", plugin);
 
                             if (reaction.isReacted) ReactionEngine.triggerReactionImmunity(target);
-                            if (hitSet.size() >= 3) break;
+                            if (currentHitSet.size() >= 10) break;
                         }
                     }
                 }

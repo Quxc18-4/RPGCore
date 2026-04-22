@@ -72,32 +72,41 @@ public class FocusNature implements IFocusAttack {
     private void explodeSeed(Location hitLoc, double totalDmgMulti, Player player, RPGPlayer rpgPlayer) {
         hitLoc.getWorld().playSound(hitLoc, Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.5f);
         hitLoc.getWorld().playSound(hitLoc, Sound.BLOCK_GRASS_BREAK, 1.5f, 0.5f);
-        hitLoc.getWorld().spawnParticle(Particle.BLOCK, hitLoc, 50, 2.0, 0.5, 2.0, org.bukkit.Bukkit.createBlockData(Material.MOSS_BLOCK));
+
+        // VISUAL: Dây leo gai bùng nổ
+        hitLoc.getWorld().spawnParticle(Particle.BLOCK, hitLoc, 80, 2.0, 0.5, 2.0, org.bukkit.Bukkit.createBlockData(Material.VINE));
         hitLoc.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, hitLoc, 30, 2.0, 1.0, 2.0, 0);
 
-        List<LivingEntity> validTargets = new ArrayList<>();
+        List<LivingEntity> allTargets = new ArrayList<>();
         for (org.bukkit.entity.Entity ent : hitLoc.getWorld().getNearbyEntities(hitLoc, 3.5, 2.5, 3.5)) {
             if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent)) {
-                validTargets.add((LivingEntity) ent);
+                allTargets.add((LivingEntity) ent);
             }
         }
 
-        if (validTargets.isEmpty()) return;
+        if (allTargets.isEmpty()) return;
 
-        double dmgPerTarget = Math.max(totalDmgMulti / validTargets.size(), totalDmgMulti * 0.30);
+        int dmgTargetsCount = Math.min(allTargets.size(), 10);
+        double dmgPerTarget = Math.max(totalDmgMulti / dmgTargetsCount, totalDmgMulti * 0.30);
 
-        for (LivingEntity target : validTargets) {
-            StatusEffectManager.applyEffect(target, PotionEffectType.SLOWNESS, 40, 10); // Trói 2s
+        int count = 0;
+        for (LivingEntity target : allTargets) {
+            if (count < 10) {
+                StatusEffectManager.applyEffect(target, PotionEffectType.SLOWNESS, 40, 10); // Root
 
-            ReactionEngine.ReactionResult reaction = ReactionEngine.processHit(player, target, MageElement.NATURE);
-            double finalDmgMulti = dmgPerTarget * reaction.damageMultiplier;
+                ReactionEngine.ReactionResult reaction = ReactionEngine.processHit(player, target, MageElement.NATURE);
+                double finalDmgMulti = dmgPerTarget * reaction.damageMultiplier;
 
-            player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(RPGCore.getInstance(), true));
-            double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, finalDmgMulti, 0.0, true, false);
-            CombatManager.applySkillDamage(player, target, finalDmg);
-            player.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
+                player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(RPGCore.getInstance(), true));
+                double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, finalDmgMulti, 0.0, true, false);
+                CombatManager.applySkillDamage(player, target, finalDmg);
+                player.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
 
-            if (reaction.isReacted) ReactionEngine.triggerReactionImmunity(target);
+                if (reaction.isReacted) ReactionEngine.triggerReactionImmunity(target);
+            } else {
+                StatusEffectManager.applyEffect(target, PotionEffectType.SLOWNESS, 40, 1); // Slow thường
+            }
+            count++;
         }
     }
 }

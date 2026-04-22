@@ -46,7 +46,7 @@ public class FocusSkill extends AbstractEnhancementSkill {
     }
 
     // ==========================================
-    // [MỚI]: HÀM LORE ĐỘNG - THAY ĐỔI THEO NGUYÊN TỐ ĐANG CHỌN
+    // LORE ĐÃ ĐƯỢC CHUẨN HÓA THEO STYLE CỦA SERVER
     // ==========================================
     @Override
     public List<String> getDescription(Player player, int level) {
@@ -61,63 +61,75 @@ public class FocusSkill extends AbstractEnhancementSkill {
             element = ElementalSwapSkill.getActiveElement(player);
         }
 
-        lore.add("§7Pháp sư nén lượng ma lực khổng lồ");
-        lore.add("§7vào đòn tấn công kế tiếp, tạo ra hiệu");
-        lore.add("§7ứng đặc biệt tùy theo Nguyên tố.");
+        lore.add("§7Nén ma lực khổng lồ vào đòn tấn công");
+        lore.add("§7kế tiếp, thay đổi hình thái đòn đánh");
+        lore.add("§7dựa trên Nguyên tố đang sử dụng.");
         lore.add("");
-        lore.add("§fThời gian duy trì tụ lực: §68.0 Giây");
-        lore.add("§fTrạng thái hiện tại: " + element.getDisplayName());
+        lore.add("§8▪ §fDuy trì Tụ lực: §68.0s");
+        lore.add("§8▪ §fNguyên tố hiện tại: " + element.getDisplayName());
         lore.add("");
-        lore.add("§e[Hiệu ứng Tụ Lực - " + element.getDisplayName() + "§e]:");
 
         // HIỂN THỊ CHI TIẾT DỰA VÀO NGUYÊN TỐ ĐANG CẦM TRÊN TAY
         switch (element) {
             case FIRE:
                 int minFire = (int)(totalDmg * 0.30);
-                lore.add("§c🔥 Hỏa Cầu Nổ Lan:");
-                lore.add("§7Bắn quả cầu lửa khổng lồ, phát nổ");
-                lore.add("§7chia đều sát thương cho kẻ địch (Tối");
-                lore.add("§7thiểu §c" + minFire + "%§7, Tối đa §c" + totalDmg + "%§7).");
+                lore.add("§c[Thi Triển: Đại Hỏa Cầu]");
+                lore.add("§f- Bắn quả cầu lửa khổng lồ, nổ chia đều sát");
+                lore.add("§f  thương cho tối đa 10 mục tiêu.");
+                lore.add("§f- Sát thương: §c" + minFire + "% §f- §c" + totalDmg + "% ST Vũ khí§f.");
+                lore.add("§f- Hiệu ứng: §6Thiêu Đốt§f 5s (100% tỷ lệ).");
                 break;
             case WATER:
-                int waterDmg = (int)(totalDmg * 0.33);
-                lore.add("§b💧 Thủy Đao Boomerang:");
-                lore.add("§7Phóng lưỡi đao nước bay đi và quay");
-                lore.add("§7trở lại, xuyên thấu tối đa 3 mục tiêu.");
-                lore.add("§7Mỗi lần chạm gây §c" + waterDmg + "% §7Sát thương.");
+                int waterOut = (int)(totalDmg * 0.60);
+                int waterReturn = (int)(totalDmg * 0.30);
+                lore.add("§b[Thi Triển: Boomerang Nước]");
+                lore.add("§f- Phóng đao nước bay đi và quay về, xuyên");
+                lore.add("§f  thấu tối đa 10 mục tiêu.");
+                lore.add("§f- Lượt đi: §c" + waterOut + "% ST Vũ khí§f.");
+                lore.add("§f- Lượt về: §c" + waterReturn + "% ST Vũ khí §f(Gây §c" + waterOut + "%");
+                lore.add("§f  nếu là mục tiêu trúng lần đầu).");
                 break;
             case WIND:
-                int minWind = (int)(totalDmg * 0.30);
-                lore.add("§a🌪 Mắt Bão Cào Xé:");
-                lore.add("§7Tạo tâm bão hút quái liên tục trong 4s.");
-                lore.add("§7Chia đều sát thương mỗi giây (Tối");
-                lore.add("§7thiểu §c" + (minWind/4) + "%§7, Tối đa §c" + (totalDmg/4) + "%§7/s).");
+                int maxWind = (int)(totalDmg * 0.50);
+                int minWind = (int)(totalDmg * 0.20);
+                lore.add("§a[Thi Triển: Mắt Bão]");
+                lore.add("§f- Tạo tâm bão hút quái (4m) duy trì 4s.");
+                lore.add("§f- Sát thương: §c" + maxWind + "%/s§f, giảm 5% mỗi quái");
+                lore.add("§f  (Tối thiểu §c" + minWind + "%§f).");
+                lore.add("§f- §cQuá tải: §fPhát nổ hất văng nếu > 10 quái.");
                 break;
             case NATURE:
                 int minNature = (int)(totalDmg * 0.30);
-                lore.add("§2🌿 Bom Hạt Trói Chân:");
-                lore.add("§7Ném hạt giống nổ tung, trói chân 2s");
-                lore.add("§7và chia đều sát thương (Tối thiểu");
-                lore.add("§c" + minNature + "%§7, Tối đa §c" + totalDmg + "%§7).");
+                lore.add("§2[Thi Triển: Bom Hạt]");
+                lore.add("§f- Ném hạt giống nổ tung, §aTrói Chân 2s§f");
+                lore.add("§f  và chia đều sát thương tối đa 10 kẻ địch.");
+                lore.add("§f- Sát thương: §c" + minNature + "% §f- §c" + totalDmg + "% ST Vũ khí§f.");
+                lore.add("§f- Kẻ địch văng ra ngoài chỉ bị làm chậm.");
                 break;
             case DARK:
-                lore.add("§5🌌 Cầu Hắc Ám:");
-                lore.add("§7Xuyên thấu mọi mục tiêu. Kẻ đầu tiên");
-                lore.add("§7nhận §c" + totalDmg + "% §7sát thương. Các mục");
-                lore.add("§7tiêu phía sau bị Mù Lòa và Xóa Aggro.");
+                int darkFirst = (int)(totalDmg * 0.90);
+                int darkSub = (int)(totalDmg * 0.30);
+                int darkIso = (int)(totalDmg * 1.30);
+                lore.add("§5[Thi Triển: Cầu Hắc Ám]");
+                lore.add("§f- Đạn hắc ám bay xuyên thấu vô hạn.");
+                lore.add("§f- Mục tiêu đầu: §c" + darkFirst + "% ST§f (Tăng lên");
+                lore.add("§f  §c" + darkIso + "%§f nếu đứng cô lập).");
+                lore.add("§f- Kẻ địch phía sau: §c" + darkSub + "% ST§f, bị §8Mù Lòa§f");
+                lore.add("§f  và xóa bỏ thù hận (Aggro).");
                 break;
             case LIGHT:
                 int lightTick = (int)(totalDmg * 0.20);
-                lore.add("§e✨ Ụ Sáng Thanh Tẩy:");
-                lore.add("§7Triệu hồi tinh cầu lơ lửng, liên tục bắn");
-                lore.add("§7laser xuống kẻ địch gần nhất. Gây");
-                lore.add("§c" + lightTick + "% §7Sát thương/tia.");
+                lore.add("§e[Thi Triển: Tiểu Tinh Linh]");
+                lore.add("§f- Triệu hồi tinh linh lơ lửng trong 4s.");
+                lore.add("§f- Tự động ngắm bắn laser vào tối đa");
+                lore.add("§f  3 mục tiêu cùng một lúc.");
+                lore.add("§f- Sát thương: §c" + lightTick + "% ST Vũ khí §f(Mỗi tia).");
                 break;
         }
 
         lore.add("");
-        lore.add("§8➥ Đòn Tụ lực sẽ Kích Nổ Phản Ứng");
-        lore.add("§8  Nguyên Tố đang có trên mục tiêu.");
+        lore.add("§8§o* Tụ lực sẽ tự động kích nổ Phản ứng");
+        lore.add("§8§o  Nguyên tố đang gán trên mục tiêu.");
 
         return lore;
     }

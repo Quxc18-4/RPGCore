@@ -29,7 +29,6 @@ public class FocusWind implements IFocusAttack {
         player.removeMetadata("Active_Weapon_Enhancement", plugin);
 
         double totalFocusMulti = 2.0 + ((focusLevel - 1) * 0.15);
-        double dpsMulti = totalFocusMulti / 4.0;
 
         Location startLoc = player.getEyeLocation();
         Vector direction = startLoc.getDirection().normalize().multiply(2.0);
@@ -52,25 +51,23 @@ public class FocusWind implements IFocusAttack {
             public void run() {
                 ticks++;
                 if (ticks > 40) {
-                    spawnFocusWindTornado(currentLoc, player, rpgPlayer, dpsMulti);
+                    spawnFocusWindTornado(currentLoc, player, rpgPlayer, totalFocusMulti);
                     this.cancel();
                     return;
                 }
                 currentLoc.add(direction);
 
-                if (finalWindCore != null && finalWindCore.isValid()) {
-                    finalWindCore.setVelocity(direction);
-                }
+                if (finalWindCore != null && finalWindCore.isValid()) finalWindCore.setVelocity(direction);
 
                 if (currentLoc.getBlock().getType().isSolid()) {
-                    spawnFocusWindTornado(currentLoc, player, rpgPlayer, dpsMulti);
+                    spawnFocusWindTornado(currentLoc, player, rpgPlayer, totalFocusMulti);
                     this.cancel();
                     return;
                 }
 
                 for (org.bukkit.entity.Entity ent : currentLoc.getWorld().getNearbyEntities(currentLoc, 1.0, 1.0, 1.0)) {
                     if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent)) {
-                        spawnFocusWindTornado(currentLoc, player, rpgPlayer, dpsMulti);
+                        spawnFocusWindTornado(currentLoc, player, rpgPlayer, totalFocusMulti);
                         this.cancel();
                         return;
                     }
@@ -87,7 +84,7 @@ public class FocusWind implements IFocusAttack {
         DurabilityManager.damageItem(player, rpgPlayer, weapon, 3);
     }
 
-    private void spawnFocusWindTornado(Location loc, Player shooter, RPGPlayer rpgShooter, double dpsMulti) {
+    private void spawnFocusWindTornado(Location loc, Player shooter, RPGPlayer rpgShooter, double totalFocusMulti) {
         Location center = loc.clone().add(0, 1, 0);
         center.getWorld().playSound(center, Sound.ENTITY_WIND_CHARGE_WIND_BURST, 1.5f, 0.8f);
 
@@ -101,7 +98,7 @@ public class FocusWind implements IFocusAttack {
                 center.getWorld().spawnParticle(Particle.DUST, center, 5, 0.5, 0.5, 0.5, 0, windCoreColor);
                 center.getWorld().spawnParticle(Particle.WHITE_ASH, center, 5, 0.5, 0.5, 0.5, 0);
 
-                double radius = 3.5;
+                double radius = 4.0; // Bán kính giảm còn 4
                 double angle1 = ticks * 0.3;
                 double angle2 = angle1 + Math.PI;
 
@@ -111,41 +108,53 @@ public class FocusWind implements IFocusAttack {
                 center.getWorld().spawnParticle(Particle.CLOUD, p1, 1, 0, 0, 0, 0.05);
                 center.getWorld().spawnParticle(Particle.CLOUD, p2, 1, 0, 0, 0, 0.05);
 
-                if (ticks % 5 == 0) {
-                    center.getWorld().spawnParticle(Particle.SWEEP_ATTACK, center, 3, 1.5, 1.5, 1.5, 0);
-                    center.getWorld().spawnParticle(Particle.GUST, center, 2, 1.0, 1.0, 1.0, 0);
-                }
+                boolean isDamageTick = (ticks % 20 == 0); // 1 giây 1 lần
+                List<LivingEntity> allTargets = new ArrayList<>();
 
-                boolean isDamageTick = (ticks % 20 == 0);
-                List<LivingEntity> validTargets = new ArrayList<>();
-
-                for (org.bukkit.entity.Entity ent : center.getWorld().getNearbyEntities(center, 5.0, 5.0, 5.0)) {
+                for (org.bukkit.entity.Entity ent : center.getWorld().getNearbyEntities(center, 4.0, 4.0, 4.0)) {
                     if (ent instanceof LivingEntity && CombatManager.canTarget(shooter, ent)) {
-                        LivingEntity target = (LivingEntity) ent;
-
-                        Vector pull = center.toVector().subtract(target.getLocation().toVector());
-                        if (pull.lengthSquared() > 0.0001) {
-                            target.setVelocity(target.getVelocity().add(pull.normalize().multiply(0.15)));
+                        allTargets.add((LivingEntity) ent);
+                        Vector pull = center.toVector().subtract(ent.getLocation().toVector());
+                        if (pull.lengthSquared() > 0.0001 && allTargets.size() <= 10) {
+                            ent.setVelocity(ent.getVelocity().add(pull.normalize().multiply(0.15)));
                         }
-
-                        if (isDamageTick) validTargets.add(target);
                     }
                 }
 
-                if (isDamageTick && !validTargets.isEmpty()) {
-                    center.getWorld().playSound(center, Sound.ENTITY_PLAYER_ATTACK_SWEEP, 1f, 1.5f);
-                    double dmgPerTarget = Math.max(dpsMulti / validTargets.size(), dpsMulti * 0.30);
+                if (isDamageTick) {
+                    // Cơ chế QUÁ TẢI (OVERLOAD)
+                    if (allTargets.size() > 10 && Math.random() < 0.25) { // 25% nổ mỗi giây nếu quá tải
+                        center.getWorld().playSound(center, Sound.ENTITY_GENERIC_EXPLODE, 1.5f, 1.0f);
+                        center.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, center, 1);
+                        for (LivingEntity ent : allTargets) {
+                            Vector push = ent.getLocation().toVector().subtract(center.toVector()).normalize().multiply(1.5).setY(0.5);
+                            ent.setVelocity(push);
+                        }
+                        this.cancel();
+                        return;
+                    }
 
-                    for (LivingEntity target : validTargets) {
-                        ReactionEngine.ReactionResult reaction = ReactionEngine.processHit(shooter, target, MageElement.WIND);
-                        double finalDmgMulti = dmgPerTarget * reaction.damageMultiplier;
+                    if (!allTargets.isEmpty()) {
+                        center.getWorld().playSound(center, Sound.ENTITY_PLAYER_ATTACK_SWEEP, 1f, 1.5f);
 
-                        shooter.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(RPGCore.getInstance(), true));
-                        double finalDmg = CombatManager.calculateDamage(shooter, rpgShooter, target, finalDmgMulti, 0.0, true, false);
-                        CombatManager.applySkillDamage(shooter, target, finalDmg);
-                        shooter.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
+                        int count = Math.min(allTargets.size(), 10);
+                        // DMG ban đầu 50%, mỗi quái giảm 5%, tối thiểu 20%
+                        double dpsPct = 0.50 - ((count - 1) * 0.05);
+                        dpsPct = Math.max(dpsPct, 0.20);
+                        double dmgPerTarget = totalFocusMulti * dpsPct;
 
-                        if (reaction.isReacted) ReactionEngine.triggerReactionImmunity(target);
+                        for (int i = 0; i < count; i++) {
+                            LivingEntity target = allTargets.get(i);
+                            ReactionEngine.ReactionResult reaction = ReactionEngine.processHit(shooter, target, MageElement.WIND);
+                            double finalDmgMulti = dmgPerTarget * reaction.damageMultiplier;
+
+                            shooter.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(RPGCore.getInstance(), true));
+                            double finalDmg = CombatManager.calculateDamage(shooter, rpgShooter, target, finalDmgMulti, 0.0, true, false);
+                            CombatManager.applySkillDamage(shooter, target, finalDmg);
+                            shooter.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
+
+                            if (reaction.isReacted) ReactionEngine.triggerReactionImmunity(target);
+                        }
                     }
                 }
                 ticks++;

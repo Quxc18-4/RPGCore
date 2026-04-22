@@ -25,8 +25,6 @@ public class FocusFire implements IFocusAttack {
     @Override
     public void castFocus(Player player, RPGPlayer rpgPlayer, ItemStack weapon, int focusLevel) {
         RPGCore plugin = RPGCore.getInstance();
-
-        // 1. Tiêu thụ Buff ngay lập tức
         player.removeMetadata("Mage_Focus_Level", plugin);
         player.removeMetadata("Active_Weapon_Enhancement", plugin);
 
@@ -98,28 +96,34 @@ public class FocusFire implements IFocusAttack {
         hitLoc.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, hitLoc, 1);
         hitLoc.getWorld().spawnParticle(Particle.FLAME, hitLoc, 50, 2.0, 2.0, 2.0, 0.1);
 
-        List<LivingEntity> validTargets = new ArrayList<>();
+        List<LivingEntity> allTargets = new ArrayList<>();
         for (org.bukkit.entity.Entity ent : hitLoc.getWorld().getNearbyEntities(hitLoc, 4.0, 4.0, 4.0)) {
             if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent)) {
-                validTargets.add((LivingEntity) ent);
+                allTargets.add((LivingEntity) ent);
             }
         }
 
-        if (validTargets.isEmpty()) return;
+        if (allTargets.isEmpty()) return;
 
-        double dmgPerTarget = Math.max(totalDmgMulti / validTargets.size(), totalDmgMulti * 0.30);
+        int dmgTargetsCount = Math.min(allTargets.size(), 10); // Cáp 10 mục tiêu chia sát thương
+        double dmgPerTarget = Math.max(totalDmgMulti / dmgTargetsCount, totalDmgMulti * 0.30);
 
-        for (LivingEntity target : validTargets) {
-            ReactionEngine.ReactionResult reaction = ReactionEngine.processHit(player, target, MageElement.FIRE);
-            double finalDmgMulti = dmgPerTarget * reaction.damageMultiplier;
+        int count = 0;
+        for (LivingEntity target : allTargets) {
+            target.setFireTicks(100); // 100% quái bị bỏng
 
-            player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(RPGCore.getInstance(), true));
-            double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, finalDmgMulti, 0.0, true, false);
-            CombatManager.applySkillDamage(player, target, finalDmg);
-            player.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
+            if (count < 10) {
+                ReactionEngine.ReactionResult reaction = ReactionEngine.processHit(player, target, MageElement.FIRE);
+                double finalDmgMulti = dmgPerTarget * reaction.damageMultiplier;
 
-            if (reaction.isReacted) ReactionEngine.triggerReactionImmunity(target);
-            target.setFireTicks(100);
+                player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(RPGCore.getInstance(), true));
+                double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, finalDmgMulti, 0.0, true, false);
+                CombatManager.applySkillDamage(player, target, finalDmg);
+                player.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
+
+                if (reaction.isReacted) ReactionEngine.triggerReactionImmunity(target);
+            }
+            count++;
         }
     }
 }
