@@ -63,6 +63,9 @@ public class ElementalSphereSkill implements ISkill {
     private double getProjectileDamageMulti(int level) { return 1.8 + ((level - 1) * 0.1); }
     private double getDomainDamageMulti(int level) { return 2.5 + ((level - 1) * 0.15); }
 
+    // ==========================================
+    // UI LORE MỚI (GỌN GÀNG - CHUYÊN NGHIỆP)
+    // ==========================================
     @Override
     public List<String> getDescription(int level) {
         return getDescription(null, level);
@@ -74,57 +77,54 @@ public class ElementalSphereSkill implements ISkill {
         int displayLevel = Math.max(1, level);
         MageElement element = player != null ? ElementalSwapSkill.getActiveElement(player) : MageElement.FIRE;
 
-        lore.add("§7Bắn ra một Khối ma lực nén với tốc độ cao.");
-        lore.add("§7Nếu va chạm mục tiêu hoặc địa hình, khối");
-        lore.add("§7ma lực sẽ bung nở thành Ma Pháp Trận.");
-        lore.add("§7Nếu bay trên không quá lâu, nó sẽ tự bạo.");
-        lore.add("");
-
-        double mana = getManaCost(displayLevel);
-        double cd = getCooldown(displayLevel) / 1000.0;
         int projDmgPct = (int) (getProjectileDamageMulti(displayLevel) * 100);
         int domDmgPct = (int) (getDomainDamageMulti(displayLevel) * 100);
 
-        lore.add("§8▪ §fTiêu hao: §b" + mana + " Năng lượng");
-        lore.add("§8▪ §fHồi chiêu: §a" + cd + "s");
-        lore.add("§8▪ §fST Đạn đập trúng: §c" + projDmgPct + "%");
         lore.add("§8▪ §fNguyên tố hiện tại: " + element.getDisplayName());
+        lore.add("");
+        lore.add("§8[Nội tại - Nén]");
+        lore.add("§f- Viên đạn ma lực gây §c" + projDmgPct + "% ST §fcho mục tiêu dính đòn.");
+        lore.add("§f- Nếu bay quá lâu, khối ma lực sẽ thiếu ổn");
+        lore.add("§f  định và tự bạo trên không trung.");
         lore.add("");
 
         switch (element) {
             case FIRE:
-                lore.add("§c[Ma Pháp Trận: Hỏa Ngục]");
-                lore.add("§f- Phát nổ 1 lần duy nhất gây §c" + (domDmgPct * 2) + "% ST§f.");
-                lore.add("§f- Thiêu đốt mọi kẻ địch (Bán kính 4m).");
+                lore.add("§c[Thi Triển: Bạo Liệt Viêm Kích]");
+                lore.add("§f- Phát nổ khối cầu bao trùm khu vực (Bán kính 4m).");
+                lore.add("§f- Gây §c" + (domDmgPct * 2) + "% ST§f và thiêu đốt mọi kẻ địch.");
                 break;
             case WATER:
-                lore.add("§b[Ma Pháp Trận: Sóng Thần]");
-                lore.add("§f- Kích nổ 3 đợt liên tiếp (Mỗi 1.5s).");
-                lore.add("§f- Hất tung kẻ địch lên không trung.");
+                lore.add("§b[Thi Triển: Thủy Triều Dâng]");
+                lore.add("§f- Kích nổ 3 đợt sóng liên tiếp (Mỗi 1.5s).");
+                lore.add("§f- Gây §c" + domDmgPct + "% ST§f và hất tung kẻ địch lên trời.");
                 break;
             case WIND:
-                lore.add("§a[Ma Pháp Trận: Mắt Bão]");
-                lore.add("§f- Tạo lõi lốc xoáy duy trì §a6s §f(Bán kính 4m).");
-                lore.add("§f- Liên tục hút và gây ST lên kẻ địch.");
+                lore.add("§a[Thi Triển: Gió Xoáy]");
+                lore.add("§f- Giải phóng lõi lốc xoáy duy trì §a6s §f(Bán kính 4m).");
+                lore.add("§f- Liên tục hút kẻ địch vào tâm và xé toạc chúng");
+                lore.add("§f  với tổng sát thương bằng §c" + domDmgPct + "% ST§f.");
                 break;
             case NATURE:
-                lore.add("§2[Ma Pháp Trận: Khu Rừng Trói Buộc]");
-                lore.add("§f- Khóa cứng kẻ địch trong §a3.5s §f(Bán kính 5m).");
+                lore.add("§2[Thi Triển: Dây Leo Cuồng Nộ]");
+                lore.add("§f- Tạo rừng dây leo khóa chặt vị trí kẻ địch");
+                lore.add("§f  trong §a3.5s §f(Bán kính 5m), gây §c" + domDmgPct + "% ST§f.");
                 lore.add("§f- Rút sinh lực kẻ địch bị trói về cho bản");
                 lore.add("§f  thân: Hồi §a0.5% Máu/s §f(Tối đa 8%).");
                 break;
             case LIGHT:
-                lore.add("§e[Ma Pháp Trận: Thánh Vực]");
-                lore.add("§f- Tồn tại §a8s §f(Bán kính 6m).");
-                lore.add("§f- Kẻ địch bước vào: Nhận thêm §c15% ST§f.");
-                lore.add("§f- Bản thân bước vào: Giảm §a8% ST nhận vào§f.");
+                lore.add("§e[Thi Triển: Quả Cầu Ánh Sáng]");
+                lore.add("§f- Nở ra Thánh Vực tồn tại §a8s §f(Bán kính 6m).");
+                lore.add("§f- Gây §c" + domDmgPct + "% ST§f khởi điểm.");
+                lore.add("§f- Kẻ địch bên trong: Nhận thêm §c15% ST§f.");
+                lore.add("§f- Bản thân bên trong: Giảm §a8% ST nhận vào§f.");
                 break;
             case DARK:
-                lore.add("§5[Ma Pháp Trận: Vực Thẳm Hư Không]");
-                lore.add("§f- Sát thương nổ ban đầu giảm còn §c70%§f.");
-                lore.add("§f- Mở Khe nứt tồn tại §a16s §f(Bán kính 5m).");
-                lore.add("§f- Khe nứt liên tục phóng sét Hư không gây");
-                lore.add("§f  §c100% ST vũ khí §flên kẻ địch mỗi 1.5s.");
+                lore.add("§5[Thi Triển: Khe Nứt Bóng Tối]");
+                lore.add("§f- Khởi tạo gây §c" + (int)(domDmgPct * 0.7) + "% ST§f và xé rách");
+                lore.add("§f  không gian thành một Khe nứt tồn tại §a16s§f.");
+                lore.add("§f- Khe nứt liên tục phóng sét Hư không vào tối đa");
+                lore.add("§f  §c3 mục tiêu§f, gây §c100% ST vũ khí §fmỗi 1.5s.");
                 break;
         }
         return lore;
@@ -155,13 +155,13 @@ public class ElementalSphereSkill implements ISkill {
 
         new BukkitRunnable() {
             Location currentLoc = startLoc.clone();
-            double distanceTraveled = 0;
             int ticks = 0;
 
             @Override
             public void run() {
-                if (distanceTraveled >= 15.0 || !player.isOnline()) {
-                    triggerAirBurst(currentLoc, element);
+                // Tăng tuổi thọ đạn lên 90 tick (Tương đương bay 135 block)
+                if (ticks >= 90 || !player.isOnline()) {
+                    triggerAirBurst(player, rpgPlayer, currentLoc, element, projMulti);
                     this.cancel();
                     return;
                 }
@@ -179,16 +179,15 @@ public class ElementalSphereSkill implements ISkill {
                     return;
                 }
 
-                // Va chạm Thực thể (Đập thẳng mặt)
+                // Va chạm Thực thể
                 for (org.bukkit.entity.Entity ent : currentLoc.getWorld().getNearbyEntities(currentLoc, 1.0, 1.0, 1.0)) {
                     if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent)) {
                         LivingEntity target = (LivingEntity) ent;
 
-                        // Nổ DMG Đập Mặt trước
+                        // Sát thương va chạm (Trực tiếp, không phản ứng)
                         double hitDmg = CombatManager.calculateDamage(player, rpgPlayer, target, projMulti, 0, true, false);
                         CombatManager.applySkillDamage(player, target, hitDmg);
 
-                        // Nở Lãnh Vực (Truyền target vào để lấy tọa độ chân)
                         triggerDetonation(player, rpgPlayer, currentLoc, target, element, domMulti);
                         this.cancel();
                         return;
@@ -196,7 +195,6 @@ public class ElementalSphereSkill implements ISkill {
                 }
 
                 currentLoc.add(direction);
-                distanceTraveled += direction.length();
                 ticks++;
             }
         }.runTaskTimer(plugin, 0L, 1L);
@@ -215,41 +213,66 @@ public class ElementalSphereSkill implements ISkill {
     }
 
     // ==========================================
-    // TỰ BẠO TRÊN KHÔNG (PHÁO HOA THEO MÀU NGUYÊN TỐ)
+    // TỰ BẠO TRÊN KHÔNG (NỔ HÌNH CẦU & GÂY DMG)
     // ==========================================
-    private void triggerAirBurst(Location center, MageElement element) {
+    private void triggerAirBurst(Player player, RPGPlayer rpgPlayer, Location center, MageElement element, double projMulti) {
         center.getWorld().playSound(center, Sound.ENTITY_FIREWORK_ROCKET_LARGE_BLAST, 1f, 1f);
-        Particle.DustOptions dust = new Particle.DustOptions(getElementColor(element), 2.0f);
+        Particle.DustOptions dust = new Particle.DustOptions(getElementColor(element), 2.5f);
 
-        // Nổ dạng hình cầu từ tâm
-        for (int i = 0; i < 40; i++) {
-            Vector v = Vector.getRandom().subtract(new Vector(0.5, 0.5, 0.5)).normalize().multiply(random.nextDouble() * 2.0);
-            center.getWorld().spawnParticle(Particle.DUST, center.clone().add(v), 1, 0, 0, 0, dust);
+        // Nổ dạng Cầu Khối (Sphere Sphere) hoàn hảo
+        for (int i = 0; i < 100; i++) {
+            double phi = Math.acos(1 - 2 * random.nextDouble());
+            double theta = 2 * Math.PI * random.nextDouble();
+            double r = random.nextDouble() * 3.5;
+
+            double x = r * Math.sin(phi) * Math.cos(theta);
+            double y = r * Math.sin(phi) * Math.sin(theta);
+            double z = r * Math.cos(phi);
+            center.getWorld().spawnParticle(Particle.DUST, center.clone().add(x, y, z), 1, 0, 0, 0, dust);
+        }
+
+        // Gây sát thương nổ (Bằng sát thương Đạn)
+        for (org.bukkit.entity.Entity ent : center.getWorld().getNearbyEntities(center, 3.5, 3.5, 3.5)) {
+            if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent)) {
+                LivingEntity target = (LivingEntity) ent;
+                ReactionEngine.ReactionResult reaction = ReactionEngine.processHit(player, target, element);
+                double finalDmgMulti = projMulti * reaction.damageMultiplier;
+
+                double hitDmg = CombatManager.calculateDamage(player, rpgPlayer, target, finalDmgMulti, 0, true, false);
+                CombatManager.applySkillDamage(player, target, hitDmg);
+
+                if (reaction.isReacted) ReactionEngine.triggerReactionImmunity(target);
+            }
         }
     }
 
     // ==========================================
-    // TRẠM KÍCH NỔ / CHỌN TỌA ĐỘ
+    // TRẠM XỬ LÝ CAO ĐỘ TRƯỚC KHI NỔ (DROP LOGIC)
     // ==========================================
     private void triggerDetonation(Player player, RPGPlayer rpgPlayer, Location hitLoc, LivingEntity hitEntity, MageElement element, double domMulti) {
         Location center = hitLoc.clone();
-
-        // PHÂN LOẠI 2 DẠNG KỸ NĂNG: Lãnh vực (Cần mặt đất) và Bùng nổ (Nổ ngay tâm)
         boolean isDomainType = (element == MageElement.LIGHT || element == MageElement.NATURE || element == MageElement.WATER);
 
         if (isDomainType) {
-            if (hitEntity != null) {
-                // Nếu dính người -> Lấy tọa độ dưới chân người đó
-                center = hitEntity.getLocation();
-            } else {
-                // Nếu dính tường -> Rơi xuống tìm mặt đất
-                for (int i = 0; i < 5; i++) {
-                    if (center.getBlock().getType().isSolid()) {
-                        center.add(0, 1, 0); // Đứng trên block
-                        break;
-                    }
-                    center.subtract(0, 1, 0);
+            Location groundSeek = (hitEntity != null) ? hitEntity.getLocation() : center.clone();
+            boolean foundGround = false;
+
+            // Dò xuống tối đa 10 block để tìm đất
+            for (int i = 0; i < 10; i++) {
+                if (groundSeek.getBlock().getType().isSolid()) {
+                    groundSeek.add(0, 1.1, 0); // Đặt trên block
+                    foundGround = true;
+                    break;
                 }
+                groundSeek.subtract(0, 1, 0);
+            }
+
+            if (foundGround) {
+                center = groundSeek;
+            } else {
+                // Quá cao so với mặt đất -> Tạo Đĩa đệm Ma thuật lơ lửng!
+                center = hitLoc.clone().subtract(0, 1.5, 0);
+                drawMagicPlatform(center, element);
             }
         }
 
@@ -265,11 +288,28 @@ public class ElementalSphereSkill implements ISkill {
         }
     }
 
+    private void drawMagicPlatform(Location center, MageElement element) {
+        Particle.DustOptions dust = new Particle.DustOptions(getElementColor(element), 1.0f);
+        new BukkitRunnable() {
+            int ticks = 0;
+            @Override
+            public void run() {
+                if (ticks > 160) { this.cancel(); return; } // Tồn tại 8s làm bệ đỡ
+                for (double t = 0; t < Math.PI * 2; t += Math.PI / 8) {
+                    double x = 4 * Math.cos(t);
+                    double z = 4 * Math.sin(t);
+                    center.getWorld().spawnParticle(Particle.DUST, center.clone().add(x, 0, z), 1, 0, 0, 0, dust);
+                }
+                ticks+=5;
+            }
+        }.runTaskTimer(plugin, 0L, 5L);
+    }
+
     // ==========================================
-    // 6 HIỆU ỨNG (REWORKED VFX TỪ TÂM LAN RA)
+    // 6 HIỆU ỨNG MA PHÁP (REWORKED HOÀN TOÀN)
     // ==========================================
 
-    // 1. HỎA NGỤC (Nổ lan từ tâm ra R=4)
+    // 1. BẠO LIỆT VIÊM KÍCH (Nổ Cầu Lửa - Sphere)
     private void triggerFireExplosion(Player player, RPGPlayer rpgPlayer, Location center, double domMulti) {
         center.getWorld().spawnParticle(Particle.EXPLOSION, center, 2);
 
@@ -279,29 +319,36 @@ public class ElementalSphereSkill implements ISkill {
             public void run() {
                 if (r > 4.0) { this.cancel(); return; }
 
-                // Vẽ vòng lửa lan tỏa
-                for (double t = 0; t < Math.PI * 2; t += Math.PI / 8) {
-                    double x = r * Math.cos(t);
-                    double z = r * Math.sin(t);
-                    center.getWorld().spawnParticle(Particle.FLAME, center.clone().add(x, 0.5, z), 2, 0.2, 0.2, 0.2, 0.05);
+                // Nổ lan tỏa dạng Cầu (Sphere)
+                for (int i = 0; i < 30; i++) {
+                    double phi = Math.acos(1 - 2 * random.nextDouble());
+                    double theta = 2 * Math.PI * random.nextDouble();
+                    double x = r * Math.sin(phi) * Math.cos(theta);
+                    double y = r * Math.sin(phi) * Math.sin(theta);
+                    double z = r * Math.cos(phi);
+                    center.getWorld().spawnParticle(Particle.FLAME, center.clone().add(x, y, z), 1, 0.1, 0.1, 0.1, 0.02);
                 }
-                r += 1.0; // Lan cực nhanh trong 4 ticks
+                r += 1.0;
             }
         }.runTaskTimer(plugin, 0L, 1L);
 
         for (org.bukkit.entity.Entity ent : center.getWorld().getNearbyEntities(center, 4.0, 4.0, 4.0)) {
             if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent)) {
                 LivingEntity target = (LivingEntity) ent;
-                ReactionEngine.applyMarkOnly(target, MageElement.FIRE);
+
+                // Kích Phản ứng!
+                ReactionEngine.ReactionResult reaction = ReactionEngine.processHit(player, target, MageElement.FIRE);
                 target.setFireTicks(100);
 
-                double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, domMulti * 2.0, 0, true, false);
+                double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, domMulti * 2.0 * reaction.damageMultiplier, 0, true, false);
                 CombatManager.applySkillDamage(player, target, finalDmg);
+
+                if (reaction.isReacted) ReactionEngine.triggerReactionImmunity(target);
             }
         }
     }
 
-    // 2. SÓNG THẦN (Hất thẳng lên trời mạnh mẽ)
+    // 2. THỦY TRIỀU DÂNG
     private void triggerWaterDomain(Player player, RPGPlayer rpgPlayer, Location center, double domMulti) {
         new BukkitRunnable() {
             int wave = 0;
@@ -310,26 +357,27 @@ public class ElementalSphereSkill implements ISkill {
                 if (wave >= 3 || !player.isOnline()) { this.cancel(); return; }
 
                 center.getWorld().playSound(center, Sound.ENTITY_GENERIC_SPLASH, 1f, 0.8f);
-
-                // Sóng lan từ tâm
                 for (double r = 1; r <= 4; r++) {
                     for (double t = 0; t < Math.PI * 2; t += Math.PI / (r * 4)) {
-                        double x = r * Math.cos(t);
-                        double z = r * Math.sin(t);
-                        center.getWorld().spawnParticle(Particle.SPLASH, center.clone().add(x, 0.2, z), 5, 0.2, 0.5, 0.2, 0.1);
+                        center.getWorld().spawnParticle(Particle.SPLASH, center.clone().add(r * Math.cos(t), 0.2, r * Math.sin(t)), 5, 0.2, 0.5, 0.2, 0.1);
                     }
                 }
 
                 for (org.bukkit.entity.Entity ent : center.getWorld().getNearbyEntities(center, 4.0, 4.0, 4.0)) {
                     if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent)) {
                         LivingEntity target = (LivingEntity) ent;
-                        ReactionEngine.applyMarkOnly(target, MageElement.WATER);
+                        target.setVelocity(new Vector(0, 1.2, 0)); // Hất tung rất mạnh
 
-                        // [ĐÃ SỬA]: Hất tung lên trời mạnh hơn
-                        target.setVelocity(new Vector(0, 1.2, 0));
-
-                        double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, domMulti, 0, true, false);
-                        CombatManager.applySkillDamage(player, target, finalDmg);
+                        if (wave == 0) { // Chỉ nổ phản ứng ở wave đầu
+                            ReactionEngine.ReactionResult reaction = ReactionEngine.processHit(player, target, MageElement.WATER);
+                            double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, domMulti * reaction.damageMultiplier, 0, true, false);
+                            CombatManager.applySkillDamage(player, target, finalDmg);
+                            if (reaction.isReacted) ReactionEngine.triggerReactionImmunity(target);
+                        } else {
+                            ReactionEngine.applyMarkOnly(target, MageElement.WATER);
+                            double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, domMulti, 0, true, false);
+                            CombatManager.applySkillDamage(player, target, finalDmg);
+                        }
                     }
                 }
                 wave++;
@@ -337,9 +385,13 @@ public class ElementalSphereSkill implements ISkill {
         }.runTaskTimer(plugin, 0L, 30L);
     }
 
-    // 3. MẮT BÃO (Vẽ Lốc Xoáy 3D)
-    private void triggerWindExplosion(Player player, RPGPlayer rpgPlayer, Location center, double domMulti) {
+    // 3. GIÓ XOÁY (Tornado Base Cố định)
+    private void triggerWindExplosion(Player player, RPGPlayer rpgPlayer, Location hitCenter, double domMulti) {
         double dpsMulti = domMulti / 6.0;
+
+        // Cố định lốc xoáy ngay trên mặt đất hoặc ngay tâm
+        Location center = hitCenter.clone();
+        if (center.getBlock().getType().isSolid()) center.add(0, 1.2, 0);
 
         new BukkitRunnable() {
             int ticks = 0;
@@ -347,11 +399,11 @@ public class ElementalSphereSkill implements ISkill {
             public void run() {
                 if (ticks >= 120 || !player.isOnline()) { this.cancel(); return; }
 
-                // Vẽ Lốc xoáy (Tornado)
+                // Vẽ Lốc xoáy 3D từ dưới lên trên
                 double angle = ticks * 0.4;
-                for (int i = 0; i < 4; i++) { // 4 tầng lốc
-                    double y = i * 1.0;
-                    double r = 1.0 + (y * 0.5); // Càng lên cao lốc càng to
+                for (int i = 0; i < 5; i++) {
+                    double y = i * 0.8;
+                    double r = 0.5 + (y * 0.6); // Mở rộng dần lên trên
                     double x = r * Math.cos(angle + i);
                     double z = r * Math.sin(angle + i);
                     center.getWorld().spawnParticle(Particle.CLOUD, center.clone().add(x, y, z), 2, 0.1, 0.1, 0.1, 0.02);
@@ -366,13 +418,20 @@ public class ElementalSphereSkill implements ISkill {
                     }
                 }
 
-                if (ticks % 20 == 0) {
+                if (ticks % 20 == 0) { // Mỗi giây gây sát thương
                     for (org.bukkit.entity.Entity ent : center.getWorld().getNearbyEntities(center, 4.0, 4.0, 4.0)) {
                         if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent)) {
                             LivingEntity target = (LivingEntity) ent;
-                            ReactionEngine.applyMarkOnly(target, MageElement.WIND);
-                            double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, dpsMulti, 0, true, false);
-                            CombatManager.applySkillDamage(player, target, finalDmg);
+                            if (ticks == 0) { // Phản ứng giây đầu
+                                ReactionEngine.ReactionResult reaction = ReactionEngine.processHit(player, target, MageElement.WIND);
+                                double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, dpsMulti * reaction.damageMultiplier, 0, true, false);
+                                CombatManager.applySkillDamage(player, target, finalDmg);
+                                if (reaction.isReacted) ReactionEngine.triggerReactionImmunity(target);
+                            } else {
+                                ReactionEngine.applyMarkOnly(target, MageElement.WIND);
+                                double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, dpsMulti, 0, true, false);
+                                CombatManager.applySkillDamage(player, target, finalDmg);
+                            }
                         }
                     }
                 }
@@ -381,17 +440,17 @@ public class ElementalSphereSkill implements ISkill {
         }.runTaskTimer(plugin, 0L, 1L);
     }
 
-    // 4. KHU RỪNG TRÓI BUỘC (VFX Dây leo Xanh Đậm + Chặn KB)
+    // 4. DÂY LEO CUỒNG NỘ
     private void triggerNatureDomain(Player player, RPGPlayer rpgPlayer, Location center, double domMulti) {
         center.getWorld().playSound(center, Sound.BLOCK_GRASS_BREAK, 1f, 0.5f);
-
         List<LivingEntity> rootedTargets = new ArrayList<>();
-        Particle.DustOptions vineColor = new Particle.DustOptions(org.bukkit.Color.fromRGB(34, 139, 34), 1.2f); // Xanh rừng rậm
 
-        // Lan cỏ từ tâm ra
+        Particle.DustOptions vineDark = new Particle.DustOptions(org.bukkit.Color.fromRGB(0, 100, 0), 1.2f);
+        Particle.DustOptions vineLight = new Particle.DustOptions(org.bukkit.Color.fromRGB(50, 205, 50), 0.8f);
+
         for (double r = 1; r <= 5; r++) {
             for (double t = 0; t < Math.PI * 2; t += Math.PI / (r * 2)) {
-                center.getWorld().spawnParticle(Particle.DUST, center.clone().add(r * Math.cos(t), 0.1, r * Math.sin(t)), 1, 0, 0, 0, vineColor);
+                center.getWorld().spawnParticle(Particle.DUST, center.clone().add(r * Math.cos(t), 0.1, r * Math.sin(t)), 1, 0, 0, 0, vineDark);
             }
         }
 
@@ -399,13 +458,13 @@ public class ElementalSphereSkill implements ISkill {
             if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent)) {
                 LivingEntity target = (LivingEntity) ent;
                 rootedTargets.add(target);
-                ReactionEngine.applyMarkOnly(target, MageElement.NATURE);
                 StatusEffectManager.applyEffect(target, org.bukkit.potion.PotionEffectType.SLOWNESS, 70, 10);
 
-                double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, domMulti, 0, true, false);
+                ReactionEngine.ReactionResult reaction = ReactionEngine.processHit(player, target, MageElement.NATURE);
+                double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, domMulti * reaction.damageMultiplier, 0, true, false);
                 CombatManager.applySkillDamage(player, target, finalDmg);
+                if (reaction.isReacted) ReactionEngine.triggerReactionImmunity(target);
 
-                // [FIX LỖI KNOCKBACK]: Ép tốc độ về 0 ngay sau khi nhận sát thương để chặn Vanilla KB
                 new BukkitRunnable() {
                     @Override
                     public void run() { target.setVelocity(new Vector(0, -0.1, 0)); }
@@ -413,38 +472,34 @@ public class ElementalSphereSkill implements ISkill {
             }
         }
 
-        // Logic Trói & Hút Máu (3.5 giây = 70 ticks)
         new BukkitRunnable() {
             int ticks = 0;
             @Override
             public void run() {
-                if (ticks >= 70 || !player.isOnline()) { this.cancel(); return; } // ĐỒNG BỘ 70 TICKS
+                if (ticks >= 70 || !player.isOnline()) { this.cancel(); return; }
 
-                // Vẽ dây leo quấn quanh người mục tiêu
                 for (LivingEntity target : rootedTargets) {
                     if (target.isValid() && !target.isDead()) {
                         double y = (ticks * 0.1) % 2.0;
                         double angle = ticks * 0.5;
-                        double x = 0.6 * Math.cos(angle);
-                        double z = 0.6 * Math.sin(angle);
-                        target.getWorld().spawnParticle(Particle.DUST, target.getLocation().add(x, y, z), 1, 0, 0, 0, vineColor);
+                        Location p1 = target.getLocation().add(0.6 * Math.cos(angle), y, 0.6 * Math.sin(angle));
+                        Location p2 = target.getLocation().add(0.6 * Math.cos(angle + Math.PI), 2.0 - y, 0.6 * Math.sin(angle + Math.PI));
+                        target.getWorld().spawnParticle(Particle.DUST, p1, 1, 0, 0, 0, vineDark);
+                        target.getWorld().spawnParticle(Particle.DUST, p2, 1, 0, 0, 0, vineLight);
                     }
                 }
 
-                // Bắn tia hồi máu mỗi giây
                 if (ticks % 20 == 0 && !rootedTargets.isEmpty()) {
                     int validCount = 0;
                     for (LivingEntity target : rootedTargets) {
                         if (target.isValid() && !target.isDead()) {
                             validCount++;
-                            spawnHomingHealMissile(target.getLocation().add(0, 1, 0), player);
+                            spawnGreenDustMissile(target.getLocation().add(0, 1, 0), player);
                         }
                     }
                     if (validCount > 0) {
                         double maxHp = player.getAttribute(Attribute.MAX_HEALTH).getValue();
-                        double healRaw = maxHp * 0.005 * validCount;
-                        double healCapped = Math.min(healRaw, maxHp * 0.08);
-                        rpgPlayer.heal(healCapped);
+                        rpgPlayer.heal(Math.min(maxHp * 0.005 * validCount, maxHp * 0.08));
                     }
                 }
                 ticks++;
@@ -452,38 +507,34 @@ public class ElementalSphereSkill implements ISkill {
         }.runTaskTimer(plugin, 0L, 1L);
     }
 
-    private void spawnHomingHealMissile(Location startLoc, Player targetPlayer) {
+    private void spawnGreenDustMissile(Location startLoc, Player targetPlayer) {
+        Particle.DustOptions green = new Particle.DustOptions(org.bukkit.Color.LIME, 1.5f);
         new BukkitRunnable() {
             Location current = startLoc.clone();
             int lifespan = 0;
             @Override
             public void run() {
                 if (!targetPlayer.isOnline() || lifespan > 40) { this.cancel(); return; }
-
                 Location pLoc = targetPlayer.getLocation().add(0, 1, 0);
                 Vector dir = pLoc.toVector().subtract(current.toVector());
                 if (dir.length() < 1.0) { this.cancel(); return; }
 
                 current.add(dir.normalize().multiply(0.8));
-                // Đã đổi thành HAPPY_VILLAGER (Hạt lấp lánh xanh lá)
-                current.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, current, 2, 0.1, 0.1, 0.1, 0);
+                current.getWorld().spawnParticle(Particle.DUST, current, 2, 0.1, 0.1, 0.1, green);
                 lifespan++;
             }
         }.runTaskTimer(plugin, 0L, 1L);
     }
 
-    // 5. THÁNH VỰC (Bán kính 6m + Làn sóng lan ra)
+    // 5. QUẢ CẦU ÁNH SÁNG
     private void triggerLightDomain(Player player, RPGPlayer rpgPlayer, Location center, double domMulti) {
-        // Làn sóng ánh sáng lan ra R=6
         new BukkitRunnable() {
             double r = 0;
             @Override
             public void run() {
                 if (r > 6.0) { this.cancel(); return; }
                 for (double t = 0; t < Math.PI * 2; t += Math.PI / 16) {
-                    double x = r * Math.cos(t);
-                    double z = r * Math.sin(t);
-                    center.getWorld().spawnParticle(Particle.END_ROD, center.clone().add(x, 0.2, z), 1, 0, 0, 0, 0.05);
+                    center.getWorld().spawnParticle(Particle.END_ROD, center.clone().add(r * Math.cos(t), 0.2, r * Math.sin(t)), 1, 0, 0, 0, 0.05);
                 }
                 r += 1.5;
             }
@@ -492,9 +543,10 @@ public class ElementalSphereSkill implements ISkill {
         for (org.bukkit.entity.Entity ent : center.getWorld().getNearbyEntities(center, 6.0, 6.0, 6.0)) {
             if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent)) {
                 LivingEntity target = (LivingEntity) ent;
-                ReactionEngine.applyMarkOnly(target, MageElement.LIGHT);
-                double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, domMulti, 0, true, false);
+                ReactionEngine.ReactionResult reaction = ReactionEngine.processHit(player, target, MageElement.LIGHT);
+                double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, domMulti * reaction.damageMultiplier, 0, true, false);
                 CombatManager.applySkillDamage(player, target, finalDmg);
+                if (reaction.isReacted) ReactionEngine.triggerReactionImmunity(target);
             }
         }
 
@@ -504,16 +556,11 @@ public class ElementalSphereSkill implements ISkill {
             public void run() {
                 if (ticks >= 160) { this.cancel(); return; }
 
-                // Viền Lãnh Vực R=6
                 if (ticks % 5 == 0) {
                     for (double t = 0; t < Math.PI * 2; t += Math.PI / 12) {
-                        double x = 6 * Math.cos(t);
-                        double z = 6 * Math.sin(t);
-                        center.getWorld().spawnParticle(Particle.END_ROD, center.clone().add(x, 0.2, z), 1, 0, 0, 0, 0);
+                        center.getWorld().spawnParticle(Particle.END_ROD, center.clone().add(6 * Math.cos(t), 0.2, 6 * Math.sin(t)), 1, 0, 0, 0, 0);
                     }
-                    double rX = (random.nextDouble() - 0.5) * 10;
-                    double rZ = (random.nextDouble() - 0.5) * 10;
-                    center.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, center.clone().add(rX, 0.2, rZ), 5, 0, 1.5, 0, 0.05);
+                    center.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, center.clone().add((random.nextDouble() - 0.5) * 10, 0.2, (random.nextDouble() - 0.5) * 10), 5, 0, 1.5, 0, 0.05);
                 }
 
                 if (ticks % 10 == 0) {
@@ -532,16 +579,17 @@ public class ElementalSphereSkill implements ISkill {
         }.runTaskTimer(plugin, 0L, 1L);
     }
 
-    // 6. VỰC THẲM HƯ KHÔNG (Sét Đen mỏng, ngầu)
+    // 6. KHE NỨT BÓNG TỐI (Tối đa 3 mục tiêu + Tia sét Bezier cong)
     private void triggerDarkExplosion(Player player, RPGPlayer rpgPlayer, Location center, double domMulti) {
         center.getWorld().spawnParticle(Particle.PORTAL, center, 100, 3.0, 3.0, 3.0, 0.5);
 
         for (org.bukkit.entity.Entity ent : center.getWorld().getNearbyEntities(center, 5.0, 5.0, 5.0)) {
             if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent)) {
                 LivingEntity target = (LivingEntity) ent;
-                ReactionEngine.applyMarkOnly(target, MageElement.DARK);
-                double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, domMulti * 0.7, 0, true, false);
+                ReactionEngine.ReactionResult reaction = ReactionEngine.processHit(player, target, MageElement.DARK);
+                double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, domMulti * 0.7 * reaction.damageMultiplier, 0, true, false);
                 CombatManager.applySkillDamage(player, target, finalDmg);
+                if (reaction.isReacted) ReactionEngine.triggerReactionImmunity(target);
             }
         }
 
@@ -553,22 +601,27 @@ public class ElementalSphereSkill implements ISkill {
             public void run() {
                 if (ticks >= 320 || !player.isOnline()) { this.cancel(); return; }
 
+                // Vẽ Lỗ Đen mini
                 riftLoc.getWorld().spawnParticle(Particle.PORTAL, riftLoc, 15, 0.5, 0.5, 0.5, 0.1);
+                riftLoc.getWorld().spawnParticle(Particle.LARGE_SMOKE, riftLoc, 2, 0.2, 0.2, 0.2, 0);
                 if (ticks % 20 == 0) riftLoc.getWorld().playSound(riftLoc, Sound.BLOCK_BEACON_AMBIENT, 0.5f, 0.5f);
 
                 if (ticks > 0 && ticks % 30 == 0) {
+                    int targetsHit = 0;
                     for (org.bukkit.entity.Entity ent : riftLoc.getWorld().getNearbyEntities(center, 5.0, 5.0, 5.0)) {
                         if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent)) {
                             LivingEntity target = (LivingEntity) ent;
                             ReactionEngine.applyMarkOnly(target, MageElement.DARK);
 
-                            // Vẽ tia sét đen
-                            drawBlackLightning(riftLoc, target.getLocation().add(0, 1, 0), riftLoc.getWorld());
+                            // Vẽ tia sét Bezier cong mỏng
+                            drawCurvedBlackLightning(riftLoc, target.getLocation().add(0, 1, 0), riftLoc.getWorld());
                             riftLoc.getWorld().playSound(riftLoc, Sound.ENTITY_ENDER_DRAGON_SHOOT, 0.5f, 2.0f);
 
                             double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, 1.0, 0, true, false);
                             CombatManager.applySkillDamage(player, target, finalDmg);
-                            break;
+
+                            targetsHit++;
+                            if (targetsHit >= 3) break; // Giới hạn 3 mục tiêu mỗi lần quét
                         }
                     }
                 }
@@ -577,32 +630,32 @@ public class ElementalSphereSkill implements ISkill {
         }.runTaskTimer(plugin, 0L, 1L);
     }
 
-    // Vẽ Sét Đen mỏng cong bằng DustOptions
-    private void drawBlackLightning(Location start, Location end, org.bukkit.World world) {
-        Vector dir = end.toVector().subtract(start.toVector());
+    // Vẽ Sét Đen Cong (Thuật toán Quadratic Bezier)
+    private void drawCurvedBlackLightning(Location start, Location end, org.bukkit.World world) {
+        Vector p0 = start.toVector();
+        Vector p2 = end.toVector();
+        Vector dir = p2.clone().subtract(p0);
         double dist = dir.length();
         if (dist == 0) return;
-        dir.normalize();
 
-        Location current = start.clone();
-        int segments = (int) (dist * 3.0);
-        double segmentLength = dist / segments;
+        // Điểm điều khiển P1 (Uốn cong ra ngoài)
+        Vector mid = p0.clone().add(dir.clone().multiply(0.5));
+        Vector cross = dir.clone().crossProduct(new Vector(0, 1, 0)).normalize();
+        if (cross.lengthSquared() == 0) cross = new Vector(1, 0, 0);
 
-        // Bụi màu Xám/Đen đậm pha Tím nhẹ
-        Particle.DustOptions blackDust = new Particle.DustOptions(org.bukkit.Color.fromRGB(20, 10, 30), 1.5f);
+        // Random uốn sang trái/phải 30% độ dài
+        cross.multiply((random.nextBoolean() ? 1 : -1) * (dist * 0.3));
+        Vector p1 = mid.add(cross).add(new Vector(0, dist * 0.2, 0)); // Vồng lên trên một chút
 
-        for (int i = 0; i < segments; i++) {
-            Vector offset = Vector.getRandom().subtract(new Vector(0.5, 0.5, 0.5)).multiply(0.3);
-            Location next = start.clone().add(dir.clone().multiply((i + 1) * segmentLength)).add(offset);
-            if (i == segments - 1) next = end.clone();
+        // Bụi Đen Tím mỏng
+        Particle.DustOptions blackDust = new Particle.DustOptions(org.bukkit.Color.fromRGB(15, 0, 25), 0.7f);
 
-            Vector drawDir = next.toVector().subtract(current.toVector());
-            double drawDist = drawDir.length();
-            drawDir.normalize();
-            for (double t = 0; t <= drawDist; t += 0.2) {
-                world.spawnParticle(Particle.DUST, current.clone().add(drawDir.clone().multiply(t)), 1, 0, 0, 0, blackDust);
-            }
-            current = next;
+        for (double t = 0; t <= 1.0; t += 0.05) {
+            double u = 1 - t;
+            double tt = t * t;
+            double uu = u * u;
+            Vector point = p0.clone().multiply(uu).add(p1.clone().multiply(2 * u * t)).add(p2.clone().multiply(tt));
+            world.spawnParticle(Particle.DUST, point.getX(), point.getY(), point.getZ(), 1, 0, 0, 0, 0, blackDust);
         }
     }
 }
