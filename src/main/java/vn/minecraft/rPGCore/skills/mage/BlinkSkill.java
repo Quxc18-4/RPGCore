@@ -25,7 +25,7 @@ public class BlinkSkill implements ISkill {
     }
 
     @Override public String getId() { return "mage_blink"; }
-    @Override public String getName() { return "Luân Chuyển Nguyên Tố"; }
+    @Override public String getName() { return "Nguyên Tố Luân"; }
     @Override public String getRequiredClass() { return "mage"; }
     @Override public Material getIcon() { return Material.ENDER_PEARL; }
 

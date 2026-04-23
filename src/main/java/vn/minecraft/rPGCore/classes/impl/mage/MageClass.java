@@ -50,6 +50,18 @@ public class MageClass extends RPGClass {
                 return 0.0;
             }
         });
+
+        // [HOOK ÁNH SÁNG]: Giảm 8% sát thương nhận vào khi đứng trong Thánh Vực (Cho cả Bản thân và Đồng minh)
+        CombatManager.registerCombatModifier(new CombatManager.ICombatModifier() {
+            @Override
+            public double getIncomingDamageReduction(LivingEntity victim, LivingEntity attacker) {
+                if (victim.hasMetadata("Light_Domain_Protection")) {
+                    long expire = victim.getMetadata("Light_Domain_Protection").get(0).asLong();
+                    if (System.currentTimeMillis() < expire) return 0.08; // Giảm 8%
+                }
+                return 0.0;
+            }
+        });
     }
 
     @Override

@@ -80,6 +80,7 @@ public class SkillManager {
         registerSkill(new ElementalSwapSkill());
         registerSkill(new FocusSkill(plugin));
         registerSkill(new BlinkSkill(plugin));
+        registerSkill(new ElementalSphereSkill(plugin));
     }
 
     public void registerSkill(ISkill skill) {
