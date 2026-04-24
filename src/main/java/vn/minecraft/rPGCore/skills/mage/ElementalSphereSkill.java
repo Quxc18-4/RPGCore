@@ -152,18 +152,20 @@ public class ElementalSphereSkill implements ISkill {
 
             @Override
             public void run() {
-                if (ticks >= 70 || !player.isOnline()) {
+                // [ĐÃ SỬA]: Giảm xuống 14 ticks (~21 blocks) để nổ pháo hoa đúng tầm
+                if (ticks >= 14 || !player.isOnline()) {
                     triggerAirBurst(player, rpgPlayer, currentLoc, element, projMulti);
                     this.cancel();
                     return;
                 }
 
-                if (ticks > 3) {
+                // Vẽ hạt đạn ma thuật
+                if (ticks > 2) {
                     org.bukkit.Color elColor = getElementColor(element);
                     Particle.DustOptions dust = new Particle.DustOptions(elColor, 1.5f);
 
-                    currentLoc.getWorld().spawnParticle(Particle.END_ROD, currentLoc, 2, 0.05, 0.05, 0.05, 0.01);
-                    currentLoc.getWorld().spawnParticle(Particle.DUST, currentLoc, 8, 0.2, 0.2, 0.2, dust);
+                    currentLoc.getWorld().spawnParticle(Particle.END_ROD, currentLoc, 2, 0.05, 0.05, 0.05, 0.01, null, true);
+                    currentLoc.getWorld().spawnParticle(Particle.DUST, currentLoc, 8, 0.2, 0.2, 0.2, 0.0, dust, true);
                 }
 
                 if (currentLoc.getBlock().getType().isSolid()) {
@@ -193,7 +195,7 @@ public class ElementalSphereSkill implements ISkill {
         switch (element) {
             case FIRE: return org.bukkit.Color.RED;
             case WATER: return org.bukkit.Color.AQUA;
-            case WIND: return org.bukkit.Color.LIME;
+            case WIND: return org.bukkit.Color.fromRGB(100, 255, 200);
             case NATURE: return org.bukkit.Color.GREEN;
             case LIGHT: return org.bukkit.Color.YELLOW;
             case DARK: return org.bukkit.Color.PURPLE;
@@ -202,22 +204,20 @@ public class ElementalSphereSkill implements ISkill {
     }
 
     // ==========================================
-    // TỰ BẠO TRÊN KHÔNG (REWORKED: PHÁO HOA RÕ NÉT R=4)
+    // TỰ BẠO TRÊN KHÔNG (PHÁO HOA RÕ NÉT R=4 - FORCE RENDER)
     // ==========================================
     private void triggerAirBurst(Player player, RPGPlayer rpgPlayer, Location center, MageElement element, double projMulti) {
         center.getWorld().playSound(center, Sound.ENTITY_FIREWORK_ROCKET_LARGE_BLAST, 1f, 1f);
         Particle.DustOptions dust = new Particle.DustOptions(getElementColor(element), 2.0f);
 
-        // Nổ gốc pháo hoa cho sinh động
-        center.getWorld().spawnParticle(Particle.FIREWORK, center, 60, 1.5, 1.5, 1.5, 0.2);
+        center.getWorld().spawnParticle(Particle.FIREWORK, center, 60, 1.0, 1.0, 1.0, 0.15, null, true);
 
-        // Bóng ma thuật hình cầu lan tỏa (R=4)
         new BukkitRunnable() {
             double r = 0.5;
             @Override
             public void run() {
                 if (r > 4.0) { this.cancel(); return; }
-                int particles = (int) (40 * r); // Càng to càng nhiều hạt
+                int particles = (int) (50 * r);
                 for (int i = 0; i < particles; i++) {
                     double phi = Math.acos(1 - 2 * random.nextDouble());
                     double theta = 2 * Math.PI * random.nextDouble();
@@ -226,7 +226,7 @@ public class ElementalSphereSkill implements ISkill {
                     double y = r * Math.cos(phi);
                     double z = r * Math.sin(phi) * Math.sin(theta);
 
-                    center.getWorld().spawnParticle(Particle.DUST, center.clone().add(x, y, z), 1, 0, 0, 0, dust);
+                    center.getWorld().spawnParticle(Particle.DUST, center.clone().add(x, y, z), 1, 0, 0, 0, 0.0, dust, true);
                 }
                 r += 1.0;
             }
@@ -293,7 +293,7 @@ public class ElementalSphereSkill implements ISkill {
                 for (double t = 0; t < Math.PI * 2; t += Math.PI / 8) {
                     double x = 4 * Math.cos(t);
                     double z = 4 * Math.sin(t);
-                    center.getWorld().spawnParticle(Particle.DUST, center.clone().add(x, 0, z), 1, 0, 0, 0, dust);
+                    center.getWorld().spawnParticle(Particle.DUST, center.clone().add(x, 0, z), 1, 0, 0, 0, 0.0, dust, true);
                 }
                 ticks+=5;
             }
@@ -301,10 +301,10 @@ public class ElementalSphereSkill implements ISkill {
     }
 
     // ==========================================
-    // HỎA NGỤC (REWORKED: BỘC PHÁ HÌNH CẦU SIÊU MẠNH)
+    // HỎA NGỤC (BỘC PHÁ HÌNH CẦU MÃNH LIỆT)
     // ==========================================
     private void triggerFireExplosion(Player player, RPGPlayer rpgPlayer, Location center, double domMulti) {
-        center.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, center, 2); // Nổ gốc chà bá
+        center.getWorld().spawnParticle(Particle.EXPLOSION, center, 2, 0.5, 0.5, 0.5, 0.0, null, true);
         center.getWorld().playSound(center, Sound.ENTITY_DRAGON_FIREBALL_EXPLODE, 1.5f, 0.8f);
 
         new BukkitRunnable() {
@@ -313,23 +313,23 @@ public class ElementalSphereSkill implements ISkill {
             public void run() {
                 if (r > 4.0) { this.cancel(); return; }
 
-                int particles = (int) (80 * r); // Hạt dày đặc
+                int particles = (int) (80 * r);
                 for (int i = 0; i < particles; i++) {
                     double phi = Math.acos(1 - 2 * random.nextDouble());
                     double theta = 2 * Math.PI * random.nextDouble();
 
-                    double x = r * Math.sin(phi) * Math.cos(theta);
-                    double y = r * Math.cos(phi);
-                    double z = r * Math.sin(phi) * Math.sin(theta);
+                    double dirX = Math.sin(phi) * Math.cos(theta);
+                    double dirY = Math.cos(phi);
+                    double dirZ = Math.sin(phi) * Math.sin(theta);
 
-                    Location partLoc = center.clone().add(x, y, z);
-                    // Hạt tản văng ra ngoài với tốc độ 0.15 tạo cảm giác áp lực nổ
-                    center.getWorld().spawnParticle(Particle.FLAME, partLoc, 1, 0.1, 0.1, 0.1, 0.15);
+                    Location partLoc = center.clone().add(dirX * r, dirY * r, dirZ * r);
+
+                    center.getWorld().spawnParticle(Particle.FLAME, partLoc, 0, dirX, dirY, dirZ, 0.15, null, true);
                     if (random.nextInt(4) == 0) {
-                        center.getWorld().spawnParticle(Particle.LAVA, partLoc, 1, 0, 0, 0, 0);
+                        center.getWorld().spawnParticle(Particle.LAVA, partLoc, 1, 0, 0, 0, 0.0, null, true);
                     }
                 }
-                r += 1.0; // Tốc độ bung 1.0 để mắt thường kịp thu nhận hình cầu
+                r += 1.0;
             }
         }.runTaskTimer(plugin, 0L, 1L);
 
@@ -357,7 +357,7 @@ public class ElementalSphereSkill implements ISkill {
                 center.getWorld().playSound(center, Sound.ENTITY_GENERIC_SPLASH, 1f, 0.8f);
                 for (double r = 1; r <= 4; r++) {
                     for (double t = 0; t < Math.PI * 2; t += Math.PI / (r * 4)) {
-                        center.getWorld().spawnParticle(Particle.SPLASH, center.clone().add(r * Math.cos(t), 0.2, r * Math.sin(t)), 5, 0.2, 0.5, 0.2, 0.1);
+                        center.getWorld().spawnParticle(Particle.SPLASH, center.clone().add(r * Math.cos(t), 0.2, r * Math.sin(t)), 5, 0.2, 0.5, 0.2, 0.1, null, true);
                     }
                 }
 
@@ -400,7 +400,7 @@ public class ElementalSphereSkill implements ISkill {
                     double r = 0.5 + (y * 0.6);
                     double x = r * Math.cos(angle + i);
                     double z = r * Math.sin(angle + i);
-                    center.getWorld().spawnParticle(Particle.CLOUD, center.clone().add(x, y, z), 2, 0.1, 0.1, 0.1, 0.02);
+                    center.getWorld().spawnParticle(Particle.CLOUD, center.clone().add(x, y, z), 2, 0.1, 0.1, 0.1, 0.02, null, true);
                 }
 
                 if (ticks % 10 == 0) center.getWorld().playSound(center, Sound.ITEM_ELYTRA_FLYING, 0.3f, 1.5f);
@@ -447,7 +447,7 @@ public class ElementalSphereSkill implements ISkill {
             public void run() {
                 if (r > 5.0) { this.cancel(); return; }
                 for (double t = 0; t < Math.PI * 2; t += Math.PI / (r * 2)) {
-                    center.getWorld().spawnParticle(Particle.DUST, center.clone().add(r * Math.cos(t), 0.1, r * Math.sin(t)), 1, 0, 0, 0, vineDark);
+                    center.getWorld().spawnParticle(Particle.DUST, center.clone().add(r * Math.cos(t), 0.1, r * Math.sin(t)), 1, 0, 0, 0, 0.0, vineDark, true);
                 }
                 r += 1.0;
             }
@@ -483,8 +483,8 @@ public class ElementalSphereSkill implements ISkill {
                         double angle = ticks * 0.5;
                         Location p1 = target.getLocation().add(0.6 * Math.cos(angle), y, 0.6 * Math.sin(angle));
                         Location p2 = target.getLocation().add(0.6 * Math.cos(angle + Math.PI), 2.0 - y, 0.6 * Math.sin(angle + Math.PI));
-                        target.getWorld().spawnParticle(Particle.DUST, p1, 1, 0, 0, 0, vineDark);
-                        target.getWorld().spawnParticle(Particle.DUST, p2, 1, 0, 0, 0, vineLight);
+                        target.getWorld().spawnParticle(Particle.DUST, p1, 1, 0, 0, 0, 0.0, vineDark, true);
+                        target.getWorld().spawnParticle(Particle.DUST, p2, 1, 0, 0, 0, 0.0, vineLight, true);
                     }
                 }
 
@@ -519,7 +519,7 @@ public class ElementalSphereSkill implements ISkill {
                 if (dir.length() < 1.0) { this.cancel(); return; }
 
                 current.add(dir.normalize().multiply(0.8));
-                current.getWorld().spawnParticle(Particle.DUST, current, 2, 0.1, 0.1, 0.1, green);
+                current.getWorld().spawnParticle(Particle.DUST, current, 2, 0.1, 0.1, 0.1, 0.0, green, true);
                 lifespan++;
             }
         }.runTaskTimer(plugin, 0L, 1L);
@@ -532,7 +532,7 @@ public class ElementalSphereSkill implements ISkill {
             public void run() {
                 if (r > 6.0) { this.cancel(); return; }
                 for (double t = 0; t < Math.PI * 2; t += Math.PI / 16) {
-                    center.getWorld().spawnParticle(Particle.END_ROD, center.clone().add(r * Math.cos(t), 0.2, r * Math.sin(t)), 1, 0, 0, 0, 0.05);
+                    center.getWorld().spawnParticle(Particle.END_ROD, center.clone().add(r * Math.cos(t), 0.2, r * Math.sin(t)), 1, 0, 0, 0, 0.05, null, true);
                 }
                 r += 1.5;
             }
@@ -556,9 +556,9 @@ public class ElementalSphereSkill implements ISkill {
 
                 if (ticks % 5 == 0) {
                     for (double t = 0; t < Math.PI * 2; t += Math.PI / 12) {
-                        center.getWorld().spawnParticle(Particle.END_ROD, center.clone().add(6 * Math.cos(t), 0.2, 6 * Math.sin(t)), 1, 0, 0, 0, 0);
+                        center.getWorld().spawnParticle(Particle.END_ROD, center.clone().add(6 * Math.cos(t), 0.2, 6 * Math.sin(t)), 1, 0, 0, 0, 0.0, null, true);
                     }
-                    center.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, center.clone().add((random.nextDouble() - 0.5) * 10, 0.2, (random.nextDouble() - 0.5) * 10), 5, 0, 1.5, 0, 0.05);
+                    center.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, center.clone().add((random.nextDouble() - 0.5) * 10, 0.2, (random.nextDouble() - 0.5) * 10), 5, 0, 1.5, 0, 0.05, null, true);
                 }
 
                 if (ticks % 10 == 0) {
@@ -578,10 +578,10 @@ public class ElementalSphereSkill implements ISkill {
     }
 
     // ==========================================
-    // KHE NỨT BÓNG TỐI (REWORKED: NÉT HƠN, ÍT RÁC HƠN)
+    // KHE NỨT BÓNG TỐI (DỰNG ĐỨNG 100%, GIỮA TO, 2 ĐẦU MỎNG)
     // ==========================================
     private void triggerDarkExplosion(Player player, RPGPlayer rpgPlayer, Location center, double domMulti) {
-        center.getWorld().spawnParticle(Particle.PORTAL, center, 100, 3.0, 3.0, 3.0, 0.5);
+        center.getWorld().spawnParticle(Particle.PORTAL, center, 100, 3.0, 3.0, 3.0, 0.5, null, true);
 
         for (org.bukkit.entity.Entity ent : center.getWorld().getNearbyEntities(center, 5.0, 5.0, 5.0)) {
             if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent)) {
@@ -595,17 +595,13 @@ public class ElementalSphereSkill implements ISkill {
 
         Location riftLoc = center.clone().add(0, 2, 0);
 
-        List<Vector> riftPoints = new ArrayList<>();
-        Vector currentPoint = new Vector(0, -1.5, 0);
-        riftPoints.add(currentPoint.clone());
-        for (int i = 0; i < 6; i++) {
-            currentPoint.add(new Vector((random.nextDouble() - 0.5) * 1.5, 0.6, (random.nextDouble() - 0.5) * 1.5));
-            riftPoints.add(currentPoint.clone());
+        List<Vector> spine = new ArrayList<>();
+        for (double y = -2.0; y <= 2.0; y += 0.4) {
+            spine.add(new Vector(0, y, 0));
         }
 
-        // Mỏng và sắc nét hơn
-        Particle.DustOptions riftOuter = new Particle.DustOptions(org.bukkit.Color.fromRGB(60, 0, 100), 1.2f);
-        Particle.DustOptions riftInner = new Particle.DustOptions(org.bukkit.Color.BLACK, 0.8f);
+        Particle.DustOptions riftOuter = new Particle.DustOptions(org.bukkit.Color.fromRGB(60, 0, 100), 1.0f);
+        Particle.DustOptions riftInner = new Particle.DustOptions(org.bukkit.Color.BLACK, 0.6f);
 
         new BukkitRunnable() {
             int ticks = 0;
@@ -613,10 +609,12 @@ public class ElementalSphereSkill implements ISkill {
             public void run() {
                 if (ticks >= 320 || !player.isOnline()) { this.cancel(); return; }
 
-                // Giảm tần suất vẽ Rãnh Nứt (4 tick 1 lần thay vì mỗi tick) để bớt nhiễu hạt
                 if (ticks % 4 == 0) {
-                    for (int i = 0; i < riftPoints.size() - 1; i++) {
-                        drawRiftSegment(riftLoc.clone().add(riftPoints.get(i)), riftLoc.clone().add(riftPoints.get(i+1)), riftLoc.getWorld(), riftOuter, riftInner);
+                    for (int i = 0; i < spine.size() - 1; i++) {
+                        double progress = (double) i / (spine.size() - 1);
+                        double thickness = 4.0 * progress * (1.0 - progress) * 0.4;
+
+                        drawRiftSegment(riftLoc.clone().add(spine.get(i)), riftLoc.clone().add(spine.get(i+1)), riftLoc.getWorld(), riftOuter, riftInner, thickness);
                     }
                 }
 
@@ -645,16 +643,16 @@ public class ElementalSphereSkill implements ISkill {
         }.runTaskTimer(plugin, 0L, 1L);
     }
 
-    private void drawRiftSegment(Location p1, Location p2, org.bukkit.World world, Particle.DustOptions outer, Particle.DustOptions inner) {
+    private void drawRiftSegment(Location p1, Location p2, org.bukkit.World world, Particle.DustOptions outer, Particle.DustOptions inner, double thickness) {
         Vector dir = p2.toVector().subtract(p1.toVector());
         double dist = dir.length();
         if (dist == 0) return;
         dir.normalize();
-        // Tăng step lên 0.4 để tạo độ mảnh
-        for(double t = 0; t <= dist; t += 0.4) {
+
+        for(double t = 0; t <= dist; t += 0.2) {
             Location loc = p1.clone().add(dir.clone().multiply(t));
-            world.spawnParticle(Particle.DUST, loc, 1, 0.02, 0.02, 0.02, outer);
-            world.spawnParticle(Particle.DUST, loc, 1, 0, 0, 0, inner);
+            world.spawnParticle(Particle.DUST, loc, 2, thickness, 0, thickness, 0.0, outer, true);
+            world.spawnParticle(Particle.DUST, loc, 1, thickness * 0.3, 0, thickness * 0.3, 0.0, inner, true);
         }
     }
 
@@ -679,7 +677,8 @@ public class ElementalSphereSkill implements ISkill {
             double tt = t * t;
             double uu = u * u;
             Vector point = p0.clone().multiply(uu).add(p1.clone().multiply(2 * u * t)).add(p2.clone().multiply(tt));
-            world.spawnParticle(Particle.DUST, point.getX(), point.getY(), point.getZ(), 1, 0, 0, 0, 0, blackDust);
+            Location pLoc = new Location(world, point.getX(), point.getY(), point.getZ());
+            world.spawnParticle(Particle.DUST, pLoc, 1, 0, 0, 0, 0.0, blackDust, true);
         }
     }
 }
