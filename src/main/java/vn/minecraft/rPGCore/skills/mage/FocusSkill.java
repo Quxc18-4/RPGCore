@@ -80,8 +80,8 @@ public class FocusSkill extends AbstractEnhancementSkill {
                 lore.add("§f- Hiệu ứng: §6Thiêu Đốt§f 5s (100% tỷ lệ).");
                 break;
             case WATER:
-                int waterOut = (int)(totalDmg * 0.60);
-                int waterReturn = (int)(totalDmg * 0.30);
+                int waterOut = (int) Math.round(totalDmg * 0.60);
+                int waterReturn = (int) Math.round(totalDmg * 0.30);
                 lore.add("§b[Thi Triển: Boomerang Nước]");
                 lore.add("§f- Phóng đao nước bay đi và quay về, xuyên");
                 lore.add("§f  thấu tối đa 10 mục tiêu.");
@@ -90,11 +90,12 @@ public class FocusSkill extends AbstractEnhancementSkill {
                 lore.add("§f  nếu là mục tiêu trúng lần đầu).");
                 break;
             case WIND:
-                int maxWind = (int)(totalDmg * 0.50);
-                int minWind = (int)(totalDmg * 0.20);
+                // [ĐÃ SỬA]: Khớp với FocusWind.java (25% mỗi giây)
+                int maxWind = (int) Math.round(totalDmg * 0.25);
+                int minWind = (int) Math.round(totalDmg * 0.10);
                 lore.add("§a[Thi Triển: Mắt Bão]");
                 lore.add("§f- Tạo tâm bão hút quái (4m) duy trì 4s.");
-                lore.add("§f- Sát thương: §c" + maxWind + "%/s§f, giảm 5% mỗi quái");
+                lore.add("§f- Sát thương: §c" + maxWind + "%/s§f, giảm 2% mỗi quái");
                 lore.add("§f  (Tối thiểu §c" + minWind + "%§f).");
                 lore.add("§f- §cQuá tải: §fPhát nổ hất văng nếu > 10 quái.");
                 break;

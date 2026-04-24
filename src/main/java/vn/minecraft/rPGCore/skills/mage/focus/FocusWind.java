@@ -138,9 +138,9 @@ public class FocusWind implements IFocusAttack {
                         center.getWorld().playSound(center, Sound.ENTITY_PLAYER_ATTACK_SWEEP, 1f, 1.5f);
 
                         int count = Math.min(allTargets.size(), 10);
-                        // DMG ban đầu 50%, mỗi quái giảm 5%, tối thiểu 20%
-                        double dpsPct = 0.50 - ((count - 1) * 0.05);
-                        dpsPct = Math.max(dpsPct, 0.20);
+                        // [ĐÃ SỬA] DMG ban đầu 25%, mỗi quái giảm 2%, tối thiểu 10%
+                        double dpsPct = 0.25 - ((count - 1) * 0.02);
+                        dpsPct = Math.max(dpsPct, 0.10);
                         double dmgPerTarget = totalFocusMulti * dpsPct;
 
                         for (int i = 0; i < count; i++) {
