@@ -467,38 +467,46 @@ public class SummonerClass extends RPGClass {
     public void onProjectileHit(Player shooter, RPGPlayer rpgPlayer, org.bukkit.entity.Projectile projectile, org.bukkit.event.entity.ProjectileHitEvent event) { }
 
     // ==========================================
-    // HOOK 1: HIỆU ỨNG TRÚNG ĐÍCH TỪ CỘNG HƯỞNG (RESONANCE)
+    // HOOK: XỬ LÝ KHI TRIỆU HỒI SƯ ĐÁNH TRÚNG MỤC TIÊU (TAGGING)
     // ==========================================
     @Override
     public void onAttackLanded(Player attacker, LivingEntity target) {
-        // Kiểm tra xem Triệu hồi sư có đang cầm bùa lợi Cộng hưởng không
-        if (attacker.hasMetadata("Resonance_Stats")) {
-            Object val = attacker.getMetadata("Resonance_Stats").get(0).value();
-            if (val instanceof java.util.Map) {
+        // 1. Khởi tạo hoặc lấy Danh sách mục tiêu (Stack) hiện tại
+        java.util.LinkedList<LivingEntity> targetStack;
+
+        if (attacker.hasMetadata("Summoner_Target_Stack")) {
+            Object val = attacker.getMetadata("Summoner_Target_Stack").get(0).value();
+            if (val instanceof java.util.LinkedList) {
                 @SuppressWarnings("unchecked")
-                java.util.Map<String, Double> buffs = (java.util.Map<String, Double>) val;
-
-                // [Hệ Ánh Sáng]: Hồi máu chuẩn trên mỗi đòn đánh trúng
-                double heal = buffs.getOrDefault("HealOnHit", 0.0);
-                if (heal > 0) {
-                    double maxHp = attacker.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue();
-                    attacker.setHealth(Math.min(maxHp, attacker.getHealth() + heal));
-                    attacker.getWorld().spawnParticle(org.bukkit.Particle.HEART, attacker.getLocation().add(0, 2, 0), 1, 0.3, 0.3, 0.3, 0);
-                }
-
-                // [Hệ Lửa]: Xác suất thiêu đốt mục tiêu
-                double burnChance = buffs.getOrDefault("BurnChance", 0.0) * 100.0;
-                if (burnChance > 0 && (Math.random() * 100) <= burnChance) {
-                    target.setFireTicks(60); // Đốt 3 giây
-                }
-
-                // [Hệ Băng]: Xác suất làm chậm mục tiêu
-                double slowChance = buffs.getOrDefault("SlowChance", 0.0) * 100.0;
-                if (slowChance > 0 && (Math.random() * 100) <= slowChance) {
-                    vn.minecraft.rPGCore.managers.StatusEffectManager.applyEffect(target, org.bukkit.potion.PotionEffectType.SLOWNESS, 40, 1);
-                }
+                java.util.LinkedList<LivingEntity> existingStack = (java.util.LinkedList<LivingEntity>) val;
+                targetStack = existingStack;
+            } else {
+                targetStack = new java.util.LinkedList<>();
             }
+        } else {
+            targetStack = new java.util.LinkedList<>();
         }
+
+        // 2. Logic Hàng Đợi Ưu Tiên (Priority Queue)
+        // Nếu con quái này đã bị Tag rồi, rút nó ra khỏi hàng đợi...
+        targetStack.remove(target);
+        // ...và nhét lại lên ĐẦU danh sách (Đưa lên mức ưu tiên cao nhất)
+        targetStack.addFirst(target);
+
+        // 3. Dọn dẹp rác (Chỉ nhớ tối đa 5 mục tiêu gần nhất để tối ưu RAM)
+        if (targetStack.size() > 5) {
+            targetStack.removeLast();
+        }
+
+        // 4. Lưu lại Stack vào người Summoner
+        attacker.setMetadata("Summoner_Target_Stack", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), targetStack));
+
+        // 5. Hiệu ứng Game Design: Cho người chơi biết họ đã Tag thành công
+        target.getWorld().spawnParticle(org.bukkit.Particle.SOUL_FIRE_FLAME, target.getLocation().add(0, 2.2, 0), 5, 0.2, 0.2, 0.2, 0.05);
+        target.getWorld().playSound(target.getLocation(), org.bukkit.Sound.BLOCK_AMETHYST_BLOCK_CHIME, 1.0f, 2.0f);
+
+        // (Tùy chọn) Gắn thêm 1 Tag phụ lên quái để Sát thủ (Assassin) có thể lợi dụng Bom Khói tẩy nhãn
+        target.setMetadata("Summoner_Marked", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), true));
     }
 
     // ==========================================

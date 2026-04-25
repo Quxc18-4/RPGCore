@@ -83,12 +83,25 @@ public class WindSpiritProfile implements IPetProfile, Listener {
                     return;
                 }
 
-                LivingEntity target = null;
-                if (pet instanceof Mob) {
-                    target = ((Mob) pet).getTarget();
+                // 1. TÌM CHỦ NHÂN TRƯỚC
+                Player petOwner = null;
+                if (pet.hasMetadata("Summoner_Pet")) {
+                    try {
+                        petOwner = Bukkit.getPlayer(UUID.fromString(pet.getMetadata("Summoner_Pet").get(0).asString()));
+                    } catch (Exception ignored) {}
                 }
 
-                Player petOwner = null;
+                // 2. TỪ CHỦ NHÂN, ĐỌC LỆNH MỤC TIÊU TỪ TRẠM CHỈ HUY
+                LivingEntity target = null;
+                if (petOwner != null) {
+                    target = vn.minecraft.rPGCore.skills.summoner.pets.SummonPetManager.getSmartTarget(petOwner);
+                }
+
+                // 3. ÉP VANILLA MOB XOAY MẶT VỀ ĐÚNG MỤC TIÊU ĐÓ
+                if (pet instanceof Mob) {
+                    ((Mob) pet).setTarget(target);
+                }
+
                 if (pet.hasMetadata("Summoner_Pet")) {
                     try {
                         petOwner = Bukkit.getPlayer(UUID.fromString(pet.getMetadata("Summoner_Pet").get(0).asString()));

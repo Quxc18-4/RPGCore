@@ -100,7 +100,15 @@ public class MagmaGolemProfile implements IPetProfile, Listener {
                     owner.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.FIRE_RESISTANCE, 10, 0, false, false));
                 }
 
-                LivingEntity bestTarget = scanNearestTarget(owner, pet, 20.0);
+                // [BƯỚC 4]: ĐỌC LỆNH TỪ TRẠM CHỈ HUY
+                LivingEntity bestTarget = vn.minecraft.rPGCore.skills.summoner.pets.SummonPetManager.getSmartTarget(owner);
+
+                if (bestTarget != null) {
+                    // Nếu cách quá xa (25 block) hoặc khác thế giới thì Golem không thèm nhảy tới
+                    if (!bestTarget.getWorld().equals(pet.getWorld()) || pet.getLocation().distance(bestTarget.getLocation()) > 25.0) {
+                        bestTarget = null;
+                    }
+                }
 
                 // Set mục tiêu cho hệ thống Vanilla hỗ trợ
                 if (pet instanceof org.bukkit.entity.Mob) {
@@ -294,27 +302,6 @@ public class MagmaGolemProfile implements IPetProfile, Listener {
             }
         }
         return 1.0;
-    }
-
-    // ==========================================
-    // RADAR DÒ QUÉT MỤC TIÊU
-    // ==========================================
-    private LivingEntity scanNearestTarget(Player owner, LivingEntity pet, double radius) {
-        LivingEntity bestTarget = null;
-        double closestDist = radius;
-        for (org.bukkit.entity.Entity e : pet.getNearbyEntities(radius, radius / 2, radius)) {
-            if (e instanceof LivingEntity && !e.isDead() && e.isValid()) {
-                LivingEntity livingTarget = (LivingEntity) e;
-                if (CombatManager.canTarget(owner, livingTarget)) {
-                    double dist = pet.getLocation().distance(livingTarget.getLocation());
-                    if (dist < closestDist && pet.hasLineOfSight(livingTarget)) {
-                        closestDist = dist;
-                        bestTarget = livingTarget;
-                    }
-                }
-            }
-        }
-        return bestTarget;
     }
 
     // ==========================================

@@ -124,24 +124,14 @@ public class FireSpiritProfile implements IPetProfile {
                 if (attackCooldown > 0) {
                     attackCooldown--;
                 } else {
-                    LivingEntity targetToShoot = null;
-                    double closestDist = 20.0;
-
-                    // Dò mục tiêu
-                    for (org.bukkit.entity.Entity e : pet.getNearbyEntities(20, 10, 20)) {
-                        if (e instanceof LivingEntity && !e.isDead() && e.isValid()) {
-                            LivingEntity livingTarget = (LivingEntity) e;
-                            if (CombatManager.canTarget(owner, livingTarget)) {
-                                double dist = pet.getLocation().distance(livingTarget.getLocation());
-                                if (dist < closestDist && pet.hasLineOfSight(livingTarget)) {
-                                    closestDist = dist;
-                                    targetToShoot = livingTarget;
-                                }
-                            }
-                        }
-                    }
+                    LivingEntity targetToShoot = SummonPetManager.getSmartTarget(owner);
 
                     if (targetToShoot != null) {
+                        // [BỔ SUNG]: THÊM KHỐI CHẶN KHOẢNG CÁCH NÀY VÀO
+                        if (!targetToShoot.getWorld().equals(pet.getWorld()) || pet.getLocation().distance(targetToShoot.getLocation()) > 25.0 || !pet.hasLineOfSight(targetToShoot)) {
+                            return; // Nếu xa quá hoặc bị khuất tường -> Ngừng bắn, chờ chủ tới gần
+                        }
+
                         pet.getWorld().playSound(pet.getLocation(), Sound.ENTITY_BLAZE_SHOOT, 1.2f, 1.5f);
 
                         Location shootLoc = pet.getLocation().add(0, pet.getHeight() / 2, 0);

@@ -50,6 +50,25 @@ public class AlphaWolfProfile implements IPetProfile {
             pet.getAttribute(Attribute.MAX_HEALTH).setBaseValue(newMaxHp);
             pet.setHealth(newMaxHp);
         }
+
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                // Nếu thú đã chết hoặc biến mất thì tự hủy vòng lặp
+                if (!pet.isValid() || pet.isDead() || !owner.isOnline()) {
+                    this.cancel();
+                    return;
+                }
+
+                // Nhận lệnh từ Trạm trung tâm
+                LivingEntity smartTarget = vn.minecraft.rPGCore.skills.summoner.pets.SummonPetManager.getSmartTarget(owner);
+
+                // Ép Vanilla AI phải khóa mục tiêu này để chạy tới cắn
+                if (pet instanceof org.bukkit.entity.Mob) {
+                    ((org.bukkit.entity.Mob) pet).setTarget(smartTarget);
+                }
+            }
+        }.runTaskTimer(vn.minecraft.rPGCore.RPGCore.getInstance(), 0L, 5L);
     }
 
     // ==========================================

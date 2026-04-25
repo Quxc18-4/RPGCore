@@ -144,20 +144,11 @@ public class GreatWindSpiritProfile implements IPetProfile, Listener {
                 // ==========================================
                 LivingEntity target = null;
                 if (petOwner != null) {
-                    for (org.bukkit.entity.Entity e : petOwner.getNearbyEntities(12, 12, 12)) {
-                        if (e instanceof Mob) {
-                            LivingEntity mobTarget = ((Mob) e).getTarget();
-                            if (mobTarget != null && mobTarget.equals(petOwner)) {
-                                target = (Mob) e;
-                                if (pet instanceof Mob) ((Mob) pet).setTarget(target);
-                                break;
-                            }
-                        }
-                    }
+                    target = vn.minecraft.rPGCore.skills.summoner.pets.SummonPetManager.getSmartTarget(petOwner);
                 }
 
-                if (target == null && pet instanceof Mob) {
-                    target = ((Mob) pet).getTarget();
+                if (pet instanceof Mob) {
+                    ((Mob) pet).setTarget(target); // Ép xoay mặt
                 }
 
                 // ==========================================

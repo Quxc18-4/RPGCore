@@ -132,23 +132,13 @@ public class GrandFireSpiritProfile implements IPetProfile {
                 // ==========================================
                 // TÌM MỤC TIÊU CHO ĐẠN & THIÊN THẠCH
                 // ==========================================
-                LivingEntity targetToShoot = null;
-                double closestDist = 25.0;
-
-                for (org.bukkit.entity.Entity e : pet.getNearbyEntities(25, 15, 25)) {
-                    if (e instanceof LivingEntity && !e.isDead() && e.isValid()) {
-                        LivingEntity livingTarget = (LivingEntity) e;
-                        if (CombatManager.canTarget(owner, livingTarget)) {
-                            double dist = pet.getLocation().distance(livingTarget.getLocation());
-                            if (dist < closestDist && pet.hasLineOfSight(livingTarget)) {
-                                closestDist = dist;
-                                targetToShoot = livingTarget;
-                            }
-                        }
-                    }
-                }
+                LivingEntity targetToShoot = SummonPetManager.getSmartTarget(owner);
 
                 if (targetToShoot != null) {
+                    // [BỔ SUNG]: THÊM KHỐI CHẶN KHOẢNG CÁCH NÀY VÀO
+                    if (!targetToShoot.getWorld().equals(pet.getWorld()) || pet.getLocation().distance(targetToShoot.getLocation()) > 25.0 || !pet.hasLineOfSight(targetToShoot)) {
+                        return; // Nếu xa quá hoặc bị khuất tường -> Ngừng bắn, chờ chủ tới gần
+                    }
                     Location shootLoc = pet.getLocation().add(0, pet.getHeight() * 0.8, 0);
                     Location targetCenter = targetToShoot.getLocation().add(0, targetToShoot.getHeight() / 2, 0);
 
