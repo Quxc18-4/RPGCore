@@ -367,26 +367,11 @@ public class SummonerClass extends RPGClass {
     @Override
     public double onTakeDamage(Player victim, RPGPlayer rpgPlayer, LivingEntity attacker, double initialDamage) {
 
-        double modifiedDamage = initialDamage;
+        // CHÚ Ý: KHÔNG tự tính toán trừ sát thương từ Resonance_Stats ở đây nữa.
+        // Lượng sát thương sẽ được giữ nguyên (initialDamage) để CombatManager tự lấy Modifier và Cap ở 40%.
 
         // ==========================================
-        // [CHUẨN SOLID]: SUMMONER TỰ XỬ LÝ BUFF VANGUARD CỦA MÌNH
-        // ==========================================
-        if (victim.hasMetadata("Resonance_Stats")) {
-            Object val = victim.getMetadata("Resonance_Stats").get(0).value();
-            if (val instanceof Map) {
-                @SuppressWarnings("unchecked")
-                Map<String, Double> resonanceBuffs = (Map<String, Double>) val;
-                double damageReduction = resonanceBuffs.getOrDefault("DamageReduction", 0.0);
-
-                if (damageReduction > 0) {
-                    modifiedDamage *= (1.0 - damageReduction);
-                }
-            }
-        }
-
-        // ==========================================
-        // ĐIỀU HƯỚNG MỤC TIÊU CHO ĐỆ TỬ
+        // ĐIỀU HƯỚNG MỤC TIÊU CHO ĐỆ TỬ (Giữ nguyên vẹn logic của bạn)
         // ==========================================
         if (attacker != null && !attacker.equals(victim) && !(attacker instanceof org.bukkit.entity.ArmorStand) && !attacker.hasMetadata("Summoner_Pet")) {
 
@@ -447,8 +432,8 @@ public class SummonerClass extends RPGClass {
             }
         }
 
-        // Trả về lượng sát thương sau khi đã giảm trừ bởi Vanguard
-        return modifiedDamage;
+        // Trả về sát thương GỐC để hệ thống Cap 40% ở CombatManager tiếp quản
+        return initialDamage;
     }
 
     public void clearAllPets(Player player) {

@@ -118,6 +118,10 @@ public class CombatManager {
     public static double calculateDamageTaken(Player victim, RPGPlayer rpgVictim, double incomingDamage) {
         Map<String, Double> totalStats = rpgVictim.getTotalStatsMap();
 
+        // ==========================================
+        // LỚP 0: NÉ TRÁNH (Dodge)
+        // Ưu tiên cao nhất: Nếu né thành công, hủy toàn bộ sát thương, không cần tính tiếp
+        // ==========================================
         double dodgeRate = totalStats.getOrDefault("Tỉ lệ né tránh", 0.0);
         if (dodgeRate > 0 && (Math.random() * 100) <= dodgeRate) {
             victim.getWorld().spawnParticle(Particle.CLOUD, victim.getLocation().add(0, 1, 0), 10, 0.3, 0.3, 0.3, 0.1);
@@ -126,19 +130,44 @@ public class CombatManager {
             return 0.0;
         }
 
-        double finalDamage = incomingDamage;
+        // ==========================================
+        // LỚP 1: CLASS HOOK (Đặc quyền riêng của Class)
+        // [CHUẨN SOLID]: Gọi về class tương ứng (Ví dụ: WarriorClass sẽ tự kiểm tra Parry và /2 sát thương ở đây)
+        // ==========================================
+        double damageAfterClassHook = incomingDamage;
+        if (rpgVictim.getCurrentClass() != null) {
+            // Class sẽ nhận sát thương gốc, xử lý đặc quyền, và trả về sát thương sau khi giảm
+            damageAfterClassHook = rpgVictim.getCurrentClass().onTakeDamage(victim, rpgVictim, incomingDamage);
+        }
 
+        // ==========================================
+        // LỚP 2: HỆ THỐNG MODIFIER CHUNG (Thiết quân luật Cap 40%)
+        // Gom tất cả các buff từ đồng minh, pet, lãnh vực...
+        // ==========================================
+        double totalReduction = 0.0;
+        for (ICombatModifier modifier : combatModifiers) {
+            totalReduction += modifier.getIncomingDamageReduction(victim, null);
+        }
+
+        // Khóa giới hạn: Tổng giảm sát thương không bao giờ vượt quá 40% (0.40)
+        totalReduction = Math.min(totalReduction, 0.40);
+
+        // Áp dụng giảm trừ vào lượng sát thương đã đi qua Lớp 1
+        double finalDamage = damageAfterClassHook * (1.0 - totalReduction);
+
+        // ==========================================
+        // LỚP 3: ĐỠ ĐÒN (Chỉ số tĩnh từ Trang bị/Vũ khí)
+        // ==========================================
         double blockRate = totalStats.getOrDefault("Tỉ lệ đỡ đòn", 0.0);
         if (blockRate > 0 && (Math.random() * 100) <= blockRate) {
             victim.getWorld().spawnParticle(Particle.ITEM, victim.getLocation().add(0, 1, 0), 20, 0.3, 0.5, 0.3, 0.1, new org.bukkit.inventory.ItemStack(org.bukkit.Material.SHIELD));
             victim.playSound(victim.getLocation(), Sound.ITEM_SHIELD_BLOCK, 1.0f, 1.0f);
-            finalDamage *= 0.7;
+            finalDamage *= 0.7; // Giảm 30% sát thương
             victim.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR, net.md_5.bungee.api.chat.TextComponent.fromLegacyText("§9§l[ĐỠ ĐÒN: -30% SÁT THƯƠNG]"));
         }
 
         // ==========================================
-        // [CHUẨN SOLID]: HỆ THỐNG KHIÊN ẢO DÙNG CHUNG CỦA SERVER
-        // (Bất kỳ class nào set cái Metadata này cũng sẽ được hấp thụ sát thương)
+        // LỚP 4: [CHUẨN SOLID] HỆ THỐNG KHIÊN ẢO DÙNG CHUNG (Absorption)
         // ==========================================
         if (victim.hasMetadata("RPG_Absorption_Shield")) {
             double currentShield = victim.getMetadata("RPG_Absorption_Shield").get(0).asDouble();

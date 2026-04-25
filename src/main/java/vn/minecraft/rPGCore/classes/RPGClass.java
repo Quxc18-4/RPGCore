@@ -189,4 +189,8 @@ public abstract class RPGClass {
     public void applyPetDynamicStats(Player owner, RPGPlayer rpgOwner, org.bukkit.entity.Entity pet, java.util.Map<String, Double> petStats) { }
 
     public boolean onSwapItem(Player player, RPGPlayer rpgPlayer, ItemStack weapon) { return false; }
+
+    public double onTakeDamage(Player victim, RPGPlayer rpgVictim, double incomingDamage) {
+        return incomingDamage; // Mặc định trả về nguyên vẹn, các class con như Warrior sẽ override lại để chia đôi (Parry)
+    }
 }

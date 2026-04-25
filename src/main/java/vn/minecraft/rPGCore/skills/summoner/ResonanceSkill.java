@@ -15,6 +15,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 import vn.minecraft.rPGCore.RPGCore;
+import vn.minecraft.rPGCore.managers.CombatManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 import vn.minecraft.rPGCore.skills.ISkill;
 import vn.minecraft.rPGCore.skills.summoner.pets.IPetProfile;
@@ -42,7 +43,43 @@ public class ResonanceSkill implements ISkill {
         }
     }
 
-    public ResonanceSkill(JavaPlugin plugin) { this.plugin = plugin; }
+    public ResonanceSkill(JavaPlugin plugin) {
+        this.plugin = plugin;
+
+        // [CHUẨN SOLID]: Tự đăng ký hiệu ứng giảm sát thương của Summoner vào Core
+        CombatManager.registerCombatModifier(new CombatManager.ICombatModifier() {
+            @Override
+            public double getIncomingDamageReduction(LivingEntity victim, LivingEntity attacker) {
+                // Kiểm tra xem người chơi có đang trong trạng thái Cộng hưởng không
+                if (victim.hasMetadata("Resonance_Stats")) {
+                    Object val = victim.getMetadata("Resonance_Stats").get(0).value();
+                    if (val instanceof Map) {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Double> buffs = (Map<String, Double>) val;
+
+                        // Trả về lượng giảm sát thương (VD: 0.32 cho 8 Golem)
+                        // Con số này sẽ được CombatManager gộp lại và CAP ở 40%
+                        return buffs.getOrDefault("DamageReduction", 0.0);
+                    }
+                }
+                return 0.0;
+            }
+
+            @Override
+            public double getOutgoingDamageModifier(LivingEntity attacker, LivingEntity victim) {
+                // Nếu có buff tăng sát thương từ Resonance, cũng trả về ở đây để được Multiplicative
+                if (attacker.hasMetadata("Resonance_Stats")) {
+                    Object val = attacker.getMetadata("Resonance_Stats").get(0).value();
+                    if (val instanceof Map) {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Double> buffs = (Map<String, Double>) val;
+                        return buffs.getOrDefault("DamageMultiplier", 0.0);
+                    }
+                }
+                return 0.0;
+            }
+        });
+    }
 
     @Override public String getId() { return "resonance"; }
     @Override public String getName() { return "Cộng hưởng Linh thú"; }
