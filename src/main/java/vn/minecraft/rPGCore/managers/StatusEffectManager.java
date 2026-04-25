@@ -81,66 +81,75 @@ public class StatusEffectManager {
     }
 
     // ==========================================
-    // [UNIVERSAL CC] KHÓA DI CHUYỂN & KHÁNG ĐẨY LÙI TUYỆT ĐỐI
+    // [UNIVERSAL CC] KHÓA DI CHUYỂN & KHÁNG ĐẨY LÙI (DÙNG ĐƯỢC CHO CẢ QUÁI VÀ NGƯỜI)
     // ==========================================
-    public static void applyAbsoluteRoot(org.bukkit.entity.Player player, int durationTicks) {
+    public static void applyAbsoluteRoot(LivingEntity target, int durationTicks) {
         long expireTime = System.currentTimeMillis() + (durationTicks * 50L);
-        player.setMetadata("RPGCore_Rooted", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), expireTime));
+        target.setMetadata("RPGCore_Rooted", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), expireTime));
 
-        // 1. Khóa tốc độ và khóa nút Nhảy
-        player.setWalkSpeed(0f);
-        player.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.JUMP_BOOST, durationTicks, 250, false, false, false));
+        // 1. Dùng chung cho cả Người và Quái (Khóa nhảy và làm chậm kịch kim)
+        target.addPotionEffect(new PotionEffect(PotionEffectType.JUMP_BOOST, durationTicks, 250, false, false, false));
+        target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, durationTicks, 10, false, false, false));
 
-        // 2. Tắt va chạm thực thể (CHÌA KHÓA CHỐNG QUÁI HÚC/ĐẨY LÙI)
-        player.setCollidable(false);
+        // 2. Phân loại xử lý chuyên sâu
+        if (target instanceof Player) {
+            Player player = (Player) target;
+            player.setWalkSpeed(0f);
+            player.setCollidable(false);
 
-        // 3. Kháng Knockback (Chuẩn 1.21+, không dùng valueOf để tránh lỗi báo vàng)
-        org.bukkit.attribute.AttributeInstance kbAttr = player.getAttribute(org.bukkit.attribute.Attribute.KNOCKBACK_RESISTANCE);
-        if (kbAttr != null) kbAttr.setBaseValue(1.0);
+            org.bukkit.attribute.AttributeInstance kbAttr = player.getAttribute(org.bukkit.attribute.Attribute.KNOCKBACK_RESISTANCE);
+            if (kbAttr != null) kbAttr.setBaseValue(1.0);
+        } else {
+            // Đối với Quái, tắt AI di chuyển nếu xài phiên bản MC hỗ trợ (Hoặc tăng kháng Knockback)
+            org.bukkit.attribute.AttributeInstance kbAttr = target.getAttribute(org.bukkit.attribute.Attribute.KNOCKBACK_RESISTANCE);
+            if (kbAttr != null) kbAttr.setBaseValue(1.0);
+        }
 
-        org.bukkit.Location anchor = player.getLocation().clone();
+        org.bukkit.Location anchor = target.getLocation().clone();
 
-        // Task neo vị trí (Đè gia tốc)
+        // 3. Task neo vị trí (Đè gia tốc cho mọi thực thể)
         new org.bukkit.scheduler.BukkitRunnable() {
             @Override
             public void run() {
-                if (!player.isOnline() || !player.hasMetadata("RPGCore_Rooted")) {
+                if (!target.isValid() || target.isDead() || !target.hasMetadata("RPGCore_Rooted")) {
                     this.cancel();
                     return;
                 }
-                long currentExpire = player.getMetadata("RPGCore_Rooted").get(0).asLong();
+                long currentExpire = target.getMetadata("RPGCore_Rooted").get(0).asLong();
                 if (System.currentTimeMillis() >= currentExpire) {
-                    removeAbsoluteRoot(player);
+                    removeAbsoluteRoot(target);
                     this.cancel();
                     return;
                 }
 
-                // Ép gia tốc về 0
-                player.setVelocity(new org.bukkit.util.Vector(0, 0, 0));
+                target.setVelocity(new Vector(0, 0, 0));
 
-                // Nếu client cố tình lách vị trí > 0.1 block, giật lại ngay
-                org.bukkit.Location current = player.getLocation();
+                org.bukkit.Location current = target.getLocation();
                 if (current.distanceSquared(anchor) > 0.01) {
                     org.bukkit.Location tp = anchor.clone();
                     tp.setYaw(current.getYaw());
                     tp.setPitch(current.getPitch());
-                    player.teleport(tp);
+                    target.teleport(tp);
                 }
             }
         }.runTaskTimer(vn.minecraft.rPGCore.RPGCore.getInstance(), 0L, 1L);
     }
 
-    public static void removeAbsoluteRoot(org.bukkit.entity.Player player) {
-        if (player.hasMetadata("RPGCore_Rooted")) {
-            player.removeMetadata("RPGCore_Rooted", vn.minecraft.rPGCore.RPGCore.getInstance());
+    public static void removeAbsoluteRoot(LivingEntity target) {
+        if (target.hasMetadata("RPGCore_Rooted")) {
+            target.removeMetadata("RPGCore_Rooted", vn.minecraft.rPGCore.RPGCore.getInstance());
 
-            // Trả lại trạng thái bình thường
-            player.setWalkSpeed(0.2f);
-            player.removePotionEffect(org.bukkit.potion.PotionEffectType.JUMP_BOOST);
-            player.setCollidable(true);
+            target.removePotionEffect(PotionEffectType.JUMP_BOOST);
+            target.removePotionEffect(PotionEffectType.SLOWNESS);
 
-            org.bukkit.attribute.AttributeInstance kbAttr = player.getAttribute(org.bukkit.attribute.Attribute.KNOCKBACK_RESISTANCE);
+            org.bukkit.attribute.AttributeInstance kbAttr = target.getAttribute(org.bukkit.attribute.Attribute.KNOCKBACK_RESISTANCE);
             if (kbAttr != null) kbAttr.setBaseValue(0.0);
+
+            if (target instanceof Player) {
+                Player player = (Player) target;
+                player.setWalkSpeed(0.2f);
+                player.setCollidable(true);
+            }
         }
     }
 

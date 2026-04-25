@@ -74,47 +74,49 @@ public class ElementalBurstSkill implements ISkill {
 
         lore.add("§7Giải phóng toàn bộ ma lực dư thừa, tạo");
         lore.add("§7ra một vụ Bạo phát xung quanh bản thân.");
-        lore.add("§7Kỹ năng tối thượng để phá vỡ vòng vây.");
+        lore.add("§7Kỹ năng tối ưu để phá vỡ vòng vây.");
         lore.add("");
 
         switch (element) {
             case FIRE:
                 lore.add("§c[Thi Triển: Liệt Hỏa Trùng m]");
                 lore.add("§f- Triệu hồi 9 cột lửa phun trào hình quạt.");
-                lore.add("§f- Cột đầu trúng mục tiêu gây §c" + baseDmgPct + "% ST§f,");
-                lore.add("§f  các cột sau chạm cùng mục tiêu chỉ gây §c15% ST§f.");
+                lore.add("§f- Cột đầu trúng mục tiêu gây §c" + baseDmgPct + "% Sát Thương§f,");
+                lore.add("§f  các cột sau chạm cùng mục tiêu chỉ gây §c15% Sát Thương§f.");
                 lore.add("§f- Hất văng và có 50% tỷ lệ §6Thiêu Đốt§f.");
                 break;
             case WATER:
-                lore.add("§b[Thi Triển: Sóng Thần Xô Ngã]");
+                lore.add("§b[Thi Triển: Sóng Dữ]");
                 lore.add("§f- Đẩy một bức tường nước dài 4m về phía trước.");
                 lore.add("§f- Cuốn trôi, đẩy lùi mọi kẻ địch và làm chậm 30%.");
-                lore.add("§f- Gây §c" + (int)(baseDmgPct * 1.2) + "% ST§f một lần duy nhất.");
+                lore.add("§f- Gây §c" + (int)(baseDmgPct * 1.2) + "% Sát Thương§f.");
                 break;
             case WIND:
+                // Tính toán ép kiểu Int và làm tròn để hiện lên Lore thật đẹp
+                int speedBonus = (int) Math.round(15.0 + ((displayLevel - 1) * (20.0 / 9.0)));
                 lore.add("§a[Thi Triển: Phong Nhẫn Trảm]");
                 lore.add("§f- Bắn 8 lưỡi đao gió xuyên thấu 360 độ.");
-                lore.add("§f- Gây §c" + baseDmgPct + "% ST§f cho mục tiêu trúng đòn.");
-                lore.add("§f- Tăng mạnh Tốc độ di chuyển bản thân trong 3s.");
+                lore.add("§f- Gây §c" + baseDmgPct + "% ST§f cho mục tiêu.");
+                lore.add("§f- Tăng §a" + speedBonus + "% Tốc độ di chuyển§f trong 3s.");
                 break;
             case NATURE:
                 lore.add("§2[Thi Triển: Bão Lá Cuồng Si]");
-                lore.add("§f- Tạo vùng bão di động (4s) tiến về phía trước.");
+                lore.add("§f- Tạo ra cơn bão lá di chuyển thẳng về phía trước.");
                 lore.add("§f- Khóa khả năng bật nhảy của kẻ địch bên trong.");
-                lore.add("§f- Cú nổ đầu gây §c" + (int)(baseDmgPct * 0.8) + "% ST§f, sau đó");
-                lore.add("§f  gây §c" + (int)(baseDmgPct * 0.2) + "% ST§f liên tục mỗi giây.");
+                lore.add("§f- Cú nổ đầu gây §c" + (int)(baseDmgPct * 0.8) + "% Sát Thương§f, sau đó");
+                lore.add("§f  gây §c" + (int)(baseDmgPct * 0.2) + "% Sát Thương§f liên tục mỗi giây.");
                 break;
             case LIGHT:
                 lore.add("§e[Thi Triển: Quang Phổ Chói Lòa]");
                 lore.add("§f- Bùng nổ ánh sáng diện rộng tại bản thân.");
-                lore.add("§f- Gây §c" + (int)(baseDmgPct * 0.7) + "% ST§f.");
+                lore.add("§f- Gây §c" + (int)(baseDmgPct * 0.7) + "% Sát Thương§f.");
                 lore.add("§f- Làm mù và choáng hoàn toàn kẻ địch trong §a" + String.format("%.1f", 1.5 + (displayLevel * 0.1)) + "s§f.");
                 break;
             case DARK:
                 lore.add("§5[Thi Triển: Khe Nứt Diệt Vong]");
                 lore.add("§f- Mở khe nứt quét tia laser hình quạt về phía trước.");
-                lore.add("§f- Gây §c" + (int)(baseDmgPct * 1.2) + "% ST§f, kèm hiệu ứng §8Mù Lòa§f");
-                lore.add("§f  và §cPhân Rã (Wither)§f trong 4s.");
+                lore.add("§f- Gây §c" + (int)(baseDmgPct * 1.2) + "% Sát Thương§f, kèm hiệu ứng §8Mù Lòa§f");
+                lore.add("§f  và §cPhân Rã §f trong 4s.");
                 break;
         }
         return lore;
@@ -134,7 +136,7 @@ public class ElementalBurstSkill implements ISkill {
         switch (element) {
             case FIRE: triggerFireBurst(player, rpgPlayer, baseMulti); break;
             case WATER: triggerWaterBurst(player, rpgPlayer, baseMulti); break;
-            case WIND: triggerWindBurst(player, rpgPlayer, baseMulti); break;
+            case WIND: triggerWindBurst(player, rpgPlayer, level, baseMulti); break;
             case NATURE: triggerNatureBurst(player, rpgPlayer, baseMulti); break;
             case LIGHT: triggerLightBurst(player, rpgPlayer, level, baseMulti); break;
             case DARK: triggerDarkBurst(player, rpgPlayer, baseMulti); break;
@@ -254,12 +256,15 @@ public class ElementalBurstSkill implements ISkill {
     // ==========================================
     // 3. GIÓ: PHONG NHẪN TRẢM (NOVA)
     // ==========================================
-    private void triggerWindBurst(Player player, RPGPlayer rpgPlayer, double baseMulti) {
+    private void triggerWindBurst(Player player, RPGPlayer rpgPlayer, int level, double baseMulti) {
         Location center = player.getLocation().add(0, 1, 0);
         player.getWorld().playSound(center, Sound.ENTITY_ENDER_DRAGON_FLAP, 1.5f, 1.5f);
 
-        // Buff Speed nội tại (Bạn quản lý trong CombatManager/RPGPlayer)
-        player.setMetadata("Wind_Burst_Speed", new FixedMetadataValue(plugin, 50.0));
+        // [ÉP CHỈ SỐ]: Cấp 1 = 15.0, Cấp 10 = 35.0
+        double speedValue = 15.0 + ((level - 1) * (20.0 / 9.0));
+
+        // Buff Speed nội tại
+        player.setMetadata("Wind_Burst_Speed", new FixedMetadataValue(plugin, speedValue));
         new BukkitRunnable() {
             @Override
             public void run() { player.removeMetadata("Wind_Burst_Speed", plugin); }
@@ -392,8 +397,8 @@ public class ElementalBurstSkill implements ISkill {
             if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent)) {
                 LivingEntity target = (LivingEntity) ent;
 
-                // STUN: Rút tốc độ chạy kịch kim (Slowness 10) + Mù lòa
-                StatusEffectManager.applyEffect(target, PotionEffectType.SLOWNESS, stunTicks, 10);
+                // Cứ thế mà phang thẳng hàm tiện ích vào, hàm gốc sẽ tự lo liệu nó là Quái hay Người!
+                StatusEffectManager.applyAbsoluteRoot(target, stunTicks);
                 StatusEffectManager.applyEffect(target, PotionEffectType.BLINDNESS, stunTicks, 1);
 
                 ReactionEngine.ReactionResult reaction = ReactionEngine.processHit(player, target, MageElement.LIGHT);

@@ -68,6 +68,17 @@ public class MageClass extends RPGClass {
     public void applyPassiveBonusStats(RPGPlayer rpgPlayer, Map<String, Double> stats) {
         double currentMagicPen = stats.getOrDefault("Tỉ lệ xuyên kháng phép", 0.0);
         stats.put("Tỉ lệ xuyên kháng phép", currentMagicPen + 25.0);
+
+        // ==========================================
+        // [BẠN THÊM ĐOẠN NÀY VÀO]: ÉP TỈ LỆ TỐC ĐỘ TỪ KỸ NĂNG GIÓ
+        // ==========================================
+        Player player = rpgPlayer.getBukkitPlayer();
+        if (player.hasMetadata("Wind_Burst_Speed")) {
+            double extraSpeed = player.getMetadata("Wind_Burst_Speed").get(0).asDouble();
+            // Hàm Cha RPGClass sẽ tự động khóa giới hạn (Cap) tốc độ sau bước này
+            stats.put("Tốc độ di chuyển", stats.getOrDefault("Tốc độ di chuyển", 0.0) + extraSpeed);
+        }
+
         super.applyPassiveBonusStats(rpgPlayer, stats);
     }
 
