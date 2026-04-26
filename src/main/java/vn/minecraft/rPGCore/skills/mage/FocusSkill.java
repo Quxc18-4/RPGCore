@@ -140,8 +140,12 @@ public class FocusSkill extends AbstractEnhancementSkill {
         if (level <= 0) return false;
 
         String cdKey = "CD_" + getId();
+        // SỬA TẠI ĐÂY: Đảm bảo metadata list không rỗng
         if (player.hasMetadata(cdKey)) {
-            if (System.currentTimeMillis() < player.getMetadata(cdKey).get(0).asLong()) return false;
+            java.util.List<org.bukkit.metadata.MetadataValue> meta = player.getMetadata(cdKey);
+            if (!meta.isEmpty() && System.currentTimeMillis() < meta.get(0).asLong()) {
+                return false;
+            }
         }
 
         double cost = getManaCost(level);

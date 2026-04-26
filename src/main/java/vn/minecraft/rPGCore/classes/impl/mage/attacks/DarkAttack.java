@@ -32,9 +32,12 @@ public class DarkAttack implements IMageBasicAttack {
 
         // 1. TRẠM ĐIỀU PHỐI TỤ LỰC
         if (player.hasMetadata("Mage_Focus_Level")) {
-            int focusLevel = player.getMetadata("Mage_Focus_Level").get(0).asInt();
-            new vn.minecraft.rPGCore.skills.mage.focus.FocusDark().castFocus(player, rpgPlayer, weapon, focusLevel);
-            return;
+            java.util.List<org.bukkit.metadata.MetadataValue> meta = player.getMetadata("Mage_Focus_Level");
+            if (!meta.isEmpty()) { // Check list rỗng
+                int focusLevel = meta.get(0).asInt();
+                new vn.minecraft.rPGCore.skills.mage.focus.FocusDark().castFocus(player, rpgPlayer, weapon, focusLevel);
+                return;
+            }
         }
 
         // 2. LOGIC ĐÁNH THƯỜNG

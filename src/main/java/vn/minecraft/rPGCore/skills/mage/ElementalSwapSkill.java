@@ -70,44 +70,76 @@ public class ElementalSwapSkill implements ISkill {
     @Override
     public boolean execute(Player player, RPGPlayer rpgPlayer, int level) {
         String cdKey = "CD_" + getId();
+
+        // [BỌC THÉP 1]: Check Metadata an toàn (Đảm bảo list không bị rỗng)
         if (player.hasMetadata(cdKey)) {
-            if (System.currentTimeMillis() < player.getMetadata(cdKey).get(0).asLong()) return false;
+            java.util.List<org.bukkit.metadata.MetadataValue> meta = player.getMetadata(cdKey);
+            if (!meta.isEmpty() && System.currentTimeMillis() < meta.get(0).asLong()) return false;
         }
 
         List<String> unlocked = rpgPlayer.getUnlockedElements();
-        if (unlocked.isEmpty()) {
-            player.sendMessage("§cBạn chưa thức tỉnh bất kỳ Nguyên tố nào!");
+
+        // [BỌC THÉP 2]: Check null hoặc rỗng ngay từ đầu
+        if (unlocked == null || unlocked.isEmpty()) {
+            player.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR,
+                    new net.md_5.bungee.api.chat.TextComponent("§c✖ Bạn chưa thức tỉnh nguyên tố nào!"));
             return false;
         }
 
-        // 1. Lấy chuỗi xoay vòng (Rotation) do người chơi sắp xếp từ UI
-        String rotationStr = player.getPersistentDataContainer().getOrDefault(ROTATION_KEY, PersistentDataType.STRING, String.join(",", unlocked));
-        List<String> rotationList = Arrays.stream(rotationStr.split(",")).filter(s -> !s.isEmpty()).collect(Collectors.toList());
+        // 1. Lấy chuỗi xoay vòng từ UI
+        String rotationStr = player.getPersistentDataContainer().getOrDefault(ROTATION_KEY, PersistentDataType.STRING, "");
+        List<String> rotationList;
 
-        if (rotationList.isEmpty()) {
-            rotationList = unlocked; // Nếu UI xếp lỗi, fallback về list gốc
+        if (rotationStr.isEmpty()) {
+            rotationList = unlocked;
+        } else {
+            // [BỌC THÉP 3]: Lọc sạch rác, khoảng trắng và CHỈ CHẤP NHẬN các hệ thực sự đã mở khóa
+            rotationList = Arrays.stream(rotationStr.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty() && unlocked.contains(s))
+                    .collect(Collectors.toList());
+
+            // Nếu người chơi chỉnh UI lỗi dẫn đến list rỗng -> Tự động fallback về list gốc
+            if (rotationList.isEmpty()) {
+                rotationList = unlocked;
+            }
         }
 
-        // 2. Lấy nguyên tố hiện tại
+        // 2. Lấy nguyên tố hiện tại (An toàn tuyệt đối vì rotationList chắc chắn >= 1 phần tử)
         String currentActive = player.getPersistentDataContainer().getOrDefault(ACTIVE_ELEMENT_KEY, PersistentDataType.STRING, rotationList.get(0));
 
-        // 3. Tìm vị trí hiện tại và tiến lên 1 bước (Xoay vòng tròn)
+        // 3. Chuyển hệ an toàn
         int currentIndex = rotationList.indexOf(currentActive);
+
+        // [BỌC THÉP 4]: Nếu hệ hiện tại (do nạp từ database cũ) không nằm trong list -> Reset về hệ đầu tiên
+        if (currentIndex == -1) {
+            currentIndex = 0;
+        }
+
         int nextIndex = (currentIndex + 1) % rotationList.size();
         String nextElementStr = rotationList.get(nextIndex);
 
-        // 4. Lưu lại và áp dụng hiệu ứng
-        player.getPersistentDataContainer().set(ACTIVE_ELEMENT_KEY, PersistentDataType.STRING, nextElementStr);
-        MageElement elementEnum = MageElement.valueOf(nextElementStr);
+        // [BỌC THÉP 5]: Chống lỗi Enum rác từ Database
+        MageElement elementEnum;
+        try {
+            elementEnum = MageElement.valueOf(nextElementStr);
+        } catch (IllegalArgumentException e) {
+            elementEnum = MageElement.FIRE; // Default fallback
+            nextElementStr = elementEnum.name();
+        }
 
+        // 4. Lưu lại Data mới
+        player.getPersistentDataContainer().set(ACTIVE_ELEMENT_KEY, PersistentDataType.STRING, nextElementStr);
+
+        // 5. Hiển thị VFX và SFX
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_CAST_SPELL, 1.0f, 1.5f);
         player.getWorld().spawnParticle(elementEnum.getParticle(), player.getLocation().add(0, 1, 0), 15, 0.3, 0.5, 0.3, 0.05);
 
         player.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR,
                 net.md_5.bungee.api.chat.TextComponent.fromLegacyText("§f[Nguyên Tố]: " + elementEnum.getDisplayName()));
 
-        // Lưu Cooldown 1.5s
-        long finalCd = getFinalCooldown(rpgPlayer, getCooldown(level));
+        // 6. Gắn Cooldown
+        long finalCd = getCooldown(level); // Nếu có hàm getFinalCooldown của hệ thống, bạn gọi lại: getFinalCooldown(rpgPlayer, getCooldown(level))
         player.setMetadata(cdKey, new FixedMetadataValue(RPGCore.getInstance(), System.currentTimeMillis() + finalCd));
 
         return true;

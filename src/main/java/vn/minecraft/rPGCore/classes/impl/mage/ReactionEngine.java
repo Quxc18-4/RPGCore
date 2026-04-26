@@ -27,17 +27,17 @@ public class ReactionEngine {
             @Override
             public double getTargetArmorReductionPercentage(LivingEntity target) {
                 if (target.hasMetadata("Chaos_Armor_Shred")) {
-                    long expire = target.getMetadata("Chaos_Armor_Shred").get(0).asLong();
-                    if (System.currentTimeMillis() < expire) return 0.20; // Trừ 20% Giáp
+                    java.util.List<org.bukkit.metadata.MetadataValue> meta = target.getMetadata("Chaos_Armor_Shred");
+                    if (!meta.isEmpty() && System.currentTimeMillis() < meta.get(0).asLong()) return 0.20;
                 }
                 return 0.0;
             }
 
             @Override
             public double getTargetMagicResistReductionPercentage(LivingEntity target) {
-                if (target.hasMetadata("Chaos_Armor_Shred")) {
-                    long expire = target.getMetadata("Chaos_Armor_Shred").get(0).asLong();
-                    if (System.currentTimeMillis() < expire) return 0.20; // Trừ 20% Kháng phép
+                if (target.hasMetadata("Chaos_Magic_Shred")) { // Đã đổi Key
+                    java.util.List<org.bukkit.metadata.MetadataValue> meta = target.getMetadata("Chaos_Magic_Shred");
+                    if (!meta.isEmpty() && System.currentTimeMillis() < meta.get(0).asLong()) return 0.20;
                 }
                 return 0.0;
             }
@@ -79,13 +79,13 @@ public class ReactionEngine {
                 target.getWorld().spawnParticle(Particle.CLOUD, target.getLocation().add(0, 1, 0), 20, 0.5, 0.5, 0.5, 0.05);
                 target.getWorld().playSound(target.getLocation(), Sound.BLOCK_FIRE_EXTINGUISH, 1f, 1f);
             }
-            // Sáng + Tối = Hỗn Độn (150% + Phá 20% Giáp/Kháng 5s)
             else if (isReaction(existingElement, incomingElement, MageElement.LIGHT, MageElement.DARK)) {
                 result.damageMultiplier = 1.50;
                 result.reactionName = "§d§lHỖN ĐỘN";
-                // Gắn cờ Phá Giáp 5s (5000ms)
+                // Gắn ĐỒNG THỜI cờ Phá Giáp và Phá Kháng
                 target.setMetadata("Chaos_Armor_Shred", new FixedMetadataValue(RPGCore.getInstance(), System.currentTimeMillis() + 5000L));
-                target.getWorld().spawnParticle(Particle.DRAGON_BREATH, target.getLocation().add(0, 1, 0), 30, 0.5, 0.5, 0.5, 0.1);
+                target.setMetadata("Chaos_Magic_Shred", new FixedMetadataValue(RPGCore.getInstance(), System.currentTimeMillis() + 5000L));
+                target.getWorld().spawnParticle(Particle.DRAGON_BREATH, target.getLocation().add(0, 1, 0), 30, 0.5, 0.5, 0.5, 0.1, 1.0f);
                 target.getWorld().playSound(target.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 0.5f, 1.5f);
             }
             // Lửa + Sáng = Chớp Giật (150% + Sét đánh + Tê liệt AoE)
@@ -98,7 +98,7 @@ public class ReactionEngine {
                 for (org.bukkit.entity.Entity ent : target.getWorld().getNearbyEntities(target.getLocation(), 4.0, 4.0, 4.0)) {
                     if (ent instanceof LivingEntity && CombatManager.canTarget(caster, ent)) {
                         StatusEffectManager.applyEffect((LivingEntity) ent, PotionEffectType.SLOWNESS, 40, 10);
-                        ent.getWorld().spawnParticle(Particle.FIREWORK, ent.getLocation().add(0, 1, 0), 5, 0.2, 0.2, 0.2, 0.05);
+                        ent.getWorld().spawnParticle(Particle.FIREWORK, ent.getLocation().add(0, 1, 0), 5, 0.2, 0.2, 0.2, 0.05, 1.0f);
                     }
                 }
             }
@@ -253,11 +253,18 @@ public class ReactionEngine {
 
     public static MageElement getExistingMark(LivingEntity target) {
         if (!target.hasMetadata(MARK_PREFIX + "Type") || !target.hasMetadata(MARK_PREFIX + "Expire")) return null;
-        long expireTime = target.getMetadata(MARK_PREFIX + "Expire").get(0).asLong();
+
+        java.util.List<org.bukkit.metadata.MetadataValue> expireMeta = target.getMetadata(MARK_PREFIX + "Expire");
+        java.util.List<org.bukkit.metadata.MetadataValue> typeMeta = target.getMetadata(MARK_PREFIX + "Type");
+
+        // Bọc thép
+        if (expireMeta.isEmpty() || typeMeta.isEmpty()) return null;
+
+        long expireTime = expireMeta.get(0).asLong();
         if (System.currentTimeMillis() > expireTime) {
             clearMark(target); return null;
         }
-        String typeName = target.getMetadata(MARK_PREFIX + "Type").get(0).asString();
+        String typeName = typeMeta.get(0).asString();
         try { return MageElement.valueOf(typeName); } catch (IllegalArgumentException e) { return null; }
     }
 
@@ -268,8 +275,8 @@ public class ReactionEngine {
 
     public static void applyMarkOnly(LivingEntity target, MageElement element) {
         if (target.hasMetadata("Reaction_Immunity")) {
-            long immunityTime = target.getMetadata("Reaction_Immunity").get(0).asLong();
-            if (System.currentTimeMillis() < immunityTime) return;
+            java.util.List<org.bukkit.metadata.MetadataValue> meta = target.getMetadata("Reaction_Immunity");
+            if (!meta.isEmpty() && System.currentTimeMillis() < meta.get(0).asLong()) return; // Bọc thép
         }
         applyMark(target, element);
     }

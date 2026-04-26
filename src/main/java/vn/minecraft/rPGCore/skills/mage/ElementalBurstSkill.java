@@ -118,7 +118,7 @@ public class ElementalBurstSkill implements ISkill {
                 lore.add("§5[Thi Triển: Khe Nứt Diệt Vong]");
                 lore.add("§f- Mở khe nứt quét tia laser hình quạt về phía trước.");
                 lore.add("§f- Gây §c" + (int)(baseDmgPct * 1.2) + "% Sát Thương§f, kèm hiệu ứng §8Mù Lòa§f");
-                lore.add("§f  và §cPhân Rã §f trong 4s.");
+                lore.add("§f  và §cPhân Rã §ftrong 4s.");
                 break;
         }
         return lore;
@@ -329,42 +329,62 @@ public class ElementalBurstSkill implements ISkill {
     // 4. THIÊN NHIÊN: BÃO LÁ CUỒNG SI
     // ==========================================
     private void triggerNatureBurst(Player player, RPGPlayer rpgPlayer, double baseMulti) {
-        Location startLoc = player.getLocation().add(0, 1, 0);
-        Vector forward = startLoc.getDirection().setY(0).normalize().multiply(0.2);
-        Set<UUID> firstHitTracker = new HashSet<>();
+        Location startLoc = player.getLocation().add(0, 1.2, 0);
+        Vector forward = player.getLocation().getDirection().setY(0).normalize();
+        Set<UUID> hitTargets = new HashSet<>();
 
-        // [ĐÃ SỬA] Tạo dữ liệu của Block Lá Sồi (Oak Leaves) để rơi ra hạt lá vật lý
-        org.bukkit.block.data.BlockData leafData = Material.SPORE_BLOSSOM.createBlockData();
+        Particle.DustOptions darkGreenLeaf = new Particle.DustOptions(org.bukkit.Color.fromRGB(34, 139, 34), 1.2f);
+        Particle.DustOptions lightGreenLeaf = new Particle.DustOptions(org.bukkit.Color.fromRGB(50, 205, 50), 0.9f);
 
         new BukkitRunnable() {
             int ticks = 0;
-            Location current = startLoc.clone();
             @Override
             public void run() {
-                if (ticks >= 80 || !player.isOnline()) { this.cancel(); return; }
-                current.add(forward);
+                // Giữ nguyên thời gian sống (3 giây), kết hợp đi chậm sẽ làm giảm tầm bắn
+                if (ticks >= 60 || !player.isOnline()) { this.cancel(); return; }
 
-                for (int i = 0; i < 15; i++) {
-                    double x = (random.nextDouble() - 0.5) * 6;
-                    double y = (random.nextDouble() - 0.5) * 4;
-                    double z = (random.nextDouble() - 0.5) * 6;
-                    Location pLoc = current.clone().add(x, y, z);
+                // 1. [ĐI CHẬM & GIẢM TẦM]: Giảm từ 0.3 xuống 0.18
+                // Tầm xa tối đa bây giờ là ~10.8 block (thay vì 18 block như cũ)
+                Location center = startLoc.clone().add(forward.clone().multiply(ticks * 0.18));
 
-                    // Rải hạt lá vật lý
-                    current.getWorld().spawnParticle(Particle.BLOCK, pLoc, 1, 0, 0, 0, 0.0, leafData, true);
+                for (int i = 0; i < 3; i++) {
+                    double angle = (ticks * 0.8) + (i * (Math.PI * 2 / 3));
+
+                    // 2. [TĂNG BỀ RỘNG]: Tăng bán kính xoắn ốc từ 1.2 lên 2.2
+                    double radius = 2.2;
+
+                    Vector relative = new Vector(Math.cos(angle) * radius, Math.sin(angle * 0.5) * 0.5, Math.sin(angle) * radius);
+                    Location pLoc = center.clone().add(relative);
+
+                    Particle.DustOptions currentDust = (i % 2 == 0) ? darkGreenLeaf : lightGreenLeaf;
+
+                    // Tăng số lượng DUST từ 3 lên 5 để bão không bị "thưa" khi phình to
+                    center.getWorld().spawnParticle(Particle.DUST, pLoc, 5, 0.2, 0.2, 0.2, 0.0, currentDust);
+                    center.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, pLoc, 1, 0, 0, 0, 0);
                 }
 
+                // Lõi bão và tàn dư
+                center.getWorld().spawnParticle(Particle.SPORE_BLOSSOM_AIR, center, 15, 1.5, 1.0, 1.5, 0.01);
+                if (ticks % 3 == 0) {
+                    center.getWorld().spawnParticle(Particle.CHERRY_LEAVES, center, 3, 1.5, 1.5, 1.5, 0.0);
+                }
+
+                if (ticks % 5 == 0) {
+                    center.getWorld().playSound(center, Sound.ITEM_ELYTRA_FLYING, 0.4f, 1.2f); // Giảm pitch nhẹ để tiếng gió nghe "nặng" hơn
+                }
+
+                // 3. [MỞ RỘNG HITBOX]: Quét rộng ra 4.5 block (cũ là 3.5) để khớp với bề rộng bão
                 if (ticks % 10 == 0) {
-                    for (org.bukkit.entity.Entity ent : current.getWorld().getNearbyEntities(current, 3.0, 3.0, 3.0)) {
+                    for (org.bukkit.entity.Entity ent : center.getWorld().getNearbyEntities(center, 4.5, 3.0, 4.5)) {
                         if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent)) {
                             LivingEntity target = (LivingEntity) ent;
-                            target.addPotionEffect(new PotionEffect(PotionEffectType.JUMP_BOOST, 20, 128, false, false, false));
-                            double multi = firstHitTracker.contains(target.getUniqueId()) ? (baseMulti * 0.2) : (baseMulti * 0.8);
+                            target.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.JUMP_BOOST, 20, 128, false, false, false));
+
+                            double multi = hitTargets.contains(target.getUniqueId()) ? (baseMulti * 0.2) : (baseMulti * 0.8);
                             ReactionEngine.ReactionResult reaction = ReactionEngine.processHit(player, target, MageElement.NATURE);
                             double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, multi * reaction.damageMultiplier, 0, true, false);
                             CombatManager.applySkillDamage(player, target, finalDmg);
-                            if (reaction.isReacted) ReactionEngine.triggerReactionImmunity(target);
-                            firstHitTracker.add(target.getUniqueId());
+                            hitTargets.add(target.getUniqueId());
                         }
                     }
                 }
@@ -426,38 +446,89 @@ public class ElementalBurstSkill implements ISkill {
     }
 
     // ==========================================
-    // 6. BÓNG TỐI: KHE NỨT DIỆT VONG (QUÉT LASER)
+    // 6. BÓNG TỐI: KHE NỨT DIỆT VONG (ĐẦU RỒNG KHẠC HƯ KHÔNG)
     // ==========================================
     private void triggerDarkBurst(Player player, RPGPlayer rpgPlayer, double baseMulti) {
-        Location castLoc = player.getEyeLocation().subtract(0, 0.5, 0).add(player.getLocation().getDirection().normalize().multiply(1.5));
-        Vector forwardBase = player.getLocation().getDirection().setY(0).normalize();
+        // 1. CHỐT TỌA ĐỘ NGANG (Không bị ảnh hưởng khi ngước lên/xuống)
+        Location startLoc = player.getLocation();
+        Vector forwardBase = startLoc.getDirection().setY(0).normalize();
 
-        // 100% an toàn: Chỉ dùng DustOptions đã được định nghĩa rõ ràng
+        // 2. VỊ TRÍ ĐẦU RỒNG: Cách người chơi 1 block về phía trước, cao ngang ngực (1.4)
+        Location headBaseLoc = startLoc.clone().add(forwardBase).add(0, 1.4, 0);
+        headBaseLoc.setDirection(forwardBase); // Nhìn thẳng lúc đầu
+
+        // 3. TRIỆU HỒI ĐẦU RỒNG
+        org.bukkit.entity.ItemDisplay dragonHead = null;
+        try {
+            dragonHead = player.getWorld().spawn(headBaseLoc, org.bukkit.entity.ItemDisplay.class, display -> {
+                display.setItemStack(new org.bukkit.inventory.ItemStack(Material.DRAGON_HEAD));
+                display.setItemDisplayTransform(org.bukkit.entity.ItemDisplay.ItemDisplayTransform.HEAD);
+
+                org.bukkit.util.Transformation transform = display.getTransformation();
+                // Phóng to đầu rồng lên 1.5 lần
+                transform.getScale().set(1.5f, 1.5f, 1.5f);
+
+                // [ĐÃ SỬA]: Xoay mô hình item lật lại 180 độ để nó nhìn đúng hướng!
+                transform.getLeftRotation().rotateY((float) Math.PI);
+
+                display.setTransformation(transform);
+
+                // TeleportDuration = 1 tick giúp nó quay đầu cực mượt
+                display.setTeleportDuration(1);
+            });
+        } catch (Exception ignored) {}
+
+        final org.bukkit.entity.ItemDisplay finalHead = dragonHead;
+
+        player.getWorld().playSound(headBaseLoc, Sound.ENTITY_ENDER_DRAGON_GROWL, 1.0f, 0.8f);
+
         Particle.DustOptions darkDust = new Particle.DustOptions(org.bukkit.Color.fromRGB(20, 0, 40), 1.2f);
-        Particle.DustOptions pinkDust = new Particle.DustOptions(org.bukkit.Color.fromRGB(255, 0, 255), 0.8f); // Giả lập Dragon Breath
+        Particle.DustOptions pinkDust = new Particle.DustOptions(org.bukkit.Color.fromRGB(255, 0, 255), 0.8f);
         Set<UUID> hitTargets = new HashSet<>();
+
+        // Tăng số tick lên 30 (1.5 giây) để nó quét 180 độ không bị quá nhanh
+        int maxTicks = 30;
 
         new BukkitRunnable() {
             int ticks = 0;
             @Override
             public void run() {
-                if (ticks > 20 || !player.isOnline()) { this.cancel(); return; }
+                if (ticks > maxTicks || !player.isOnline()) {
+                    this.cancel();
+                    return;
+                }
 
-                double angle = -45.0 + (90.0 * ((double) ticks / 20));
+                // Quét 180 độ: từ -90 độ (Trái) sang +90 độ (Phải)
+                double angle = -90.0 + (180.0 * ((double) ticks / maxTicks));
+
+                // Toán học: Quay Vector quanh trục Y
                 Vector sweepDir = forwardBase.clone().rotateAroundY(Math.toRadians(angle));
 
-                for (double d = 1.0; d <= 7.0; d += 0.8) {
-                    Location partLoc = castLoc.clone().add(sweepDir.clone().multiply(d));
+                // CẬP NHẬT GÓC NHÌN ĐẦU RỒNG
+                if (finalHead != null && finalHead.isValid()) {
+                    Location newHeadLoc = headBaseLoc.clone();
+                    newHeadLoc.setDirection(sweepDir); // Đầu rồng luôn nhìn theo hướng khạc
+                    finalHead.teleport(newHeadLoc);
+                }
 
-                    // Lõi tia hư không (Màu tím đen)
-                    castLoc.getWorld().spawnParticle(Particle.DUST, partLoc, 3, 0.05, 0.05, 0.05, 0.0, darkDust);
+                if (ticks % 3 == 0) {
+                    headBaseLoc.getWorld().playSound(headBaseLoc, Sound.ENTITY_ENDER_DRAGON_SHOOT, 0.3f, 1.2f);
+                }
 
-                    // Hiệu ứng tia sét/nhiễu (Màu hồng + Mực tuộc)
+                // TẠO KHOẢNG LÕM: Thay vì bắt đầu từ d=0, ta bắt đầu từ d=2.5 (Tạo khoảng trống cho đầu rồng)
+                for (double d = 2.5; d <= 8.0; d += 0.8) {
+                    Location partLoc = headBaseLoc.clone().add(sweepDir.clone().multiply(d));
+
+                    // Lõi tia hư không
+                    headBaseLoc.getWorld().spawnParticle(Particle.DUST, partLoc, 3, 0.1, 0.1, 0.1, 0.0, darkDust);
+
+                    // Tia nhiễu
                     if (ticks % 2 == 0) {
-                        castLoc.getWorld().spawnParticle(Particle.DUST, partLoc, 1, 0.02, 0.02, 0.02, 0.0, pinkDust);
-                        castLoc.getWorld().spawnParticle(Particle.SQUID_INK, partLoc, 1, 0.1, 0.1, 0.1, 0.0);
+                        headBaseLoc.getWorld().spawnParticle(Particle.DUST, partLoc, 1, 0.05, 0.05, 0.05, 0.0, pinkDust);
+                        headBaseLoc.getWorld().spawnParticle(Particle.SQUID_INK, partLoc, 1, 0.2, 0.2, 0.2, 0.0);
                     }
 
+                    // Xử lý sát thương
                     for (org.bukkit.entity.Entity ent : partLoc.getWorld().getNearbyEntities(partLoc, 1.2, 1.2, 1.2)) {
                         if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent)) {
                             LivingEntity target = (LivingEntity) ent;
@@ -467,7 +538,7 @@ public class ElementalBurstSkill implements ISkill {
                                 StatusEffectManager.applyEffect(target, PotionEffectType.WITHER, 80, 1);
 
                                 ReactionEngine.ReactionResult reaction = ReactionEngine.processHit(player, target, MageElement.DARK);
-                                double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, baseMulti * 1.2 * reaction.damageMultiplier, 0, true, false);
+                                double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, baseMulti * 1.091 * reaction.damageMultiplier, 0, true, false);
                                 CombatManager.applySkillDamage(player, target, finalDmg);
 
                                 if (reaction.isReacted) ReactionEngine.triggerReactionImmunity(target);
@@ -477,6 +548,16 @@ public class ElementalBurstSkill implements ISkill {
                     }
                 }
                 ticks++;
+            }
+
+            @Override
+            public synchronized void cancel() {
+                super.cancel();
+                // Xóa đầu rồng khi kết thúc chiêu
+                if (finalHead != null && finalHead.isValid()) {
+                    finalHead.getWorld().spawnParticle(Particle.SQUID_INK, finalHead.getLocation(), 20, 0.3, 0.3, 0.3, 0.05);
+                    finalHead.remove();
+                }
             }
         }.runTaskTimer(plugin, 0L, 1L);
     }
