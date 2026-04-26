@@ -81,6 +81,10 @@ public class ElementalSphereSkill implements ISkill {
         int projDmgPct = (int) (getProjectileDamageMulti(displayLevel) * 100);
         int domDmgPct = (int) (getDomainDamageMulti(displayLevel) * 100);
 
+        lore.add("§7Bắn ra một Khối ma lực nén với tốc độ cao.");
+        lore.add("§7Nếu va chạm mục tiêu hoặc địa hình, khối");
+        lore.add("§7ma lực sẽ triển khai thành Ma Pháp Trận.");
+        lore.add("");
         lore.add("§8▪ §fNguyên tố hiện tại: " + element.getDisplayName());
         lore.add("");
         lore.add("§8[Nội tại - Nén Ma Lực]");
