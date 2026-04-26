@@ -17,6 +17,7 @@ import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
+import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.managers.CombatManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 import vn.minecraft.rPGCore.skills.ISkill;
@@ -129,6 +130,14 @@ public class ShadowDecoySkill implements ISkill {
 
         startCooldownNotifier(player, finalCd);
 
+        // ==========================================
+        // [PHÁ ẨN THÂN]: LỘ DIỆN KHI TUNG CHIÊU TẤN CÔNG
+        // ==========================================
+        ISkill stealthSkill = RPGCore.getInstance().getSkillManager().getSkill("assassin_smoke_bomb");
+        if (stealthSkill instanceof SmokeBombSkill) {
+            ((SmokeBombSkill) stealthSkill).breakStealth(player);
+        }
+
         int fbLevel = 0;
         if (player.hasMetadata("Assassin_FatalBlow_Level")) {
             fbLevel = player.getMetadata("Assassin_FatalBlow_Level").get(0).asInt();
@@ -148,8 +157,12 @@ public class ShadowDecoySkill implements ISkill {
         player.setVelocity(backwardDir);
         player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.5f);
 
-        // Áp dụng Tàng hình 3 giây
-        applyStealth(player);
+        // ==========================================
+        // [ĐÃ SỬA]: Áp dụng Tàng hình 3 giây từ hệ thống chuẩn
+        // ==========================================
+        if (stealthSkill instanceof SmokeBombSkill) {
+            ((SmokeBombSkill) stealthSkill).applyStealth(player, 3);
+        }
 
         // Tạo Tàng ảnh
         Location decoyLoc = player.getLocation().clone();
@@ -162,36 +175,6 @@ public class ShadowDecoySkill implements ISkill {
         }
 
         return true;
-    }
-
-    private void applyStealth(final Player player) {
-        player.setMetadata("Assassin_Stealth", new FixedMetadataValue(plugin, true));
-        for (Player p : Bukkit.getOnlinePlayers()) p.hidePlayer(plugin, player);
-
-        new BukkitRunnable() {
-            int ticks = 0;
-            Location lastLoc = player.getLocation();
-
-            @Override
-            public void run() {
-                if (!player.isOnline() || !player.hasMetadata("Assassin_Stealth") || ticks >= 60) {
-                    if (player.hasMetadata("Assassin_Stealth")) {
-                        player.removeMetadata("Assassin_Stealth", plugin);
-                        player.sendMessage("§c§l[!] Đã hết thời gian lẩn khuất!");
-                        for (Player p : Bukkit.getOnlinePlayers()) p.showPlayer(plugin, player);
-                    }
-                    this.cancel();
-                    return;
-                }
-
-                Location currentLoc = player.getLocation();
-                if (currentLoc.distanceSquared(lastLoc) > 0.01) {
-                    player.getWorld().spawnParticle(Particle.SMOKE, currentLoc.clone().add(0, 1, 0), 2, 0.1, 0, 0.1, 0);
-                    lastLoc = currentLoc;
-                }
-                ticks++;
-            }
-        }.runTaskTimer(plugin, 0L, 1L);
     }
 
     private void spawnAndHandleDecoy(final Player player, final RPGPlayer rpgPlayer, final int level, Location loc, final int fbLevel, Vector direction) {

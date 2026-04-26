@@ -157,18 +157,6 @@ public class ComboListener implements Listener {
                     int level = rpgPlayer.getSkillData().getSkillLevel(mappedSkillId);
 
                     if (skill.execute(player, rpgPlayer, level)) {
-                        if (!mappedSkillId.equals("assassin_smoke_bomb") &&
-                                !mappedSkillId.equals("assassin_shadow_decoy") &&
-                                !mappedSkillId.equals("assassin_shadow_step")) {
-
-                            if (player.hasMetadata("Assassin_Stealth") || player.hasMetadata("Assassin_Smoke_Bomb_Active")) {
-                                player.removeMetadata("Assassin_Stealth", plugin);
-                                player.removeMetadata("Assassin_Smoke_Bomb_Active", plugin);
-                                player.sendMessage("§c§l[!] Bạn đã lộ diện do sử dụng kỹ năng!");
-                                for (Player p : org.bukkit.Bukkit.getOnlinePlayers()) p.showPlayer(plugin, player);
-                            }
-                        }
-
                         player.sendActionBar("§a§l✔ Kích hoạt thành công!");
 
                         player.setMetadata("Skill_Just_Cast", new org.bukkit.metadata.FixedMetadataValue(plugin, true));

@@ -274,6 +274,19 @@ public class PlayerListener implements Listener {
         // --- XỬ LÝ KHI NGƯỜI CHƠI BỊ ĐÁNH TRÚNG ---
         if (event.getEntity() instanceof Player) {
             Player victim = (Player) event.getEntity();
+
+            // ==========================================
+            // [BƯỚC 3]: NÉ 100% ĐẠN ĐẠO KHI TÀNG HÌNH
+            // ==========================================
+            if (victim.hasMetadata("Assassin_Stealth") && event.getDamager() instanceof org.bukkit.entity.Projectile) {
+                event.setCancelled(true); // Hủy hoàn toàn sát thương từ mũi tên/phép
+
+                // Hiệu ứng lách người né đạn (Tùy chọn)
+                victim.playSound(victim.getLocation(), org.bukkit.Sound.ENTITY_ENDERMAN_TELEPORT, 0.5f, 2.0f);
+                victim.getWorld().spawnParticle(org.bukkit.Particle.SQUID_INK, victim.getLocation().add(0, 1, 0), 5, 0.2, 0.2, 0.2, 0.05);
+                return; // Dừng xử lý luôn, không cho đi tiếp vào các hàm tính giáp
+            }
+
             RPGPlayer rpgVictim = playerManager.getRPGPlayer(victim.getUniqueId());
 
             if (rpgVictim != null) {
@@ -428,6 +441,18 @@ public class PlayerListener implements Listener {
                 }
             }
 
+            // 2. Cờ SafeFall Linh Hoạt (Miễn sát thương ngã theo giới hạn độ cao)
+            if (player.hasMetadata("RPGCore_SafeFall_Distance")) {
+                // Lấy ngưỡng an toàn do các Skill tự quy định
+                double safeDistance = player.getMetadata("RPGCore_SafeFall_Distance").get(0).asDouble();
+
+                if (player.getFallDistance() <= safeDistance) {
+                    event.setCancelled(true);
+                    // KHÔNG XÓA cờ ở đây vì nó là buff duy trì
+                    return;
+                }
+            }
+
             if (cause == EntityDamageEvent.DamageCause.FALL || cause == EntityDamageEvent.DamageCause.LAVA || cause == EntityDamageEvent.DamageCause.DROWNING || cause == EntityDamageEvent.DamageCause.STARVATION || cause == EntityDamageEvent.DamageCause.SUFFOCATION || cause == EntityDamageEvent.DamageCause.FREEZE) {
                 event.setDamage(event.getDamage() * multiplier);
             }
@@ -529,7 +554,7 @@ public class PlayerListener implements Listener {
             if (rpgKiller != null && rpgKiller.getCurrentClass() != null) {
                 // Nếu là phái xài Nộ (Warrior) -> Thưởng 15 Nộ Khí khi kết liễu!
                 if (rpgKiller.getCurrentClass().getResourceType() == vn.minecraft.rPGCore.classes.ResourceType.RAGE) {
-                    rpgKiller.setCurrentResource(rpgKiller.getCurrentResource() + 5);
+                    rpgKiller.setCurrentResource(rpgKiller.getCurrentResource() + 8);
                     killer.getWorld().spawnParticle(Particle.FLAME, killer.getLocation().add(0, 1, 0), 10, 0.3, 0.3, 0.3, 0.05);
                     killer.playSound(killer.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.5f);
                 }
@@ -571,6 +596,34 @@ public class PlayerListener implements Listener {
             if (player.hasMetadata("RPGCore_Hovering")) {
                 vn.minecraft.rPGCore.managers.StatusEffectManager.removeCustomHover(player);
                 player.sendMessage("§a§o(Đã hủy trạng thái lơ lửng)");
+            }
+        }
+    }
+
+    // ==========================================
+    // [CẢM BIẾN 2]: BẮT GIAO TRANH TỪ ĐẠN ĐẠO VÀ VANILLA TỔNG HỢP
+    // ==========================================
+    @org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPlayerCombatEngage(EntityDamageByEntityEvent event) {
+        Player attacker = null;
+
+        // Bắt các đòn tấn công bằng Đạn đạo (Cung tên, Cầu tuyết, Bình thuốc...)
+        if (event.getDamager() instanceof org.bukkit.entity.Projectile) {
+            org.bukkit.entity.Projectile proj = (org.bukkit.entity.Projectile) event.getDamager();
+            if (proj.getShooter() instanceof Player) {
+                attacker = (Player) proj.getShooter();
+            }
+        }
+        // Bắt dự phòng các đòn sát thương trực tiếp khác (Nếu onDealDamage bỏ sót)
+        else if (event.getDamager() instanceof Player) {
+            attacker = (Player) event.getDamager();
+        }
+
+        // KÍCH HOẠT GIAO TRANH
+        if (attacker != null) {
+            RPGPlayer rpgAttacker = playerManager.getRPGPlayer(attacker.getUniqueId());
+            if (rpgAttacker != null) {
+                rpgAttacker.setInCombat();
             }
         }
     }

@@ -12,6 +12,7 @@ import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
+import vn.minecraft.rPGCore.managers.CombatManager; // Import để dùng Modifier
 import vn.minecraft.rPGCore.managers.StatusEffectManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 import vn.minecraft.rPGCore.skills.ISkill;
@@ -22,11 +23,12 @@ public class SmokeBombSkill implements ISkill {
 
     private final JavaPlugin plugin;
     private final Map<UUID, Long> cooldowns = new HashMap<>();
-
     private final Map<UUID, Long> stealthEndTimes = new HashMap<>();
     private final Map<UUID, BukkitRunnable> activeTasks = new HashMap<>();
 
-    public SmokeBombSkill(JavaPlugin plugin) { this.plugin = plugin; }
+    public SmokeBombSkill(JavaPlugin plugin) {
+        this.plugin = plugin;
+    }
 
     @Override public String getId() { return "assassin_smoke_bomb"; }
     @Override public String getName() { return "Bom Khói Ảo Ảnh"; }
@@ -34,28 +36,24 @@ public class SmokeBombSkill implements ISkill {
     @Override public Material getIcon() { return Material.FIREWORK_STAR; }
     @Override public int getMaxLevel() { return 5; }
 
-    @Override
-    public double getManaCost(int level) {
-        return 35.0 + (level * 5.0);
-    }
+    @Override public double getManaCost(int level) { return 35.0 + (level * 5.0); }
 
-    @Override
-    public long getCooldown(int level) {
-        return (17 - level) * 1000L;
-    }
+    // [CẬP NHẬT]: Giảm thời gian hồi chiêu
+    @Override public long getCooldown(int level) { return (22 - level) * 1000L; }
 
     @Override
     public List<String> getDescription(int level) {
-        int duration = 10 + (level * 2);
+        int duration = 12 + (level * 2);
         return Arrays.asList(
                 "§7Ném bom khói xuống chân, lẩn trốn vào bóng đêm.",
                 "§7- Trở nên §fTàng Hình Hoàn Toàn §7trong §a" + duration + "s§7.",
-                "§7- Kích hoạt lại sẽ §eLàm Mới §7thời gian duy trì.",
-                "§7- Kẻ địch trong vùng khói bị che mắt tạm thời.",
                 "",
-                "§8[Nội tại - Đột Kích]:",
-                "§7§nĐòn Đánh Thường§7 tiếp theo trong trạng thái này",
-                "§7sẽ chắc chắn nổ sát thương chí mạng.",
+                "§b[Nội tại - Áo Choáng Bóng Đêm]:",
+                "§7Giảm §c50% sát thương §7nhận vào khi tàng hình.",
+                "§7Miễn nhiễm hoàn toàn sát thương từ mũi tên.",
+                "",
+                "§e[Nội tại - Lẩn Khuất]:",
+                "§7Tự động vào trạng thái tàng hình sau 10s không chiến đấu.",
                 "",
                 "§c*Lưu ý: Việc tung Kỹ năng hoặc đánh trúng mục",
                 "§ctiêu sẽ lập tức làm mất trạng thái Tàng hình."
@@ -67,16 +65,14 @@ public class SmokeBombSkill implements ISkill {
         if (level <= 0) return false;
         double cost = getManaCost(level);
         if (rpgPlayer.getCurrentResource() < cost) {
-            player.sendMessage("§cKhông đủ Thể lực (Stamina)!");
+            player.sendMessage("§cKhông đủ Thể lực!");
             return false;
         }
 
-        // 2. KIỂM TRA HỒI CHIÊU (Áp dụng ý tưởng của bạn)
         long currentTime = System.currentTimeMillis();
         long lastUsed = cooldowns.getOrDefault(player.getUniqueId(), 0L);
-
-        long baseCd = getCooldown(level); // Lấy thời gian gốc
-        long finalCd = getFinalCooldown(rpgPlayer, baseCd); // Đưa qua máy ép CDR
+        long baseCd = getCooldown(level);
+        long finalCd = getFinalCooldown(rpgPlayer, baseCd);
 
         if (currentTime - lastUsed < finalCd) {
             double timeLeft = (finalCd - (currentTime - lastUsed)) / 1000.0;
@@ -84,55 +80,56 @@ public class SmokeBombSkill implements ISkill {
             return false;
         }
 
-        // 3. TRỪ NĂNG LƯỢNG VÀ LƯU COOLDOWN
+        // ==========================================
+        // [LOGIC RECAST]: THANH TẨY DẤU VẾT
+        // ==========================================
+        if (player.hasMetadata("Assassin_Stealth")) {
+            if (player.hasMetadata("Summoner_Target_Stack")) {
+                player.removeMetadata("Summoner_Target_Stack", plugin);
+                player.sendMessage("§d§l[!] Làn khói mới đã gột rửa hoàn toàn dấu vết truy đuổi!");
+            }
+        }
+
         rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - cost);
         cooldowns.put(player.getUniqueId(), currentTime);
 
-        startCooldownNotifier(player, finalCd);
+        applyStealth(player, 12 + level * 2);
 
         Location castLoc = player.getLocation();
         player.getWorld().playSound(castLoc, Sound.ENTITY_DRAGON_FIREBALL_EXPLODE, 1f, 1.5f);
-        player.getWorld().spawnParticle(Particle.CAMPFIRE_COSY_SMOKE, castLoc, 100, 2.0, 1.0, 2.0, 0.05);
-        player.getWorld().spawnParticle(Particle.SQUID_INK, castLoc, 80, 2.0, 1.5, 2.0, 0.1);
+        player.getWorld().spawnParticle(Particle.CAMPFIRE_COSY_SMOKE, castLoc, 60, 1.5, 1.0, 1.5, 0.05);
 
+        // Gây mù địch xung quanh dùng StatusEffectManager
         for (org.bukkit.entity.Entity e : player.getWorld().getNearbyEntities(castLoc, 4.0, 3.0, 4.0)) {
             if (e instanceof LivingEntity && e != player) {
                 StatusEffectManager.applyEffect((LivingEntity)e, PotionEffectType.DARKNESS, 100, 0);
             }
         }
 
-        // XÓA BỎ AGGRO CỦA QUÁI VẬT XUNG QUANH
-        for (org.bukkit.entity.Entity e : player.getWorld().getNearbyEntities(castLoc, 20.0, 10.0, 20.0)) {
+        return true;
+    }
+
+    public void applyStealth(Player player, int durationSeconds) {
+        // [AGGRO REMOVAL]: Xóa mục tiêu của quái vật xung quanh
+        for (org.bukkit.entity.Entity e : player.getNearbyEntities(30.0, 15.0, 30.0)) {
             if (e instanceof Mob) {
                 Mob mob = (Mob) e;
-                if (mob.getTarget() != null && mob.getTarget().equals(player)) {
-                    mob.setTarget(null); // Tẩy não quái đang đuổi
-                }
+                if (mob.getTarget() != null && mob.getTarget().equals(player)) mob.setTarget(null);
             }
         }
 
-        long durationMillis = (10 + (level * 2)) * 1000L;
-        stealthEndTimes.put(player.getUniqueId(), currentTime + durationMillis);
+        long durationMillis = durationSeconds * 1000L;
+        stealthEndTimes.put(player.getUniqueId(), System.currentTimeMillis() + durationMillis);
 
-        if (activeTasks.containsKey(player.getUniqueId())) {
-            player.sendMessage("§8§l[!] Làn khói được làm mới. Khôi phục tàng hình!");
-            // Đảm bảo cờ Synergy luôn tồn tại nếu làm mới
-            player.setMetadata("Assassin_Smoke_Bomb_Active", new FixedMetadataValue(plugin, true));
-        } else {
+        if (!player.hasMetadata("Assassin_Stealth")) {
             player.setMetadata("Assassin_Stealth", new FixedMetadataValue(plugin, true));
-            // ==========================================
-            // [MỚI FIX]: GẮN CỜ SYNERGY CHO GIA TỐC BÓNG ĐÊM ĐỌC
-            // ==========================================
             player.setMetadata("Assassin_Smoke_Bomb_Active", new FixedMetadataValue(plugin, true));
-            player.sendMessage("§8§l[!] Bạn đã lẩn khuất vào bóng đêm...");
 
-            for (Player p : Bukkit.getOnlinePlayers()) {
-                p.hidePlayer(plugin, player);
-            }
+            for (Player p : Bukkit.getOnlinePlayers()) p.hidePlayer(plugin, player);
 
             BukkitRunnable stealthTask = new BukkitRunnable() {
                 Location lastLoc = player.getLocation();
-
+                int tick = 0;
                 @Override
                 public void run() {
                     if (!player.isOnline() || !player.hasMetadata("Assassin_Stealth") || System.currentTimeMillis() > stealthEndTimes.getOrDefault(player.getUniqueId(), 0L)) {
@@ -143,35 +140,27 @@ public class SmokeBombSkill implements ISkill {
                     }
 
                     Location currentLoc = player.getLocation();
-                    if (currentLoc.distanceSquared(lastLoc) > 0.01) {
-                        player.getWorld().spawnParticle(Particle.SMOKE, currentLoc.clone().add(0, 2.2, 0), 2, 0.1, 0, 0.1, 0);
+                    // [PARTICLE LOGIC]: Chỉ sinh hạt khi di chuyển & thưa hơn (mỗi 4 ticks)
+                    if (currentLoc.distanceSquared(lastLoc) > 0.16) {
+                        player.getWorld().spawnParticle(Particle.SMOKE, currentLoc.clone().add(0, 2.2, 0), 1, 0.05, 0, 0.05, 0.01);
                         lastLoc = currentLoc;
                     }
+                    tick++;
                 }
             };
             stealthTask.runTaskTimer(plugin, 0L, 1L);
             activeTasks.put(player.getUniqueId(), stealthTask);
+        } else {
+            player.sendMessage("§8§o(Thời gian ẩn thân đã được làm mới...)");
         }
-
-        if (rpgPlayer.getCurrentClass() instanceof vn.minecraft.rPGCore.classes.impl.AssassinClass) {
-            ((vn.minecraft.rPGCore.classes.impl.AssassinClass) rpgPlayer.getCurrentClass()).addSkillStack(player);
-        }
-
-        return true;
     }
 
-    private void breakStealth(Player player) {
-        if (player.hasMetadata("Assassin_Stealth") || player.hasMetadata("Assassin_Smoke_Bomb_Active")) {
+    public void breakStealth(Player player) {
+        if (player.hasMetadata("Assassin_Stealth")) {
             player.removeMetadata("Assassin_Stealth", plugin);
-            // ==========================================
-            // [MỚI FIX]: XÓA CỜ SYNERGY KHI HIỆN HÌNH
-            // ==========================================
             player.removeMetadata("Assassin_Smoke_Bomb_Active", plugin);
-
             player.sendMessage("§c§l[!] Bạn đã hiện hình!");
-            for (Player p : Bukkit.getOnlinePlayers()) {
-                p.showPlayer(plugin, player);
-            }
+            for (Player p : Bukkit.getOnlinePlayers()) p.showPlayer(plugin, player);
         }
     }
 

@@ -13,6 +13,7 @@ import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
+import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.managers.CombatManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 import vn.minecraft.rPGCore.skills.ISkill;
@@ -140,6 +141,14 @@ public class ShadowDashSkill implements ISkill {
         cooldowns.put(player.getUniqueId(), currentTime);
 
         startCooldownNotifier(player, finalCd);
+
+        // ==========================================
+        // [PHÁ ẨN THÂN]: LỘ DIỆN KHI TUNG CHIÊU TẤN CÔNG
+        // ==========================================
+        ISkill stealthSkill = RPGCore.getInstance().getSkillManager().getSkill("assassin_smoke_bomb");
+        if (stealthSkill instanceof SmokeBombSkill) {
+            ((SmokeBombSkill) stealthSkill).breakStealth(player);
+        }
 
         // [ĐÃ SỬA]: Kỹ năng kích hoạt sẽ luôn phá Tàng hình (Bom Khói)
         if (player.hasMetadata("Assassin_Stealth") || player.hasMetadata("Assassin_Smoke_Bomb_Active")) {

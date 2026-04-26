@@ -51,7 +51,7 @@ public class ShadowStepSkill implements ISkill {
 
     @Override
     public long getCooldown(int level) {
-        double cd = 18.0;
+        double cd = 22.0;
         if (level >= 3) cd -= 1.0;
         if (level >= 6) cd -= 2.0;
         return (long) (cd * 1000);
@@ -130,6 +130,19 @@ public class ShadowStepSkill implements ISkill {
 
         startCooldownNotifier(player, finalCd);
 
+        // ==========================================
+        // [LOGIC MỚI]: RESET THỜI GIAN BUFF NẾU ĐÃ CÓ SẴN
+        // ==========================================
+        long newExpiryTime = System.currentTimeMillis() + (duration * 1000L);
+        player.setMetadata("Assassin_Swift_Step_Expiry", new FixedMetadataValue(plugin, newExpiryTime));
+
+        if (player.hasMetadata("Assassin_Swift_Step_Active")) {
+            // Đã có buff -> Chỉ gia hạn thời gian (Expiry), phát âm thanh rồi Return luôn (Chống lặp task và chồng attribute)
+            player.sendMessage("§b§l[!] §fĐã tái kích hoạt Gia Tốc Bóng Đêm!");
+            player.playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_MIRROR_MOVE, 1.0f, 2.0f);
+            return true;
+        }
+
         player.sendMessage("§b§l[!] GIA TỐC BÓNG ĐÊM!");
         player.playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_MIRROR_MOVE, 1.0f, 1.5f);
 
@@ -154,6 +167,7 @@ public class ShadowStepSkill implements ISkill {
 
         // 1. BUFF TỐC ĐỘ DI CHUYỂN
         player.setMetadata("Skill_MoveSpeed_Bonus", new FixedMetadataValue(plugin, speedBonusPct));
+        player.setMetadata("RPGCore_SafeFall_Distance", new FixedMetadataValue(plugin, 7.0));
         rpgPlayer.updateMoveSpeed();
 
         // 2. BUFF LỰC NHẢY
@@ -168,9 +182,7 @@ public class ShadowStepSkill implements ISkill {
             jumpAttr.addModifier(newJump);
         }
 
-        // ==========================================
-        // 3. [MỚI]: BUFF BƯỚC CHÂN (Leo 1 block không cần nhảy)
-        // ==========================================
+        // 3. BUFF BƯỚC CHÂN (Leo 1 block không cần nhảy)
         AttributeInstance stepAttr = player.getAttribute(Attribute.STEP_HEIGHT);
         org.bukkit.NamespacedKey stepKey = new org.bukkit.NamespacedKey(plugin, "assassin_swift_step");
 
@@ -178,32 +190,46 @@ public class ShadowStepSkill implements ISkill {
             for (AttributeModifier mod : stepAttr.getModifiers()) {
                 if (mod.getKey().equals(stepKey)) stepAttr.removeModifier(mod);
             }
-            // Thêm 0.5 vào Base (0.6) = 1.1 block
             AttributeModifier newStep = new AttributeModifier(stepKey, 0.5, AttributeModifier.Operation.ADD_NUMBER);
             stepAttr.addModifier(newStep);
         }
 
         player.setMetadata("Assassin_Swift_Step_Active", new FixedMetadataValue(plugin, true));
 
-        // Hiệu ứng khói dưới chân
+        // ==========================================
+        // [ĐÃ SỬA BUG 1]: HIỆU ỨNG LỬA (Dùng khoảng cách, lửa bay ngang ống chân)
+        // ==========================================
         new BukkitRunnable() {
+            Location lastLoc = player.getLocation();
             @Override
             public void run() {
                 if (!player.isOnline() || player.isDead() || !player.hasMetadata("Assassin_Swift_Step_Active")) {
                     this.cancel();
                     return;
                 }
-                if (player.getVelocity().lengthSquared() > 0.02) {
-                    player.getWorld().spawnParticle(Particle.SQUID_INK, player.getLocation().add(0, 0.1, 0), 2, 0.2, 0.0, 0.2, 0.02);
+                Location currentLoc = player.getLocation();
+                // Chỉ cần xê dịch 0.1 block là ra lửa, giải quyết vụ đi bộ không ra lửa
+                if (currentLoc.distanceSquared(lastLoc) > 0.32) {
+                    player.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, currentLoc.clone().add(0, 0.5, 0), 1, 0.1, 0.05, 0.1, 0.01);
+                    lastLoc = currentLoc;
                 }
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }.runTaskTimer(plugin, 0L, 1L);
 
-        // Hẹn giờ hủy Buff
+        // ==========================================
+        // [ĐÃ SỬA BUG 2]: BỘ QUẢN LÝ THỜI GIAN ĐỘNG (XÓA RUNTASKLATER)
+        // ==========================================
         new BukkitRunnable() {
             @Override
             public void run() {
-                if (player.isOnline()) {
+                if (!player.isOnline() || player.isDead() || !player.hasMetadata("Assassin_Swift_Step_Active")) {
+                    this.cancel(); return;
+                }
+
+                // Liên tục đọc thời gian Expiry mới nhất do người chơi bấm reset
+                long expiry = player.getMetadata("Assassin_Swift_Step_Expiry").get(0).asLong();
+
+                if (System.currentTimeMillis() >= expiry) {
                     // Trả lại Jump
                     if (jumpAttr != null) {
                         for (AttributeModifier mod : jumpAttr.getModifiers()) {
@@ -225,9 +251,13 @@ public class ShadowStepSkill implements ISkill {
                     }
 
                     player.removeMetadata("Assassin_Swift_Step_Active", plugin);
+                    if (player.hasMetadata("RPGCore_SafeFall_Distance")) {
+                        player.removeMetadata("RPGCore_SafeFall_Distance", plugin);
+                    }
                     player.sendMessage("§7§o[!] Đã hết hiệu lực Gia Tốc Bóng Đêm.");
+                    this.cancel();
                 }
             }
-        }.runTaskLater(plugin, durationSeconds * 20L);
+        }.runTaskTimer(plugin, 0L, 10L); // Check mỗi 0.5s để bảo vệ hiệu năng Server
     }
 }

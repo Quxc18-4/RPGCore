@@ -76,6 +76,8 @@ public class ElementalBurstSkill implements ISkill {
         lore.add("§7ra một vụ Bạo phát xung quanh bản thân.");
         lore.add("§7Kỹ năng tối ưu để phá vỡ vòng vây.");
         lore.add("");
+        lore.add("§8▪ §fNguyên tố hiện tại: " + element.getDisplayName());
+        lore.add("");
 
         switch (element) {
             case FIRE:
@@ -332,7 +334,7 @@ public class ElementalBurstSkill implements ISkill {
         Set<UUID> firstHitTracker = new HashSet<>();
 
         // [ĐÃ SỬA] Tạo dữ liệu của Block Lá Sồi (Oak Leaves) để rơi ra hạt lá vật lý
-        org.bukkit.block.data.BlockData leafData = Material.OAK_LEAVES.createBlockData();
+        org.bukkit.block.data.BlockData leafData = Material.SPORE_BLOSSOM.createBlockData();
 
         new BukkitRunnable() {
             int ticks = 0;

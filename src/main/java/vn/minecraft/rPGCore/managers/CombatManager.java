@@ -273,10 +273,22 @@ public class CombatManager {
         target.damage(finalDamage, attacker);
         attacker.removeMetadata("Skill_Damage_Lock", RPGCore.getInstance());
 
-        // [TỰ ĐỘNG]: Tất cả kỹ năng gọi hàm này đều sẽ tự động kích hoạt Hút Máu dạng Kỹ năng (isSkill = true)
-        RPGPlayer rpgPlayer = RPGCore.getInstance().getPlayerManager().getRPGPlayer(attacker.getUniqueId());
-        if (rpgPlayer != null) {
-            applyLifeSteal(attacker, rpgPlayer, finalDamage, 0.0, false, true);
+        // ==========================================
+        // [CẢM BIẾN GIAO TRANH SỐ 1]: KỸ NĂNG & THÚ TRIỆU HỒI
+        // ==========================================
+        RPGPlayer rpgAttacker = RPGCore.getInstance().getPlayerManager().getRPGPlayer(attacker.getUniqueId());
+        if (rpgAttacker != null) {
+            // Chỉ cần Kỹ năng hoặc Đệ tử gây sát thương -> Bật đồng hồ cho Chủ nhân!
+            rpgAttacker.setInCombat();
+            applyLifeSteal(attacker, rpgAttacker, finalDamage, 0.0, false, true);
+        }
+
+        // Bật đồng hồ cho Nạn nhân (Nếu nạn nhân là Player)
+        if (target instanceof Player) {
+            RPGPlayer rpgVictim = RPGCore.getInstance().getPlayerManager().getRPGPlayer(target.getUniqueId());
+            if (rpgVictim != null) {
+                rpgVictim.setInCombat();
+            }
         }
     }
 

@@ -56,6 +56,7 @@ public class SkillManager {
         registerSkill(new BloodlustStrikeSkill(plugin));
         registerSkill(new ShadowDecoySkill(plugin));
         registerSkill(new KillingIntentSkill(plugin));
+        registerSkill(new PhantomMassacreSkill(plugin));
         // Summoner
         registerSkill(new SummonWolfSkill(plugin));
         registerSkill(new SummonFusionSkill(plugin));

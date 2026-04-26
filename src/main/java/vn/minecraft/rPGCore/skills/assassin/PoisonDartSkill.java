@@ -16,6 +16,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
+import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.managers.CombatManager;
 import vn.minecraft.rPGCore.managers.StatusEffectManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
@@ -116,6 +117,14 @@ public class PoisonDartSkill implements ISkill, Listener {
         cooldowns.put(player.getUniqueId(), currentTime);
 
         startCooldownNotifier(player, finalCd);
+
+        // ==========================================
+        // [PHÁ ẨN THÂN]: LỘ DIỆN KHI TUNG CHIÊU TẤN CÔNG
+        // ==========================================
+        ISkill stealthSkill = RPGCore.getInstance().getSkillManager().getSkill("assassin_smoke_bomb");
+        if (stealthSkill instanceof SmokeBombSkill) {
+            ((SmokeBombSkill) stealthSkill).breakStealth(player);
+        }
 
         Location eye = player.getEyeLocation();
         Vector dir = eye.getDirection();

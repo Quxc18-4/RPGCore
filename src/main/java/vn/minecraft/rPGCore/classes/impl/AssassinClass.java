@@ -19,6 +19,7 @@ public class AssassinClass extends RPGClass {
                          double maxHealth, double maxResource, ResourceType resourceType,
                          double regenRate, boolean isEnchanted) {
         super(id, displayName, icon, description, maxHealth, maxResource, resourceType, regenRate, isEnchanted);
+        startPassiveStealthTask(RPGCore.getInstance());
     }
 
     @Override
@@ -168,5 +169,44 @@ public class AssassinClass extends RPGClass {
                 }
             }
         }
+    }
+
+    // ==========================================
+    // [BƯỚC 2.1]: ÁO CHOÁNG BÓNG ĐÊM (LỚP 1)
+    // ==========================================
+    @Override
+    public double onTakeDamage(Player victim, vn.minecraft.rPGCore.player.RPGPlayer rpgVictim, LivingEntity attacker, double damage) {
+        if (victim.hasMetadata("Assassin_Stealth")) {
+            damage *= 0.5; // Giảm 50% ngay từ gốc
+            victim.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR,
+                    new net.md_5.bungee.api.chat.TextComponent("§8§l[ÁO CHOÁNG BÓNG ĐÊM KÍCH HOẠT: -50% SÁT THƯƠNG]"));
+        }
+        return super.onTakeDamage(victim, rpgVictim, attacker, damage);
+    }
+
+    // ==========================================
+    // [BƯỚC 2.2]: NỘI TẠI LẨN KHUẤT (10s AUTO-STEALTH)
+    // ==========================================
+    public void startPassiveStealthTask(vn.minecraft.rPGCore.RPGCore core) {
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    vn.minecraft.rPGCore.player.RPGPlayer rpg = core.getPlayerManager().getRPGPlayer(player.getUniqueId());
+
+                    if (rpg != null && rpg.getCurrentClass() instanceof AssassinClass) {
+                        if (!player.hasMetadata("Assassin_Stealth") && !rpg.isInCombat()) {
+
+                            vn.minecraft.rPGCore.skills.ISkill skill = core.getSkillManager().getSkill("assassin_smoke_bomb");
+                            if (skill instanceof vn.minecraft.rPGCore.skills.assassin.SmokeBombSkill) {
+                                ((vn.minecraft.rPGCore.skills.assassin.SmokeBombSkill) skill).applyStealth(player, 999999);
+                                player.sendMessage("§8§o(Nhịp tim ổn định... Bạn đã lẩn khuất vào bóng đêm)");
+                                player.getWorld().spawnParticle(org.bukkit.Particle.SMOKE, player.getLocation().add(0, 1, 0), 10, 0.2, 0.5, 0.2, 0.02);
+                            }
+                        }
+                    }
+                }
+            }
+        }.runTaskTimer(core, 0L, 20L);
     }
 }

@@ -22,6 +22,7 @@ public class RPGPlayer {
 
     private double currentResource;
     private double currentExp = 0;
+    // 1. Khai báo biến lưu trữ thời điểm cuối cùng phát sinh giao tranh
     private long lastCombatTime = 0;
     private long balance = 0;
 
@@ -75,8 +76,21 @@ public class RPGPlayer {
     public void setCurrentExp(double exp) { this.currentExp = exp; }
     public PlayerStats getStats() { return currentStats; }
 
-    public void setInCombat() { this.lastCombatTime = System.currentTimeMillis(); }
-    public boolean isInCombat() { return (System.currentTimeMillis() - this.lastCombatTime) <= 10000; }
+    // 2. Hàm KÍCH HOẠT (Reset) đồng hồ giao tranh
+    // Bất cứ khi nào người chơi đánh/bị đánh, ta sẽ gọi hàm này.
+    public void setInCombat() {
+        this.lastCombatTime = System.currentTimeMillis();
+    }
+    // 3. Hàm KIỂM TRA trạng thái giao tranh
+    // Trả về true nếu chưa qua 10 giây kể từ lần cuối đánh nhau.
+    public boolean isInCombat() {
+        return (System.currentTimeMillis() - this.lastCombatTime) <= 10000L;
+    }
+    // 4. Hàm ÉP THOÁT giao tranh (Tùy chọn cực kỳ hữu ích)
+    // Dùng khi Sát thủ dùng Bom Khói muốn tàng hình và xóa aggro ngay lập tức.
+    public void removeCombat() {
+        this.lastCombatTime = 0;
+    }
 
     public long getBalance() { return this.balance; }
     public void setBalance(long amount) { this.balance = Math.max(0, amount); }
