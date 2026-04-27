@@ -40,36 +40,37 @@ public class ElementalAegisSkill implements ISkill {
                 if (victim.hasMetadata("Aegis_Active") && victim instanceof Player) {
                     Player player = (Player) victim;
 
-                    // 1. Tính toán % Giảm sát thương (20% -> 30%)
                     int level = player.getMetadata("Aegis_Level").get(0).asInt();
                     double reduction = 0.20 + ((level - 1) * 0.02);
 
-                    // 2. Kiểm tra ICD (Chống vỡ khiên do sát thương đa mục tiêu / DoT)
                     long lastHit = player.hasMetadata("Aegis_ICD") ? player.getMetadata("Aegis_ICD").get(0).asLong() : 0;
                     if (System.currentTimeMillis() - lastHit > 500) {
                         RPGCore pluginInstance = RPGCore.getInstance();
-
-                        // Lấy Element của khiên
                         MageElement element = MageElement.valueOf(player.getMetadata("Aegis_Element").get(0).asString());
 
-                        // Gắn Ấn Nguyên Tố lên kẻ tấn công (Không gây sát thương)
                         if (attacker != null) {
                             ReactionEngine.applyMarkOnly(attacker, element);
-                            player.getWorld().playSound(player.getLocation(), Sound.ITEM_SHIELD_BLOCK, 0.8f, 1.5f);
+                            player.getWorld().playSound(player.getLocation(), org.bukkit.Sound.ITEM_SHIELD_BLOCK, 0.8f, 1.5f);
                         }
 
-                        // Trừ 15 Mana & Cộng dồn vào Consumed_Mana
-                        // Lưu ý: Cần import PlayerManager của bạn nếu cấu trúc khác, ở đây dùng giả định lấy RPGPlayer
                         RPGPlayer rpgP = pluginInstance.getPlayerManager().getRPGPlayer(player.getUniqueId());
                         if (rpgP != null) {
                             double currentMana = rpgP.getCurrentResource();
-                            rpgP.setCurrentResource(Math.max(0, currentMana - 15.0));
 
-                            double consumed = player.getMetadata("Aegis_Consumed").get(0).asDouble();
-                            player.setMetadata("Aegis_Consumed", new FixedMetadataValue(pluginInstance, consumed + 15.0));
+                            // LOGIC MỚI: Nếu lượng Mana hiện tại không đủ chịu đòn ( < 15 )
+                            if (currentMana < 15.0) {
+                                // Trừ sạch Mana, xóa cờ Active để ép Task dừng và nổ ở tick tiếp theo
+                                rpgP.setCurrentResource(0);
+                                player.removeMetadata("Aegis_Active", pluginInstance);
+                                return reduction; // Vẫn tính giảm dmg cho cú đòn làm vỡ khiên này
+                            } else {
+                                // Nếu đủ Mana thì trừ bình thường
+                                rpgP.setCurrentResource(currentMana - 15.0);
+                                double consumed = player.getMetadata("Aegis_Consumed").get(0).asDouble();
+                                player.setMetadata("Aegis_Consumed", new FixedMetadataValue(pluginInstance, consumed + 15.0));
+                            }
                         }
 
-                        // Reset ICD 0.5s
                         player.setMetadata("Aegis_ICD", new FixedMetadataValue(pluginInstance, System.currentTimeMillis()));
                     }
                     return reduction;
@@ -92,8 +93,8 @@ public class ElementalAegisSkill implements ISkill {
     @Override
     public Map<String, Integer> getRequiredSkills() {
         Map<String, Integer> req = new HashMap<>();
-        req.put("mage_focus", 4);
-        req.put("mage_elemental_swap", 4);
+        req.put("mage_focus", 10);
+        req.put("mage_blink", 4);
         return req;
     }
 
@@ -211,8 +212,19 @@ public class ElementalAegisSkill implements ISkill {
             int ticks = 0;
             @Override
             public void run() {
-                // Nếu người chơi chết, offline, hoặc khiên bị Tắt -> Hủy Task
-                if (!player.isOnline() || player.isDead() || !player.hasMetadata("Aegis_Active")) {
+                // LOGIC MỚI: Dọn dẹp rác nếu Chết hoặc Offline
+                if (!player.isOnline() || player.isDead()) {
+                    player.removeMetadata("Aegis_Active", plugin);
+                    player.removeMetadata("Aegis_Level", plugin);
+                    player.removeMetadata("Aegis_Element", plugin);
+                    player.removeMetadata("Aegis_Consumed", plugin);
+                    this.cancel();
+                    return;
+                }
+
+                // Nếu mất cờ Active (do người chơi tự tắt HOẶC do hook ở trên ép tắt vì cạn Mana)
+                if (!player.hasMetadata("Aegis_Active")) {
+                    triggerShatter(player, rpgPlayer, level);
                     this.cancel();
                     return;
                 }
@@ -220,16 +232,16 @@ public class ElementalAegisSkill implements ISkill {
                 // [MỖI GIÂY (20 Ticks)] Trừ 5 Mana duy trì
                 if (ticks > 0 && ticks % 20 == 0) {
                     if (rpgPlayer.getCurrentResource() < 5.0) {
-                        // HẾT MANA -> TỰ VỠ KHIÊN
-                        triggerShatter(player, rpgPlayer, level);
+                        triggerShatter(player, rpgPlayer, level); // Hết Mana duy trì -> Nổ
                         this.cancel();
                         return;
                     }
                     rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - 5.0);
-
                     double consumed = player.getMetadata("Aegis_Consumed").get(0).asDouble();
                     player.setMetadata("Aegis_Consumed", new FixedMetadataValue(plugin, consumed + 5.0));
                 }
+
+                // ... (Phần logic Pulse và Particle bên dưới giữ nguyên) ...
 
                 // [XUNG NĂNG THEO CHU KỲ]
                 if (ticks > 0 && ticks % pulseTicks == 0) {
