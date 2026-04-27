@@ -56,8 +56,12 @@ public class MageClass extends RPGClass {
             @Override
             public double getIncomingDamageReduction(LivingEntity victim, LivingEntity attacker) {
                 if (victim.hasMetadata("Light_Domain_Protection")) {
-                    long expire = victim.getMetadata("Light_Domain_Protection").get(0).asLong();
-                    if (System.currentTimeMillis() < expire) return 0.08; // Giảm 8%
+                    // [FIX LỖI]: Bọc thép kiểm tra danh sách rỗng
+                    java.util.List<org.bukkit.metadata.MetadataValue> meta = victim.getMetadata("Light_Domain_Protection");
+                    if (!meta.isEmpty()) {
+                        long expire = meta.get(0).asLong();
+                        if (System.currentTimeMillis() < expire) return 0.08; // Giảm 8%
+                    }
                 }
                 return 0.0;
             }
