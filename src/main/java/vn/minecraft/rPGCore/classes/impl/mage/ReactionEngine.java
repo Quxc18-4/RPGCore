@@ -85,7 +85,7 @@ public class ReactionEngine {
                 // Gắn ĐỒNG THỜI cờ Phá Giáp và Phá Kháng
                 target.setMetadata("Chaos_Armor_Shred", new FixedMetadataValue(RPGCore.getInstance(), System.currentTimeMillis() + 5000L));
                 target.setMetadata("Chaos_Magic_Shred", new FixedMetadataValue(RPGCore.getInstance(), System.currentTimeMillis() + 5000L));
-                target.getWorld().spawnParticle(Particle.DRAGON_BREATH, target.getLocation().add(0, 1, 0), 30, 0.5, 0.5, 0.5, 0.1, 1.0f);
+                target.getWorld().spawnParticle(Particle.WITCH, target.getLocation().add(0, 1, 0), 30, 0.5, 0.5, 0.5, 0.1);
                 target.getWorld().playSound(target.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 0.5f, 1.5f);
             }
             // Lửa + Sáng = Chớp Giật (150% + Sét đánh + Tê liệt AoE)
@@ -98,7 +98,7 @@ public class ReactionEngine {
                 for (org.bukkit.entity.Entity ent : target.getWorld().getNearbyEntities(target.getLocation(), 4.0, 4.0, 4.0)) {
                     if (ent instanceof LivingEntity && CombatManager.canTarget(caster, ent)) {
                         StatusEffectManager.applyEffect((LivingEntity) ent, PotionEffectType.SLOWNESS, 40, 10);
-                        ent.getWorld().spawnParticle(Particle.FIREWORK, ent.getLocation().add(0, 1, 0), 5, 0.2, 0.2, 0.2, 0.05, 1.0f);
+                        ent.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, ent.getLocation().add(0, 1, 0), 15, 0.3, 0.3, 0.3, 0.1);
                     }
                 }
             }
