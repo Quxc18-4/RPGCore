@@ -83,6 +83,7 @@ public class SkillManager {
         registerSkill(new BlinkSkill(plugin));
         registerSkill(new ElementalSphereSkill(plugin));
         registerSkill(new ElementalBurstSkill(plugin));
+        registerSkill(new ElementalAegisSkill(plugin));
     }
 
     public void registerSkill(ISkill skill) {

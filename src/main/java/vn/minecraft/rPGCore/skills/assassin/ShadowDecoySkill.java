@@ -85,7 +85,7 @@ public class ShadowDecoySkill implements ISkill {
         lore.add("§7đồng thời phóng ra một phân thân bóng tối");
         lore.add("§7gây §c" + dmg + "% §7ST trên đường bay.");
         lore.add("");
-        lore.add("§8[Nội tại - Mồi Nhử & Bạo Vũ]:");
+        lore.add("§8[Thi triển - Mồi Nhử & Bạo Vũ]:");
         lore.add("§7Phân thân sẽ tự động khiêu khích quái vật.");
         lore.add("§7Khi bị chạm vào (hoặc sau 5s), phân thân vỡ nát,");
         lore.add("§7bắn §c12 Mũi Tên §7tản ra khắp các hướng.");
