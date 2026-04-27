@@ -208,10 +208,7 @@ public class ElementalAegisSkill implements ISkill {
     }
 
     private void startAegisLoop(Player player, RPGPlayer rpgPlayer, int level, MageElement element) {
-        // [CÂN BẰNG]: Logic Ticks (4s ở cấp 1, 3s ở cấp 6)
         int pulseTicks = (int) ((4.0 - (level - 1) * 0.2) * 20);
-
-        // [CÂN BẰNG]: Sát thương 70% ở cấp 1, +15% mỗi cấp
         double pulseDmgMulti = 0.70 + (level - 1) * 0.15;
 
         new BukkitRunnable() {
@@ -230,10 +227,8 @@ public class ElementalAegisSkill implements ISkill {
                     return;
                 }
 
-                // [CÂN BẰNG]: Trừ 15 Mana mỗi giây
                 if (ticks > 0 && ticks % 20 == 0) {
                     if (rpgPlayer.getCurrentResource() < 15.0) {
-                        // Xóa cờ để nhịp Tick sau tự kích nổ
                         player.removeMetadata("Aegis_Active", plugin);
                         return;
                     }
@@ -250,11 +245,22 @@ public class ElementalAegisSkill implements ISkill {
                     triggerPulse(player, rpgPlayer, element, pulseDmgMulti);
                 }
 
-                if (ticks % 5 == 0) {
-                    Location pLoc = player.getLocation().add(0, 1, 0);
-                    double angle = ticks * 0.2;
-                    Location partLoc = pLoc.clone().add(1.2 * Math.cos(angle), 0, 1.2 * Math.sin(angle));
-                    player.getWorld().spawnParticle(element.getParticle(), partLoc, 2, 0, 0, 0, 0.02);
+                // [VFX CẬP NHẬT]: Vòng xoắn ốc kép (Double Helix) nhanh hơn
+                if (ticks % 2 == 0) { // Chạy mỗi 2 tick cho mượt
+                    Location pLoc = player.getLocation();
+
+                    // Tốc độ xoay cực nhanh (0.5 radian/tick)
+                    double angle1 = ticks * 0.5;
+                    double angle2 = angle1 + Math.PI; // Điểm đối xứng thứ 2
+
+                    // Chiều cao dao động từ 0.5 đến 1.5 bằng hàm Sin
+                    double heightOffset = 1.0 + (0.5 * Math.sin(ticks * 0.15));
+
+                    Location partLoc1 = pLoc.clone().add(Math.cos(angle1), heightOffset, Math.sin(angle1));
+                    Location partLoc2 = pLoc.clone().add(Math.cos(angle2), heightOffset, Math.sin(angle2));
+
+                    player.getWorld().spawnParticle(element.getParticle(), partLoc1, 1, 0, 0, 0, 0.0);
+                    player.getWorld().spawnParticle(element.getParticle(), partLoc2, 1, 0, 0, 0, 0.0);
                 }
                 ticks++;
             }
@@ -262,14 +268,11 @@ public class ElementalAegisSkill implements ISkill {
     }
 
     private void triggerPulse(Player player, RPGPlayer rpgPlayer, MageElement element, double multi) {
-        Location center = player.getLocation().add(0, 1, 0);
+        // Tâm tỏa ra ở độ cao ngang bụng (1.0 block)
+        Location center = player.getLocation().add(0, 1.0, 0);
         player.getWorld().playSound(center, Sound.ENTITY_ILLUSIONER_PREPARE_MIRROR, 0.8f, 1.5f);
 
-        for (double t = 0; t < Math.PI * 2; t += Math.PI / 8) {
-            Location loc = center.clone().add(2.5 * Math.cos(t), 0, 2.5 * Math.sin(t));
-            player.getWorld().spawnParticle(element.getParticle(), loc, 1, 0.1, 0.1, 0.1, 0);
-        }
-
+        // 1. Quét sát thương (Làm ngay lập tức để không bị delay gameplay)
         for (org.bukkit.entity.Entity ent : center.getWorld().getNearbyEntities(center, 2.5, 2.5, 2.5)) {
             if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent)) {
                 LivingEntity target = (LivingEntity) ent;
@@ -278,40 +281,90 @@ public class ElementalAegisSkill implements ISkill {
                 CombatManager.applySkillDamage(player, target, finalDmg);
             }
         }
+
+        // 2. [VFX CẬP NHẬT]: Vẽ làn sóng tỏa ra từ tâm
+        new BukkitRunnable() {
+            double radius = 0.5;
+            @Override
+            public void run() {
+                if (radius > 2.5) {
+                    this.cancel();
+                    return;
+                }
+                // [ĐÃ GIẢM 40%]: Từ radius * 16 xuống còn radius * 10
+                int particles = (int) (radius * 6);
+                for (int i = 0; i < particles; i++) {
+                    double angle = 2 * Math.PI * i / particles;
+                    Location loc = center.clone().add(radius * Math.cos(angle), 0, radius * Math.sin(angle));
+                    player.getWorld().spawnParticle(element.getParticle(), loc, 1, 0.0, 0.0, 0.0, 0);
+                }
+                radius += 0.5; // Dạt ra siêu nhanh
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
     }
 
     private void triggerShatter(Player player, RPGPlayer rpgPlayer, int level) {
-        // [FIX CRASH]: Bọc thép 100% khi lấy Metadata
+        // [Phần bọc thép tính Consumed Mana và lấy Element giữ nguyên ở đầu]
         double consumedMana = 0.0;
         if (player.hasMetadata("Aegis_Consumed")) {
             List<MetadataValue> metaList = player.getMetadata("Aegis_Consumed");
-            if (!metaList.isEmpty()) {
-                consumedMana = metaList.get(0).asDouble();
-            }
+            if (!metaList.isEmpty()) consumedMana = metaList.get(0).asDouble();
         }
 
-        MageElement element = MageElement.FIRE; // Default an toàn
+        MageElement element = MageElement.FIRE;
         if (player.hasMetadata("Aegis_Element")) {
             List<MetadataValue> metaList = player.getMetadata("Aegis_Element");
             if (!metaList.isEmpty()) {
-                try {
-                    element = MageElement.valueOf(metaList.get(0).asString());
-                } catch (Exception ignored) {}
+                try { element = MageElement.valueOf(metaList.get(0).asString()); } catch (Exception ignored) {}
             }
         }
 
-        // Xóa sạch rác Metadata
         cleanUpMetadata(player);
 
-        // [CÂN BẰNG TOÁN HỌC]: Cứ 5 mana = 1% Damage. Cap max = +500% Dmg (Khi hao đủ 2500 Mana)
         double baseShatter = 1.0 + (level - 1) * 0.20;
         double bonusMulti = Math.min(5.0, (consumedMana / 5.0) * 0.01);
         double totalMulti = baseShatter + bonusMulti;
 
-        Location center = player.getLocation().add(0, 1, 0);
-        player.getWorld().playSound(center, Sound.ENTITY_GENERIC_EXPLODE, 1.2f, 1.2f);
-        player.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, center, 1);
+        Location center = player.getLocation().add(0, 1.0, 0);
 
+        // ==========================================
+        // [VFX CẬP NHẬT]: HIỆU ỨNG ĐỘC QUYỀN TỪNG HỆ (Đã giảm 40% hạt)
+        // ==========================================
+        switch (element) {
+            case FIRE:
+                player.getWorld().playSound(center, Sound.ENTITY_GENERIC_EXPLODE, 1.2f, 1.0f);
+                player.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, center, 1);
+                player.getWorld().spawnParticle(Particle.FLAME, center, 36, 2.5, 2.5, 2.5, 0.15); // 60 -> 36
+                player.getWorld().spawnParticle(Particle.LAVA, center, 12, 2.0, 2.0, 2.0, 0.1);  // 20 -> 12
+                break;
+            case WATER:
+                player.getWorld().playSound(center, Sound.ENTITY_GENERIC_SPLASH, 1.5f, 0.5f);
+                player.getWorld().spawnParticle(Particle.SPLASH, center, 60, 2.5, 2.5, 2.5, 0.1); // 100 -> 60
+                player.getWorld().spawnParticle(Particle.BUBBLE_POP, center, 24, 2.0, 2.0, 2.0, 0.1); // 40 -> 24
+                break;
+            case WIND:
+                player.getWorld().playSound(center, Sound.ENTITY_ENDER_DRAGON_FLAP, 1.5f, 1.2f);
+                player.getWorld().spawnParticle(Particle.CLOUD, center, 30, 3.0, 0.5, 3.0, 0.2); // 50 -> 30
+                player.getWorld().spawnParticle(Particle.SWEEP_ATTACK, center, 6, 2.5, 0.5, 2.5, 0.0); // 10 -> 6
+                break;
+            case NATURE:
+                player.getWorld().playSound(center, Sound.BLOCK_AZALEA_LEAVES_BREAK, 1.5f, 0.8f);
+                player.getWorld().spawnParticle(Particle.CHERRY_LEAVES, center, 48, 2.5, 2.5, 2.5, 0.1); // 80 -> 48
+                player.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, center, 24, 2.0, 2.0, 2.0, 0.0); // 40 -> 24
+                break;
+            case LIGHT:
+                player.getWorld().playSound(center, Sound.BLOCK_BEACON_POWER_SELECT, 1.5f, 1.5f);
+                player.getWorld().spawnParticle(Particle.END_ROD, center, 36, 2.5, 2.5, 2.5, 0.15); // 60 -> 36
+                player.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, center, 18, 2.0, 2.0, 2.0, 0.1); // 30 -> 18
+                break;
+            case DARK:
+                player.getWorld().playSound(center, Sound.ENTITY_WITHER_BREAK_BLOCK, 1.0f, 0.5f);
+                player.getWorld().spawnParticle(Particle.WITCH, center, 48, 2.5, 2.5, 2.5, 0.1); // Đổi WITCH -> SPELL_WITCH, 80 -> 48
+                player.getWorld().spawnParticle(Particle.SQUID_INK, center, 24, 2.0, 2.0, 2.0, 0.1); // 40 -> 24
+                break;
+        }
+
+        // Quét sát thương hất văng (Giữ nguyên)
         for (org.bukkit.entity.Entity ent : center.getWorld().getNearbyEntities(center, 4.5, 4.5, 4.5)) {
             if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent)) {
                 LivingEntity target = (LivingEntity) ent;
