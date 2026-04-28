@@ -202,10 +202,8 @@ public class CombatManager {
     // Thêm tham số boolean isSkill vào cuối
     // ==========================================
     public static void applyLifeSteal(Player attacker, RPGPlayer rpgPlayer, double damageDealt, double extraLifeStealPct, boolean isMagic, boolean isSkill) {
-        if (attacker.hasMetadata("Status_AntiHeal")) {
-            long expire = attacker.getMetadata("Status_AntiHeal").get(0).asLong();
-            if (System.currentTimeMillis() < expire) return;
-        }
+        // [CHUẨN SOLID]: Tôn trọng hệ thống Vết Thương Sâu
+        if (StatusEffectManager.isHealingBlocked(attacker)) return;
 
         double finalExtraLifesteal = extraLifeStealPct;
 

@@ -491,8 +491,19 @@ public class ElementalDomainSkill implements ISkill {
                             else if (element == MageElement.WATER) {
                                 double maxHp = le.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue();
                                 double heal = maxHp * waterHealPct;
-                                le.setHealth(Math.min(maxHp, le.getHealth() + heal));
-                                le.getWorld().spawnParticle(Particle.HEART, le.getLocation().add(0, 2, 0), 1, 0.3, 0.3, 0.3, 0);
+
+                                if (le instanceof Player) {
+                                    RPGPlayer tRpg = RPGCore.getInstance().getPlayerManager().getRPGPlayer(le.getUniqueId());
+                                    if (tRpg != null) tRpg.heal(heal);
+                                } else {
+                                    if (!StatusEffectManager.isHealingBlocked(le)) {
+                                        le.setHealth(Math.min(maxHp, le.getHealth() + heal));
+                                    }
+                                }
+
+                                if (!StatusEffectManager.isHealingBlocked(le)) {
+                                    le.getWorld().spawnParticle(Particle.HEART, le.getLocation().add(0, 2, 0), 1, 0.3, 0.3, 0.3, 0);
+                                }
                             }
 
                             if (le instanceof Player) {

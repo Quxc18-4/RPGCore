@@ -8,6 +8,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import vn.minecraft.rPGCore.classes.RPGClass;
 import vn.minecraft.rPGCore.managers.FoodBuffManager;
+import vn.minecraft.rPGCore.managers.StatusEffectManager;
 import vn.minecraft.rPGCore.player.data.PlayerAttributeData;
 import vn.minecraft.rPGCore.player.data.PlayerSkillData;
 
@@ -446,10 +447,12 @@ public class RPGPlayer {
     }
     public void heal(double amount) {
         if (!this.bukkitPlayer.isDead()) {
-            // [CHUẨN SOLID]: Dùng một Tag chung cho toàn bộ server thay vì gọi tên Assassin
-            if (this.bukkitPlayer.hasMetadata("Status_AntiHeal")) {
-                long expire = this.bukkitPlayer.getMetadata("Status_AntiHeal").get(0).asLong();
-                if (System.currentTimeMillis() < expire) return; // Bị trúng độc cấm hồi máu -> Bỏ qua
+            // [KIỂM TRA CHẶN HỒI PHỤC]
+            if (StatusEffectManager.isHealingBlocked(this.bukkitPlayer)) {
+                // Gửi Action Bar để tránh spam Chat
+                this.bukkitPlayer.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR,
+                        net.md_5.bungee.api.chat.TextComponent.fromLegacyText("§c☠ Bạn đang bị thương sâu, không thể hồi phục!"));
+                return;
             }
 
             AttributeInstance maxAttr = this.bukkitPlayer.getAttribute(Attribute.MAX_HEALTH);

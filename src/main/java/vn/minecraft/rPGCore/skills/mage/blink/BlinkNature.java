@@ -84,11 +84,20 @@ public class BlinkNature implements IBlink {
                                 trackedEnemies.add(target);
                             } else {
                                 // Đồng minh / Bản thân: Hồi 0.5% Máu tối đa
-                                double maxHp = target.getAttribute(Attribute.MAX_HEALTH).getValue();
-                                double healAmount = maxHp * 0.005;
-                                double newHp = Math.min(maxHp, target.getHealth() + healAmount);
-                                target.setHealth(newHp);
-                                target.getWorld().spawnParticle(Particle.HEART, target.getLocation().add(0, 2, 0), 1, 0.2, 0.2, 0.2, 0);
+                                if (!StatusEffectManager.isHealingBlocked(target)) {
+                                    double maxHp = target.getAttribute(Attribute.MAX_HEALTH).getValue();
+                                    double healAmount = maxHp * 0.005;
+
+                                    if (target instanceof Player) {
+                                        RPGPlayer tRpg = RPGCore.getInstance().getPlayerManager().getRPGPlayer(target.getUniqueId());
+                                        if (tRpg != null) tRpg.heal(healAmount); // Gọi hàm chuẩn của bạn
+                                    } else {
+                                        // Dành cho Pet/Đồng minh là Quái
+                                        double newHp = Math.min(maxHp, target.getHealth() + healAmount);
+                                        target.setHealth(newHp);
+                                    }
+                                    target.getWorld().spawnParticle(Particle.HEART, target.getLocation().add(0, 2, 0), 1, 0.2, 0.2, 0.2, 0);
+                                }
                             }
                         }
                     }

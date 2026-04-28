@@ -1,9 +1,12 @@
 package vn.minecraft.rPGCore.managers;
 
+import org.bukkit.Sound;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.player.RPGPlayer;
@@ -214,4 +217,36 @@ public class StatusEffectManager {
         target.setHealth(finalHp);
     }
 
+    // ==========================================
+    // [QUẢN LÝ VẾT THƯƠNG SÂU]: ANTI-HEAL
+    // ==========================================
+    public static void applyAntiHeal(LivingEntity target, int durationTicks) {
+        if (target == null) return;
+
+        long expireTime = System.currentTimeMillis() + (durationTicks * 50L);
+        target.setMetadata("STATUS_ANTI_HEAL", new FixedMetadataValue(RPGCore.getInstance(), expireTime));
+
+        if (target instanceof Player) {
+            Player p = (Player) target;
+            p.sendMessage("§c§l[!] §fBạn đang bị §4Vết thương sâu§f, khả năng hồi phục bị đình trệ!");
+            p.playSound(p.getLocation(), Sound.ENTITY_ZOMBIE_VILLAGER_CURE, 0.5f, 0.5f);
+
+            // Task thông báo khi hết hiệu ứng
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    if (p.isOnline() && !isHealingBlocked(p)) {
+                        p.sendMessage("§a§l[!] §fVết thương dần lành lại, khả năng hồi phục được khôi phục.");
+                        p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.5f, 1.2f);
+                    }
+                }
+            }.runTaskLater(RPGCore.getInstance(), durationTicks);
+        }
+    }
+
+    public static boolean isHealingBlocked(LivingEntity target) {
+        if (!target.hasMetadata("STATUS_ANTI_HEAL")) return false;
+        long expire = target.getMetadata("STATUS_ANTI_HEAL").get(0).asLong();
+        return System.currentTimeMillis() < expire;
+    }
 }

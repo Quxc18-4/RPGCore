@@ -293,19 +293,17 @@ public class PoisonDartSkill implements ISkill, Listener {
         int durationTicks = (int) (durationMs / 50);
         StatusEffectManager.applyEffect(target, PotionEffectType.POISON, durationTicks, 0);
 
-        target.setMetadata("Status_AntiHeal", new FixedMetadataValue(plugin, System.currentTimeMillis() + durationMs));
+        // [ĐÃ SỬA]: Chuyển quyền quản lý cho StatusEffectManager để nó tự lo vụ thông báo
+        StatusEffectManager.applyAntiHeal(target, durationTicks);
+
         target.getWorld().spawnParticle(Particle.ANGRY_VILLAGER, target.getEyeLocation(), 3, 0.3, 0.3, 0.3, 0);
     }
 
     @EventHandler
     public void onEntityRegen(EntityRegainHealthEvent event) {
-        if (event.getEntity().hasMetadata("Status_AntiHeal")) {
-            long expireTime = event.getEntity().getMetadata("Status_AntiHeal").get(0).asLong();
-            if (System.currentTimeMillis() < expireTime) {
-                event.setCancelled(true);
-            } else {
-                event.getEntity().removeMetadata("Status_AntiHeal", plugin);
-            }
+        // [ĐÃ SỬA]: Dùng hàm kiểm tra chung
+        if (event.getEntity() instanceof LivingEntity && StatusEffectManager.isHealingBlocked((LivingEntity) event.getEntity())) {
+            event.setCancelled(true);
         }
     }
 
