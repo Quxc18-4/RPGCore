@@ -113,6 +113,9 @@ public class MageClass extends RPGClass {
     // ==========================================
     @Override
     public boolean onLeftClick(Player player, RPGPlayer rpgPlayer, ItemStack weapon) {
+        if (player.hasMetadata("Mage_Domain_Channeling")) {
+            return false; // Thoát hàm ngay lập tức, chặn không cho gọi Strategy
+        }
         long currentTime = System.currentTimeMillis();
         long allowedTime = nextAttackTime.getOrDefault(player.getUniqueId(), 0L);
         if (currentTime < allowedTime) return false;

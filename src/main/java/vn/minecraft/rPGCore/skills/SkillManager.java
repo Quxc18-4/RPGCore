@@ -84,6 +84,7 @@ public class SkillManager {
         registerSkill(new ElementalSphereSkill(plugin));
         registerSkill(new ElementalBurstSkill(plugin));
         registerSkill(new ElementalAegisSkill(plugin));
+        registerSkill(new ElementalDomainSkill(plugin));
     }
 
     public void registerSkill(ISkill skill) {
