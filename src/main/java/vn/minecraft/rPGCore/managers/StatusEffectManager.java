@@ -200,4 +200,18 @@ public class StatusEffectManager {
             // check nếu có meta RPGCore_SafeFall thì hủy sát thương ngã và xóa cờ đó đi.
         }
     }
+    // ==========================================
+    // [HÀM MỚI]: SÁT THƯƠNG CHUẨN (TRUE DAMAGE)
+    // ==========================================
+    public static void applyTrueDamage(LivingEntity target, double amount) {
+        if (target == null || target.isDead() || !target.isValid()) return;
+
+        double currentHp = target.getHealth();
+        double finalHp = Math.max(0, currentHp - amount);
+
+        // Kích hoạt hoạt ảnh chớp đỏ bị đánh (sát thương siêu nhỏ để không ảnh hưởng chỉ số)
+        target.damage(0.0001);
+        target.setHealth(finalHp);
+    }
+
 }
