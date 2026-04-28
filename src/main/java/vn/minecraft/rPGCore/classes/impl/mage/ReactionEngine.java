@@ -97,7 +97,8 @@ public class ReactionEngine {
                 // Tê liệt diện rộng (Slowness cực mạnh trong 2s)
                 for (org.bukkit.entity.Entity ent : target.getWorld().getNearbyEntities(target.getLocation(), 4.0, 4.0, 4.0)) {
                     if (ent instanceof LivingEntity && CombatManager.canTarget(caster, ent)) {
-                        StatusEffectManager.applyEffect((LivingEntity) ent, PotionEffectType.SLOWNESS, 40, 10);
+                        // Trói chân hoàn toàn đám đông trong 2 giây
+                        StatusEffectManager.applySlow((LivingEntity) ent, 40, 1.0, 10);
                         ent.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, ent.getLocation().add(0, 1, 0), 15, 0.3, 0.3, 0.3, 0.1);
                     }
                 }
@@ -123,7 +124,8 @@ public class ReactionEngine {
                 // Trói chân diện rộng 3s (60 ticks)
                 for (org.bukkit.entity.Entity ent : target.getWorld().getNearbyEntities(target.getLocation(), 4.0, 4.0, 4.0)) {
                     if (ent instanceof LivingEntity && CombatManager.canTarget(caster, ent)) {
-                        StatusEffectManager.applyEffect((LivingEntity) ent, PotionEffectType.SLOWNESS, 60, 10);
+                        // Trói chân tuyệt đối 3 giây (60 ticks)
+                        StatusEffectManager.applySlow((LivingEntity) ent, 60, 1.0, 10);
                         ent.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, ent.getLocation().add(0, 1, 0), 10, 0.5, 0.5, 0.5, 0);
                     }
                 }

@@ -243,7 +243,8 @@ public class PhantomBladesSkill implements ISkill {
                         target.getWorld().playSound(target.getLocation(), Sound.ENTITY_PLAYER_ATTACK_SWEEP, 1.0f, 1.5f);
 
                         if (level >= 10) {
-                            vn.minecraft.rPGCore.managers.StatusEffectManager.applyEffect(target, org.bukkit.potion.PotionEffectType.SLOWNESS, 60, 1);
+                            // Giảm 20% tốc độ di chuyển trong 3 giây (Amp 1 cho quái)
+                            vn.minecraft.rPGCore.managers.StatusEffectManager.applySlow(target, 60, 0.20, 1);
                         }
                     }
                 }

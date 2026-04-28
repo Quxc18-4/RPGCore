@@ -92,7 +92,8 @@ public class FocusNature implements IFocusAttack {
         int count = 0;
         for (LivingEntity target : allTargets) {
             if (count < 10) {
-                StatusEffectManager.applyEffect(target, PotionEffectType.SLOWNESS, 40, 10); // Root
+                // Root: Giảm 100% tốc chạy. Potion Amplifer 10 (Slowness 11) cho quái.
+                StatusEffectManager.applySlow(target, 40, 1.0, 10);
 
                 ReactionEngine.ReactionResult reaction = ReactionEngine.processHit(player, target, MageElement.NATURE);
                 double finalDmgMulti = dmgPerTarget * reaction.damageMultiplier;
@@ -104,7 +105,8 @@ public class FocusNature implements IFocusAttack {
 
                 if (reaction.isReacted) ReactionEngine.triggerReactionImmunity(target);
             } else {
-                StatusEffectManager.applyEffect(target, PotionEffectType.SLOWNESS, 40, 1); // Slow thường
+                // Slow thường: Giảm 30% tốc chạy. Potion Amplifer 1 (Slowness 2) cho quái.
+                StatusEffectManager.applySlow(target, 40, 0.3, 1);
             }
             count++;
         }

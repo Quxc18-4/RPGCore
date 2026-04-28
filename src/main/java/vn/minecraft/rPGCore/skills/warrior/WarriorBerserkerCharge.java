@@ -17,6 +17,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.managers.CombatManager;
+import vn.minecraft.rPGCore.managers.StatusEffectManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 import vn.minecraft.rPGCore.skills.ISkill;
 
@@ -238,8 +239,8 @@ public class WarriorBerserkerCharge implements ISkill {
                 double slamDmg = CombatManager.calculateDamage(player, rpgPlayer, target, multiplier, 0.0, false, false);
                 CombatManager.applySkillDamage(player, target, slamDmg);
 
-                // Hiệu ứng Choáng (Stun - Slowness max cấp)
-                target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 30, 10, false, false, false));
+                // Hiệu ứng Choáng (Stun = Root 100% tốc chạy)
+                StatusEffectManager.applySlow(target, 30, 1.0, 10);
                 target.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 30, 10, false, false, false));
                 target.getWorld().spawnParticle(Particle.CRIT, target.getLocation().add(0, 2, 0), 15, 0.5, 0.2, 0.5, 0.1);
             }

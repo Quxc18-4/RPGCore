@@ -100,7 +100,8 @@ public class NatureAttack implements IMageBasicAttack {
 
                         target.getWorld().playSound(target.getLocation(), Sound.BLOCK_GRASS_BREAK, 1f, 0.8f);
                         if (random.nextDouble() <= 0.15) {
-                            StatusEffectManager.applyEffect(target, PotionEffectType.SLOWNESS, 20, 10);
+                            // Trói chân hoàn toàn (Giảm 100% tốc chạy) trong 1 giây (20 ticks)
+                            StatusEffectManager.applySlow(target, 20, 1.0, 10);
                             target.getWorld().spawnParticle(Particle.BLOCK_CRUMBLE, target.getLocation().add(0, 1, 0), 30, 0.5, 0.5, 0.5, 0, org.bukkit.Bukkit.createBlockData(Material.OAK_LEAVES));
                         }
 
@@ -145,7 +146,8 @@ public class NatureAttack implements IMageBasicAttack {
                 if (time % 5 == 0) {
                     for (org.bukkit.entity.Entity ent : ground.getWorld().getNearbyEntities(ground, 1.5, 1.5, 1.5)) {
                         if (ent instanceof LivingEntity && CombatManager.canTarget(shooter, ent)) {
-                            StatusEffectManager.applyEffect((LivingEntity) ent, PotionEffectType.SLOWNESS, 20, 1);
+                            // Làm chậm vùng (Giảm 30% tốc chạy, Amplifier 1 cho quái) trong 1 giây
+                            StatusEffectManager.applySlow((LivingEntity) ent, 20, 0.3, 1);
                         }
                     }
                 }

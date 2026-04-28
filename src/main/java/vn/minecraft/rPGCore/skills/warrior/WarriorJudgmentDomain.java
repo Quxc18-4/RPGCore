@@ -448,12 +448,8 @@ public class WarriorJudgmentDomain extends AbstractEnhancementSkill implements L
             LivingEntity victim = entry.getKey();
             int hitCount = entry.getValue();
 
-            // Trói chân mục tiêu ngay khi bắt đầu nhắm bắn
-            if (victim instanceof Player) {
-                StatusEffectManager.applyAbsoluteRoot((Player) victim, 40);
-            } else {
-                StatusEffectManager.applyEffect(victim, PotionEffectType.SLOWNESS, 40, 10);
-            }
+            // Trói chân mục tiêu ngay khi bắt đầu nhắm bắn (Đã tự động check Player/Entity)
+            StatusEffectManager.applySlow(victim, 40, 1.0, 10);
 
             // Hoạt ảnh tia sáng lao từ trên Ma Trận xuống mục tiêu
             Location vLoc = victim.getLocation();

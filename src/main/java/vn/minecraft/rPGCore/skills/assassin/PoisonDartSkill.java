@@ -218,9 +218,10 @@ public class PoisonDartSkill implements ISkill, Listener {
             applyPoisonAndAntiHeal(target, 7000); // Cứng 7 giây
 
             if (level == 10) {
-                StatusEffectManager.applyEffect(target, PotionEffectType.NAUSEA, 60, 0); // Choáng 3s
+                StatusEffectManager.applyEffect(target, PotionEffectType.NAUSEA, 60, 0);
                 StatusEffectManager.applyEffect(target, PotionEffectType.DARKNESS, 60, 0);
-                StatusEffectManager.applyEffect(target, PotionEffectType.SLOWNESS, 60, 10);
+                // Trói tuyệt đối (Slow 100%)
+                StatusEffectManager.applySlow(target, 60, 1.0, 10);
                 target.getWorld().playSound(target.getLocation(), org.bukkit.Sound.BLOCK_GLASS_BREAK, 1.0f, 0.5f);
             }
         }

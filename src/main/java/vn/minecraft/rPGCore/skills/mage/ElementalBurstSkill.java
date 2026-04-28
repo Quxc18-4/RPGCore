@@ -248,8 +248,8 @@ public class ElementalBurstSkill implements ISkill {
                             double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, baseMulti * 1.2 * reaction.damageMultiplier, 0, true, false);
                             CombatManager.applySkillDamage(player, target, finalDmg);
 
-                            // Làm chậm 30% trong 3s
-                            StatusEffectManager.applyEffect(target, PotionEffectType.SLOWNESS, 60, 1);
+                            // Làm chậm 30% trong 3s (Player: -30% speed, Quái: Slowness 2)
+                            StatusEffectManager.applySlow(target, 60, 0.3, 1);
                             if (reaction.isReacted) ReactionEngine.triggerReactionImmunity(target);
 
                             hitTargets.add(target.getUniqueId());
@@ -431,9 +431,10 @@ public class ElementalBurstSkill implements ISkill {
             if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent)) {
                 LivingEntity target = (LivingEntity) ent;
                 if (target instanceof Player) {
-                    StatusEffectManager.applyAbsoluteRoot((Player) target, stunTicks);
+                    StatusEffectManager.applyAbsoluteRoot((Player) target, stunTicks); // Vẫn dùng Root tuyệt đối (Jumping disable) cho Player
                 } else {
-                    StatusEffectManager.applyEffect(target, PotionEffectType.SLOWNESS, stunTicks, 10);
+                    // Trói 100% tốc chạy quái
+                    StatusEffectManager.applySlow(target, stunTicks, 1.0, 10);
                 }
                 StatusEffectManager.applyEffect(target, PotionEffectType.BLINDNESS, stunTicks, 1);
 

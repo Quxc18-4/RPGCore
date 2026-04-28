@@ -79,9 +79,11 @@ public class BlinkNature implements IBlink {
                             LivingEntity target = (LivingEntity) ent;
 
                             if (CombatManager.canTarget(player, target)) {
-                                // Quái vật: Áp hiệu ứng Làm chậm & Theo dõi sinh tử
-                                StatusEffectManager.applyEffect(target, PotionEffectType.SLOWNESS, 30, slownessLevel);
-                                trackedEnemies.add(target);
+                                // [ĐÃ FIX TOÁN HỌC]: Cơ bản 15% + (Level * 5%)
+                                double slowPercent = 0.15 + (skillLevel * 0.05);
+                                // Quái vật: Chuyển đổi % Slow ra Amplifier của Potion (15% = Amp 0, 30% = Amp 1, 45% = Amp 2)
+                                int mobAmplifier = Math.max(0, (int)(slowPercent / 0.15) - 1);
+                                StatusEffectManager.applySlow(target, 30, slowPercent, mobAmplifier);
                             } else {
                                 // Đồng minh / Bản thân: Hồi 0.5% Máu tối đa
                                 if (!StatusEffectManager.isHealingBlocked(target)) {

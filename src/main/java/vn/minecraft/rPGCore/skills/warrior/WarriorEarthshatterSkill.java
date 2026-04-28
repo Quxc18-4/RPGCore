@@ -16,6 +16,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.managers.CombatManager;
+import vn.minecraft.rPGCore.managers.StatusEffectManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 import vn.minecraft.rPGCore.skills.ISkill;
 
@@ -199,7 +200,7 @@ public class WarriorEarthshatterSkill implements ISkill {
                 if (isEmpowered) {
                     // HIỆU ỨNG KHỐNG CHẾ
                     target.setVelocity(new Vector(0, 0.8, 0)); // Hất tung
-                    target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 30, 10, false, false)); // Choáng 1.5s
+                    StatusEffectManager.applySlow(target, 30, 1.0, 10); // Choáng 1.5s (Trói 100%)
                 }
             }
         }

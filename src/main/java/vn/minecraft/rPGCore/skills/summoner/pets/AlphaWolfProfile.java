@@ -349,7 +349,8 @@ public class AlphaWolfProfile implements IPetProfile {
                 CombatManager.applySkillDamage(owner, target, explosionDmg);
                 owner.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
 
-                StatusEffectManager.applyEffect(target, org.bukkit.potion.PotionEffectType.SLOWNESS, 30, 7);
+                // Sói gầm/nổ: Khống chế nặng (Root 100% tốc chạy vì Amp 7)
+                StatusEffectManager.applySlow(target, 30, 1.0, 7);
             }
         }
     }

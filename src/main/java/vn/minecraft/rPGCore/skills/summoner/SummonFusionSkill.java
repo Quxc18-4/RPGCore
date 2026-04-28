@@ -13,6 +13,8 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import vn.minecraft.rPGCore.classes.impl.SummonerClass;
+import vn.minecraft.rPGCore.managers.CombatManager;
+import vn.minecraft.rPGCore.managers.StatusEffectManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 import vn.minecraft.rPGCore.skills.ISkill;
 import vn.minecraft.rPGCore.skills.summoner.pets.IPetProfile;
@@ -148,10 +150,10 @@ public class SummonFusionSkill implements ISkill {
                 loc.getWorld().strikeLightningEffect(loc);
 
                 for (Entity e : loc.getWorld().getNearbyEntities(loc, 4, 3, 4)) {
-                    if (e instanceof LivingEntity && e != player && !e.hasMetadata("Summoner_Pet")) {
+                    if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) {
                         LivingEntity target = (LivingEntity) e;
                         target.damage(50.0 + (level * 10), player);
-                        target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 30, 5));
+                        StatusEffectManager.applySlow(target, 30, 1.0, 5); // Khống chế cứng 1.5s
                     }
                 }
                 sClass.unregisterPet(pet.getUniqueId(), rpgPlayer);
@@ -213,10 +215,10 @@ public class SummonFusionSkill implements ISkill {
             loc.getWorld().strikeLightningEffect(loc);
 
             for (Entity e : loc.getWorld().getNearbyEntities(loc, 4, 3, 4)) {
-                if (e instanceof LivingEntity && e != player && !e.hasMetadata("Summoner_Pet")) {
+                if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) {
                     LivingEntity target = (LivingEntity) e;
                     target.damage(50.0 + (level * 10), player);
-                    target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 30, 5));
+                    StatusEffectManager.applySlow(target, 30, 1.0, 5); // Khống chế cứng 1.5s
                 }
             }
             sClass.unregisterPet(pet.getUniqueId(), rpgPlayer);

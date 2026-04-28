@@ -105,6 +105,11 @@ public class StatusEffectManager {
             Player p = (Player) target;
             long expireTime = System.currentTimeMillis() + (finalDuration * 50L);
 
+            // [MỚI]: Nếu bị Root (Slow >= 100%), ép thêm Jump Boost âm để không thể nhảy
+            if (slowPercent >= 1.0) {
+                p.addPotionEffect(new PotionEffect(PotionEffectType.JUMP_BOOST, finalDuration, 250, false, false, false));
+            }
+
             // Ghi đè chỉ số Slow mới
             p.setMetadata("STATUS_SLOW_PERCENT", new FixedMetadataValue(RPGCore.getInstance(), slowPercent));
             p.setMetadata("STATUS_SLOW_EXPIRE", new FixedMetadataValue(RPGCore.getInstance(), expireTime));

@@ -465,7 +465,7 @@ public class ElementalSphereSkill implements ISkill {
             if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent)) {
                 LivingEntity target = (LivingEntity) ent;
                 rootedTargets.add(target);
-                StatusEffectManager.applyEffect(target, org.bukkit.potion.PotionEffectType.SLOWNESS, 70, 10);
+                StatusEffectManager.applySlow(target, 70, 1.0, 10); // Root - Giảm 100% tốc độ
 
                 ReactionEngine.ReactionResult reaction = ReactionEngine.processHit(player, target, MageElement.NATURE);
                 double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, domMulti * reaction.damageMultiplier, 0, true, false);

@@ -88,15 +88,6 @@ public class ElementalDomainSkill implements ISkill {
                         stats.put("Hồi Năng lượng", stats.getOrDefault("Hồi Năng lượng", 0.0) + (manaRegen * 100.0));
                     }
                 }
-
-                // 3. [NATURE]: Debuff Giảm Tốc chạy cho Player Kẻ Địch
-                if (isValidBuff(player, "Mage_Domain_Enemy_NATURE")) {
-                    List<MetadataValue> natureMeta = player.getMetadata("Mage_Domain_Enemy_NATURE");
-                    if (!natureMeta.isEmpty()) {
-                        double slowPct = natureMeta.get(0).asDouble();
-                        stats.put("Tốc độ di chuyển", stats.getOrDefault("Tốc độ di chuyển", 0.0) - (slowPct * 100.0));
-                    }
-                }
             }
         });
     }
@@ -450,13 +441,8 @@ public class ElementalDomainSkill implements ISkill {
                                 applyBuffMeta(le, "Mage_Domain_Enemy_DARK", darkWeak, expireTime);
                             }
                             else if (element == MageElement.NATURE) {
-                                if (le instanceof Player) {
-                                    applyBuffMeta(le, "Mage_Domain_Enemy_NATURE", natureSlow, expireTime);
-                                    RPGPlayer tRpg = RPGCore.getInstance().getPlayerManager().getRPGPlayer(le.getUniqueId());
-                                    if (tRpg != null) tRpg.updateMoveSpeed();
-                                } else {
-                                    StatusEffectManager.applyEffect(le, PotionEffectType.SLOWNESS, 40, phase - 1);
-                                }
+                                // Tự động xử lý thông minh (-15/30/45% cho Player, Slowness cho Quái)
+                                StatusEffectManager.applySlow(le, 40, natureSlow, phase - 1);
                             }
                             else if (element == MageElement.LIGHT) {
                                 double dmg = le.getHealth() * lightBurn;
