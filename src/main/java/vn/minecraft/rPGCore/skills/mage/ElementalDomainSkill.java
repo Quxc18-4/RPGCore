@@ -269,32 +269,24 @@ public class ElementalDomainSkill implements ISkill {
                     player.getWorld().playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, 0.6f, pitch);
                 }
 
-                if (ticks % 2 == 0) {
-                    double angle = Math.random() * Math.PI * 2;
-                    Location spawnLoc = player.getLocation().add(Math.cos(angle) * 3, 0.5 + Math.random() * 1.5, Math.sin(angle) * 3);
-                    org.bukkit.util.Vector dir = player.getLocation().add(0, 1, 0).toVector().subtract(spawnLoc.toVector()).normalize();
-                    player.getWorld().spawnParticle(element.getParticle(), spawnLoc, 0, dir.getX(), dir.getY(), dir.getZ(), 0.3);
-                }
-
-                drawPersistentRings(player, element);
+                // Vẽ Ma pháp trận (Truyền thêm ticks để tạo hiệu ứng xoay)
+                drawPersistentRings(player, element, ticks);
                 handlePhaseAnimation(player, ticks, element);
 
                 // ==========================================
-                // [CẬP NHẬT CHÍNH XÁC]: ÉP MỞ KHÓA TẦNG THEO LEVEL
+                // ÉP MỞ KHÓA TẦNG THEO LEVEL
                 // ==========================================
                 if (ticks == 80) { // Đạt 4s -> Tầng 1
                     reachPhaseLogic(player, 1);
-                    // Nếu Skill Level chỉ là 1, thì KHÔNG CHO GỒNG TIẾP, bắt buộc xả chiêu ngay.
                     if (level == 1) {
                         new BukkitRunnable() {
                             @Override public void run() { triggerDomainRelease(player, rpgPlayer, level); }
-                        }.runTaskLater(plugin, 5L); // Độ trễ nhẹ để hiển thị Title
+                        }.runTaskLater(plugin, 5L);
                         this.cancel();
                         return;
                     }
                 } else if (ticks == 320) { // Đạt 16s -> Tầng 2
                     reachPhaseLogic(player, 2);
-                    // Nếu Skill Level là 2, thì KHÔNG CHO GỒNG LÊN TẦNG 3, bắt buộc xả chiêu ngay.
                     if (level == 2) {
                         new BukkitRunnable() {
                             @Override public void run() { triggerDomainRelease(player, rpgPlayer, level); }
@@ -306,7 +298,7 @@ public class ElementalDomainSkill implements ISkill {
                     reachPhaseLogic(player, 3);
                     new BukkitRunnable() {
                         @Override public void run() { triggerDomainRelease(player, rpgPlayer, level); }
-                    }.runTaskLater(plugin, 20L); // Giữ lại độ trễ 1s như bản gốc
+                    }.runTaskLater(plugin, 20L);
                     this.cancel();
                     return;
                 }
@@ -318,36 +310,69 @@ public class ElementalDomainSkill implements ISkill {
     }
 
     private void handlePhaseAnimation(Player player, int ticks, MageElement element) {
-        if (ticks < 60) drawDroppingRing(player, element, 2.0, 2.0 - (ticks * 0.03));
-        else if (ticks < 80) drawLinkToPlayer(player, element, 2.0);
-
-        if (ticks >= 80 && ticks < 280) drawDroppingRing(player, element, 3.0, 2.0 - ((ticks - 80) * 0.01));
-        else if (ticks >= 280 && ticks < 320) drawLinkBetweenRings(player, element, 3.0, 2.0);
-
-        if (ticks >= 320 && ticks < 480) drawDroppingRing(player, element, 4.0, 2.0 - ((ticks - 320) * 0.012));
-        else if (ticks >= 480 && ticks < 560) drawLinkBetweenRings(player, element, 4.0, 3.0);
+        // Chỉ làm nhiệm vụ hạ các vòng sáng từ trên trời rơi xuống (Giảm mật độ hạt)
+        if (ticks < 80) drawDroppingRing(player, element, 2.0, 2.0 - (ticks * 0.025));
+        else if (ticks >= 80 && ticks < 320) drawDroppingRing(player, element, 3.0, 2.0 - ((ticks - 80) * 0.008));
+        else if (ticks >= 320 && ticks < 560) drawDroppingRing(player, element, 4.0, 2.0 - ((ticks - 320) * 0.008));
     }
 
-    private void drawPersistentRings(Player player, MageElement element) {
+    private void drawPersistentRings(Player player, MageElement element, int ticks) {
         int phase = player.hasMetadata("Mage_Domain_Phase") ? player.getMetadata("Mage_Domain_Phase").get(0).asInt() : 0;
-        if (phase >= 1) drawStaticRing(player, element, 2.0);
-        if (phase >= 2) drawStaticRing(player, element, 3.0);
-        if (phase >= 3) drawStaticRing(player, element, 4.0);
+
+        // [NGHỆ THUẬT]: Các vòng xoay ngược chiều nhau dựa trên thời gian (ticks)
+        double rot1 = ticks * 0.05;  // Xoay nhanh, thuận chiều
+        double rot2 = -ticks * 0.03; // Xoay vừa, ngược chiều
+        double rot3 = ticks * 0.02;  // Xoay chậm, thuận chiều
+
+        if (phase >= 1) {
+            drawStaticRing(player, element, 2.0, rot1);
+            // Nối từ tâm (0.5) ra Vòng 1 (2.0), uốn cong góc Pi/1.5
+            drawMagicRuneLinks(player, element, 0.5, 2.0, 5, Math.PI / 1.5, rot1);
+        }
+        if (phase >= 2) {
+            drawStaticRing(player, element, 3.0, rot2);
+            // Nối từ Vòng 1 ra Vòng 2, uốn cong ngược lại
+            drawMagicRuneLinks(player, element, 2.0, 3.0, 7, -Math.PI / 1.5, rot2);
+        }
+        if (phase >= 3) {
+            drawStaticRing(player, element, 4.0, rot3);
+            drawMagicRuneLinks(player, element, 3.0, 4.0, 9, Math.PI / 1.5, rot3);
+        }
     }
 
     private void drawDroppingRing(Player player, MageElement element, double radius, double height) {
         Location center = player.getLocation().add(0, Math.max(0.1, height), 0);
-        for (int i = 0; i < 360; i += 20) {
+        // Tăng step lên 30 để giảm hạt rơi
+        for (int i = 0; i < 360; i += 30) {
             double rad = Math.toRadians(i);
             player.getWorld().spawnParticle(element.getParticle(), center.clone().add(Math.cos(rad) * radius, 0, Math.sin(rad) * radius), 1, 0, 0, 0, 0);
         }
     }
 
-    private void drawStaticRing(Player player, MageElement element, double radius) {
+    private void drawStaticRing(Player player, MageElement element, double radius, double rotOffset) {
         Location center = player.getLocation().add(0, 0.1, 0);
-        for (int i = 0; i < 360; i += 15) {
-            double rad = Math.toRadians(i);
+        // Tăng step lên 24 (chỉ 15 hạt/vòng)
+        for (int i = 0; i < 360; i += 24) {
+            double rad = Math.toRadians(i) + rotOffset;
             player.getWorld().spawnParticle(element.getParticle(), center.clone().add(Math.cos(rad) * radius, 0, Math.sin(rad) * radius), 1, 0, 0, 0, 0);
+        }
+    }
+
+    // [HÀM MỚI]: Vẽ các nhánh xoắn ốc (Spiral Arms) nghệ thuật
+    private void drawMagicRuneLinks(Player player, MageElement element, double rInner, double rOuter, int arms, double curve, double rotOffset) {
+        Location center = player.getLocation().add(0, 0.1, 0);
+        for (int i = 0; i < arms; i++) {
+            double baseAngle = Math.toRadians((360.0 / arms) * i) + rotOffset;
+
+            // Vẽ đường cong mềm mại từ rInner ra rOuter
+            for (double t = 0; t <= 1.0; t += 0.2) { // Step 0.2 -> Chỉ 5 hạt cho mỗi nhánh! Cực kỳ tối ưu!
+                double r = rInner + t * (rOuter - rInner);
+                double theta = baseAngle + (t * curve); // Bẻ cong góc theo khoảng cách
+
+                double x = r * Math.cos(theta);
+                double z = r * Math.sin(theta);
+                player.getWorld().spawnParticle(element.getParticle(), center.clone().add(x, 0, z), 1, 0, 0, 0, 0);
+            }
         }
     }
 
@@ -462,6 +487,7 @@ public class ElementalDomainSkill implements ISkill {
         caster.getWorld().playSound(center, Sound.ENTITY_ZOMBIE_VILLAGER_CONVERTED, 1.5f, 0.5f);
         caster.sendMessage("§d§l[!] TRIỂN KHAI KẾT GIỚI " + element.getDisplayName().toUpperCase() + " (TẦNG " + phase + ")!");
 
+        // Khối 1: Lãnh vực tỏa ra (Giảm từ 15 -> 8)
         new BukkitRunnable() {
             double currentRadius = 1.0;
             @Override
@@ -471,7 +497,7 @@ public class ElementalDomainSkill implements ISkill {
                     this.cancel();
                     return;
                 }
-                int particleCount = (int) (currentRadius * 15);
+                int particleCount = (int) (currentRadius * 8); // [GIẢM HẠT TỎA RA]
                 for (int i = 0; i < particleCount; i++) {
                     double angle = 2 * Math.PI * i / particleCount;
                     Location loc = center.clone().add(Math.cos(angle) * currentRadius, 0.2, Math.sin(angle) * currentRadius);
@@ -481,6 +507,7 @@ public class ElementalDomainSkill implements ISkill {
             }
         }.runTaskTimer(plugin, 0L, 1L);
 
+        // Khối 2: Tường lãnh vực duy trì
         new BukkitRunnable() {
             int ticks = 0;
             @Override
@@ -491,14 +518,16 @@ public class ElementalDomainSkill implements ISkill {
                     return;
                 }
 
-                if (ticks % 10 == 0) {
-                    for (int i = 0; i < 360; i += 4) {
-                        double rad = Math.toRadians(i);
+                // [GIẢM HẠT TƯỜNG DUY TRÌ]: Từ 10 ticks -> 15 ticks mới chớp 1 lần. Khoảng cách hạt từ 4 độ -> 12 độ
+                if (ticks % 15 == 0) {
+                    double rot = ticks * 0.02; // Tường lãnh vực cũng xoay nhẹ cho đồng bộ
+                    for (int i = 0; i < 360; i += 12) {
+                        double rad = Math.toRadians(i) + rot;
                         double x = Math.cos(rad) * radius;
                         double z = Math.sin(rad) * radius;
+                        // Bỏ hẳn tường lớp thứ 3 (y=2.0) để tránh rối mắt, chỉ lấy lớp chân (0.2) và lớp hông (1.0)
                         center.getWorld().spawnParticle(element.getParticle(), center.clone().add(x, 0.2, z), 1, 0, 0, 0, 0);
-                        center.getWorld().spawnParticle(element.getParticle(), center.clone().add(x, 1.1, z), 1, 0, 0, 0, 0);
-                        center.getWorld().spawnParticle(element.getParticle(), center.clone().add(x, 2.0, z), 1, 0, 0, 0, 0);
+                        center.getWorld().spawnParticle(element.getParticle(), center.clone().add(x, 1.0, z), 1, 0, 0, 0, 0);
                     }
                 }
 
