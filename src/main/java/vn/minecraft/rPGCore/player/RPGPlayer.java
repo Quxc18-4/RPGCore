@@ -1,5 +1,6 @@
 package vn.minecraft.rPGCore.player;
 
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
@@ -597,9 +598,17 @@ public class RPGPlayer {
     public void cleanUpClassData() {
         if (this.bukkitPlayer == null || !this.bukkitPlayer.isOnline()) return;
 
+        org.bukkit.plugin.Plugin plugin = vn.minecraft.rPGCore.RPGCore.getInstance();
+
+        // [FIX BUG TÀNG HÌNH]: Ép hiện hình lập tức với toàn server trước khi xóa tàn dư
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            p.showPlayer(plugin, this.bukkitPlayer);
+        }
+
         // Danh sách các Key Meta "tồn đọng" dễ gây bug
         String[] keysToClear = {
-                // Nhóm Assassin (Thêm key Tàng hình của bạn vào đây nếu cần, ví dụ: "Assassin_Stealth")
+                // Nhóm Assassin (Thêm key Tàng hình vào để Task của kỹ năng tự động chết)
+                "Assassin_Stealth", "Assassin_Smoke_Bomb_Active",
                 "Assassin_Bloodlust_Value", "Active_Weapon_Enhancement", "Ghost_L_Blocker",
                 // Nhóm Mage
                 "Mage_Domain_Channeling", "Mage_Domain_Phase", "Light_Blink_Combo",
@@ -607,8 +616,6 @@ public class RPGPlayer {
                 "Resonance_Stats", "RPG_Absorption_Shield", "RPG_Absorption_Shield_Max",
                 "Summoner_Pet"
         };
-
-        org.bukkit.plugin.Plugin plugin = vn.minecraft.rPGCore.RPGCore.getInstance();
 
         // 1. Xóa Metadata
         for (String key : keysToClear) {
@@ -626,9 +633,9 @@ public class RPGPlayer {
         vn.minecraft.rPGCore.managers.StatusEffectManager.removeAbsoluteRoot(this.bukkitPlayer);
         vn.minecraft.rPGCore.managers.StatusEffectManager.removeCustomHover(this.bukkitPlayer);
 
-        // 4. Giải phóng hoàn toàn Năng lượng thế chấp (Của Summoner cũ)
+        // 4. Giải phóng hoàn toàn Năng lượng thế chấp
         this.reservedResource = 0;
-        this.currentResource = 0; // Về 0 để bắt đầu hồi phục lại theo class mới
+        this.currentResource = 0;
     }
 
     // ==========================================

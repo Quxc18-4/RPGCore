@@ -175,7 +175,7 @@ public class ElementalDomainSkill implements ISkill {
         StringBuilder stat2 = new StringBuilder();
 
         for (int i = 0; i < lv; i++) {
-            String sep = (i == 0) ? "" : "/"; // Dấu phân cách các tầng
+            String sep = (i == 0) ? "" : " / "; // Dấu phân cách các tầng
             switch (element) {
                 case FIRE: stat1.append(sep).append(fireVals[i]); break;
                 case WATER: stat1.append(sep).append(waterVals[i]); break;
@@ -195,23 +195,23 @@ public class ElementalDomainSkill implements ISkill {
         // Lắp ráp vào hiển thị
         switch (element) {
             case FIRE:
-                lore.add("§f- Đồng minh: §c+" + stat1.toString() + "% §fSát thương gây ra.");
+                lore.add("§f- Đồng minh: §cTăng " + stat1.toString() + " % §fSát thương gây ra.");
                 break;
             case WATER:
-                lore.add("§f- Đồng minh: §bHồi " + stat1.toString() + "% §fMáu tối đa/s.");
+                lore.add("§f- Đồng minh: §bHồi " + stat1.toString() + " % §fMáu tối đa/s.");
                 break;
             case WIND:
-                lore.add("§f- Đồng minh: §a+" + stat1.toString() + "% §fTốc chạy & §a" + stat2.toString() + " §f% Kháng hiệu ứng.");
+                lore.add("§f- Đồng minh: §aTăng " + stat1.toString() + " % §fTốc chạy & §a" + stat2.toString() + " % §fKháng hiệu ứng.");
                 break;
             case NATURE:
-                lore.add("§f- Kẻ địch: §2Giảm " + stat1.toString() + "% §fTốc độ di chuyển.");
+                lore.add("§f- Kẻ địch: §2Giảm " + stat1.toString() + " % §fTốc độ di chuyển.");
                 break;
             case DARK:
-                lore.add("§f- Kẻ địch: §8Giảm " + stat1.toString() + "% §fSát thương gây ra.");
+                lore.add("§f- Kẻ địch: §8Giảm " + stat1.toString() + " % §fSát thương gây ra.");
                 break;
             case LIGHT:
-                lore.add("§f- Đồng minh: §e+" + stat1.toString() + "% §fTốc độ hồi Mana.");
-                lore.add("§f- Kẻ địch: §cĐốt " + stat2.toString() + "% §fMáu hiện tại (ST Chuẩn).");
+                lore.add("§f- Đồng minh: §eTăng " + stat1.toString() + " % §fTốc độ hồi Mana.");
+                lore.add("§f- Kẻ địch: §cBị Thiêu Đốt " + stat2.toString() + " % §fMáu hiện tại.");
                 break;
         }
         lore.add("§f- Thời gian duy trì: " + durationBuilder.toString());
@@ -342,19 +342,19 @@ public class ElementalDomainSkill implements ISkill {
 
     private void drawDroppingRing(Player player, MageElement element, double radius, double height) {
         Location center = player.getLocation().add(0, Math.max(0.1, height), 0);
-        // Tăng step lên 30 để giảm hạt rơi
         for (int i = 0; i < 360; i += 30) {
             double rad = Math.toRadians(i);
-            player.getWorld().spawnParticle(element.getParticle(), center.clone().add(Math.cos(rad) * radius, 0, Math.sin(rad) * radius), 1, 0, 0, 0, 0);
+            Location loc = center.clone().add(Math.cos(rad) * radius, 0, Math.sin(rad) * radius);
+            spawnRuneParticle(loc, element); // [ĐÃ SỬA]
         }
     }
 
     private void drawStaticRing(Player player, MageElement element, double radius, double rotOffset) {
         Location center = player.getLocation().add(0, 0.1, 0);
-        // Tăng step lên 24 (chỉ 15 hạt/vòng)
         for (int i = 0; i < 360; i += 24) {
             double rad = Math.toRadians(i) + rotOffset;
-            player.getWorld().spawnParticle(element.getParticle(), center.clone().add(Math.cos(rad) * radius, 0, Math.sin(rad) * radius), 1, 0, 0, 0, 0);
+            Location loc = center.clone().add(Math.cos(rad) * radius, 0, Math.sin(rad) * radius);
+            spawnRuneParticle(loc, element); // [ĐÃ SỬA]
         }
     }
 
@@ -363,15 +363,12 @@ public class ElementalDomainSkill implements ISkill {
         Location center = player.getLocation().add(0, 0.1, 0);
         for (int i = 0; i < arms; i++) {
             double baseAngle = Math.toRadians((360.0 / arms) * i) + rotOffset;
-
-            // Vẽ đường cong mềm mại từ rInner ra rOuter
-            for (double t = 0; t <= 1.0; t += 0.2) { // Step 0.2 -> Chỉ 5 hạt cho mỗi nhánh! Cực kỳ tối ưu!
+            for (double t = 0; t <= 1.0; t += 0.2) {
                 double r = rInner + t * (rOuter - rInner);
-                double theta = baseAngle + (t * curve); // Bẻ cong góc theo khoảng cách
+                double theta = baseAngle + (t * curve);
 
-                double x = r * Math.cos(theta);
-                double z = r * Math.sin(theta);
-                player.getWorld().spawnParticle(element.getParticle(), center.clone().add(x, 0, z), 1, 0, 0, 0, 0);
+                Location loc = center.clone().add(r * Math.cos(theta), 0, r * Math.sin(theta));
+                spawnRuneParticle(loc, element); // [ĐÃ SỬA]
             }
         }
     }
@@ -485,7 +482,7 @@ public class ElementalDomainSkill implements ISkill {
 
         caster.getWorld().playSound(center, Sound.ENTITY_GENERIC_EXPLODE, 2.0f, 0.8f);
         caster.getWorld().playSound(center, Sound.ENTITY_ZOMBIE_VILLAGER_CONVERTED, 1.5f, 0.5f);
-        caster.sendMessage("§d§l[!] TRIỂN KHAI KẾT GIỚI " + element.getDisplayName().toUpperCase() + " (TẦNG " + phase + ")!");
+        caster.sendMessage("§d§l[!] TRIỂN KHAI KẾT GIỚI " + element.getDisplayName().toUpperCase() + " (Tầng " + phase + ")!");
 
         // Khối 1: Lãnh vực tỏa ra (Giảm từ 15 -> 8)
         new BukkitRunnable() {
@@ -501,7 +498,7 @@ public class ElementalDomainSkill implements ISkill {
                 for (int i = 0; i < particleCount; i++) {
                     double angle = 2 * Math.PI * i / particleCount;
                     Location loc = center.clone().add(Math.cos(angle) * currentRadius, 0.2, Math.sin(angle) * currentRadius);
-                    center.getWorld().spawnParticle(element.getParticle(), loc, 1, 0, 0, 0, 0);
+                    spawnRuneParticle(loc, element);
                 }
                 currentRadius += 3.0;
             }
@@ -526,8 +523,10 @@ public class ElementalDomainSkill implements ISkill {
                         double x = Math.cos(rad) * radius;
                         double z = Math.sin(rad) * radius;
                         // Bỏ hẳn tường lớp thứ 3 (y=2.0) để tránh rối mắt, chỉ lấy lớp chân (0.2) và lớp hông (1.0)
-                        center.getWorld().spawnParticle(element.getParticle(), center.clone().add(x, 0.2, z), 1, 0, 0, 0, 0);
-                        center.getWorld().spawnParticle(element.getParticle(), center.clone().add(x, 1.0, z), 1, 0, 0, 0, 0);
+                        Location loc1 = center.clone().add(x, 0.2, z);
+                        Location loc2 = center.clone().add(x, 1.0, z);
+                        spawnRuneParticle(loc1, element); // [ĐÃ SỬA]
+                        spawnRuneParticle(loc2, element); // [ĐÃ SỬA]
                     }
                 }
 
@@ -595,5 +594,30 @@ public class ElementalDomainSkill implements ISkill {
     private void applyBuffMeta(LivingEntity entity, String key, double value, long expireTime) {
         entity.setMetadata(key, new FixedMetadataValue(plugin, value));
         entity.setMetadata(key + "_Expire", new FixedMetadataValue(plugin, expireTime));
+    }
+
+    // ==========================================
+    // [HỆ THỐNG VFX]: HẠT MA PHÁP TRẬN CHUYÊN DỤNG
+    // ==========================================
+    private void spawnRuneParticle(Location loc, MageElement element) {
+        org.bukkit.Color color;
+        float size = 1.0f; // Kích thước hạt mặc định
+
+        switch (element) {
+            case FIRE: color = org.bukkit.Color.fromRGB(255, 60, 0); break; // Đỏ cam rực
+            case WATER: color = org.bukkit.Color.fromRGB(0, 150, 255); break; // Xanh đại dương
+            case WIND: color = org.bukkit.Color.fromRGB(150, 255, 200); break; // Xanh ngọc nhạt
+            case NATURE: color = org.bukkit.Color.fromRGB(50, 200, 50); break; // Xanh lục
+            case LIGHT: color = org.bukkit.Color.fromRGB(255, 255, 100); break; // Vàng ánh kim
+            case DARK:
+                color = org.bukkit.Color.fromRGB(120, 0, 180); // Tím Hư Không sắc nét
+                size = 1.3f; // Cho hạt Dark to hơn một chút để rõ ràng dứt khoát
+                break;
+            default: color = org.bukkit.Color.WHITE; break;
+        }
+
+        Particle.DustOptions dust = new Particle.DustOptions(color, size);
+        // Force spawn (tham số true) để đảm bảo người chơi ở xa vẫn nhìn thấy
+        loc.getWorld().spawnParticle(Particle.DUST, loc, 1, 0, 0, 0, 0.0, dust, true);
     }
 }

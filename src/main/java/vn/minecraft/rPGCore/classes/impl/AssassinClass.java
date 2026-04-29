@@ -187,6 +187,9 @@ public class AssassinClass extends RPGClass {
     // ==========================================
     // [BƯỚC 2.2]: NỘI TẠI LẨN KHUẤT (10s AUTO-STEALTH)
     // ==========================================
+    // ==========================================
+    // [BƯỚC 2.2]: NỘI TẠI LẨN KHUẤT (10s AUTO-STEALTH)
+    // ==========================================
     public void startPassiveStealthTask(vn.minecraft.rPGCore.RPGCore core) {
         new org.bukkit.scheduler.BukkitRunnable() {
             @Override
@@ -197,11 +200,14 @@ public class AssassinClass extends RPGClass {
                     if (rpg != null && rpg.getCurrentClass() instanceof AssassinClass) {
                         if (!player.hasMetadata("Assassin_Stealth") && !rpg.isInCombat()) {
 
-                            vn.minecraft.rPGCore.skills.ISkill skill = core.getSkillManager().getSkill("assassin_smoke_bomb");
-                            if (skill instanceof vn.minecraft.rPGCore.skills.assassin.SmokeBombSkill) {
-                                ((vn.minecraft.rPGCore.skills.assassin.SmokeBombSkill) skill).applyStealth(player, 999999);
-                                player.sendMessage("§8§o(Nhịp tim ổn định... Bạn đã lẩn khuất vào bóng đêm)");
-                                player.getWorld().spawnParticle(org.bukkit.Particle.SMOKE, player.getLocation().add(0, 1, 0), 10, 0.2, 0.5, 0.2, 0.02);
+                            // [FIX BUG]: Phải nâng cấp chiêu Bom Khói ít nhất Lv 1 mới được kích hoạt Nội tại
+                            if (rpg.getSkillData().getSkillLevel("assassin_smoke_bomb") > 0) {
+                                vn.minecraft.rPGCore.skills.ISkill skill = core.getSkillManager().getSkill("assassin_smoke_bomb");
+                                if (skill instanceof vn.minecraft.rPGCore.skills.assassin.SmokeBombSkill) {
+                                    ((vn.minecraft.rPGCore.skills.assassin.SmokeBombSkill) skill).applyStealth(player, 999999);
+                                    player.sendMessage("§8§o(Nhịp tim ổn định... Bạn đã lẩn khuất vào bóng đêm)");
+                                    player.getWorld().spawnParticle(org.bukkit.Particle.SMOKE, player.getLocation().add(0, 1, 0), 10, 0.2, 0.5, 0.2, 0.02);
+                                }
                             }
                         }
                     }
