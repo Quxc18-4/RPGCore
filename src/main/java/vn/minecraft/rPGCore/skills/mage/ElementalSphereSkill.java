@@ -33,7 +33,7 @@ public class ElementalSphereSkill implements ISkill {
     }
 
     @Override public String getId() { return "mage_elemental_sphere"; }
-    @Override public String getName() { return "Ma Pháp Trận"; }
+    @Override public String getName() { return "Nén Ma Lực"; }
     @Override public String getRequiredClass() { return "mage"; }
     @Override public Material getIcon() { return Material.HEART_OF_THE_SEA; }
 

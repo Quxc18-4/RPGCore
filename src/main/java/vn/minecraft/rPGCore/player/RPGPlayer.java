@@ -465,93 +465,170 @@ public class RPGPlayer {
     // 1. HỆ THỐNG ĐỔI CLASS (Chỉ gọi khi người chơi BẤM CHỌN CLASS ở Menu GUI)
     // ==========================================
     public void changeClass(RPGClass newClass) {
-        if (this.currentClass != null && !this.currentClass.getId().equalsIgnoreCase(newClass.getId())) {
+        if (newClass == null) return; // Chặn đứng ngay nếu dữ liệu Class truyền vào bị hỏng
 
-            // [MỚI]: Nếu đang là Summoner mà đổi class khác -> Tiêu diệt toàn bộ thú!
-            if (this.currentClass instanceof vn.minecraft.rPGCore.classes.impl.SummonerClass) {
-                ((vn.minecraft.rPGCore.classes.impl.SummonerClass) this.currentClass).clearAllPets(this.bukkitPlayer);
+        try {
+            if (this.currentClass != null && !this.currentClass.getId().equalsIgnoreCase(newClass.getId())) {
+
+                // [MỚI]: Nếu đang là Summoner mà đổi class khác -> Tiêu diệt toàn bộ thú!
+                if (this.currentClass instanceof vn.minecraft.rPGCore.classes.impl.SummonerClass) {
+                    if (this.bukkitPlayer != null) {
+                        ((vn.minecraft.rPGCore.classes.impl.SummonerClass) this.currentClass).clearAllPets(this.bukkitPlayer);
+                    }
+                }
+
+                // Dọn dẹp tàn dư của Class cũ (Kiểm tra an toàn dữ liệu)
+                if (this.skillData != null) {
+                    this.skillData.clearAllSkills();
+                    this.skillData.clearAllBinds();
+                }
+
+                // Backup SP và bắn thông báo
+                if (this.bukkitPlayer != null && this.bukkitPlayer.isOnline()) {
+                    int currentLevel = this.bukkitPlayer.getLevel();
+                    if (this.skillData != null) this.skillData.setSkillPoints(currentLevel);
+
+                    this.bukkitPlayer.sendMessage("§a§l[!] §fBạn đã chuyển sang hệ phái: §e" + newClass.getDisplayName());
+                    this.bukkitPlayer.sendMessage("§b⟳ Toàn bộ Kỹ năng và Phím tắt đã được reset! Hoàn trả §e" + currentLevel + " SP§b.");
+                }
             }
 
-            // Dọn dẹp tàn dư của Class cũ
-            this.skillData.clearAllSkills();
-            this.skillData.clearAllBinds();
+            // ==========================================
+            // [CƠ CHẾ MAGE]: ROLL NGUYÊN TỐ LẦN ĐẦU TIÊN
+            // ==========================================
+            if (newClass.getId().equalsIgnoreCase("mage")) {
+                if (this.unlockedElements == null) {
+                    this.unlockedElements = new java.util.ArrayList<>();
+                }
 
-            // Backup SP
-            int currentLevel = this.bukkitPlayer.getLevel();
-            this.skillData.setSkillPoints(currentLevel);
+                if (this.unlockedElements.isEmpty()) {
+                    String[] availableElements = {"FIRE", "WATER", "WIND", "NATURE", "LIGHT", "DARK"};
+                    java.util.Random rand = new java.util.Random();
+                    int roll = rand.nextInt(100);
+                    int amountToRoll;
 
-            // Bắn thông báo
-            this.bukkitPlayer.sendMessage("§a§l[!] §fBạn đã chuyển sang hệ phái: §e" + newClass.getDisplayName());
-            this.bukkitPlayer.sendMessage("§b⟳ Toàn bộ Kỹ năng và Phím tắt đã được reset! Hoàn trả §e" + currentLevel + " SP§b.");
+                    if (roll < 1) amountToRoll = 6;
+                    else if (roll < 3) amountToRoll = 5;
+                    else if (roll < 8) amountToRoll = 4;
+                    else if (roll < 18) amountToRoll = 3;
+                    else if (roll < 50) amountToRoll = 2;
+                    else amountToRoll = 1;
+
+                    java.util.List<String> elementList = java.util.Arrays.asList(availableElements);
+                    java.util.Collections.shuffle(elementList);
+                    for (int i = 0; i < amountToRoll; i++) {
+                        this.unlockedElements.add(elementList.get(i));
+                    }
+
+                    if (this.bukkitPlayer != null && this.bukkitPlayer.isOnline()) {
+                        if (amountToRoll >= 4) {
+                            org.bukkit.Bukkit.broadcastMessage("§e§l[Máy Chủ] §fNgười chơi §a" + this.bukkitPlayer.getName() + " §fvừa thức tỉnh §d" + amountToRoll + " Nguyên Tố §fma thuật!");
+                            this.bukkitPlayer.playSound(this.bukkitPlayer.getLocation(), org.bukkit.Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+                        } else {
+                            this.bukkitPlayer.playSound(this.bukkitPlayer.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 0.5f);
+                        }
+                        this.bukkitPlayer.sendMessage("§d§l[Thức Tỉnh Nguyên Tố] §fMa lực của bạn cộng hưởng với: §a" + String.join(", ", this.unlockedElements));
+                    }
+                }
+            }
+
+            // Gọi hàm Gán Class
+            setClass(newClass);
+
+        } catch (Exception e) {
+            org.bukkit.Bukkit.getLogger().severe("[RPGCore] Loi nghiem trong khi doi Class cho nguoi choi " + (this.bukkitPlayer != null ? this.bukkitPlayer.getName() : "Unknown"));
+            e.printStackTrace();
+            if (this.bukkitPlayer != null && this.bukkitPlayer.isOnline()) {
+                this.bukkitPlayer.sendMessage("§c§l[!] §cĐã xảy ra lỗi hệ thống khi chuyển phái. Vui lòng báo cáo cho Admin!");
+            }
         }
-
-        // ==========================================
-        // [CƠ CHẾ MAGE]: ROLL NGUYÊN TỐ LẦN ĐẦU TIÊN (Gacha Hệ Thống)
-        // ==========================================
-        if (newClass.getId().equalsIgnoreCase("mage") && this.unlockedElements.isEmpty()) {
-            String[] availableElements = {"FIRE", "WATER", "WIND", "NATURE", "LIGHT", "DARK"};
-
-            java.util.Random rand = new java.util.Random();
-            int roll = rand.nextInt(100); // Tạo số ngẫu nhiên từ 0 đến 99
-            int amountToRoll;
-
-            // Thuật toán Tỉ lệ phân tầng (Weighted Random)
-            // 1%: 6 NT | 2%: 5 NT | 5%: 4 NT | 10%: 3 NT | 32%: 2 NT | 50%: 1 NT
-            if (roll < 1) {             // 0 (1%)
-                amountToRoll = 6;
-            } else if (roll < 3) {      // 1, 2 (2%)
-                amountToRoll = 5;
-            } else if (roll < 8) {      // 3 đến 7 (5%)
-                amountToRoll = 4;
-            } else if (roll < 18) {     // 8 đến 17 (10%)
-                amountToRoll = 3;
-            } else if (roll < 50) {     // 18 đến 49 (32%)
-                amountToRoll = 2;
-            } else {                    // 50 đến 99 (50%)
-                amountToRoll = 1;
-            }
-
-            // Trộn mảng và lấy số lượng nguyên tố tương ứng
-            java.util.List<String> elementList = java.util.Arrays.asList(availableElements);
-            java.util.Collections.shuffle(elementList);
-            for (int i = 0; i < amountToRoll; i++) {
-                this.unlockedElements.add(elementList.get(i));
-            }
-
-            // Hiệu ứng và Thông báo
-            if (amountToRoll >= 4) {
-                // Nếu roll ra từ 4 nguyên tố trở lên -> Thông báo toàn Server!
-                org.bukkit.Bukkit.broadcastMessage("§e§l[Máy Chủ] §fNgười chơi §a" + this.bukkitPlayer.getName() + " §fvừa thức tỉnh §d" + amountToRoll + " Nguyên Tố §fma thuật!");
-                this.bukkitPlayer.playSound(this.bukkitPlayer.getLocation(), org.bukkit.Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
-            } else {
-                this.bukkitPlayer.playSound(this.bukkitPlayer.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 0.5f);
-            }
-
-            this.bukkitPlayer.sendMessage("§d§l[Thức Tỉnh Nguyên Tố] §fMa lực của bạn cộng hưởng với: §a" + String.join(", ", this.unlockedElements));
-        }
-
-        // Sau khi reset xong thì gọi hàm Gán Class bên dưới
-        setClass(newClass);
     }
 
     // ==========================================
     // 2. HỆ THỐNG GÁN CLASS (Chạy im lặng khi vào game / Load Data)
     // ==========================================
     public void setClass(RPGClass newClass) {
-        this.currentClass = newClass;
-        this.currentResource = getTotalMaxResource();
-        updateMaxStats();
-        this.bukkitPlayer.setHealth(getTotalMaxHealth());
+        if (newClass == null) return;
+
+        try {
+            // [QUAN TRỌNG]: Quét dọn sạch sẽ buff/metadata của Class cũ trước khi áp dụng
+            cleanUpClassData();
+
+            this.currentClass = newClass;
+            this.currentResource = getTotalMaxResource();
+            updateMaxStats();
+
+            if (this.bukkitPlayer != null && this.bukkitPlayer.isOnline() && !this.bukkitPlayer.isDead()) {
+                double targetHealth = getTotalMaxHealth();
+                // [CHỐNG CRASH BUKKIT]: Bukkit sẽ ném IllegalArgumentException nếu setHealth cao hơn Max Health
+                org.bukkit.attribute.AttributeInstance maxHpAttr = this.bukkitPlayer.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+                if (maxHpAttr != null) {
+                    targetHealth = Math.min(targetHealth, maxHpAttr.getValue());
+                }
+                this.bukkitPlayer.setHealth(Math.max(0.1, targetHealth));
+            }
+        } catch (Exception e) {
+            org.bukkit.Bukkit.getLogger().severe("[RPGCore] Khong the ap dung du lieu Class moi!");
+            e.printStackTrace();
+        }
     }
 
     public void setCurrentResource(double currentResource) {
-        // [ĐÃ SỬA]: Giới hạn tối đa không còn là Tổng Mana, mà là (Tổng - Thế chấp)
-        this.currentResource = Math.max(0, Math.min(currentResource, getUsableMaxResource()));
+        try {
+            // Ép giới hạn an toàn
+            this.currentResource = Math.max(0, Math.min(currentResource, getUsableMaxResource()));
 
-        // [FIX BUG UI]: Ép BossBar cập nhật ngay lập tức
-        if (this.bukkitPlayer != null && this.bukkitPlayer.isOnline()) {
-            vn.minecraft.rPGCore.RPGCore.getInstance().getBossBarManager().updateBars(this.bukkitPlayer, this);
+            // [FIX BUG UI]: Ép BossBar cập nhật với điều kiện chống Null Pointer toàn diện
+            if (this.bukkitPlayer != null && this.bukkitPlayer.isOnline()) {
+                vn.minecraft.rPGCore.RPGCore plugin = vn.minecraft.rPGCore.RPGCore.getInstance();
+                if (plugin != null && plugin.getBossBarManager() != null) {
+                    plugin.getBossBarManager().updateBars(this.bukkitPlayer, this);
+                }
+            }
+        } catch (Exception e) {
+            org.bukkit.Bukkit.getLogger().warning("[RPGCore] Loi cap nhat tai nguyen (Mana/No) tren BossBar.");
+            e.printStackTrace();
         }
+    }
+
+    // ==========================================
+    // [DỌN DẸP LỖI CHUYỂN PHÁI]: XÓA METADATA & TASK RÁC
+    // ==========================================
+    public void cleanUpClassData() {
+        if (this.bukkitPlayer == null || !this.bukkitPlayer.isOnline()) return;
+
+        // Danh sách các Key Meta "tồn đọng" dễ gây bug
+        String[] keysToClear = {
+                // Nhóm Assassin (Thêm key Tàng hình của bạn vào đây nếu cần, ví dụ: "Assassin_Stealth")
+                "Assassin_Bloodlust_Value", "Active_Weapon_Enhancement", "Ghost_L_Blocker",
+                // Nhóm Mage
+                "Mage_Domain_Channeling", "Mage_Domain_Phase", "Light_Blink_Combo",
+                // Nhóm Summoner
+                "Resonance_Stats", "RPG_Absorption_Shield", "RPG_Absorption_Shield_Max",
+                "Summoner_Pet"
+        };
+
+        org.bukkit.plugin.Plugin plugin = vn.minecraft.rPGCore.RPGCore.getInstance();
+
+        // 1. Xóa Metadata
+        for (String key : keysToClear) {
+            if (this.bukkitPlayer.hasMetadata(key)) {
+                this.bukkitPlayer.removeMetadata(key, plugin);
+            }
+        }
+
+        // 2. Reset các hiệu ứng Vanilla (Xóa tàng hình, xóa chậm, xóa Jump Boost)
+        for (org.bukkit.potion.PotionEffect effect : this.bukkitPlayer.getActivePotionEffects()) {
+            this.bukkitPlayer.removePotionEffect(effect.getType());
+        }
+
+        // 3. Reset các chỉ số ngầm của Core
+        vn.minecraft.rPGCore.managers.StatusEffectManager.removeAbsoluteRoot(this.bukkitPlayer);
+        vn.minecraft.rPGCore.managers.StatusEffectManager.removeCustomHover(this.bukkitPlayer);
+
+        // 4. Giải phóng hoàn toàn Năng lượng thế chấp (Của Summoner cũ)
+        this.reservedResource = 0;
+        this.currentResource = 0; // Về 0 để bắt đầu hồi phục lại theo class mới
     }
 
     // ==========================================

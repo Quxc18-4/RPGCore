@@ -102,7 +102,7 @@ public class ElementalBurstSkill implements ISkill {
                 lore.add("§f- Tăng §a" + speedBonus + "% Tốc độ di chuyển§f trong 3s.");
                 break;
             case NATURE:
-                lore.add("§2[Thi Triển: Bão Lá Cuồng Si]");
+                lore.add("§2[Thi Triển: Bão Lá Ma Thuật]");
                 lore.add("§f- Tạo ra cơn bão lá di chuyển thẳng về phía trước.");
                 lore.add("§f- Khóa khả năng bật nhảy của kẻ địch bên trong.");
                 lore.add("§f- Cú nổ đầu gây §c" + (int)(baseDmgPct * 0.8) + "% Sát Thương§f, sau đó");
@@ -118,7 +118,7 @@ public class ElementalBurstSkill implements ISkill {
                 lore.add("§5[Thi Triển: Khe Nứt Diệt Vong]");
                 lore.add("§f- Mở khe nứt quét tia laser hình quạt về phía trước.");
                 lore.add("§f- Gây §c" + (int)(baseDmgPct * 1.2) + "% Sát Thương§f, kèm hiệu ứng §8Mù Lòa§f");
-                lore.add("§f  và §cPhân Rã §ftrong 4s.");
+                lore.add("§f  và §cĂn Mòn §ftrong 4s.");
                 break;
         }
         return lore;
