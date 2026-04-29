@@ -81,14 +81,14 @@ public class ElementalBurstSkill implements ISkill {
 
         switch (element) {
             case FIRE:
-                lore.add("§c[Thi Triển: Liệt Hỏa Trùng m]");
+                lore.add("§c[Thi Triển - Liệt Hỏa Trùng m]");
                 lore.add("§f- Triệu hồi 9 cột lửa phun trào hình quạt.");
                 lore.add("§f- Cột đầu trúng mục tiêu gây §c" + baseDmgPct + "% Sát Thương§f,");
                 lore.add("§f  các cột sau chạm cùng mục tiêu chỉ gây §c15% Sát Thương§f.");
                 lore.add("§f- Hất văng và có 50% tỷ lệ §6Thiêu Đốt§f.");
                 break;
             case WATER:
-                lore.add("§b[Thi Triển: Sóng Dữ]");
+                lore.add("§b[Thi Triển - Sóng Dữ]");
                 lore.add("§f- Đẩy một bức tường nước dài 4m về phía trước.");
                 lore.add("§f- Cuốn trôi, đẩy lùi mọi kẻ địch và làm chậm 30%.");
                 lore.add("§f- Gây §c" + (int)(baseDmgPct * 1.2) + "% Sát Thương§f.");
@@ -96,26 +96,26 @@ public class ElementalBurstSkill implements ISkill {
             case WIND:
                 // Tính toán ép kiểu Int và làm tròn để hiện lên Lore thật đẹp
                 int speedBonus = (int) Math.round(15.0 + ((displayLevel - 1) * (20.0 / 9.0)));
-                lore.add("§a[Thi Triển: Phong Nhẫn Trảm]");
+                lore.add("§a[Thi Triển - Phong Nhẫn Trảm]");
                 lore.add("§f- Bắn 8 lưỡi đao gió xuyên thấu 360 độ.");
                 lore.add("§f- Gây §c" + baseDmgPct + "% ST§f cho mục tiêu.");
                 lore.add("§f- Tăng §a" + speedBonus + "% Tốc độ di chuyển§f trong 3s.");
                 break;
             case NATURE:
-                lore.add("§2[Thi Triển: Bão Lá Ma Thuật]");
+                lore.add("§2[Thi Triển - Bão Lá Ma Thuật]");
                 lore.add("§f- Tạo ra cơn bão lá di chuyển thẳng về phía trước.");
                 lore.add("§f- Khóa khả năng bật nhảy của kẻ địch bên trong.");
                 lore.add("§f- Cú nổ đầu gây §c" + (int)(baseDmgPct * 0.8) + "% Sát Thương§f, sau đó");
                 lore.add("§f  gây §c" + (int)(baseDmgPct * 0.2) + "% Sát Thương§f liên tục mỗi giây.");
                 break;
             case LIGHT:
-                lore.add("§e[Thi Triển: Quang Phổ Chói Lòa]");
+                lore.add("§e[Thi Triển - Quang Phổ Chói Lòa]");
                 lore.add("§f- Bùng nổ ánh sáng diện rộng tại bản thân.");
                 lore.add("§f- Gây §c" + (int)(baseDmgPct * 0.7) + "% Sát Thương§f.");
                 lore.add("§f- Làm mù và choáng hoàn toàn kẻ địch trong §a" + String.format("%.1f", 1.5 + (displayLevel * 0.1)) + "s§f.");
                 break;
             case DARK:
-                lore.add("§5[Thi Triển: Khe Nứt Diệt Vong]");
+                lore.add("§5[Thi Triển - Khe Nứt Diệt Vong]");
                 lore.add("§f- Mở khe nứt quét tia laser hình quạt về phía trước.");
                 lore.add("§f- Gây §c" + (int)(baseDmgPct * 1.2) + "% Sát Thương§f, kèm hiệu ứng §8Mù Lòa§f");
                 lore.add("§f  và §cĂn Mòn §ftrong 4s.");

@@ -150,6 +150,9 @@ public class SmokeBombSkill implements ISkill {
             };
             stealthTask.runTaskTimer(plugin, 0L, 1L);
             activeTasks.put(player.getUniqueId(), stealthTask);
+
+            // [ĐÃ SỬA BUG]: Lưu Task ID vào Metadata để dọn dẹp khi chuyển phái!
+            player.setMetadata("Assassin_Stealth_Task", new FixedMetadataValue(plugin, stealthTask.getTaskId()));
         } else {
             player.sendMessage("§8§o(Thời gian ẩn thân đã được làm mới...)");
         }
@@ -159,6 +162,14 @@ public class SmokeBombSkill implements ISkill {
         if (player.hasMetadata("Assassin_Stealth")) {
             player.removeMetadata("Assassin_Stealth", plugin);
             player.removeMetadata("Assassin_Smoke_Bomb_Active", plugin);
+
+            // [ĐÃ SỬA BUG]: Hủy luôn Task nếu đang chạy để tránh rò rỉ hạt khói
+            if (player.hasMetadata("Assassin_Stealth_Task")) {
+                int taskId = player.getMetadata("Assassin_Stealth_Task").get(0).asInt();
+                Bukkit.getScheduler().cancelTask(taskId);
+                player.removeMetadata("Assassin_Stealth_Task", plugin);
+            }
+
             player.sendMessage("§c§l[!] Bạn đã hiện hình!");
             for (Player p : Bukkit.getOnlinePlayers()) p.showPlayer(plugin, player);
         }

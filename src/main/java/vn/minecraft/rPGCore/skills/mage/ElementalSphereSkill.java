@@ -94,37 +94,37 @@ public class ElementalSphereSkill implements ISkill {
 
         switch (element) {
             case FIRE:
-                lore.add("§c[Thi Triển: Bạo Liệt Viêm Kích]");
+                lore.add("§c[Thi triển - Bạo Liệt Viêm Kích]");
                 lore.add("§f- Phát nổ bộc phá diện rộng tại vị trí tiếp xúc.");
                 lore.add("§f- Gây §c" + (domDmgPct * 2) + "% Sát thương§f và thiêu đốt mọi kẻ địch.");
                 break;
             case WATER:
-                lore.add("§b[Thi Triển: Thủy Triều Dâng]");
+                lore.add("§b[Thi triển - Thủy Triều Dâng]");
                 lore.add("§f- Kích nổ 3 đợt sóng liên tiếp (Mỗi 1.5s).");
                 lore.add("§f- Gây §c" + domDmgPct + "% Sát thương§f và hất văng kẻ địch lên trời.");
                 break;
             case WIND:
-                lore.add("§a[Thi Triển: Cuồng Phong]");
+                lore.add("§a[Thi triển - Cuồng Phong]");
                 lore.add("§f- Giải phóng lõi lốc xoáy duy trì §a6s §f.");
                 lore.add("§f- Liên tục hút kẻ địch vào tâm với tổng sát");
                 lore.add("§f  thương bằng §c" + domDmgPct + "% Sát thương§f.");
                 break;
             case NATURE:
-                lore.add("§2[Thi Triển: Dây Leo Cuồng Nộ]");
+                lore.add("§2[Thi triển - Dây Leo Cuồng Nộ]");
                 lore.add("§f- Tạo rừng dây leo khóa chặt vị trí kẻ địch");
                 lore.add("§f  trong §a3.5s §f, gây §c" + domDmgPct + "% Sát thương§f.");
                 lore.add("§f- Rút sinh lực kẻ địch bị trói về cho bản");
                 lore.add("§f  thân: Hồi §a0.5% Máu/s §f(Tối đa 4% / Đợt).");
                 break;
             case LIGHT:
-                lore.add("§e[Thi Triển: Quả Cầu Ánh Sáng]");
+                lore.add("§e[Thi triển - Quả Cầu Ánh Sáng]");
                 lore.add("§f- Tạo ra Thánh Vực duy trì §a8s §f.");
                 lore.add("§f- Gây §c" + domDmgPct + "% Sát thương§f.");
                 lore.add("§f- Kẻ địch bên trong: Nhận thêm §c15% Sát thương§f.");
                 lore.add("§f- Đồng minh bên trong: Giảm §a8% Sát thương nhận vào§f.");
                 break;
             case DARK:
-                lore.add("§5[Thi Triển: Khe Nứt Bóng Tối]");
+                lore.add("§5[Thi triển - Khe Nứt Bóng Tối]");
                 lore.add("§f- Khởi tạo gây §c" + (int)(domDmgPct * 0.7) + "% Sát thương§f và xé rách");
                 lore.add("§f  không gian thành một Rãnh nứt tồn tại §a10s§f.");
                 lore.add("§f- Rãnh nứt liên tục phóng sét Hư không vào tối đa");

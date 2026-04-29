@@ -73,7 +73,7 @@ public class FocusSkill extends AbstractEnhancementSkill {
         switch (element) {
             case FIRE:
                 int minFire = (int)(totalDmg * 0.30);
-                lore.add("§c[Thi Triển: Đại Hỏa Cầu]");
+                lore.add("§c[Thi Triển - Đại Hỏa Cầu]");
                 lore.add("§f- Bắn quả cầu lửa khổng lồ, nổ chia đều sát");
                 lore.add("§f  thương cho tối đa 10 mục tiêu.");
                 lore.add("§f- Sát thương: §c" + minFire + "% §f- §c" + totalDmg + "% ST Vũ khí§f.");
@@ -82,7 +82,7 @@ public class FocusSkill extends AbstractEnhancementSkill {
             case WATER:
                 int waterOut = (int) Math.round(totalDmg * 0.60);
                 int waterReturn = (int) Math.round(totalDmg * 0.30);
-                lore.add("§b[Thi Triển: Boomerang Nước]");
+                lore.add("§b[Thi Triển - Boomerang Nước]");
                 lore.add("§f- Phóng đao nước bay đi và quay về, xuyên");
                 lore.add("§f  thấu tối đa 10 mục tiêu.");
                 lore.add("§f- Lượt đi: §c" + waterOut + "% ST Vũ khí§f.");
@@ -93,7 +93,7 @@ public class FocusSkill extends AbstractEnhancementSkill {
                 // [ĐÃ SỬA]: Khớp với FocusWind.java (25% mỗi giây)
                 int maxWind = (int) Math.round(totalDmg * 0.25);
                 int minWind = (int) Math.round(totalDmg * 0.10);
-                lore.add("§a[Thi Triển: Mắt Bão]");
+                lore.add("§a[Thi Triển - Mắt Bão]");
                 lore.add("§f- Tạo tâm bão hút quái (4m) duy trì 4s.");
                 lore.add("§f- Sát thương: §c" + maxWind + "%/s§f, giảm 2% mỗi quái");
                 lore.add("§f  (Tối thiểu §c" + minWind + "%§f).");
@@ -101,7 +101,7 @@ public class FocusSkill extends AbstractEnhancementSkill {
                 break;
             case NATURE:
                 int minNature = (int)(totalDmg * 0.30);
-                lore.add("§2[Thi Triển: Bom Hạt]");
+                lore.add("§2[Thi Triển - Bom Hạt]");
                 lore.add("§f- Ném hạt giống nổ tung, §aTrói Chân 2s§f");
                 lore.add("§f  và chia đều sát thương tối đa 10 kẻ địch.");
                 lore.add("§f- Sát thương: §c" + minNature + "% §f- §c" + totalDmg + "% ST Vũ khí§f.");
@@ -111,7 +111,7 @@ public class FocusSkill extends AbstractEnhancementSkill {
                 int darkFirst = (int)(totalDmg * 0.90);
                 int darkSub = (int)(totalDmg * 0.30);
                 int darkIso = (int)(totalDmg * 1.30);
-                lore.add("§5[Thi Triển: Cầu Hắc Ám]");
+                lore.add("§5[Thi Triển - Cầu Hắc Ám]");
                 lore.add("§f- Đạn hắc ám bay xuyên thấu vô hạn.");
                 lore.add("§f- Mục tiêu đầu: §c" + darkFirst + "% ST§f (Tăng lên");
                 lore.add("§f  §c" + darkIso + "%§f nếu đứng cô lập).");
@@ -120,7 +120,7 @@ public class FocusSkill extends AbstractEnhancementSkill {
                 break;
             case LIGHT:
                 int lightTick = (int)(totalDmg * 0.20);
-                lore.add("§e[Thi Triển: Tiểu Tinh Linh]");
+                lore.add("§e[Thi Triển - Tiểu Tinh Linh]");
                 lore.add("§f- Triệu hồi tinh linh lơ lửng trong 4s.");
                 lore.add("§f- Tự động ngắm bắn laser vào tối đa");
                 lore.add("§f  3 mục tiêu cùng một lúc.");

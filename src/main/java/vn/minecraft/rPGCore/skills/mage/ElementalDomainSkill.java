@@ -103,11 +103,14 @@ public class ElementalDomainSkill implements ISkill {
     @Override public String getId() { return "mage_elemental_domain"; }
     @Override public String getName() { return "Kết Giới Nguyên Tố"; }
     @Override public String getRequiredClass() { return "mage"; }
-    @Override public Material getIcon() { return Material.BEACON; }
+    @Override
+    public Material getIcon() {
+        return Material.ENCHANTING_TABLE; // Đổi sang Bàn Phù Phép cho bớt trùng lặp
+    }
     @Override public boolean isPassiveSkill() { return false; }
     @Override public int getMaxLevel() { return 3; }
     @Override public int getUpgradeCost(int currentLevel) { return 2; }
-    @Override public int getRequiredPlayerLevel() { return 35; }
+    @Override public int getRequiredPlayerLevel() { return 28; }
     @Override public Map<String, Integer> getRequiredSkills() { return new HashMap<>(); }
 
     @Override public double getManaCost(int level) { return 120.0 + ((level - 1) * 20.0); }
@@ -121,25 +124,98 @@ public class ElementalDomainSkill implements ISkill {
         int lv = Math.max(1, level);
         MageElement element = player != null ? ElementalSwapSkill.getActiveElement(player) : MageElement.FIRE;
 
-        lore.add("§7Vận tụ ma lực kiến tạo Lãnh vực nguyên tố tối thượng.");
-        lore.add("§f- Tầng niệm: §a4s §8/ §a16s §8/ §a28s");
-        lore.add("§f- Rủi ro: §cTrói chân §8& §cx2 ST nhận vào §8khi niệm.");
-        lore.add("");
-        lore.add("§d§lHIỆU ỨNG: " + element.getDisplayName().toUpperCase());
+        // Xây dựng giá trị động (Thời gian) dựa trên cấp độ hiện tại
+        StringBuilder durationBuilder = new StringBuilder("§a10s");
+        StringBuilder castTimeBuilder = new StringBuilder("§a4s");
 
+        if (lv >= 2) {
+            durationBuilder.append(" / 22s");
+            castTimeBuilder.append(" / 16s");
+        }
+        if (lv >= 3) {
+            durationBuilder.append(" / 36s");
+            castTimeBuilder.append(" / 28s");
+        }
+
+        lore.add("§fNguyên tố hiện tại: " + element.getDisplayName());
+        lore.add("");
+
+        lore.add("§d[Thi triển - Niệm chú]");
+        lore.add("§f- Bản thân không thể di chuyển và nhận §c200% Sát thương");
+        lore.add("§f  từ mọi nguồn.");
+        lore.add("§f- Thời gian niệm để thăng tầng: " + castTimeBuilder.toString() + "§f.");
+        lore.add("§f- Từ Tầng 2 trở đi, ma pháp trận yêu cầu tiêu tốn thêm");
+        lore.add("§f  §b40 Mana §fmỗi tầng khi giải phóng.");
+        lore.add("");
+
+        String domainName = "";
         switch (element) {
-            case FIRE: lore.add("§f ➥ Đồng minh: §c+10/20/35% §fSát thương gây ra."); break;
-            case WATER: lore.add("§f ➥ Đồng minh: §bHồi 1/1.5/2% §fMáu tối đa/s."); break;
-            case WIND: lore.add("§f ➥ Đồng minh: §a+30/50/80% §fTốc chạy & §a20/40/60 §fKháng CC."); break;
-            case NATURE: lore.add("§f ➥ Kẻ địch: §2Giảm 15/30/45% §fTốc độ di chuyển."); break;
-            case DARK: lore.add("§f ➥ Kẻ địch: §8Giảm 10/20/30% §fSát thương gây ra."); break;
+            case FIRE: domainName = "§cLiệt Hỏa Lãnh Vực"; break;
+            case WATER: domainName = "§bHải Thần Lãnh Vực"; break;
+            case WIND: domainName = "§aPhong Thần Lãnh Vực"; break;
+            case NATURE: domainName = "§2Mộc Thần Lãnh Vực"; break;
+            case LIGHT: domainName = "§eThánh Quang Lãnh Vực"; break;
+            case DARK: domainName = "§5Hư Không Lãnh Vực"; break;
+        }
+
+        lore.add("§e[Kích hoạt - " + domainName + "§e]");
+
+        // Mảng chứa các giá trị cho từng tầng
+        String[] fireVals = {"10", "20", "35"};
+        String[] waterVals = {"1", "1.5", "2"};
+        String[] windSpdVals = {"30", "50", "80"};
+        String[] windResVals = {"20", "40", "60"};
+        String[] natureVals = {"15", "30", "45"};
+        String[] darkVals = {"10", "20", "30"};
+        String[] lightManaVals = {"25", "40", "60"};
+        String[] lightBurnVals = {"0.5", "0.5", "1"};
+
+        // Xây dựng giá trị động (Chỉ số) dựa trên cấp độ hiện tại
+        StringBuilder stat1 = new StringBuilder();
+        StringBuilder stat2 = new StringBuilder();
+
+        for (int i = 0; i < lv; i++) {
+            String sep = (i == 0) ? "" : "/"; // Dấu phân cách các tầng
+            switch (element) {
+                case FIRE: stat1.append(sep).append(fireVals[i]); break;
+                case WATER: stat1.append(sep).append(waterVals[i]); break;
+                case WIND:
+                    stat1.append(sep).append(windSpdVals[i]);
+                    stat2.append(sep).append(windResVals[i]);
+                    break;
+                case NATURE: stat1.append(sep).append(natureVals[i]); break;
+                case DARK: stat1.append(sep).append(darkVals[i]); break;
+                case LIGHT:
+                    stat1.append(sep).append(lightManaVals[i]);
+                    stat2.append(sep).append(lightBurnVals[i]);
+                    break;
+            }
+        }
+
+        // Lắp ráp vào hiển thị
+        switch (element) {
+            case FIRE:
+                lore.add("§f- Đồng minh: §c+" + stat1.toString() + "% §fSát thương gây ra.");
+                break;
+            case WATER:
+                lore.add("§f- Đồng minh: §bHồi " + stat1.toString() + "% §fMáu tối đa/s.");
+                break;
+            case WIND:
+                lore.add("§f- Đồng minh: §a+" + stat1.toString() + "% §fTốc chạy & §a" + stat2.toString() + " §f% Kháng hiệu ứng.");
+                break;
+            case NATURE:
+                lore.add("§f- Kẻ địch: §2Giảm " + stat1.toString() + "% §fTốc độ di chuyển.");
+                break;
+            case DARK:
+                lore.add("§f- Kẻ địch: §8Giảm " + stat1.toString() + "% §fSát thương gây ra.");
+                break;
             case LIGHT:
-                lore.add("§f ➥ Đồng minh: §e+25/40/60% §fTốc độ hồi Mana.");
-                lore.add("§f ➥ Kẻ địch: §cĐốt 0.5/0.5/1% §fMáu hiện tại (ST Chuẩn).");
+                lore.add("§f- Đồng minh: §e+" + stat1.toString() + "% §fTốc độ hồi Mana.");
+                lore.add("§f- Kẻ địch: §cĐốt " + stat2.toString() + "% §fMáu hiện tại (ST Chuẩn).");
                 break;
         }
-        lore.add("");
-        lore.add("§8[Chuột phải để bắt đầu niệm chú]");
+        lore.add("§f- Thời gian duy trì: " + durationBuilder.toString());
+
         return lore;
     }
 
@@ -203,16 +279,36 @@ public class ElementalDomainSkill implements ISkill {
                 drawPersistentRings(player, element);
                 handlePhaseAnimation(player, ticks, element);
 
-                if (ticks == 80) {
+                // ==========================================
+                // [CẬP NHẬT CHÍNH XÁC]: ÉP MỞ KHÓA TẦNG THEO LEVEL
+                // ==========================================
+                if (ticks == 80) { // Đạt 4s -> Tầng 1
                     reachPhaseLogic(player, 1);
-                } else if (ticks == 320) {
+                    // Nếu Skill Level chỉ là 1, thì KHÔNG CHO GỒNG TIẾP, bắt buộc xả chiêu ngay.
+                    if (level == 1) {
+                        new BukkitRunnable() {
+                            @Override public void run() { triggerDomainRelease(player, rpgPlayer, level); }
+                        }.runTaskLater(plugin, 5L); // Độ trễ nhẹ để hiển thị Title
+                        this.cancel();
+                        return;
+                    }
+                } else if (ticks == 320) { // Đạt 16s -> Tầng 2
                     reachPhaseLogic(player, 2);
-                } else if (ticks == 560) {
+                    // Nếu Skill Level là 2, thì KHÔNG CHO GỒNG LÊN TẦNG 3, bắt buộc xả chiêu ngay.
+                    if (level == 2) {
+                        new BukkitRunnable() {
+                            @Override public void run() { triggerDomainRelease(player, rpgPlayer, level); }
+                        }.runTaskLater(plugin, 5L);
+                        this.cancel();
+                        return;
+                    }
+                } else if (ticks == 560) { // Đạt 28s -> Tầng 3
                     reachPhaseLogic(player, 3);
                     new BukkitRunnable() {
                         @Override public void run() { triggerDomainRelease(player, rpgPlayer, level); }
-                    }.runTaskLater(plugin, 20L);
+                    }.runTaskLater(plugin, 20L); // Giữ lại độ trễ 1s như bản gốc
                     this.cancel();
+                    return;
                 }
                 ticks++;
             }
@@ -327,6 +423,17 @@ public class ElementalDomainSkill implements ISkill {
         rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - requiredMana);
         MageElement element = ElementalSwapSkill.getActiveElement(player);
 
+        // [ĐÃ SỬA]: Tính toán thời gian duy trì Kết Giới
+        int durationTicks = (level == 1 ? 10 : (level == 2 ? 22 : 36)) * 20;
+        long durationMillis = durationTicks * 50L;
+
+        // Gọi hàm applyGlobalCooldown từ ISkill, CỘNG THÊM thời gian duy trì của Kết giới
+        long baseCd = getCooldown(level);
+        long finalCd = getFinalCooldown(rpgPlayer, baseCd) + durationMillis;
+
+        player.setMetadata("CD_" + getId(), new FixedMetadataValue(plugin, System.currentTimeMillis() + finalCd));
+        startCooldownNotifier(player, finalCd);
+
         activateDomain(player, rpgPlayer, level, phase, element);
     }
 
@@ -380,7 +487,6 @@ public class ElementalDomainSkill implements ISkill {
             public void run() {
                 if (ticks >= durationTicks || !caster.isOnline() || caster.isDead()) {
                     if (caster.isOnline()) caster.sendMessage("§8§o(Kết giới nguyên tố đã khép lại...)");
-                    applyGlobalCooldown(caster, rpgCaster, level);
                     this.cancel();
                     return;
                 }
