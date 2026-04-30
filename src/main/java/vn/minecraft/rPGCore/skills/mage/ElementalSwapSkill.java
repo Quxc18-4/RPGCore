@@ -108,6 +108,12 @@ public class ElementalSwapSkill implements ISkill {
         // 2. Lấy nguyên tố hiện tại (An toàn tuyệt đối vì rotationList chắc chắn >= 1 phần tử)
         String currentActive = player.getPersistentDataContainer().getOrDefault(ACTIVE_ELEMENT_KEY, PersistentDataType.STRING, rotationList.get(0));
 
+        // ==========================================
+        // [PHASE 1 - FUSION MAGIC]: LƯU LẠI TIỀN NGUYÊN TỐ (TNT)
+        // Lưu trữ hệ cũ vào Metadata trước khi thực hiện đổi sang hệ mới
+        // ==========================================
+        player.setMetadata("Mage_Previous_Element", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), currentActive));
+
         // 3. Chuyển hệ an toàn
         int currentIndex = rotationList.indexOf(currentActive);
 
