@@ -108,59 +108,85 @@ public class ElementalFusionSkill implements ISkill {
         ));
 
         // ==========================================
-        // DYNAMIC LORE: PHÂN NHÁNH HIỂN THỊ THEO PHẢN ỨNG
+        // DYNAMIC LORE: TỔ HỢP ĐỒNG NGUYÊN TỐ (AAA)
         // ==========================================
         if (tnt == MageElement.FIRE && nth == MageElement.FIRE) {
-            // ĐẠI HỎA CẦU: Buff thêm 30% sát thương (1.15 + 0.30 = 1.45)
-            double finalDmg = baseDmgPct * 1.45;
+            double finalDmg = baseDmgPct * 1.40;
             lore.add("§8▪ §c§lĐẠI HỎA CẦU §8(§cLửa §f+ §cLửa§8)");
             lore.add("§f- Triệu hồi Thiên thạch rực lửa giáng xuống khu vực.");
             lore.add("§f- Gây §c§l" + (int)finalDmg + "% §fSát thương kỹ năng.");
 
+        } else if (tnt == MageElement.WATER && nth == MageElement.WATER) {
+            double finalDmg = baseDmgPct * 1.25;
+            lore.add("§8▪ §b§lHẢI THẦN NỘ §8(§bNước §f+ §bNước§8)");
+            lore.add("§f- Dựng cột nước khổng lồ hất văng mục tiêu lên không.");
+            lore.add("§f- Gây §c§l" + (int)finalDmg + "% §fSát thương kỹ năng.");
+
+        } else if (tnt == MageElement.NATURE && nth == MageElement.NATURE) {
+            double finalDmg = baseDmgPct * 1.25;
+            lore.add("§8▪ §2§lMỘC THẦN ĐẠO §8(§2Thảo §f+ §2Thảo§8)");
+            lore.add("§f- Trải thảm dây leo thẳng về phía trước (Duy trì 3s).");
+            lore.add("§f- Gây §c§l" + (int)finalDmg + "% §fST và §aLàm chậm 30%§f.");
+
+        } else if (tnt == MageElement.WIND && nth == MageElement.WIND) {
+            double finalDmg = baseDmgPct * 1.25;
+            lore.add("§8▪ §a§lCUỒNG PHONG TÁP §8(§aGió §f+ §aGió§8)");
+            lore.add("§f- Phóng Lốc xoáy kéo rê kẻ địch và nổ ở cuối đường.");
+            lore.add("§f- Gây §c§l" + (int)finalDmg + "% §fSát thương kỹ năng.");
+
+        } else if (tnt == MageElement.LIGHT && nth == MageElement.LIGHT) {
+            double finalDmg = baseDmgPct * 1.40;
+            lore.add("§8▪ §e§lQUANG THẦN PHÁO §8(§eSáng §f+ §eSáng§8)");
+            lore.add("§f- Bắn tia Laser xuyên thấu tức thời mọi mục tiêu.");
+            lore.add("§f- Gây §c§l" + (int)finalDmg + "% §fSát thương kỹ năng.");
+
+        } else if (tnt == MageElement.DARK && nth == MageElement.DARK) {
+            double finalDmg = baseDmgPct * 1.20;
+            lore.add("§8▪ §5§lHƯ KHÔNG ĐOẠN LIỆT §8(§5Tối §f+ §5Tối§8)");
+            lore.add("§f- Rẽ Rãnh nứt Hư không (3s), Gây §c§l" + (int)finalDmg + "% §fST.");
+            lore.add("§f- Kẻ địch bước lên bị Làm chậm và §cGiảm 10% DMG gây ra§f.");
+
+            // ==========================================
+            // DYNAMIC LORE: TỔ HỢP PHẢN ỨNG (REACTIONS)
+            // ==========================================
         } else if (isMatch(tnt, nth, MageElement.FIRE, MageElement.WATER)) {
-            // BỐC HƠI: Sát thương Burst hệ số 1.5[cite: 15]
             double finalDmg = baseDmgPct * 1.50;
             lore.add("§8▪ §c§lBỐC HƠI §8(§cLửa §f+ §bNước§8)");
             lore.add("§f- Phóng Sóng nhiệt hình nón càn quét phía trước.");
             lore.add("§f- Gây §c§l" + (int)finalDmg + "% §fSát thương kỹ năng.");
 
         } else if (isMatch(tnt, nth, MageElement.LIGHT, MageElement.DARK)) {
-            // HỖN ĐỘN: Phá Giáp & Phá Kháng[cite: 19]
             double finalDmg = baseDmgPct * 1.50;
             lore.add("§8▪ §d§lHỖN ĐỘN §8(§eSáng §f+ §5Tối§8)");
             lore.add("§f- Xé rách không gian, gây §c§l" + (int)finalDmg + "% §fSát thương kỹ năng.");
             lore.add("§f- Áp dụng bùa hại: Phá §c20% Giáp & Kháng Phép §ftrong 5s.");
 
         } else if (isMatch(tnt, nth, MageElement.FIRE, MageElement.LIGHT)) {
-            // CHỚP GIẬT: Tê liệt diện rộng[cite: 18]
             double finalDmg = baseDmgPct * 1.50;
             lore.add("§8▪ §e§lCHỚP GIẬT §8(§cLửa §f+ §eSáng§8)");
             lore.add("§f- Gọi Sét diện rộng, gây §c§l" + (int)finalDmg + "% §fSát thương kỹ năng.");
             lore.add("§f- Tê liệt (Làm chậm cực mạnh) mọi mục tiêu trong 2s.");
 
         } else if (isMatch(tnt, nth, MageElement.FIRE, MageElement.NATURE)) {
-            // THIÊU RỤI: DoT 7s[cite: 16]
             double finalDmg = baseDmgPct * 1.0;
             lore.add("§8▪ §6§lTHIÊU RỤI §8(§cLửa §f+ §2Thảo§8)");
             lore.add("§f- Gây §c§l" + (int)finalDmg + "% §fSát thương nổ ban đầu.");
             lore.add("§f- Thiêu đốt kẻ địch liên tục trong §c7 giây§f.");
 
         } else if (isMatch(tnt, nth, MageElement.FIRE, MageElement.DARK)) {
-            // HẮC HỎA: Rút máu theo %[cite: 20]
             double finalDmg = baseDmgPct * 1.0;
             lore.add("§8▪ §5§lHẮC HỎA §8(§cLửa §f+ §5Tối§8)");
             lore.add("§f- Gây §c§l" + (int)finalDmg + "% §fSát thương nổ ban đầu.");
             lore.add("§f- Rút §c5% Máu đã mất §fmỗi giây trong 4s (Max 350 DMG/s).");
 
         } else if (isMatch(tnt, nth, MageElement.WATER, MageElement.NATURE)) {
-            // SINH SÔI: Khống chế + Hồi Máu[cite: 17]
             double finalDmg = baseDmgPct * 1.0;
             lore.add("§8▪ §a§lSINH SÔI §8(§bNước §f+ §2Thảo§8)");
             lore.add("§f- Gây §c§l" + (int)finalDmg + "% §fSát thương kỹ năng.");
             lore.add("§f- Trói chân kẻ địch trong §a3s §fvà Hồi phục §a5% Max HP§f.");
 
         } else {
-            // MẶC ĐỊNH: Bùng nổ thuật pháp (Trùng hệ)
+            // MẶC ĐỊNH (Phòng hờ trường hợp Nước + Gió chưa có Code)
             double finalDmg = baseDmgPct * 1.15;
             lore.add("§8▪ §b§lBÙNG NỔ THUẬT PHÁP");
             lore.add("§f- Kích nổ vùng không gian ma thuật xung quanh.");
@@ -168,17 +194,6 @@ public class ElementalFusionSkill implements ISkill {
         }
 
         return lore;
-    }
-
-    private double getReactionMultiplierPreview(MageElement e1, MageElement e2) {
-        if (e1 == e2) return 1.15;
-        if (isMatch(e1, e2, MageElement.FIRE, MageElement.WATER)) return 1.50;
-        if (isMatch(e1, e2, MageElement.LIGHT, MageElement.DARK)) return 1.50;
-        if (isMatch(e1, e2, MageElement.FIRE, MageElement.LIGHT)) return 1.50;
-        if (isMatch(e1, e2, MageElement.FIRE, MageElement.NATURE)) return 1.0;
-        if (isMatch(e1, e2, MageElement.FIRE, MageElement.DARK)) return 1.0;
-        if (isMatch(e1, e2, MageElement.WATER, MageElement.NATURE)) return 1.0;
-        return 1.10;
     }
 
     private boolean isMatch(MageElement e1, MageElement e2, MageElement r1, MageElement r2) {
