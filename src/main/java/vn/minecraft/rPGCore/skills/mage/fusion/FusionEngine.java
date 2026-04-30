@@ -30,7 +30,7 @@ public class FusionEngine {
 
     public static void init() {
         FUSION_REGISTRY.clear();
-        // Sẽ đăng ký 12 tổ hợp vào đây sau
+        registerFusion(new vn.minecraft.rPGCore.skills.mage.fusion.impl.PyroclasmFusion());
     }
 
     // ==========================================

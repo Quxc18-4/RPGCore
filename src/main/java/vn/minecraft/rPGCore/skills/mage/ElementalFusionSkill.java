@@ -58,13 +58,14 @@ public class ElementalFusionSkill implements ISkill {
     // ==========================================
     // LORE SẼ ĐƯỢC BỔ SUNG DẦN DẦN (THEO YÊU CẦU CỦA BẠN)
     // ==========================================
+    // Trong ElementalFusionSkill.java
     @Override
     public List<String> getDescription(Player player, int level) {
         int lv = Math.max(1, level);
         double baseDmgPct = 330.0 + (lv * 22.0);
 
         MageElement nth = MageElement.FIRE;
-        MageElement tnt = null; // Mặc định là null nếu chưa có TNT
+        MageElement tnt = null;
         String tntName = "§8(Không có)";
 
         if (player != null) {
@@ -77,7 +78,6 @@ public class ElementalFusionSkill implements ISkill {
             }
         }
 
-        // Khởi tạo Lore cơ bản
         List<String> lore = new java.util.ArrayList<>(Arrays.asList(
                 "§7Dung hợp 2 loại nguyên tố với nhau, sự giao thoa của",
                 "§7hiện tại và quá khứ để kích hoạt phản ứng dữ dội.",
@@ -85,18 +85,13 @@ public class ElementalFusionSkill implements ISkill {
                 "§8▪ §fNguyên Tố Trước: " + tntName,
                 "§8▪ §fNguyên Tố Hiện Tại: " + nth.getDisplayName(),
                 "",
-                "§f- Sát thương gốc: §b" + (int)baseDmgPct + "% §fSát thương.",
-                "",
-                "§e[Kích hoạt - Hình thái Dung Hợp]"
+                "§f- Sát thương kỹ năng: §b" + (int)baseDmgPct + "% §fSát thương.",
+                ""
         ));
 
-        // Phân nhánh hiển thị (Hiện tại chỉ có Default, sẽ thêm dần)
-        if (tnt == null) {
-            double finalDmg = baseDmgPct * 1.0;
-            lore.add("§8▪ §f§lMA LỰC THUẦN TÚY");
-            lore.add("§f- Bắn một quả cầu ma lực trung tính, chạm nổ.");
-            lore.add("§f- Gây §c§l" + (int)finalDmg + "% §fSát thương.");
-        }
+        // [TINH GỌN TUYỆT ĐỐI]: Tự động lấy Lore từ Engine mà không cần If-Else
+        IFusion activeFusion = vn.minecraft.rPGCore.skills.mage.fusion.FusionEngine.getActiveFusion(tnt, nth);
+        lore.addAll(activeFusion.getLore(baseDmgPct));
 
         return lore;
     }
