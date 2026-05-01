@@ -73,7 +73,7 @@ public class ParasiticMinefieldFusion implements IFusion {
     }
 
     // ==========================================
-    // HÀM TRIỆU HỒI NẤM ITEM-DISPLAY
+    // HÀM TRIỆU HỒI NẤM (CÓ HIỆU ỨNG MỌC TỪ ĐẤT)
     // ==========================================
     private void scatterMines(Player caster, RPGPlayer rpgPlayer, Location center, int count, double totalDmgMulti, int generation) {
         double mineDmgMulti = totalDmgMulti * 0.30;
@@ -82,38 +82,47 @@ public class ParasiticMinefieldFusion implements IFusion {
             double offsetX = (random.nextDouble() - 0.5) * 8.0;
             double offsetZ = (random.nextDouble() - 0.5) * 8.0;
             Location mineLoc = center.clone().add(offsetX, 0, offsetZ);
-            mineLoc.setY(mineLoc.getWorld().getHighestBlockYAt(mineLoc) + 0.2);
 
-            // [TỐI ƯU UI]: Triệu hồi ItemDisplay Nấm Khổng Lồ
-            ItemDisplay mushroom = mineLoc.getWorld().spawn(mineLoc, ItemDisplay.class, display -> {
-                display.setItemStack(new ItemStack(Material.WARPED_FUNGUS));
-                display.setBillboard(ItemDisplay.Billboard.FIXED);
+            mineLoc.setY(mineLoc.getWorld().getHighestBlockYAt(mineLoc) + 1.0);
 
-                // Phóng to nấm lên 1.5 lần để dễ nhìn thấy trên mặt đất
-                Transformation transform = display.getTransformation();
-                transform.getScale().set(1.5f, 1.5f, 1.5f);
+            // Triệu hồi với kích thước ban đầu = 0
+            org.bukkit.entity.BlockDisplay mushroom = mineLoc.getWorld().spawn(mineLoc, org.bukkit.entity.BlockDisplay.class, display -> {
+                display.setBlock(org.bukkit.Bukkit.createBlockData(Material.WARPED_FUNGUS));
+                org.bukkit.util.Transformation transform = display.getTransformation();
+                transform.getScale().set(0f, 0f, 0f);
                 display.setTransformation(transform);
             });
 
             new BukkitRunnable() {
                 int lifetime = 0;
+                final float targetScale = 1.1f; // Đã thu nhỏ lại theo ý Giám đốc
 
                 @Override
                 public void run() {
-                    // Xóa Nấm nếu chủ nhân Offline hoặc hết 10 giây (200 ticks)
                     if (lifetime >= 200 || !caster.isOnline() || mushroom.isDead()) {
-                        mushroom.remove(); // TUYỆT ĐỐI KHÔNG ĐỂ QUÊN CÁI NÀY
+                        mushroom.remove();
                         this.cancel();
                         return;
                     }
 
-                    // Tỏa bào tử rơi lất phất xung quanh nấm (Rất nhẹ máy)
+                    // [VFX ANIMATION]: Hiệu ứng mọc nấm dần dần (Lerping) trong 8-10 ticks đầu
+                    if (lifetime < 10) {
+                        float currentScale = Math.min(targetScale, (lifetime + 1) * 0.15f); // Tăng dần scale
+
+                        org.bukkit.util.Transformation transform = mushroom.getTransformation();
+                        transform.getScale().set(currentScale, currentScale, currentScale);
+                        // Canh giữa mượt mà theo từng frame mọc
+                        transform.getTranslation().set(-currentScale / 2.0f, 0f, -currentScale / 2.0f);
+                        mushroom.setTransformation(transform);
+                    }
+
+                    // Tỏa sương mù bào tử
                     if (lifetime % 10 == 0) {
-                        mineLoc.getWorld().spawnParticle(Particle.FALLING_SPORE_BLOSSOM, mineLoc.clone().add(0, 1.5, 0), 2, 0.5, 0.5, 0.5, 0);
+                        mineLoc.getWorld().spawnParticle(Particle.FALLING_SPORE_BLOSSOM, mineLoc.clone().add(0, 0.6, 0), 2, 0.4, 0.4, 0.4, 0);
                     }
 
                     boolean triggered = false;
-                    for (Entity entity : mineLoc.getWorld().getNearbyEntities(mineLoc, 1.0, 1.5, 1.0)) {
+                    for (Entity entity : mineLoc.getWorld().getNearbyEntities(mineLoc, 1.2, 1.5, 1.2)) {
                         if (entity instanceof LivingEntity && !entity.equals(caster) && CombatManager.canTarget(caster, entity)) {
                             LivingEntity target = (LivingEntity) entity;
 
@@ -124,13 +133,73 @@ public class ParasiticMinefieldFusion implements IFusion {
                     }
 
                     if (triggered) {
-                        mushroom.remove(); // Quái đạp trúng -> Xóa mô hình nấm
+                        mushroom.remove();
                         this.cancel();
                     }
                     lifetime++;
                 }
             }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
         }
+    }
+
+
+    // ==========================================
+    // DEBUFF KÝ SINH (FIX NHỊP ĐIỆU LÂY NHIỄM)
+    // ==========================================
+    private void applyParasite(Player caster, RPGPlayer rpgPlayer, LivingEntity target, double totalDmgMulti, int generation) {
+        double tickDmgMulti = totalDmgMulti * 0.05;
+        String metaKey = "Parasite_Gen_" + generation;
+
+        if (target.hasMetadata("Parasite_Gen_1") || target.hasMetadata("Parasite_Gen_2")) return;
+        target.setMetadata(metaKey, new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), true));
+
+        new BukkitRunnable() {
+            int ticks = 0;
+
+            @Override
+            public void run() {
+                if (ticks >= 3 || !caster.isOnline()) {
+                    target.removeMetadata(metaKey, RPGCore.getInstance());
+                    this.cancel();
+                    return;
+                }
+
+                if (target.isDead()) {
+                    Location deathLoc = target.getLocation();
+                    deathLoc.getWorld().playSound(deathLoc, Sound.ENTITY_ZOMBIE_VILLAGER_CONVERTED, 1.0f, 1.5f);
+                    // Bùng nổ đám mây bào tử to
+                    deathLoc.getWorld().spawnParticle(Particle.SPORE_BLOSSOM_AIR, deathLoc.clone().add(0, 1, 0), 50, 1.5, 1.5, 1.5, 0);
+
+                    double explosionDmgMulti = totalDmgMulti * 0.30;
+                    for (Entity e : deathLoc.getWorld().getNearbyEntities(deathLoc, 3.0, 3.0, 3.0)) {
+                        if (e instanceof LivingEntity && !e.equals(caster) && CombatManager.canTarget(caster, e)) {
+                            double hitDmg = CombatManager.calculateDamage(caster, rpgPlayer, (LivingEntity) e, explosionDmgMulti, 0, true, false);
+                            CombatManager.applySkillDamage(caster, (LivingEntity) e, hitDmg);
+                        }
+                    }
+
+                    if (generation == 1) {
+                        // [VFX TIMING]: Chờ 8 ticks (0.4s) để "mây bào tử" bay xuống đất rồi mới đẻ nấm
+                        new BukkitRunnable() {
+                            @Override
+                            public void run() {
+                                scatterMines(caster, rpgPlayer, deathLoc, 2, totalDmgMulti, 2);
+                            }
+                        }.runTaskLater(RPGCore.getInstance(), 8L);
+                    }
+
+                    target.removeMetadata(metaKey, RPGCore.getInstance());
+                    this.cancel();
+                    return;
+                }
+
+                target.getWorld().spawnParticle(Particle.FALLING_SPORE_BLOSSOM, target.getEyeLocation(), 5, 0.3, 0.3, 0.3, 0);
+                double tickHitDmg = CombatManager.calculateDamage(caster, rpgPlayer, target, tickDmgMulti, 0, true, false);
+                CombatManager.applySkillDamage(caster, target, tickHitDmg);
+
+                ticks++;
+            }
+        }.runTaskTimer(RPGCore.getInstance(), 0L, 20L);
     }
 
     // ==========================================
@@ -152,61 +221,5 @@ public class ParasiticMinefieldFusion implements IFusion {
                 }
             }
         }
-    }
-
-    // ==========================================
-    // DEBUFF KÝ SINH (Kiểm soát nghiêm ngặt Chuỗi Lây Nhiễm)
-    // ==========================================
-    private void applyParasite(Player caster, RPGPlayer rpgPlayer, LivingEntity target, double totalDmgMulti, int generation) {
-        double tickDmgMulti = totalDmgMulti * 0.05;
-        String metaKey = "Parasite_Gen_" + generation;
-
-        // Quái đã dính ký sinh (bất kể đời nào) thì không dính thêm nữa
-        if (target.hasMetadata("Parasite_Gen_1") || target.hasMetadata("Parasite_Gen_2")) return;
-
-        target.setMetadata(metaKey, new FixedMetadataValue(RPGCore.getInstance(), true));
-
-        new BukkitRunnable() {
-            int ticks = 0;
-
-            @Override
-            public void run() {
-                if (ticks >= 3 || !caster.isOnline()) {
-                    target.removeMetadata(metaKey, RPGCore.getInstance());
-                    this.cancel();
-                    return;
-                }
-
-                if (target.isDead()) {
-                    Location deathLoc = target.getLocation();
-                    deathLoc.getWorld().playSound(deathLoc, Sound.ENTITY_ZOMBIE_VILLAGER_CONVERTED, 1.0f, 1.5f);
-                    deathLoc.getWorld().spawnParticle(Particle.SPORE_BLOSSOM_AIR, deathLoc.clone().add(0, 1, 0), 50, 1.5, 1.5, 1.5, 0);
-
-                    double explosionDmgMulti = totalDmgMulti * 0.30;
-                    for (Entity e : deathLoc.getWorld().getNearbyEntities(deathLoc, 3.0, 3.0, 3.0)) {
-                        if (e instanceof LivingEntity && !e.equals(caster) && CombatManager.canTarget(caster, e)) {
-                            double hitDmg = CombatManager.calculateDamage(caster, rpgPlayer, (LivingEntity) e, explosionDmgMulti, 0, true, false);
-                            CombatManager.applySkillDamage(caster, (LivingEntity) e, hitDmg);
-                        }
-                    }
-
-                    // [CHỐT CHẶN BALANCING]: Chỉ nấm F1 mới đẻ ra Nấm F2.
-                    if (generation == 1) {
-                        scatterMines(caster, rpgPlayer, deathLoc, 2, totalDmgMulti, 2); // Đẻ nấm Gen 2
-                    }
-
-                    target.removeMetadata(metaKey, RPGCore.getInstance());
-                    this.cancel();
-                    return;
-                }
-
-                // Rút máu lất phất sương mù
-                target.getWorld().spawnParticle(Particle.FALLING_SPORE_BLOSSOM, target.getEyeLocation(), 5, 0.3, 0.3, 0.3, 0);
-                double tickHitDmg = CombatManager.calculateDamage(caster, rpgPlayer, target, tickDmgMulti, 0, true, false);
-                CombatManager.applySkillDamage(caster, target, tickHitDmg);
-
-                ticks++;
-            }
-        }.runTaskTimer(RPGCore.getInstance(), 0L, 20L);
     }
 }
