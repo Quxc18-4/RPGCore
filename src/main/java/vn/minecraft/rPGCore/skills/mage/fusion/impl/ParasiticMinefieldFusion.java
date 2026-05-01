@@ -1,7 +1,6 @@
 package vn.minecraft.rPGCore.skills.mage.fusion.impl;
 
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
@@ -32,8 +31,8 @@ public class ParasiticMinefieldFusion implements IFusion {
     @Override
     public List<String> getLore(double baseDmgPct) {
         double totalDmg = baseDmgPct * getDamageMultiplier();
-        double mineDmg = totalDmg * 0.30; // 30% cho mỗi quả mìn/nổ xác
-        double tickDmg = totalDmg * 0.05; // 5% rút máu mỗi giây
+        double mineDmg = totalDmg * 0.30;
+        double tickDmg = totalDmg * 0.05;
 
         return Arrays.asList(
                 "§e[Kích hoạt - Hình thái Dung Hợp - Lãnh Địa Ký Sinh]",
@@ -61,30 +60,34 @@ public class ParasiticMinefieldFusion implements IFusion {
 
         double totalDmgMulti = baseMultiplier * getDamageMultiplier();
 
-        caster.getWorld().playSound(center, Sound.ENTITY_SPLASH_POTION_BREAK, 1.5f, 0.5f);
-        caster.getWorld().spawnParticle(Particle.SPORE_BLOSSOM_AIR, center, 100, 3.0, 1.0, 3.0, 0.05);
+        // [VFX]: Vụ nổ gieo hạt ban đầu cực mạnh
+        caster.getWorld().playSound(center, Sound.ENTITY_DRAGON_FIREBALL_EXPLODE, 1.0f, 0.5f);
+        caster.getWorld().spawnParticle(Particle.EXPLOSION, center, 1);
+        caster.getWorld().spawnParticle(Particle.ITEM_SLIME, center, 80, 2.0, 0.5, 2.0, 0.1);
 
-        // Sinh 5-8 quả mìn ban đầu
+        // Vòng sóng lan tỏa màu xanh lục
+        Particle.DustOptions waveDust = new Particle.DustOptions(org.bukkit.Color.fromRGB(50, 205, 50), 2.0f);
+        for(double t = 0; t < Math.PI * 2; t+= 0.2) {
+            center.getWorld().spawnParticle(Particle.DUST, center.clone().add(4*Math.cos(t), 0.2, 4*Math.sin(t)), 1, 0,0,0, 0, waveDust, true);
+        }
+
         int initialMines = 5 + random.nextInt(4);
         scatterMines(caster, rpgPlayer, center, initialMines, totalDmgMulti);
     }
 
-    // ==========================================
-    // HÀM RẢI MÌN (Tái sử dụng cho cả lúc cast và lúc nổ dây chuyền)
-    // ==========================================
     private void scatterMines(Player caster, RPGPlayer rpgPlayer, Location center, int count, double totalDmgMulti) {
         double mineDmgMulti = totalDmgMulti * 0.30;
-        Particle.DustOptions poisonDust = new Particle.DustOptions(org.bukkit.Color.fromRGB(0, 150, 0), 1.0f);
+        Particle.DustOptions poisonDust = new Particle.DustOptions(org.bukkit.Color.fromRGB(0, 255, 0), 1.2f);
 
         for (int i = 0; i < count; i++) {
-            double offsetX = (random.nextDouble() - 0.5) * 10.0;
-            double offsetZ = (random.nextDouble() - 0.5) * 10.0;
+            double offsetX = (random.nextDouble() - 0.5) * 8.0;
+            double offsetZ = (random.nextDouble() - 0.5) * 8.0;
             Location mineLoc = center.clone().add(offsetX, 0, offsetZ);
             mineLoc.setY(mineLoc.getWorld().getHighestBlockYAt(mineLoc) + 0.2);
 
-            // Vòng đời của 1 quả Mìn (10 giây = 200 ticks)
             new BukkitRunnable() {
                 int lifetime = 0;
+                double angle = 0;
 
                 @Override
                 public void run() {
@@ -93,51 +96,50 @@ public class ParasiticMinefieldFusion implements IFusion {
                         return;
                     }
 
-                    // Hạt Particle lờ mờ để đánh dấu bãi mìn (Mỗi 5 ticks mới nháy 1 lần để đỡ giật)
-                    if (lifetime % 5 == 0) {
-                        mineLoc.getWorld().spawnParticle(Particle.DUST, mineLoc, 1, 0.1, 0.1, 0.1, 0, poisonDust, true);
+                    // [VFX]: Quả mìn giờ là một vũng độc xoay vòng cực kỳ rõ nét
+                    if (lifetime % 2 == 0) {
+                        angle += 0.5;
+                        double x = 0.6 * Math.cos(angle);
+                        double z = 0.6 * Math.sin(angle);
+                        mineLoc.getWorld().spawnParticle(Particle.DUST, mineLoc.clone().add(x, 0.1, z), 1, 0,0,0, 0, poisonDust, true);
+
+                        // Sủi bọt ngẫu nhiên
+                        if (random.nextDouble() < 0.3) {
+                            mineLoc.getWorld().spawnParticle(Particle.ITEM_SLIME, mineLoc.clone().add(0, 0.3, 0), 1, 0.2, 0.2, 0.2, 0);
+                        }
                     }
 
-                    // Cảm biến đạp mìn (Quét bán kính 1.2m)
                     boolean triggered = false;
                     for (Entity entity : mineLoc.getWorld().getNearbyEntities(mineLoc, 1.2, 1.5, 1.2)) {
                         if (entity instanceof LivingEntity && !entity.equals(caster) && CombatManager.canTarget(caster, entity)) {
                             LivingEntity target = (LivingEntity) entity;
-
                             triggerMineExplosion(caster, rpgPlayer, mineLoc, target, totalDmgMulti, mineDmgMulti);
                             triggered = true;
-                            break; // 1 thằng đạp là mìn nổ, không cần quét tiếp
+                            break;
                         }
                     }
 
-                    if (triggered) {
-                        this.cancel();
-                    }
-
+                    if (triggered) this.cancel();
                     lifetime++;
                 }
-            }.runTaskTimer(RPGCore.getInstance(), 0L, 1L); // Quét liên tục mỗi 1 tick
+            }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
         }
     }
 
-    // ==========================================
-    // NỔ MÌN VÀ GẮN KÝ SINH
-    // ==========================================
     private void triggerMineExplosion(Player caster, RPGPlayer rpgPlayer, Location loc, LivingEntity triggerEntity, double totalDmgMulti, double mineDmgMulti) {
-        loc.getWorld().playSound(loc, Sound.ENTITY_ZOMBIE_VILLAGER_CURE, 1.0f, 1.5f);
-        loc.getWorld().spawnParticle(Particle.ITEM_SLIME, loc, 30, 1.5, 1.0, 1.5, 0.1);
-        loc.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, loc, 20, 1.5, 1.0, 1.5, 0.1);
+        // [VFX]: Vụ nổ mìn đanh thép và hoành tráng
+        loc.getWorld().playSound(loc, Sound.ENTITY_ZOMBIE_VILLAGER_CURE, 1.5f, 0.8f);
+        loc.getWorld().playSound(loc, Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.5f);
+        loc.getWorld().spawnParticle(Particle.EXPLOSION, loc, 1);
+        loc.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, loc, 40, 1.5, 1.5, 1.5, 0.1);
 
-        // Gây sát thương Nổ AoE (R=2.5) cho tất cả quái đứng gần quả mìn
         for (Entity entity : loc.getWorld().getNearbyEntities(loc, 2.5, 2.5, 2.5)) {
             if (entity instanceof LivingEntity && !entity.equals(caster) && CombatManager.canTarget(caster, entity)) {
                 LivingEntity target = (LivingEntity) entity;
 
-                // [Cốt lõi RPGCore]: Tính sát thương nổ
                 double hitDmg = CombatManager.calculateDamage(caster, rpgPlayer, target, mineDmgMulti, 0, true, false);
                 CombatManager.applySkillDamage(caster, target, hitDmg);
 
-                // Nếu là con đạp mìn -> Gắn Ký Sinh rút máu
                 if (target.equals(triggerEntity)) {
                     applyParasite(caster, rpgPlayer, target, totalDmgMulti);
                 }
@@ -145,13 +147,9 @@ public class ParasiticMinefieldFusion implements IFusion {
         }
     }
 
-    // ==========================================
-    // DEBUFF KÝ SINH (Rút máu & Nổ Dây Chuyền)
-    // ==========================================
     private void applyParasite(Player caster, RPGPlayer rpgPlayer, LivingEntity target, double totalDmgMulti) {
         double tickDmgMulti = totalDmgMulti * 0.05;
 
-        // Tránh bị stack nhiều cái Ký sinh cùng lúc gây tuột TPS
         if (target.hasMetadata("Parasite_DoT")) return;
         target.setMetadata("Parasite_DoT", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), true));
 
@@ -160,42 +158,44 @@ public class ParasiticMinefieldFusion implements IFusion {
 
             @Override
             public void run() {
-                // Hết 3 giây (3 lặp x 20 ticks) hoặc quái chết
                 if (ticks >= 3 || !caster.isOnline()) {
                     target.removeMetadata("Parasite_DoT", RPGCore.getInstance());
                     this.cancel();
                     return;
                 }
 
-                // [HIỆU ỨNG DÂY CHUYỀN]: Quái chết trong lúc đang bị Ký sinh!
                 if (target.isDead()) {
-                    target.getWorld().playSound(target.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1.2f, 1.2f);
-                    target.getWorld().spawnParticle(Particle.EXPLOSION, target.getLocation(), 1);
+                    // [VFX DÂY CHUYỀN]: Hoa nở rực rỡ khi quái chết
+                    Location deathLoc = target.getLocation();
+                    deathLoc.getWorld().playSound(deathLoc, Sound.ITEM_TOTEM_USE, 1.0f, 1.5f);
+                    deathLoc.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, deathLoc.clone().add(0, 1, 0), 100, 1.5, 1.5, 1.5, 0.2);
+                    deathLoc.getWorld().spawnParticle(Particle.EXPLOSION, deathLoc, 2);
 
-                    // Gây sát thương Nổ Xác AoE
                     double explosionDmgMulti = totalDmgMulti * 0.30;
-                    for (Entity e : target.getWorld().getNearbyEntities(target.getLocation(), 3.0, 3.0, 3.0)) {
+                    for (Entity e : deathLoc.getWorld().getNearbyEntities(deathLoc, 3.0, 3.0, 3.0)) {
                         if (e instanceof LivingEntity && !e.equals(caster) && CombatManager.canTarget(caster, e)) {
                             double hitDmg = CombatManager.calculateDamage(caster, rpgPlayer, (LivingEntity) e, explosionDmgMulti, 0, true, false);
                             CombatManager.applySkillDamage(caster, (LivingEntity) e, hitDmg);
                         }
                     }
 
-                    // Đẻ thêm 2 Nụ Hoa mới tại vị trí xác chết
-                    scatterMines(caster, rpgPlayer, target.getLocation(), 2, totalDmgMulti);
+                    scatterMines(caster, rpgPlayer, deathLoc, 2, totalDmgMulti);
 
                     target.removeMetadata("Parasite_DoT", RPGCore.getInstance());
                     this.cancel();
                     return;
                 }
 
-                // Gây sát thương DoT
-                target.getWorld().spawnParticle(Particle.FALLING_SPORE_BLOSSOM, target.getEyeLocation(), 5, 0.3, 0.3, 0.3, 0);
+                // [VFX Rút Máu]: Sao xanh nổ liên tục trên người quái
+                target.getWorld().playSound(target.getLocation(), Sound.ENTITY_SPIDER_STEP, 1.0f, 0.5f);
+                target.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, target.getEyeLocation(), 15, 0.4, 0.4, 0.4, 0);
+                target.getWorld().spawnParticle(Particle.ITEM_SLIME, target.getLocation().add(0, 1, 0), 10, 0.4, 0.4, 0.4, 0.1);
+
                 double tickHitDmg = CombatManager.calculateDamage(caster, rpgPlayer, target, tickDmgMulti, 0, true, false);
                 CombatManager.applySkillDamage(caster, target, tickHitDmg);
 
                 ticks++;
             }
-        }.runTaskTimer(RPGCore.getInstance(), 0L, 20L); // Cứ 1 giây (20 ticks) giật 1 lần
+        }.runTaskTimer(RPGCore.getInstance(), 0L, 20L);
     }
 }
