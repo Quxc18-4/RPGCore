@@ -28,7 +28,7 @@ public class GeyserFusion implements IFusion {
     @Override public MageElement getElement1() { return MageElement.WATER; }
     @Override public MageElement getElement2() { return MageElement.WATER; }
     @Override public String getReactionName() { return "§b§lHải Thần Nộ"; }
-    @Override public double getDamageMultiplier() { return 1.8; } // Đã thu Thuế Khống Chế
+    @Override public double getDamageMultiplier() { return 1.6; } // Đã thu Thuế Khống Chế
 
     @Override
     public List<String> getLore(double baseDmgPct) {
@@ -40,8 +40,7 @@ public class GeyserFusion implements IFusion {
                 "§f- Triệu hồi 5-7 luồng mạch nước ngầm sục sôi liên tiếp",
                 "§f  lan tỏa trong khu vực rộng xung quanh tâm ngắm.",
                 "§f- Cột nước bùng nổ, §bHất tung§f kẻ địch lên không trung.",
-                "§f- Mỗi cột nước gây §c§l" + (int)waveDmg + "% §fSát thương kỹ năng.",
-                "§f  §7(Kẻ địch bị tung hứng nhiều lần nhận 10% Sát thương)."
+                "§f- Mỗi cột nước gây §c" + (int)waveDmg + "% §fSát thương kỹ năng."
         );
     }
 

@@ -22,7 +22,7 @@ public class CycloneFusion implements IFusion {
     @Override public MageElement getElement1() { return MageElement.WIND; }
     @Override public MageElement getElement2() { return MageElement.WIND; }
     @Override public String getReactionName() { return "§a§lBão Tố Hư Không"; }
-    @Override public double getDamageMultiplier() { return 1.05; }
+    @Override public double getDamageMultiplier() { return 1.0; }
 
     @Override
     public List<String> getLore(double baseDmgPct) {
