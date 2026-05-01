@@ -21,7 +21,7 @@ public class CycloneFusion implements IFusion {
 
     @Override public MageElement getElement1() { return MageElement.WIND; }
     @Override public MageElement getElement2() { return MageElement.WIND; }
-    @Override public String getReactionName() { return "§a§lBão Tố Hư Không"; }
+    @Override public String getReactionName() { return "§a§lĐạn Gió Xoáy"; }
     @Override public double getDamageMultiplier() { return 1.30; }
 
     @Override
@@ -29,12 +29,11 @@ public class CycloneFusion implements IFusion {
         double totalDmg = baseDmgPct * getDamageMultiplier();
 
         return Arrays.asList(
-                "§e[Kích hoạt - Hình thái Dung Hợp - Bão Tố Hư Không]",
-                "§f- Bắn ra một Quả Cầu Cuồng Phong khổng lồ về phía trước.",
-                "§f- Lõi bão liên tục §aCuốn Phăng§f mọi kẻ địch trong",
-                "§f  bán kính 2 mét đi theo cùng với nó.",
-                "§f- Phát nổ ở cự ly trung bình (15m) hoặc khi va chạm,",
-                "§f  gây §c" + (int)totalDmg + "% §fSát thương kỹ năng diện rộng."
+                "§e[Kích hoạt - Hình thái Dung Hợp - Đạn Gió Xoáy]",
+                "§f- Bắn ra một Quả Cầu Cuồng Phong nén về phía trước.",
+                "§f- Lõi bão liên tục §aKéo Theo§f mọi kẻ địch nằm",
+                "§f  trong phạm vi lõi đi theo cùng với nó.",
+                "§f- Phát nổ gây §c" + (int)totalDmg + "% §fSát thương."
         );
     }
 
@@ -65,10 +64,8 @@ public class CycloneFusion implements IFusion {
         new BukkitRunnable() {
             Location currentLoc = startLoc.clone();
             int ticks = 0;
-            // [CÂN BẰNG]: Giới hạn tầm bay đúng 15 blocks
             final int maxTicks = 15;
-            // [VFX]: Bán kính Helix xoắn ốc tỏa rộng 1.5 block
-            final double helixRadius = 1.5;
+            final double helixRadius = 1.2;
 
             @Override
             public void run() {
@@ -86,25 +83,27 @@ public class CycloneFusion implements IFusion {
                     return;
                 }
 
-                // Lõi Gió
-                currentLoc.getWorld().spawnParticle(Particle.CLOUD, currentLoc, 6, 0.5, 0.5, 0.5, 0.05);
-                currentLoc.getWorld().spawnParticle(Particle.SPIT, currentLoc, 5, 0.4, 0.4, 0.4, 0.05);
+                // 1. [VFX LÕI BÃO]: Hình cầu đặc hoàn chỉnh (Offset siêu thấp)
+                currentLoc.getWorld().spawnParticle(Particle.CLOUD, currentLoc, 8, 0.1, 0.1, 0.1, 0.01);
+                currentLoc.getWorld().spawnParticle(Particle.SPIT, currentLoc, 5, 0.1, 0.1, 0.1, 0.01);
 
+                // 2. [VFX ĐUÔI HELIX]: Lùi tọa độ tâm về phía sau 1.5 block
+                Location trailCenter = currentLoc.clone().subtract(direction.clone().multiply(1.5));
                 double angle = ticks * 0.6;
 
                 Vector offset1 = xAxis.clone().multiply(Math.cos(angle) * helixRadius)
                         .add(yAxis.clone().multiply(Math.sin(angle) * helixRadius));
-                Location p1 = currentLoc.clone().add(offset1);
+                Location p1 = trailCenter.clone().add(offset1);
 
                 Vector offset2 = xAxis.clone().multiply(Math.cos(angle + Math.PI) * helixRadius)
                         .add(yAxis.clone().multiply(Math.sin(angle + Math.PI) * helixRadius));
-                Location p2 = currentLoc.clone().add(offset2);
+                Location p2 = trailCenter.clone().add(offset2);
 
                 currentLoc.getWorld().spawnParticle(Particle.ENCHANTED_HIT, p1, 1, 0, 0, 0, 0);
                 currentLoc.getWorld().spawnParticle(Particle.ENCHANTED_HIT, p2, 1, 0, 0, 0, 0);
 
-                // [GAMEPLAY]: Bán kính hút chính xác r = 2.0 (Tổng diện tích 4 block)
-                for (Entity entity : currentLoc.getWorld().getNearbyEntities(currentLoc, 2.0, 2.0, 2.0)) {
+                // 3. [CÂN BẰNG]: Giảm bán kính hút xuống r = 1.0
+                for (Entity entity : currentLoc.getWorld().getNearbyEntities(currentLoc, 1.0, 1.0, 1.0)) {
                     if (entity instanceof LivingEntity && !entity.equals(caster) && CombatManager.canTarget(caster, entity)) {
                         LivingEntity target = (LivingEntity) entity;
 
@@ -123,7 +122,7 @@ public class CycloneFusion implements IFusion {
     }
 
     // ==========================================
-    // VỤ NỔ KẾT LIỄU (VFX ĐẠI TU LẦN 3: SÓNG XUNG KÍCH SIÊU THANH)
+    // VỤ NỔ KẾT LIỄU (VFX 3D FIBONACCI SPHERE)
     // ==========================================
     private void explode(Player caster, RPGPlayer rpgPlayer, Location loc, double totalDmgMulti) {
         loc.getWorld().playSound(loc, Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.0f, 2.0f);
@@ -132,21 +131,28 @@ public class CycloneFusion implements IFusion {
         loc.getWorld().spawnParticle(Particle.EXPLOSION, loc, 1);
         loc.getWorld().spawnParticle(Particle.SWEEP_ATTACK, loc, 15, 2.0, 2.0, 2.0, 0.1);
 
-        // [VFX JUICE]: Sóng áp suất bằng POOF và CLOUD tốc độ cao, dứt khoát không dây dưa
+        // [TOÁN HỌC 3D]: Quả cầu Fibonacci tạo mảng Particle 3D hoàn chỉnh
         Particle.DustOptions windDust = new Particle.DustOptions(org.bukkit.Color.WHITE, 1.5f);
-        for (double t = 0; t <= Math.PI * 2; t += 0.3) {
-            double x = 3.5 * Math.cos(t);
-            double z = 3.5 * Math.sin(t);
-            Location edge = loc.clone().add(x, 0.2, z);
+        int samples = 50; // Tổng số hạt tạo vỏ cầu
+        double phi = Math.PI * (3.0 - Math.sqrt(5.0)); // Tỷ lệ vàng
+        double explosionRadius = 3.5;
 
-            // Hạt POOF tan ngay lập tức
-            loc.getWorld().spawnParticle(Particle.POOF, edge, 2, 0.1, 0.1, 0.1, 0.05);
-            // Hạt CLOUD với tốc độ (0.2) tạo cảm giác bị thổi văng ra ngoài tâm
-            loc.getWorld().spawnParticle(Particle.CLOUD, edge, 1, 0.1, 0.1, 0.1, 0.2);
+        for (int i = 0; i < samples; i++) {
+            double y = 1.0 - (i / (double) (samples - 1)) * 2.0; // Phân bổ trục Y từ 1 xuống -1
+            double radiusAtY = Math.sqrt(1.0 - y * y); // Bán kính đường tròn tại Y
+            double theta = phi * i;
+
+            double x = Math.cos(theta) * radiusAtY;
+            double z = Math.sin(theta) * radiusAtY;
+
+            Location edge = loc.clone().add(x * explosionRadius, y * explosionRadius, z * explosionRadius);
+
+            // Bắn hạt bay tỏa ra ngoài theo định hướng 3D
+            loc.getWorld().spawnParticle(Particle.POOF, edge, 1, 0, 0, 0, 0.05);
+            loc.getWorld().spawnParticle(Particle.CLOUD, edge, 1, 0, 0, 0, 0.1);
             loc.getWorld().spawnParticle(Particle.DUST, edge, 1, 0, 0, 0, 0, windDust, true);
         }
 
-        // Sát thương nổ (Bán kính 3.5 block)
         for (Entity entity : loc.getWorld().getNearbyEntities(loc, 3.5, 3.5, 3.5)) {
             if (entity instanceof LivingEntity && !entity.equals(caster) && CombatManager.canTarget(caster, entity)) {
                 LivingEntity target = (LivingEntity) entity;
