@@ -58,27 +58,36 @@ public class ElementalFusionSkill implements ISkill {
     // ==========================================
     // LORE SẼ ĐƯỢC BỔ SUNG DẦN DẦN (THEO YÊU CẦU CỦA BẠN)
     // ==========================================
-    // Trong ElementalFusionSkill.java
     @Override
     public List<String> getDescription(Player player, int level) {
         int lv = Math.max(1, level);
         double baseDmgPct = 330.0 + (lv * 22.0);
 
         MageElement nth = MageElement.FIRE;
-        MageElement tnt = null;
-        String tntName = "§8(Không có)";
+        MageElement tnt = null; // Giữ nguyên null để UI nhận diện
+        String tntName = "§8(Không có)"; // Trả lại text (Không có) cho Giám đốc!
 
         if (player != null) {
             nth = ElementalSwapSkill.getActiveElement(player);
             if (player.hasMetadata("Mage_Previous_Element")) {
-                try {
-                    tnt = MageElement.valueOf(player.getMetadata("Mage_Previous_Element").get(0).asString());
-                    tntName = tnt.getDisplayName();
-                } catch (Exception ignored) {}
+                java.util.List<org.bukkit.metadata.MetadataValue> metaList = player.getMetadata("Mage_Previous_Element");
+
+                // [PHÒNG VỆ LỚP 1]: Đảm bảo List không null và không rỗng trước khi gọi get(0)
+                if (metaList != null && !metaList.isEmpty()) {
+                    String metaString = metaList.get(0).asString();
+                    try {
+                        // [PHÒNG VỆ LỚP 2]: Ép kiểu Enum an toàn
+                        tnt = MageElement.valueOf(metaString);
+                        tntName = tnt.getDisplayName();
+                    } catch (IllegalArgumentException e) {
+                        // Không "nuốt" lỗi! Log ra cảnh báo nhẹ để Technical Director còn biết đường mà Fix
+                        // RPGCore.getInstance().getLogger().warning("Lỗi ép kiểu MageElement: Giá trị [" + metaString + "] không hợp lệ!");
+                    }
+                }
             }
         }
 
-        List<String> lore = new java.util.ArrayList<>(Arrays.asList(
+        List<String> lore = new java.util.ArrayList<>(java.util.Arrays.asList(
                 "§7Dung hợp 2 loại nguyên tố với nhau, sự giao thoa của",
                 "§7hiện tại và quá khứ để kích hoạt phản ứng dữ dội.",
                 "",
@@ -89,7 +98,7 @@ public class ElementalFusionSkill implements ISkill {
                 ""
         ));
 
-        // [TINH GỌN TUYỆT ĐỐI]: Tự động lấy Lore từ Engine mà không cần If-Else
+        // Ném tnt (có thể là null) cho Engine, Engine sẽ tự nhân đôi và trả về đúng Lore
         IFusion activeFusion = vn.minecraft.rPGCore.skills.mage.fusion.FusionEngine.getActiveFusion(tnt, nth);
         lore.addAll(activeFusion.getLore(baseDmgPct));
 
@@ -100,7 +109,6 @@ public class ElementalFusionSkill implements ISkill {
     public boolean execute(Player player, RPGPlayer rpgPlayer, int level) {
         if (!handleCostAndCooldown(player, rpgPlayer, level)) return false;
 
-        // 1. Phân tích Nguyên tố
         MageElement nth = ElementalSwapSkill.getActiveElement(player);
         MageElement tnt = null;
 
@@ -110,21 +118,15 @@ public class ElementalFusionSkill implements ISkill {
             } catch (Exception ignored) {}
         }
 
-        // Trong hàm execute() của ElementalFusionSkill.java
-
-        // [FIX BUG]: Chỉ tính Hệ số Kỹ năng truyền xuống Lõi (VD Lv 10 = 5.5)
         double multiplier = (330.0 + (level * 22.0)) / 100.0;
 
-        // Gọi Engine định tuyến (Tìm Class Phản ứng)
-        IFusion activeFusion = FusionEngine.getActiveFusion(tnt, nth);
+        // Quăng cho Engine tự xử lý logic nhân đôi
+        IFusion activeFusion = vn.minecraft.rPGCore.skills.mage.fusion.FusionEngine.getActiveFusion(tnt, nth);
 
         player.sendMessage("§d§l[!] " + activeFusion.getReactionName() + " §fKích hoạt!");
-
-        // Giao toàn quyền thi triển cho Class đó (Truyền đúng multiplier)
         activeFusion.cast(player, rpgPlayer, level, multiplier);
 
-        // 6. Dọn dẹp & Khóa Cooldown
-        player.removeMetadata("Mage_Previous_Element", RPGCore.getInstance());
+        player.removeMetadata("Mage_Previous_Element", vn.minecraft.rPGCore.RPGCore.getInstance());
         applyGlobalCooldown(player, rpgPlayer, level);
         return true;
     }

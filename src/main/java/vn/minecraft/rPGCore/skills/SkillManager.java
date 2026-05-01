@@ -5,6 +5,7 @@ import org.checkerframework.checker.units.qual.C;
 import vn.minecraft.rPGCore.skills.archer.*;
 import vn.minecraft.rPGCore.skills.assassin.*;
 import vn.minecraft.rPGCore.skills.mage.*;
+import vn.minecraft.rPGCore.skills.mage.fusion.FusionEngine;
 import vn.minecraft.rPGCore.skills.summoner.*;
 import vn.minecraft.rPGCore.skills.summoner.pets.*;
 import vn.minecraft.rPGCore.skills.warrior.*;
@@ -20,6 +21,7 @@ public class SkillManager {
 
     public SkillManager(JavaPlugin plugin) {
         this.plugin = plugin;
+        FusionEngine.init();
         // ==========================================
         // ĐĂNG KÝ HỒ SƠ THÚ TRIỆU HỒI (PET PROFILES)
         // ==========================================

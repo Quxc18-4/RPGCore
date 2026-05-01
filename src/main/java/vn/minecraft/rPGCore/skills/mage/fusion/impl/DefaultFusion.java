@@ -20,16 +20,15 @@ public class DefaultFusion implements IFusion {
 
     @Override public MageElement getElement1() { return null; }
     @Override public MageElement getElement2() { return null; }
-    @Override public String getReactionName() { return "§f§lMA LỰC THUẦN TÚY"; }
+    @Override public String getReactionName() { return "§f§lMa Lực Thuần Túy"; }
     @Override public double getDamageMultiplier() { return 1.0; } // Sát thương gốc x1.0
 
-    // Thêm hàm này vào DefaultFusion.java
     @Override
-    public List<String> getLore(double baseDmgPct) {
+    public java.util.List<String> getLore(double baseDmgPct) {
         double finalDmg = baseDmgPct * getDamageMultiplier();
         return java.util.Arrays.asList(
-                "§e[Kích hoạt - Hình thái Dung Hợp - " + org.bukkit.ChatColor.stripColor(getReactionName()) + "]",
-                "§f- Bắn một quả cầu ma lực trung tính",
+                "§e[Kích hoạt - Hình thái Dung Hợp - Ma Lực Thuần Túy]", // Format chuẩn như bạn muốn
+                "§f- Bắn một quả cầu ma lực trung tính.",
                 "§f- Phát nổ khi chạm, Gây §c§l" + (int)finalDmg + "% §fSát thương."
         );
     }

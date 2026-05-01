@@ -26,7 +26,7 @@ public class PyroclasmFusion implements IFusion {
 
     @Override public MageElement getElement1() { return MageElement.FIRE; }
     @Override public MageElement getElement2() { return MageElement.FIRE; }
-    @Override public String getReactionName() { return "§c§lĐẠI HỎA CẦU"; }
+    @Override public String getReactionName() { return "§c§lMưa Thiên Thạch"; }
     @Override public double getDamageMultiplier() { return 1.40; } // Buff hệ số 1.4
 
     @Override
@@ -35,11 +35,11 @@ public class PyroclasmFusion implements IFusion {
         double waveDmg = totalDmg / 3.0;
 
         return Arrays.asList(
-                "§e[Kích hoạt - Hình thái Dung Hợp - Đại Hỏa Cầu]",
+                "§e[Kích hoạt - Hình thái Dung Hợp - Mưa Thiên Thạch]",
                 "§f- Triệu hồi Mưa Thiên Thạch tại vị trí tâm ngắm.",
-                "§f- §c90%§f: Giáng 3 đợt thiên thạch, mỗi đợt gây §c§l" + (int)waveDmg + "% §fSát thương.",
-                "§f  §7(Trúng nhiều viên trong cùng 1 đợt chỉ nhận 10% Sát thương).",
-                "§f- §c10%§f: Giáng 1 Đại Hỏa Cầu khổng lồ, gây §c§l" + (int)totalDmg + "% §fSát thương AoE."
+                "§f- §c90%§f: Giáng 3 đợt thiên thạch, mỗi đợt gây §c" + (int)waveDmg + "% §fSát thương.",
+                "§f  §8(Trúng nhiều viên trong cùng 1 đợt chỉ nhận 10% Sát thương).",
+                "§f- §c10%§f: Giáng 1 Đại Hỏa Cầu khổng lồ, gây §c" + (int)totalDmg + "% §fSát thương."
         );
     }
 
