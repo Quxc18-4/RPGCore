@@ -81,7 +81,7 @@ public class DefaultFusion implements IFusion {
         // [FIX BUG]: Hệ số cuối = Hệ số Kỹ Năng * Hệ số Phản Ứng
         double finalDmgMulti = baseMultiplier * getDamageMultiplier();
 
-        for (Entity entity : loc.getWorld().getNearbyEntities(loc, 4.0, 4.0, 4.0)) {
+        for (Entity entity : loc.getWorld().getNearbyEntities(loc, 2.0, 2.0, 2.0)) {
             if (entity instanceof LivingEntity && !entity.equals(caster) && CombatManager.canTarget(caster, entity)) {
                 LivingEntity target = (LivingEntity) entity;
 

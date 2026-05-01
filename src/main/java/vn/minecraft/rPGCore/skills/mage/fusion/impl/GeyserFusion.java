@@ -28,7 +28,7 @@ public class GeyserFusion implements IFusion {
     @Override public MageElement getElement1() { return MageElement.WATER; }
     @Override public MageElement getElement2() { return MageElement.WATER; }
     @Override public String getReactionName() { return "§b§lHải Thần Nộ"; }
-    @Override public double getDamageMultiplier() { return 1.25; } // Đã thu Thuế Khống Chế
+    @Override public double getDamageMultiplier() { return 1.8; } // Đã thu Thuế Khống Chế
 
     @Override
     public List<String> getLore(double baseDmgPct) {

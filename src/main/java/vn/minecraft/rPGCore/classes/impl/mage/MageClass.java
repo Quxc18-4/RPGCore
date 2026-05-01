@@ -13,6 +13,7 @@ import vn.minecraft.rPGCore.managers.CombatManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 import vn.minecraft.rPGCore.skills.mage.ElementalSwapSkill;
 import vn.minecraft.rPGCore.classes.impl.mage.attacks.*;
+import vn.minecraft.rPGCore.skills.mage.fusion.impl.HolyBladesFusion;
 
 import java.util.EnumMap;
 import java.util.List;
@@ -126,6 +127,11 @@ public class MageClass extends RPGClass {
         nextAttackTime.put(player.getUniqueId(), currentTime + attackCooldown);
 
         MageElement element = ElementalSwapSkill.getActiveElement(player);
+
+        // ==========================================
+        // [HOOK ÁNH SÁNG]: Khai hỏa Thánh Kiếm nếu đang có đội hình
+        // ==========================================
+        HolyBladesFusion.tryFireBlade(player, rpgPlayer);
 
         // Gọi Strategy tương ứng để xử lý
         IMageBasicAttack attackStrategy = attackStrategies.get(element);

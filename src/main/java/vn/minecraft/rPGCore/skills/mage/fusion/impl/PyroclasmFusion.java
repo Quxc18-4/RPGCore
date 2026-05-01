@@ -27,7 +27,7 @@ public class PyroclasmFusion implements IFusion {
     @Override public MageElement getElement1() { return MageElement.FIRE; }
     @Override public MageElement getElement2() { return MageElement.FIRE; }
     @Override public String getReactionName() { return "§c§lMưa Thiên Thạch"; }
-    @Override public double getDamageMultiplier() { return 1.40; } // Buff hệ số 1.4
+    @Override public double getDamageMultiplier() { return 1.45; } // Buff hệ số 1.4
 
     @Override
     public List<String> getLore(double baseDmgPct) {

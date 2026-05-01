@@ -22,19 +22,18 @@ public class CycloneFusion implements IFusion {
     @Override public MageElement getElement1() { return MageElement.WIND; }
     @Override public MageElement getElement2() { return MageElement.WIND; }
     @Override public String getReactionName() { return "§a§lBão Tố Hư Không"; }
-    @Override public double getDamageMultiplier() { return 1.15; }
+    @Override public double getDamageMultiplier() { return 1.05; }
 
     @Override
     public List<String> getLore(double baseDmgPct) {
         double totalDmg = baseDmgPct * getDamageMultiplier();
 
         return Arrays.asList(
-                "§e[Kích hoạt - Hình thái Dung Hợp - Bão Tố Hư Không]",
-                "§f- Bắn ra một Quả Cầu Cuồng Phong nén chặt về phía trước.",
-                "§f- Lõi bão liên tục §aCuốn Phăng§f mọi kẻ địch trong",
-                "§f  bán kính 1 mét đi theo cùng với nó.",
-                "§f- Phát nổ ở cự ly trung bình (15m) hoặc khi va chạm,",
-                "§f  gây §c" + (int)totalDmg + "% §fSát thương kỹ năng diện rộng 3D."
+                "§e[Kích hoạt - Hình thái Dung Hợp - Đạn Gió Xoáy]",
+                "§f- Bắn ra một Quả Cầu Cuồng Phong nén về phía trước.",
+                "§f- Lõi bão liên tục §aKéo Theo§f mọi kẻ địch nằm",
+                "§f  trong phạm vi lõi đi theo cùng với nó.",
+                "§f- Phát nổ gây §c" + (int)totalDmg + "% §fSát thương."
         );
     }
 
