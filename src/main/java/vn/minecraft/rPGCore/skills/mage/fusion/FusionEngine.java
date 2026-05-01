@@ -36,7 +36,8 @@ public class FusionEngine {
     public static void init() {
         FUSION_REGISTRY.clear();
         registerFusion(new PyroclasmFusion()); // Đăng ký Lửa x Lửa
-        registerFusion(new GeyserFusion());
+        registerFusion(new GeyserFusion()); // Nước + Nước
+        registerFusion(new ParasiticMinefieldFusion()); // Thiên Nhiên + Thiên Nhiên
     }
 
     public static IFusion getActiveFusion(MageElement tnt, MageElement nth) {
