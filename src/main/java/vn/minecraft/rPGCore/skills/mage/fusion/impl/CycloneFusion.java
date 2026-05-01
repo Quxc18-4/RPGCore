@@ -21,19 +21,20 @@ public class CycloneFusion implements IFusion {
 
     @Override public MageElement getElement1() { return MageElement.WIND; }
     @Override public MageElement getElement2() { return MageElement.WIND; }
-    @Override public String getReactionName() { return "§a§lĐạn Gió Xoáy"; }
-    @Override public double getDamageMultiplier() { return 1.30; }
+    @Override public String getReactionName() { return "§a§lBão Tố Hư Không"; }
+    @Override public double getDamageMultiplier() { return 1.15; }
 
     @Override
     public List<String> getLore(double baseDmgPct) {
         double totalDmg = baseDmgPct * getDamageMultiplier();
 
         return Arrays.asList(
-                "§e[Kích hoạt - Hình thái Dung Hợp - Đạn Gió Xoáy]",
-                "§f- Bắn ra một Quả Cầu Cuồng Phong nén về phía trước.",
-                "§f- Lõi bão liên tục §aKéo Theo§f mọi kẻ địch nằm",
-                "§f  trong phạm vi lõi đi theo cùng với nó.",
-                "§f- Phát nổ gây §c" + (int)totalDmg + "% §fSát thương."
+                "§e[Kích hoạt - Hình thái Dung Hợp - Bão Tố Hư Không]",
+                "§f- Bắn ra một Quả Cầu Cuồng Phong nén chặt về phía trước.",
+                "§f- Lõi bão liên tục §aCuốn Phăng§f mọi kẻ địch trong",
+                "§f  bán kính 1 mét đi theo cùng với nó.",
+                "§f- Phát nổ ở cự ly trung bình (15m) hoặc khi va chạm,",
+                "§f  gây §c" + (int)totalDmg + "% §fSát thương kỹ năng diện rộng 3D."
         );
     }
 
@@ -67,6 +68,10 @@ public class CycloneFusion implements IFusion {
             final int maxTicks = 15;
             final double helixRadius = 1.2;
 
+            // Dùng Dust Particle để vẽ nét liền cho Trail Helix
+            final Particle.DustOptions greenDust = new Particle.DustOptions(org.bukkit.Color.LIME, 1.2f);
+            final Particle.DustOptions whiteDust = new Particle.DustOptions(org.bukkit.Color.WHITE, 1.2f);
+
             @Override
             public void run() {
                 if (ticks >= maxTicks || !caster.isOnline()) {
@@ -75,6 +80,7 @@ public class CycloneFusion implements IFusion {
                     return;
                 }
 
+                Location prevLoc = currentLoc.clone(); // Lưu lại vị trí cũ trước khi di chuyển
                 currentLoc.add(velocity);
 
                 if (currentLoc.getBlock().getType().isSolid()) {
@@ -83,24 +89,28 @@ public class CycloneFusion implements IFusion {
                     return;
                 }
 
-                // 1. [VFX LÕI BÃO]: Hình cầu đặc hoàn chỉnh (Offset siêu thấp)
+                // 1. [VFX LÕI BÃO]: Hình cầu đặc hoàn chỉnh
                 currentLoc.getWorld().spawnParticle(Particle.CLOUD, currentLoc, 8, 0.1, 0.1, 0.1, 0.01);
                 currentLoc.getWorld().spawnParticle(Particle.SPIT, currentLoc, 5, 0.1, 0.1, 0.1, 0.01);
 
-                // 2. [VFX ĐUÔI HELIX]: Lùi tọa độ tâm về phía sau 1.5 block
-                Location trailCenter = currentLoc.clone().subtract(direction.clone().multiply(1.5));
-                double angle = ticks * 0.6;
+                // 2. [VFX ĐUÔI HELIX]: Nội suy (Lerp) 3 điểm ảnh giữa prevLoc và currentLoc để tạo nét vẽ liền mạch
+                for (int i = 0; i < 3; i++) {
+                    double lerpFactor = i / 3.0; // 0.0, 0.33, 0.66
+                    Location lerpLoc = prevLoc.clone().add(velocity.clone().multiply(lerpFactor));
 
-                Vector offset1 = xAxis.clone().multiply(Math.cos(angle) * helixRadius)
-                        .add(yAxis.clone().multiply(Math.sin(angle) * helixRadius));
-                Location p1 = trailCenter.clone().add(offset1);
+                    // Lùi tâm xoắn ốc lại 1 chút để tạo cảm giác đuôi gió
+                    lerpLoc.subtract(direction.clone().multiply(1.0));
 
-                Vector offset2 = xAxis.clone().multiply(Math.cos(angle + Math.PI) * helixRadius)
-                        .add(yAxis.clone().multiply(Math.sin(angle + Math.PI) * helixRadius));
-                Location p2 = trailCenter.clone().add(offset2);
+                    double lerpAngle = (ticks - 1 + lerpFactor) * 0.8; // Trục xoay liên tục
 
-                currentLoc.getWorld().spawnParticle(Particle.ENCHANTED_HIT, p1, 1, 0, 0, 0, 0);
-                currentLoc.getWorld().spawnParticle(Particle.ENCHANTED_HIT, p2, 1, 0, 0, 0, 0);
+                    Vector offset1 = xAxis.clone().multiply(Math.cos(lerpAngle) * helixRadius)
+                            .add(yAxis.clone().multiply(Math.sin(lerpAngle) * helixRadius));
+                    Vector offset2 = xAxis.clone().multiply(Math.cos(lerpAngle + Math.PI) * helixRadius)
+                            .add(yAxis.clone().multiply(Math.sin(lerpAngle + Math.PI) * helixRadius));
+
+                    lerpLoc.getWorld().spawnParticle(Particle.DUST, lerpLoc.clone().add(offset1), 1, 0, 0, 0, 0, whiteDust, true);
+                    lerpLoc.getWorld().spawnParticle(Particle.DUST, lerpLoc.clone().add(offset2), 1, 0, 0, 0, 0, whiteDust, true);
+                }
 
                 // 3. [CÂN BẰNG]: Giảm bán kính hút xuống r = 1.0
                 for (Entity entity : currentLoc.getWorld().getNearbyEntities(currentLoc, 1.0, 1.0, 1.0)) {
@@ -122,44 +132,58 @@ public class CycloneFusion implements IFusion {
     }
 
     // ==========================================
-    // VỤ NỔ KẾT LIỄU (VFX 3D FIBONACCI SPHERE)
+    // VỤ NỔ KẾT LIỄU (VFX MỞ RỘNG - EXPANDING SHOCKWAVE)
     // ==========================================
     private void explode(Player caster, RPGPlayer rpgPlayer, Location loc, double totalDmgMulti) {
         loc.getWorld().playSound(loc, Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.0f, 2.0f);
         loc.getWorld().playSound(loc, Sound.ENTITY_GENERIC_EXPLODE, 1.5f, 1.2f);
-
         loc.getWorld().spawnParticle(Particle.EXPLOSION, loc, 1);
-        loc.getWorld().spawnParticle(Particle.SWEEP_ATTACK, loc, 15, 2.0, 2.0, 2.0, 0.1);
 
-        // [TOÁN HỌC 3D]: Quả cầu Fibonacci tạo mảng Particle 3D hoàn chỉnh
-        Particle.DustOptions windDust = new Particle.DustOptions(org.bukkit.Color.WHITE, 1.5f);
-        int samples = 50; // Tổng số hạt tạo vỏ cầu
-        double phi = Math.PI * (3.0 - Math.sqrt(5.0)); // Tỷ lệ vàng
-        double explosionRadius = 3.5;
-
-        for (int i = 0; i < samples; i++) {
-            double y = 1.0 - (i / (double) (samples - 1)) * 2.0; // Phân bổ trục Y từ 1 xuống -1
-            double radiusAtY = Math.sqrt(1.0 - y * y); // Bán kính đường tròn tại Y
-            double theta = phi * i;
-
-            double x = Math.cos(theta) * radiusAtY;
-            double z = Math.sin(theta) * radiusAtY;
-
-            Location edge = loc.clone().add(x * explosionRadius, y * explosionRadius, z * explosionRadius);
-
-            // Bắn hạt bay tỏa ra ngoài theo định hướng 3D
-            loc.getWorld().spawnParticle(Particle.POOF, edge, 1, 0, 0, 0, 0.05);
-            loc.getWorld().spawnParticle(Particle.CLOUD, edge, 1, 0, 0, 0, 0.1);
-            loc.getWorld().spawnParticle(Particle.DUST, edge, 1, 0, 0, 0, 0, windDust, true);
-        }
-
+        // [GAMEPLAY]: Tính sát thương chớp nhoáng ngay khi nổ
         for (Entity entity : loc.getWorld().getNearbyEntities(loc, 3.5, 3.5, 3.5)) {
             if (entity instanceof LivingEntity && !entity.equals(caster) && CombatManager.canTarget(caster, entity)) {
                 LivingEntity target = (LivingEntity) entity;
-
                 double hitDmg = CombatManager.calculateDamage(caster, rpgPlayer, target, totalDmgMulti, 0, true, false);
                 CombatManager.applySkillDamage(caster, target, hitDmg);
             }
         }
+
+        // [VFX ANIMATION]: Sóng xung kích Fibonacci nở rộng dần từ tâm ra ngoài trong 5 ticks
+        new BukkitRunnable() {
+            int expTicks = 0;
+            final int maxExpTicks = 5; // Hoạt ảnh chạy trong 5 ticks (0.25s)
+            final double finalRadius = 3.5;
+            final Particle.DustOptions windDust = new Particle.DustOptions(org.bukkit.Color.WHITE, 1.5f);
+
+            @Override
+            public void run() {
+                if (expTicks >= maxExpTicks) {
+                    this.cancel();
+                    return;
+                }
+
+                // Bán kính nở dần: Tick 1 = 0.7, Tick 5 = 3.5
+                double currentRadius = (expTicks + 1) * (finalRadius / maxExpTicks);
+                int samples = 30 + (expTicks * 10); // Càng to ra ngoài thì số hạt càng nhiều để không bị thưa
+                double phi = Math.PI * (3.0 - Math.sqrt(5.0));
+
+                for (int i = 0; i < samples; i++) {
+                    double y = 1.0 - (i / (double) (samples - 1)) * 2.0;
+                    double radiusAtY = Math.sqrt(1.0 - y * y);
+                    double theta = phi * i;
+
+                    double x = Math.cos(theta) * radiusAtY;
+                    double z = Math.sin(theta) * radiusAtY;
+
+                    // Nhân với currentRadius để sóng đẩy dần ra xa
+                    Location edge = loc.clone().add(x * currentRadius, y * currentRadius, z * currentRadius);
+
+                    // Hạt cloud kết hợp Dust tạo luồng áp suất
+                    loc.getWorld().spawnParticle(Particle.CLOUD, edge, 1, 0, 0, 0, 0.05);
+                    loc.getWorld().spawnParticle(Particle.DUST, edge, 1, 0, 0, 0, 0, windDust, true);
+                }
+                expTicks++;
+            }
+        }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
     }
 }
