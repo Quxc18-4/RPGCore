@@ -129,9 +129,13 @@ public class MageClass extends RPGClass {
         MageElement element = ElementalSwapSkill.getActiveElement(player);
 
         // ==========================================
-        // [HOOK ÁNH SÁNG]: Khai hỏa Thánh Kiếm nếu đang có đội hình
+        // [HOOK ÁNH SÁNG]: Khai hỏa Thánh Kiếm bằng Metadata
         // ==========================================
-        HolyBladesFusion.tryFireBlade(player, rpgPlayer);
+        if (player.hasMetadata("HolyBlades_Active")) {
+            HolyBladesFusion.tryFireBlade(player, rpgPlayer);
+            // Thoát hàm ngay lập tức, CHẶN đánh thường và không trừ độ bền vũ khí
+            return false;
+        }
 
         // Gọi Strategy tương ứng để xử lý
         IMageBasicAttack attackStrategy = attackStrategies.get(element);

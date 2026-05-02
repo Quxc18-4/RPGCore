@@ -11,6 +11,7 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Transformation;
 import org.bukkit.util.Vector;
@@ -31,7 +32,7 @@ public class HolyBladesFusion implements IFusion {
     @Override public MageElement getElement1() { return MageElement.LIGHT; }
     @Override public MageElement getElement2() { return MageElement.LIGHT; }
     @Override public String getReactionName() { return "§e§lNgọn Thương Ánh Sáng"; }
-    @Override public double getDamageMultiplier() { return 1.20; }
+    @Override public double getDamageMultiplier() { return 1.20; } //[cite: 7]
 
     @Override
     public List<String> getLore(double baseDmgPct) {
@@ -40,7 +41,7 @@ public class HolyBladesFusion implements IFusion {
         double expDmg = totalDmg * 0.60;
         int maxSpears = 6;
         int duration = 15;
-        int stickChance = 30; // 30% Xác suất kẹt
+        int stickChance = 30;
 
         return Arrays.asList(
                 "§e[Hình thái Dung Hợp - Ngọn Thương Ánh Sáng]",
@@ -51,7 +52,7 @@ public class HolyBladesFusion implements IFusion {
                 "§f  1 ngọn thương lao thẳng về phía trước.",
                 "§f- Đâm xuyên qua kẻ địch, gây §c" + (int)pierceDmg + "% §fSát thương.",
                 "",
-                "§f§b[Nội Tại - Quang Bạo]", // Đổi tên từ Chém Quét -> Quang Bạo
+                "§f§b[Nội Tại - Quang Bạo]",
                 "§f- Mỗi khi xuyên qua một kẻ địch, sẽ có",
                 "§f  xác suất §a" + stickChance + "% §fngọn thương bị kẹt lại.",
                 "§f- Khi đó, thương sẽ §ephát nổ§f, gây §c" + (int)expDmg + "% §fSát thương.",
@@ -80,17 +81,13 @@ public class HolyBladesFusion implements IFusion {
         }
     }
 
-    // [CẬP NHẬT]: Trả về boolean để báo hiệu cho MageClass biết đã bắn giáo hay chưa
-    public static boolean tryFireBlade(Player caster, RPGPlayer rpgPlayer) {
+    public static void tryFireBlade(Player caster, RPGPlayer rpgPlayer) {
         UUID pid = caster.getUniqueId();
         if (activeFormations.containsKey(pid)) {
             activeFormations.get(pid).fireBlade();
-            return true; // Trả về true -> Hủy đòn đánh thường cơ bản
         }
-        return false;
     }
 
-    // [CẬP NHẬT]: Hàm dọn dẹp khẩn cấp khi Server tắt/reload (Gọi trong onDisable)
     public static void cleanupAll() {
         for (BladeFormation formation : activeFormations.values()) {
             formation.cleanup();
@@ -148,6 +145,8 @@ public class HolyBladesFusion implements IFusion {
             }
             if (added > 0) {
                 owner.getWorld().playSound(owner.getLocation(), Sound.ITEM_ARMOR_EQUIP_GOLD, 1.0f, 2.0f);
+                // [GẮN METADATA]: Báo hiệu người chơi đang có thương
+                owner.setMetadata("HolyBlades_Active", new FixedMetadataValue(RPGCore.getInstance(), true));
             }
         }
 
@@ -159,6 +158,7 @@ public class HolyBladesFusion implements IFusion {
             orbitTask = new BukkitRunnable() {
                 @Override
                 public void run() {
+                    // [FAIL-SAFE]: Nếu hết giờ, người chơi offline, chết, hoặc hết giáo thì dọn dẹp
                     if (ticksRemaining <= 0 || !owner.isOnline() || owner.isDead() || blades.isEmpty()) {
                         cleanup();
                         activeFormations.remove(owner.getUniqueId());
@@ -210,6 +210,15 @@ public class HolyBladesFusion implements IFusion {
                     new Vector3f(), flyingRot, new Vector3f(1.4f, 1.4f, 1.4f), new Quaternionf()
             );
 
+            // [XÓA METADATA NẾU HẾT GIÁO]: Rút mũi cuối cùng ra thì gỡ cờ chặn đánh thường
+            if (blades.isEmpty()) {
+                if (owner.isOnline()) {
+                    owner.removeMetadata("HolyBlades_Active", RPGCore.getInstance());
+                }
+                if (orbitTask != null) orbitTask.cancel();
+                activeFormations.remove(owner.getUniqueId());
+            }
+
             new BukkitRunnable() {
                 int stateTicks = 0;
                 int flightTicks = 0;
@@ -252,14 +261,13 @@ public class HolyBladesFusion implements IFusion {
                     }
 
                     Location currentLoc = firedBlade.getLocation();
-                    Location prevLoc = currentLoc.clone(); // Lưu tọa độ cũ để vẽ Trail
+                    Location prevLoc = currentLoc.clone();
 
                     currentLoc.add(fireDirection.clone().multiply(1.5));
                     currentLoc.setDirection(fireDirection);
 
                     firedBlade.teleport(currentLoc);
 
-                    // [CẬP NHẬT VFX]: Vẽ Trail nét liền bằng thuật toán Nội suy tuyến tính (Lerp)
                     double distance = prevLoc.distance(currentLoc);
                     Particle.DustOptions goldDust = new Particle.DustOptions(org.bukkit.Color.YELLOW, 1.0f);
                     for (double d = 0; d <= distance; d += 0.3) {
@@ -267,7 +275,7 @@ public class HolyBladesFusion implements IFusion {
                         trailPoint.getWorld().spawnParticle(Particle.END_ROD, trailPoint, 1, 0, 0, 0, 0);
                         trailPoint.getWorld().spawnParticle(Particle.DUST, trailPoint, 1, 0, 0, 0, 0, goldDust, true);
                     }
-                    // Va chạm tường
+
                     if (currentLoc.getBlock().getType().isSolid()) {
                         currentLoc.getWorld().spawnParticle(Particle.ITEM, currentLoc, 20, 0.2, 0.2, 0.2, 0.05, new ItemStack(Material.valueOf("GOLDEN_SPEAR")));
                         currentLoc.getWorld().playSound(currentLoc, Sound.BLOCK_GLASS_BREAK, 1.0f, 0.5f);
@@ -276,7 +284,6 @@ public class HolyBladesFusion implements IFusion {
                         return;
                     }
 
-                    // Va chạm quái (XUYÊN + XÁC SUẤT NỔ)
                     for (Entity entity : currentLoc.getWorld().getNearbyEntities(currentLoc, 1.2, 1.2, 1.2)) {
                         if (entity instanceof LivingEntity && !entity.equals(owner) && CombatManager.canTarget(owner, entity)) {
                             LivingEntity target = (LivingEntity) entity;
@@ -285,19 +292,14 @@ public class HolyBladesFusion implements IFusion {
                             if (!piercedTargets.contains(targetId)) {
                                 piercedTargets.add(targetId);
 
-                                // 1. ST Đâm Xuyên (Luôn gây ra khi chạm)
                                 double pierceDmgMulti = totalDmgMulti * 0.40;
                                 double hitDmg = CombatManager.calculateDamage(owner, rpgPlayer, target, pierceDmgMulti, 0, true, false);
                                 CombatManager.applySkillDamage(owner, target, hitDmg);
 
                                 target.getWorld().playSound(target.getLocation(), Sound.ITEM_TRIDENT_HIT, 1.0f, 1.2f);
 
-                                // 2. Đổ xúc xắc (RNG): 30% Kẹt lại và Phát Nổ
                                 if (Math.random() <= 0.30) {
-                                    // Kích nổ Quang Bạo tại vị trí con quái
                                     executeLightExplosion(target.getLocation(), sweptTargets);
-
-                                    // Hủy mũi thương ngay lập tức, ngắt luồng bay xuyên thấu
                                     firedBlade.remove();
                                     this.cancel();
                                     return;
@@ -312,12 +314,7 @@ public class HolyBladesFusion implements IFusion {
                         this.cancel();
                     }
                 }
-            }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
-
-            if (blades.isEmpty() && orbitTask != null) {
-                orbitTask.cancel();
-                activeFormations.remove(owner.getUniqueId());
-            }
+            }.runTaskTimer(RPGCore.getInstance(), 0L, 1L); //[cite: 7]
         }
 
         private void executeLightExplosion(Location loc, Set<UUID> sweptTargets) {
@@ -325,10 +322,16 @@ public class HolyBladesFusion implements IFusion {
             loc.getWorld().playSound(loc, Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.5f);
             loc.getWorld().playSound(loc, Sound.BLOCK_AMETHYST_BLOCK_BREAK, 1.5f, 0.5f);
 
-            // Hiệu ứng hạt: Chớp sáng và các mảnh văng tung tóe
-            loc.getWorld().spawnParticle(Particle.EXPLOSION, loc.clone().add(0, 1, 0), 1);
-            loc.getWorld().spawnParticle(Particle.FLASH, loc.clone().add(0, 1, 0), 2);
-            loc.getWorld().spawnParticle(Particle.END_ROD, loc.clone().add(0, 1, 0), 25, 0.8, 0.8, 0.8, 0.15);
+            Location center = loc.clone().add(0, 1, 0);
+
+            // [FIX 1.21]: Sử dụng Particle.EXPLOSION thay cho EXPLOSION_LARGE (Tránh lỗi Legacy)
+            loc.getWorld().spawnParticle(Particle.EXPLOSION, center, 1);
+
+            // [FIX 1.21]: Truyền Data org.bukkit.Color.YELLOW vào cho Particle.FLASH
+            loc.getWorld().spawnParticle(Particle.FLASH, center, 2, 0.0, 0.0, 0.0, 0.0, org.bukkit.Color.YELLOW);
+
+            // Các mảnh văng quang học
+            loc.getWorld().spawnParticle(Particle.END_ROD, center, 25, 0.8, 0.8, 0.8, 0.15);
 
             double expDmgMulti = totalDmgMulti * 0.60;
             double radiusSq = 3.5 * 3.5;
@@ -358,6 +361,10 @@ public class HolyBladesFusion implements IFusion {
                 if (blade != null && !blade.isDead()) blade.remove();
             }
             blades.clear();
+            // [XÓA METADATA]: Đảm bảo dọn dẹp triệt để
+            if (owner.isOnline()) {
+                owner.removeMetadata("HolyBlades_Active", RPGCore.getInstance());
+            }
         }
     }
 }
