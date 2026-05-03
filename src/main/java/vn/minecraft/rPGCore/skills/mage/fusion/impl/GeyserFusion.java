@@ -28,7 +28,7 @@ public class GeyserFusion implements IFusion {
     @Override public MageElement getElement1() { return MageElement.WATER; }
     @Override public MageElement getElement2() { return MageElement.WATER; }
     @Override public String getReactionName() { return "§b§lHải Thần Nộ"; }
-    @Override public double getDamageMultiplier() { return 1.6; } // Đã thu Thuế Khống Chế
+    @Override public double getDamageMultiplier() { return 1.6; }
 
     @Override
     public List<String> getLore(double baseDmgPct) {
@@ -48,15 +48,19 @@ public class GeyserFusion implements IFusion {
     public void cast(Player caster, RPGPlayer rpgPlayer, int skillLevel, double baseMultiplier) {
         Block targetBlock = caster.getTargetBlockExact(30, org.bukkit.FluidCollisionMode.NEVER);
         Location targetLoc;
+
         if (targetBlock != null) {
             targetLoc = targetBlock.getLocation();
         } else {
             targetLoc = caster.getEyeLocation().add(caster.getLocation().getDirection().multiply(30));
+            // [FIX LỖI KẸT TRẦN NHÀ]: Dò sàn tự động nếu cast vào không khí
+            Integer floorY = getFloorY(targetLoc, caster.getLocation().getBlockY());
+            if (floorY != null) {
+                targetLoc.setY(floorY);
+            }
         }
 
-        targetLoc.setY(targetLoc.getWorld().getHighestBlockYAt(targetLoc));
         Location center = targetLoc.add(0.5, 1.0, 0.5);
-
         double totalDmgMulti = baseMultiplier * getDamageMultiplier();
         triggerGeyserField(caster, rpgPlayer, center, totalDmgMulti);
     }
@@ -65,47 +69,46 @@ public class GeyserFusion implements IFusion {
         caster.getWorld().playSound(center, Sound.BLOCK_WATER_AMBIENT, 2.0f, 0.5f);
 
         double singleGeyserDmg = totalDmgMulti / 2.0;
-        int geyserCount = 5 + random.nextInt(3); // Cần sinh 5 đến 7 cột
+        int geyserCount = 5 + random.nextInt(3);
         String hitMetaKey = "GeyserHit_" + caster.getUniqueId();
 
-        // 1. [THUẬT TOÁN TỐI ƯU]: Rejection Sampling (Sinh tọa độ không trùng lặp)
         List<Location> validLocations = new ArrayList<>();
-        double minDistance = 3.5; // Khoảng cách tối thiểu giữa 2 tâm cột nước
-        double minDistanceSquared = minDistance * minDistance; // Bình phương để tối ưu CPU
+        double minDistance = 3.5;
+        double minDistanceSquared = minDistance * minDistance;
 
         for (int i = 0; i < geyserCount; i++) {
-            // Giới hạn 50 lần thử (Failsafe) để tránh Infinity Loop nếu Random quá xui
             for (int attempt = 0; attempt < 50; attempt++) {
-                // Random góc và khoảng cách (Bán kính vùng cast là 6 block)
                 double angle = random.nextDouble() * 2 * Math.PI;
-                double r = Math.sqrt(random.nextDouble()) * 6.0; // Căn bậc 2 để phân bố đều đặn
+                double r = Math.sqrt(random.nextDouble()) * 6.0;
 
                 Location potentialLoc = center.clone().add(r * Math.cos(angle), 0, r * Math.sin(angle));
-                potentialLoc.setY(potentialLoc.getWorld().getHighestBlockYAt(potentialLoc) + 1.0);
 
-                // Quét xem có nằm quá gần cột nào đã được chốt không
+                // [FIX LỖI KẸT TRẦN NHÀ]: Dùng hàm tự chế dò mặt sàn thực tế từ tọa độ tâm
+                Integer floorY = getFloorY(potentialLoc, center.getBlockY());
+                if (floorY == null) continue; // Nếu không tìm thấy sàn (hố quá sâu), skip và random lại
+
+                potentialLoc.setY(floorY + 1.0); // Nâng lên 1 block để ngang mặt đất
+
                 boolean isFarEnough = true;
                 for (Location validLoc : validLocations) {
                     if (validLoc.distanceSquared(potentialLoc) < minDistanceSquared) {
                         isFarEnough = false;
-                        break; // Nằm đè lên nhau -> Hủy vòng lặp kiểm tra
+                        break;
                     }
                 }
 
                 if (isFarEnough) {
-                    validLocations.add(potentialLoc); // Đủ xa -> Lưu vào danh sách chốt
-                    break; // Thoát vòng lặp Failsafe, chuyển sang sinh cột nước tiếp theo
+                    validLocations.add(potentialLoc);
+                    break;
                 }
             }
         }
 
-        // Vẽ vùng đất cấm cảnh báo (R=6)
         Particle.DustOptions warningDust = new Particle.DustOptions(org.bukkit.Color.AQUA, 1.0f);
         for (double t = 0; t < Math.PI * 2; t += 0.4) {
             center.getWorld().spawnParticle(Particle.DUST, center.clone().add(6 * Math.cos(t), 0.2, 6 * Math.sin(t)), 1, 0, 0, 0, 0, warningDust, true);
         }
 
-        // 2. Kích hoạt chuỗi hiệu ứng dựa trên danh sách tọa độ sạch
         new BukkitRunnable() {
             int index = 0;
             @Override
@@ -114,11 +117,10 @@ public class GeyserFusion implements IFusion {
                     this.cancel();
                     return;
                 }
-                // Triệu hồi cột nước tại tọa độ an toàn đã được tính toán
                 spawnSingleGeyser(caster, rpgPlayer, validLocations.get(index), singleGeyserDmg, hitMetaKey);
                 index++;
             }
-        }.runTaskTimer(RPGCore.getInstance(), 0L, 4L); // Stagger 4 ticks (0.2s) tạo nhịp điệu tung hứng
+        }.runTaskTimer(RPGCore.getInstance(), 0L, 4L);
     }
 
     private void spawnSingleGeyser(Player caster, RPGPlayer rpgPlayer, Location loc, double dmgMulti, String hitMetaKey) {
@@ -148,11 +150,11 @@ public class GeyserFusion implements IFusion {
                         if (entity instanceof LivingEntity && !entity.equals(caster) && CombatManager.canTarget(caster, entity)) {
                             LivingEntity target = (LivingEntity) entity;
 
-                            target.setVelocity(new Vector(0, 1.35, 0)); // Hard CC: Hất tung
+                            target.setVelocity(new Vector(0, 1.35, 0));
 
                             double finalMultiToApply = dmgMulti;
                             if (target.hasMetadata(hitMetaKey)) {
-                                finalMultiToApply = dmgMulti * 0.10; // Đã trúng thì chỉ ăn 10%
+                                finalMultiToApply = dmgMulti * 0.10;
                             } else {
                                 target.setMetadata(hitMetaKey, new FixedMetadataValue(RPGCore.getInstance(), true));
                                 new BukkitRunnable() {
@@ -170,5 +172,20 @@ public class GeyserFusion implements IFusion {
                 ticks++;
             }
         }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
+    }
+
+    // ==========================================
+    // TÌM SÀN THÔNG MINH (INDOOR TERRAIN HUGGING)
+    // ==========================================
+    private Integer getFloorY(Location currentLoc, int referenceY) {
+        // Quét quanh mốc tâm Y. Quét lên 3 block (đồi gập ghềnh) và rớt xuống tối đa 5 block (hố/bậc thang)
+        for (int y = referenceY + 3; y >= referenceY - 5; y--) {
+            Location checkLoc = currentLoc.clone();
+            checkLoc.setY(y);
+            if (checkLoc.getBlock().getType().isSolid()) {
+                return y;
+            }
+        }
+        return null;
     }
 }

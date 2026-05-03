@@ -4,6 +4,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -27,7 +28,7 @@ public class PyroclasmFusion implements IFusion {
     @Override public MageElement getElement1() { return MageElement.FIRE; }
     @Override public MageElement getElement2() { return MageElement.FIRE; }
     @Override public String getReactionName() { return "§c§lMưa Thiên Thạch"; }
-    @Override public double getDamageMultiplier() { return 1.45; } // Buff hệ số 1.4
+    @Override public double getDamageMultiplier() { return 1.45; } // Buff hệ số 1.4[cite: 9]
 
     @Override
     public List<String> getLore(double baseDmgPct) {
@@ -40,45 +41,65 @@ public class PyroclasmFusion implements IFusion {
                 "§f- §c90%§f: Giáng 3 đợt thiên thạch, mỗi đợt gây §c" + (int)waveDmg + "% §fSát thương.",
                 "§f  §8(Trúng nhiều viên trong cùng 1 đợt chỉ nhận 10% Sát thương).",
                 "§f- §c10%§f: Giáng 1 Đại Hỏa Cầu khổng lồ, gây §c" + (int)totalDmg + "% §fSát thương."
-        );
+        ); //[cite: 9]
     }
 
     @Override
     public void cast(Player caster, RPGPlayer rpgPlayer, int skillLevel, double baseMultiplier) {
-        // 1. Raycast tìm vị trí con trỏ chuột (Max 30 blocks)
-        org.bukkit.block.Block targetBlock = caster.getTargetBlockExact(30, org.bukkit.FluidCollisionMode.NEVER);
+        // 1. Raycast tìm vị trí con trỏ chuột (Max 30 blocks)[cite: 9]
+        Block targetBlock = caster.getTargetBlockExact(30, org.bukkit.FluidCollisionMode.NEVER);
         Location targetLoc;
+
         if (targetBlock != null) {
             targetLoc = targetBlock.getLocation();
         } else {
             targetLoc = caster.getEyeLocation().add(caster.getLocation().getDirection().multiply(30));
-            targetLoc.setY(targetLoc.getWorld().getHighestBlockYAt(targetLoc)); // Đẩy xuống mặt đất
+            // [FIX INDOOR]: Tự động tìm sàn nhà thực tế, tránh kéo chiêu lên nóc hang
+            Integer floorY = getFloorY(targetLoc, caster.getLocation().getBlockY());
+            if (floorY != null) {
+                targetLoc.setY(floorY);
+            }
         }
 
-        // Khởi tạo Sát thương tổng (Ví dụ: 5.5 * 1.4 = 7.7 = 770%)
-        double totalDmgMulti = baseMultiplier * getDamageMultiplier();
+        // Tinh chỉnh tâm nổ cao hơn mặt đất 0.5 block để Hitbox chính xác hơn
+        Location center = targetLoc.add(0.5, 0.5, 0.5);
+        double totalDmgMulti = baseMultiplier * getDamageMultiplier(); //[cite: 9]
 
-        // 2. Roll Gacha (RNG)
+        // 2. Roll Gacha (RNG)[cite: 9]
         if (random.nextInt(100) < 10) {
-            // 10% - ĐẠI HỎA CẦU KHỔNG LỒ
             caster.sendMessage("§c§l[!] Ma Lực Đột Biến: ĐẠI HỎA CẦU XUẤT HIỆN!");
-            castGiantMeteor(caster, rpgPlayer, targetLoc, totalDmgMulti);
+            castGiantMeteor(caster, rpgPlayer, center, totalDmgMulti);
         } else {
-            // 90% - MƯA THIÊN THẠCH (3 ĐỢT)
-            castMeteorShower(caster, rpgPlayer, targetLoc, totalDmgMulti);
+            castMeteorShower(caster, rpgPlayer, center, totalDmgMulti);
         }
     }
 
+    // ==========================================
+    // TÌM SÀN THÔNG MINH (INDOOR TERRAIN HUGGING)
+    // ==========================================
+    private Integer getFloorY(Location currentLoc, int referenceY) {
+        // Quét từ trên xuống: Bắt đầu từ vị trí cao hơn bước trước 3 block (để leo dốc)
+        // Dò xuống sâu tối đa 5 block (để rớt hố)
+        for (int y = referenceY + 3; y >= referenceY - 5; y--) {
+            Location checkLoc = currentLoc.clone();
+            checkLoc.setY(y);
+            if (checkLoc.getBlock().getType().isSolid()) {
+                return y;
+            }
+        }
+        return null;
+    }
+
     // ==========================================================
-    // CƠ CHẾ 1: ĐẠI HỎA CẦU (1 Viên to, Nổ to, 100% Sát thương tổng)
+    // CƠ CHẾ 1: ĐẠI HỎA CẦU (1 Viên to, Nổ to, 100% Sát thương tổng)[cite: 9]
     // ==========================================================
     private void castGiantMeteor(Player caster, RPGPlayer rpgPlayer, Location center, double totalDmgMulti) {
-        Location skyLoc = center.clone().add(0, 18, 0);
+        // [ĐIỀU CHỈNH ĐỘ CAO]: Giảm từ 18 xuống 8 block
+        Location skyLoc = center.clone().add(0, 8, 0);
         Vector fallDir = new Vector(0, -1.0, 0);
 
         caster.getWorld().playSound(center, Sound.ENTITY_GHAST_WARN, 1.5f, 0.5f);
 
-        // Vẽ vòng cảnh báo (Bán kính 6m)
         Particle.DustOptions warningDust = new Particle.DustOptions(org.bukkit.Color.RED, 2.0f);
         for(double t = 0; t < Math.PI * 2; t+= 0.2) {
             center.getWorld().spawnParticle(Particle.DUST, center.clone().add(6*Math.cos(t), 0.2, 6*Math.sin(t)), 1, 0,0,0, 0, warningDust, true);
@@ -88,6 +109,7 @@ public class PyroclasmFusion implements IFusion {
             Location current = skyLoc.clone();
             @Override
             public void run() {
+                // Kiểm tra va chạm sàn hoặc dưới Y tâm
                 if (current.getY() <= center.getY() || current.getBlock().getType().isSolid()) {
                     current.getWorld().playSound(current, Sound.ENTITY_DRAGON_FIREBALL_EXPLODE, 2.0f, 0.5f);
                     current.getWorld().spawnParticle(Particle.EXPLOSION, current, 3);
@@ -95,9 +117,10 @@ public class PyroclasmFusion implements IFusion {
 
                     for (Entity entity : current.getWorld().getNearbyEntities(current, 6.0, 6.0, 6.0)) {
                         if (entity instanceof LivingEntity && !entity.equals(caster) && CombatManager.canTarget(caster, entity)) {
-                            // Gây 100% Sát thương tổng (770%)[cite: 1]
-                            double hitDmg = CombatManager.calculateDamage(caster, rpgPlayer, (LivingEntity) entity, totalDmgMulti, 0, true, false);
-                            CombatManager.applySkillDamage(caster, (LivingEntity) entity, hitDmg);
+                            double hitDmg = CombatManager.calculateDamage(caster, rpgPlayer, (LivingEntity) entity, totalDmgMulti, 0, true, false); //[cite: 9]
+                            CombatManager.applySkillDamage(caster, (LivingEntity) entity, hitDmg); //[cite: 9]
+                            // Thêm hiệu ứng bốc cháy nhẹ
+                            entity.setFireTicks(40);
                         }
                     }
                     this.cancel();
@@ -105,95 +128,88 @@ public class PyroclasmFusion implements IFusion {
                 }
 
                 current.add(fallDir);
-                current.getWorld().spawnParticle(Particle.CAMPFIRE_COSY_SMOKE, current, 20, 1.0, 1.0, 1.0, 0.05);
-                current.getWorld().spawnParticle(Particle.FLAME, current, 30, 2.0, 2.0, 2.0, 0.05);
-                current.getWorld().spawnParticle(Particle.BLOCK_CRUMBLE, current, 30, 1.5, 1.5, 1.5, 0.1, org.bukkit.Bukkit.createBlockData(Material.MAGMA_BLOCK));
+                // [TĂNG VFX]: Làm đuôi lửa dày hơn để bù đắp khoảng cách rơi ngắn
+                current.getWorld().spawnParticle(Particle.CAMPFIRE_COSY_SMOKE, current, 30, 1.5, 1.5, 1.5, 0.05);
+                current.getWorld().spawnParticle(Particle.FLAME, current, 50, 2.5, 2.5, 2.5, 0.05);
+                current.getWorld().spawnParticle(Particle.BLOCK_CRUMBLE, current, 40, 2.0, 2.0, 2.0, 0.1, org.bukkit.Bukkit.createBlockData(Material.MAGMA_BLOCK));
             }
         }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
     }
 
     // ==========================================================
-    // CƠ CHẾ 2: MƯA THIÊN THẠCH (3 Đợt, có cơ chế Penalty tái va chạm)
+    // CƠ CHẾ 2: MƯA THIÊN THẠCH (3 Đợt, có cơ chế Penalty tái va chạm)[cite: 9]
     // ==========================================================
     private void castMeteorShower(Player caster, RPGPlayer rpgPlayer, Location center, double totalDmgMulti) {
         caster.getWorld().playSound(center, Sound.ITEM_FIRECHARGE_USE, 1.5f, 0.5f);
-
-        // Chia sát thương thành 3 phần (Ví dụ: 770% / 3 = 256.6%)
-        double waveDmgMulti = totalDmgMulti / 3.0;
+        double waveDmgMulti = totalDmgMulti / 3.0; //[cite: 9]
 
         new BukkitRunnable() {
             int wave = 0;
             @Override
             public void run() {
-                if (wave >= 3 || !caster.isOnline()) {
+                if (wave >= 3 || !caster.isOnline()) { //[cite: 9]
                     this.cancel();
                     return;
                 }
-
-                // Gọi 1 đợt thiên thạch (Rơi 5-8 viên ngẫu nhiên quanh tâm 5m)
-                spawnMeteorWave(caster, rpgPlayer, center, waveDmgMulti, wave);
+                spawnMeteorWave(caster, rpgPlayer, center, waveDmgMulti, wave); //[cite: 9]
                 wave++;
             }
-        }.runTaskTimer(RPGCore.getInstance(), 0L, 15L); // Mỗi đợt cách nhau 15 ticks (0.75s)
+        }.runTaskTimer(RPGCore.getInstance(), 0L, 15L);
     }
 
     private void spawnMeteorWave(Player caster, RPGPlayer rpgPlayer, Location center, double waveDmgMulti, int waveIndex) {
-        int meteorCount = 5 + random.nextInt(4); // Rơi 5 đến 8 viên mỗi đợt
-        String hitMetaKey = "Pyroclasm_" + waveIndex + "_" + caster.getUniqueId(); // Key check tái va chạm
+        int meteorCount = 5 + random.nextInt(4); //[cite: 9]
+        String hitMetaKey = "Pyroclasm_" + waveIndex + "_" + caster.getUniqueId(); //[cite: 9]
 
         for (int i = 0; i < meteorCount; i++) {
             // Random vị trí xuất hiện trên trời (Bán kính 5m)
             double offsetX = (random.nextDouble() - 0.5) * 10;
             double offsetZ = (random.nextDouble() - 0.5) * 10;
-            Location skyLoc = center.clone().add(offsetX, 12 + random.nextInt(4), offsetZ);
 
-            // Random góc rơi hơi nghiêng
-            Vector fallDir = new Vector((random.nextDouble() - 0.5)*0.2, -1.0, (random.nextDouble() - 0.5)*0.2);
+            // [ĐIỀU CHỈNH ĐỘ CAO]: Rải từ 6 đến 7.5 block
+            Location skyLoc = center.clone().add(offsetX, 6.0 + (random.nextDouble() * 1.5), offsetZ);
+
+            Vector fallDir = new Vector((random.nextDouble() - 0.5)*0.2, -1.0, (random.nextDouble() - 0.5)*0.2); //[cite: 9]
 
             new BukkitRunnable() {
                 Location current = skyLoc.clone();
                 @Override
                 public void run() {
-                    if (current.getY() <= center.getY() - 1 || current.getBlock().getType().isSolid()) {
-                        // NỔ VIÊN THIÊN THẠCH NHỎ
+                    if (current.getY() <= center.getY() || current.getBlock().getType().isSolid()) {
                         current.getWorld().playSound(current, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.5f);
-                        current.getWorld().spawnParticle(Particle.EXPLOSION, current, 1);
-                        current.getWorld().spawnParticle(Particle.LAVA, current, 5, 0.5, 0.5, 0.5, 0.1);
+                        current.getWorld().spawnParticle(Particle.EXPLOSION, current, 1); // Đã sửa tên Particle cho 1.21
+                        current.getWorld().spawnParticle(Particle.LAVA, current, 5, 0.5, 0.5, 0.5, 0.1); //[cite: 9]
 
-                        for (Entity entity : current.getWorld().getNearbyEntities(current, 2.5, 2.5, 2.5)) {
+                        for (Entity entity : current.getWorld().getNearbyEntities(current, 2.5, 2.5, 2.5)) { //[cite: 9]
                             if (entity instanceof LivingEntity && !entity.equals(caster) && CombatManager.canTarget(caster, entity)) {
                                 LivingEntity target = (LivingEntity) entity;
 
-                                // [LOGIC PENALTY]: Nếu quái vật đã dính damage của Đợt này rồi
+                                // [LOGIC PENALTY]: Check tái va chạm[cite: 9]
                                 double finalMultiToApply = waveDmgMulti;
                                 if (target.hasMetadata(hitMetaKey)) {
-                                    // Bị giảm sát thương chỉ còn 10%
-                                    finalMultiToApply = waveDmgMulti * 0.10;
+                                    finalMultiToApply = waveDmgMulti * 0.10; //[cite: 9]
                                 } else {
-                                    // Lần đầu dính -> Gắn cờ (Tồn tại 1 giây)
-                                    target.setMetadata(hitMetaKey, new FixedMetadataValue(RPGCore.getInstance(), true));
-                                    // Tự xóa cờ dọn rác
+                                    target.setMetadata(hitMetaKey, new FixedMetadataValue(RPGCore.getInstance(), true)); //[cite: 9]
                                     new BukkitRunnable() {
                                         @Override
                                         public void run() { target.removeMetadata(hitMetaKey, RPGCore.getInstance()); }
-                                    }.runTaskLater(RPGCore.getInstance(), 20L);
+                                    }.runTaskLater(RPGCore.getInstance(), 20L); //[cite: 9]
                                 }
 
-                                // [CHUẨN RPGCORE]: Áp dụng Sát thương[cite: 1]
-                                double hitDmg = CombatManager.calculateDamage(caster, rpgPlayer, target, finalMultiToApply, 0, true, false);
-                                CombatManager.applySkillDamage(caster, target, hitDmg);
+                                double hitDmg = CombatManager.calculateDamage(caster, rpgPlayer, target, finalMultiToApply, 0, true, false); //[cite: 9]
+                                CombatManager.applySkillDamage(caster, target, hitDmg); //[cite: 9]
                             }
                         }
                         this.cancel();
                         return;
                     }
 
-                    // Vẽ Hạt Lửa mô phỏng thiên thạch nhỏ
                     current.add(fallDir);
-                    current.getWorld().spawnParticle(Particle.FLAME, current, 5, 0.2, 0.2, 0.2, 0.05);
-                    current.getWorld().spawnParticle(Particle.BLOCK_CRUMBLE, current, 5, 0.3, 0.3, 0.3, 0.1, org.bukkit.Bukkit.createBlockData(Material.MAGMA_BLOCK));
+                    // [TĂNG VFX]: Đuôi lửa đậm hơn
+                    current.getWorld().spawnParticle(Particle.FLAME, current, 10, 0.3, 0.3, 0.3, 0.05);
+                    current.getWorld().spawnParticle(Particle.BLOCK_CRUMBLE, current, 10, 0.4, 0.4, 0.4, 0.1, org.bukkit.Bukkit.createBlockData(Material.MAGMA_BLOCK));
                 }
-            }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
+            }.runTaskTimer(RPGCore.getInstance(), 0L, 1L); //[cite: 9]
         }
     }
 }

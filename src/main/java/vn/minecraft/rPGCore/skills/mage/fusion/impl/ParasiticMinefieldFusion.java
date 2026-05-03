@@ -60,9 +60,13 @@ public class ParasiticMinefieldFusion implements IFusion {
             targetLoc = targetBlock.getLocation();
         } else {
             targetLoc = caster.getEyeLocation().add(caster.getLocation().getDirection().multiply(30));
+            // Sửa lỗi kẹt trần nhà khi aim vào khoảng không
+            Integer floorY = getFloorY(targetLoc, caster.getLocation().getBlockY());
+            if(floorY != null) {
+                targetLoc.setY(floorY);
+            }
         }
 
-        targetLoc.setY(targetLoc.getWorld().getHighestBlockYAt(targetLoc));
         Location center = targetLoc.add(0.5, 1.0, 0.5);
 
         double totalDmgMulti = baseMultiplier * getDamageMultiplier();
@@ -75,10 +79,23 @@ public class ParasiticMinefieldFusion implements IFusion {
     }
 
     // ==========================================
+    // TÌM SÀN THÔNG MINH (INDOOR TERRAIN HUGGING)
+    // ==========================================
+    private Integer getFloorY(Location currentLoc, int referenceY) {
+        for (int y = referenceY + 3; y >= referenceY - 5; y--) {
+            Location checkLoc = currentLoc.clone();
+            checkLoc.setY(y);
+            if (checkLoc.getBlock().getType().isSolid()) {
+                return y;
+            }
+        }
+        return null;
+    }
+
+    // ==========================================
     // TRIỆU HỒI NẤM (CÓ QUẢN LÝ ĐỜI F1/F2)
     // ==========================================
     private void scatterMines(Player caster, RPGPlayer rpgPlayer, Location center, int count, double baseTotalMulti, int generation) {
-        // [CÂN BẰNG]: Nấm F2 chỉ gây 70% sát thương so với F1
         double genScaling = (generation == 1) ? 1.0 : 0.70;
         double currentGenTotalMulti = baseTotalMulti * genScaling;
 
@@ -87,7 +104,11 @@ public class ParasiticMinefieldFusion implements IFusion {
             double offsetZ = (random.nextDouble() - 0.5) * 8.0;
             Location mineLoc = center.clone().add(offsetX, 0, offsetZ);
 
-            mineLoc.setY(mineLoc.getWorld().getHighestBlockYAt(mineLoc) + 1.0);
+            // Sửa lỗi tìm block Y khi sinh mìn
+            Integer floorY = getFloorY(mineLoc, center.getBlockY());
+            if (floorY == null) continue; // Bỏ qua nếu là khoảng không/hố sâu
+
+            mineLoc.setY(floorY + 1.0);
 
             org.bukkit.entity.BlockDisplay mushroom = mineLoc.getWorld().spawn(mineLoc, org.bukkit.entity.BlockDisplay.class, display -> {
                 display.setBlock(org.bukkit.Bukkit.createBlockData(Material.WARPED_FUNGUS));
@@ -120,7 +141,6 @@ public class ParasiticMinefieldFusion implements IFusion {
                         mineLoc.getWorld().spawnParticle(Particle.FALLING_SPORE_BLOSSOM, mineLoc.clone().add(0, 0.6, 0), 2, 0.4, 0.4, 0.4, 0);
                     }
 
-                    // CẢM BIẾN ĐẠP MÌN
                     boolean triggered = false;
                     for (Entity entity : mineLoc.getWorld().getNearbyEntities(mineLoc, 1.2, 1.5, 1.2)) {
                         if (entity instanceof LivingEntity && !entity.equals(caster) && CombatManager.canTarget(caster, entity)) {
@@ -146,7 +166,7 @@ public class ParasiticMinefieldFusion implements IFusion {
     // KÝ SINH & NỔ XÁC (AOE)
     // ==========================================
     private void applyParasite(Player caster, RPGPlayer rpgPlayer, LivingEntity target, double currentGenTotalMulti, int generation, double baseTotalMulti) {
-        double tickDmgMulti = currentGenTotalMulti * 0.05; // 5% của Đời hiện tại
+        double tickDmgMulti = currentGenTotalMulti * 0.05;
         String metaKey = "Parasite_Gen_" + generation;
 
         if (target.hasMetadata("Parasite_Gen_1") || target.hasMetadata("Parasite_Gen_2")) return;
@@ -168,7 +188,6 @@ public class ParasiticMinefieldFusion implements IFusion {
                     deathLoc.getWorld().playSound(deathLoc, Sound.ENTITY_ZOMBIE_VILLAGER_CONVERTED, 1.0f, 1.5f);
                     deathLoc.getWorld().spawnParticle(Particle.SPORE_BLOSSOM_AIR, deathLoc.clone().add(0, 1, 0), 50, 1.5, 1.5, 1.5, 0);
 
-                    // [LOGIC MỚI]: Nổ xác là sát thương AoE, chiếm 45% của Đời hiện tại
                     double explosionDmgMulti = currentGenTotalMulti * 0.45;
                     for (Entity e : deathLoc.getWorld().getNearbyEntities(deathLoc, 3.0, 3.0, 3.0)) {
                         if (e instanceof LivingEntity && !e.equals(caster) && CombatManager.canTarget(caster, e)) {
@@ -177,7 +196,6 @@ public class ParasiticMinefieldFusion implements IFusion {
                         }
                     }
 
-                    // Chỉ nấm F1 mới đẻ ra Nấm F2. Truyền baseTotalMulti gốc để hàm scatter tự ép xuống 70%.
                     if (generation == 1) {
                         new BukkitRunnable() {
                             @Override
