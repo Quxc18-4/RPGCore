@@ -67,6 +67,25 @@ public class MageClass extends RPGClass {
                 return 0.0;
             }
         });
+
+        // [HOOK BÓNG TỐI]: Rãnh nứt Vực thẳm - Kẻ địch bị giảm 10% Sát thương đầu ra
+        CombatManager.registerCombatModifier(new CombatManager.ICombatModifier() {
+            @Override
+            public double getOutgoingDamageModifier(LivingEntity attacker, LivingEntity target) {
+                if (attacker.hasMetadata("Abyss_Weakness_Debuff")) {
+                    List<org.bukkit.metadata.MetadataValue> meta = attacker.getMetadata("Abyss_Weakness_Debuff");
+                    if (!meta.isEmpty()) {
+                        long expireTime = meta.get(0).asLong();
+                        if (System.currentTimeMillis() < expireTime) {
+                            return -0.10; // Đang dính Debuff -> Giảm 10% sát thương đánh ra
+                        } else {
+                            attacker.removeMetadata("Abyss_Weakness_Debuff", RPGCore.getInstance()); // Hết giờ -> Xóa rác
+                        }
+                    }
+                }
+                return 0.0;
+            }
+        });
     }
 
     @Override
