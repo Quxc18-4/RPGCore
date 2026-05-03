@@ -9,8 +9,6 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.metadata.FixedMetadataValue;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 import vn.minecraft.rPGCore.RPGCore;
@@ -26,7 +24,9 @@ public class AbyssalRiftFusion implements IFusion {
     @Override public MageElement getElement1() { return MageElement.DARK; }
     @Override public MageElement getElement2() { return MageElement.DARK; }
     @Override public String getReactionName() { return "§8§lVực Thẳm Khởi Nguyên"; }
-    @Override public double getDamageMultiplier() { return 1.30; } // Thuế Debuff khắt khe
+
+    // [BALANCING]: Cắt giảm Sát thương từ 1.30 xuống 1.20 để bù đắp cho diện tích 3 block
+    @Override public double getDamageMultiplier() { return 1.20; }
 
     @Override
     public List<String> getLore(double baseDmgPct) {
@@ -39,7 +39,7 @@ public class AbyssalRiftFusion implements IFusion {
                 "§f  tạo ra những cột năng lượng trồi lên xé toạc địa hình.",
                 "§f- Kẻ địch trúng cột hắc ám chịu §c" + (int)totalDmg + "% §fSát thương.",
                 "",
-                "§f§8[Nội tại - Lời Nguyền Vực Thẳm]",
+                "§f§b[Nội tại - Lời Nguyền Vực Thẳm]",
                 "§f- Để lại một §8Rãnh Nứt Vực Sâu§f tồn tại trong §a" + duration + "s§f.",
                 "§f- Kẻ địch đứng trên rãnh nứt sẽ chịu hiệu ứng xấu:",
                 "§f  Giảm §e10% Sát thương §fgây ra§f và giảm §e20% tốc chạy§f."
@@ -60,9 +60,10 @@ public class AbyssalRiftFusion implements IFusion {
 
     private void executeAbyssalWave(Player caster, RPGPlayer rpgPlayer, Location start, Vector direction, double dmgMulti) {
         List<Location> riftPath = new ArrayList<>();
-        Set<UUID> hitTargets = new HashSet<>(); // Ngăn quái nhận sát thương cột nhiều lần
+        Set<UUID> hitTargets = new HashSet<>();
 
-        // Dữ liệu hạt nứt đất đen ngòm (Obsidian/Deepslate)
+        // [3D MATH]: Tính toán Vector vuông góc để lấy điểm bên Trái và bên Phải
+        Vector rightDir = direction.clone().crossProduct(new Vector(0, 1, 0)).normalize();
         BlockData darkDebris = Material.COBBLED_DEEPSLATE.createBlockData();
 
         new BukkitRunnable() {
@@ -73,7 +74,6 @@ public class AbyssalRiftFusion implements IFusion {
             @Override
             public void run() {
                 if (step >= maxSteps || !caster.isOnline()) {
-                    // Sau khi cột sóng chạy xong, khởi tạo Task duy trì Rãnh nứt
                     if (!riftPath.isEmpty()) {
                         startRiftZoneTask(caster, riftPath);
                     }
@@ -82,44 +82,61 @@ public class AbyssalRiftFusion implements IFusion {
                 }
 
                 current.add(direction);
-                // [TERRAIN HUGGING]: Ép tọa độ Y luôn bám sát bề mặt khối rắn cao nhất
-                int highestY = current.getWorld().getHighestBlockYAt(current);
-                current.setY(highestY + 1.0); // Đặt trên mặt đất 1 block
 
-                // Nếu đâm vào tường thẳng đứng quá cao (chênh > 2 block) -> Dừng sóng
-                if (Math.abs(highestY - start.getY()) > 2) {
+                // Khởi tạo 3 điểm ngang nhau: Trái, Giữa, Phải
+                Location[] rowLocs = new Location[] {
+                        current.clone(), // Giữa
+                        current.clone().add(rightDir), // Phải
+                        current.clone().subtract(rightDir) // Trái
+                };
+
+                boolean rowHasValidBlock = false;
+
+                // Xử lý địa hình độc lập cho từng điểm trong 3 block
+                for (Location loc : rowLocs) {
+                    int highestY = loc.getWorld().getHighestBlockYAt(loc);
+
+                    // Nếu vách đá quá cao (> 2 block) so với vị trí cast ban đầu thì bỏ qua block đó
+                    if (Math.abs(highestY - start.getY()) <= 2) {
+                        loc.setY(highestY + 1.0);
+                        riftPath.add(loc);
+                        rowHasValidBlock = true;
+
+                        // VFX Cột năng lượng cho từng block
+                        loc.getWorld().spawnParticle(Particle.SQUID_INK, loc, 15, 0.3, 1.5, 0.3, 0.05);
+                        loc.getWorld().spawnParticle(Particle.SOUL, loc, 5, 0.3, 1.5, 0.3, 0.1);
+                        loc.getWorld().spawnParticle(Particle.BLOCK_CRUMBLE, loc, 15, 0.4, 0.2, 0.4, 0.1, darkDebris);
+                    }
+                }
+
+                // Nếu cả 3 block đều đụng tường cao, dừng toàn bộ sóng
+                if (!rowHasValidBlock) {
                     if (!riftPath.isEmpty()) startRiftZoneTask(caster, riftPath);
                     this.cancel();
                     return;
                 }
 
-                riftPath.add(current.clone());
-
-                // 1. VFX: Cột năng lượng trồi lên
                 current.getWorld().playSound(current, Sound.ENTITY_ZOMBIE_BREAK_WOODEN_DOOR, 0.5f, 0.5f);
-                current.getWorld().spawnParticle(Particle.SQUID_INK, current, 30, 0.5, 2.0, 0.5, 0.05);
-                current.getWorld().spawnParticle(Particle.SOUL, current, 15, 0.5, 2.0, 0.5, 0.1);
-                current.getWorld().spawnParticle(Particle.BLOCK_CRUMBLE, current, 40, 0.8, 0.2, 0.8, 0.1, darkDebris);
 
-                // 2. Sát thương tức thời (Hitbox Radius 2.0m xung quanh cột)
-                for (Entity entity : current.getWorld().getNearbyEntities(current, 2.0, 2.0, 2.0)) {
+                // [BALANCING]: Mở rộng Hitbox bán kính lên 2.5m để bao trọn bề ngang 3 block
+                for (Entity entity : current.getWorld().getNearbyEntities(current, 2.5, 2.0, 2.5)) {
                     if (entity instanceof LivingEntity && !entity.equals(caster) && CombatManager.canTarget(caster, entity)) {
                         LivingEntity target = (LivingEntity) entity;
                         if (!hitTargets.contains(target.getUniqueId())) {
                             hitTargets.add(target.getUniqueId());
 
+                            // Đẩy qua Cốt lõi Sát thương RPGCore
                             double hitDmg = CombatManager.calculateDamage(caster, rpgPlayer, target, dmgMulti, 0, true, false);
                             CombatManager.applySkillDamage(caster, target, hitDmg);
 
-                            // Hất nhẹ lên tạo cảm giác bị nứt đất chọc trúng
-                            target.setVelocity(new Vector(0, 0.4, 0));
+                            target.setVelocity(new Vector(0, 0.4, 0)); // Cảm giác bị hất nhẹ bởi sóng đất
                         }
                     }
                 }
 
                 step++;
             }
-        }.runTaskTimer(RPGCore.getInstance(), 0L, 1L); // Sóng càn lướt siêu tốc (1 block/tick)
+        }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
     }
 
     // ==========================================
@@ -130,7 +147,7 @@ public class AbyssalRiftFusion implements IFusion {
 
         new BukkitRunnable() {
             int lifeTicks = 0;
-            final int maxLife = 120; // Tồn tại 6 giây (120 ticks)
+            final int maxLife = 120; // Tồn tại 6 giây
 
             @Override
             public void run() {
@@ -139,21 +156,21 @@ public class AbyssalRiftFusion implements IFusion {
                     return;
                 }
 
-                // 1. VFX Rãnh nứt âm ỉ (Chạy mỗi tick để giữ khói mượt)
+                // 1. VFX Rãnh nứt (Giảm tỷ lệ spawn xuống 15% vì số lượng block hiện tại đã x3)
                 for (Location loc : path) {
-                    if (Math.random() < 0.3) { // Tối ưu: Chỉ spawn hạt ở 30% số block để tránh giật lag
-                        loc.getWorld().spawnParticle(Particle.PORTAL, loc, 5, 0.3, 0.1, 0.3, 0.0);
-                        loc.getWorld().spawnParticle(Particle.BLOCK_CRUMBLE, loc, 2, 0.5, 0.1, 0.5, 0.0, riftDebris);
+                    if (Math.random() < 0.15) {
+                        loc.getWorld().spawnParticle(Particle.PORTAL, loc, 3, 0.3, 0.1, 0.3, 0.0);
+                        loc.getWorld().spawnParticle(Particle.BLOCK_CRUMBLE, loc, 1, 0.4, 0.1, 0.4, 0.0, riftDebris);
                     }
                 }
 
-                // 2. Logic Debuff (Quét mỗi 10 ticks - 0.5s để tối ưu CPU)
+                // 2. Logic Debuff (Mỗi 10 ticks = 0.5s)
                 if (lifeTicks % 10 == 0) {
                     Set<UUID> debuffedTargets = new HashSet<>();
 
-                    // Quét các điểm trên đường nứt
+                    // Quét các điểm trên đường nứt (Bán kính nhỏ 1.2m vì các block đã xếp sát nhau)
                     for (Location loc : path) {
-                        for (Entity entity : loc.getWorld().getNearbyEntities(loc, 1.5, 1.5, 1.5)) {
+                        for (Entity entity : loc.getWorld().getNearbyEntities(loc, 1.2, 1.5, 1.2)) {
                             if (entity instanceof LivingEntity && !entity.equals(caster) && CombatManager.canTarget(caster, entity)) {
                                 LivingEntity target = (LivingEntity) entity;
                                 UUID tid = target.getUniqueId();
@@ -161,14 +178,13 @@ public class AbyssalRiftFusion implements IFusion {
                                 if (!debuffedTargets.contains(tid)) {
                                     debuffedTargets.add(tid);
 
-                                    // [CẬP NHẬT CHUẨN RPGCORE]: Dùng StatusEffectManager để cấp Slow (20 ticks = 1s, 20% slow, Amplifier 0 cho mob)
+                                    // A. Khống chế mềm: Chạy qua cổng StatusEffectManager chuẩn RPGCore
                                     vn.minecraft.rPGCore.managers.StatusEffectManager.applySlow(target, 20, 0.20, 0);
 
-                                    // Cấp Metadata để CombatManager bên MageClass đọc và giảm 10% Sát thương
+                                    // B. Giảm 10% Sát thương: Gắn Metadata cho MageClass đọc
                                     target.setMetadata("Abyss_Weakness_Debuff", new FixedMetadataValue(RPGCore.getInstance(), System.currentTimeMillis() + 1000));
 
-                                    // VFX bám trên người bị debuff
-                                    target.getWorld().spawnParticle(Particle.WITCH, target.getLocation().add(0, 1, 0), 3, 0.3, 0.5, 0.3, 0.02);
+                                    target.getWorld().spawnParticle(Particle.WITCH, target.getLocation().add(0, 1, 0), 2, 0.3, 0.5, 0.3, 0.02);
                                 }
                             }
                         }
