@@ -41,7 +41,7 @@ public class PyroclasmFusion implements IFusion {
                 "§f- §c90%§f: Giáng 3 đợt thiên thạch, mỗi đợt gây §c" + (int)waveDmg + "% §fSát thương.",
                 "§f  §8(Trúng nhiều viên trong cùng 1 đợt chỉ nhận 10% Sát thương).",
                 "§f- §c10%§f: Giáng 1 Đại Hỏa Cầu khổng lồ, gây §c" + (int)totalDmg + "% §fSát thương."
-        ); //[cite: 9]
+        ); 
     }
 
     @Override
@@ -63,7 +63,7 @@ public class PyroclasmFusion implements IFusion {
 
         // Tinh chỉnh tâm nổ cao hơn mặt đất 0.5 block để Hitbox chính xác hơn
         Location center = targetLoc.add(0.5, 0.5, 0.5);
-        double totalDmgMulti = baseMultiplier * getDamageMultiplier(); //[cite: 9]
+        double totalDmgMulti = baseMultiplier * getDamageMultiplier(); 
 
         // 2. Roll Gacha (RNG)[cite: 9]
         if (random.nextInt(100) < 10) {
@@ -117,8 +117,8 @@ public class PyroclasmFusion implements IFusion {
 
                     for (Entity entity : current.getWorld().getNearbyEntities(current, 6.0, 6.0, 6.0)) {
                         if (entity instanceof LivingEntity && !entity.equals(caster) && CombatManager.canTarget(caster, entity)) {
-                            double hitDmg = CombatManager.calculateDamage(caster, rpgPlayer, (LivingEntity) entity, totalDmgMulti, 0, true, false); //[cite: 9]
-                            CombatManager.applySkillDamage(caster, (LivingEntity) entity, hitDmg); //[cite: 9]
+                            double hitDmg = CombatManager.calculateDamage(caster, rpgPlayer, (LivingEntity) entity, totalDmgMulti, 0, true, false); 
+                            CombatManager.applySkillDamage(caster, (LivingEntity) entity, hitDmg); 
                             // Thêm hiệu ứng bốc cháy nhẹ
                             entity.setFireTicks(40);
                         }
@@ -141,25 +141,25 @@ public class PyroclasmFusion implements IFusion {
     // ==========================================================
     private void castMeteorShower(Player caster, RPGPlayer rpgPlayer, Location center, double totalDmgMulti) {
         caster.getWorld().playSound(center, Sound.ITEM_FIRECHARGE_USE, 1.5f, 0.5f);
-        double waveDmgMulti = totalDmgMulti / 3.0; //[cite: 9]
+        double waveDmgMulti = totalDmgMulti / 3.0; 
 
         new BukkitRunnable() {
             int wave = 0;
             @Override
             public void run() {
-                if (wave >= 3 || !caster.isOnline()) { //[cite: 9]
+                if (wave >= 3 || !caster.isOnline()) { 
                     this.cancel();
                     return;
                 }
-                spawnMeteorWave(caster, rpgPlayer, center, waveDmgMulti, wave); //[cite: 9]
+                spawnMeteorWave(caster, rpgPlayer, center, waveDmgMulti, wave); 
                 wave++;
             }
         }.runTaskTimer(RPGCore.getInstance(), 0L, 15L);
     }
 
     private void spawnMeteorWave(Player caster, RPGPlayer rpgPlayer, Location center, double waveDmgMulti, int waveIndex) {
-        int meteorCount = 5 + random.nextInt(4); //[cite: 9]
-        String hitMetaKey = "Pyroclasm_" + waveIndex + "_" + caster.getUniqueId(); //[cite: 9]
+        int meteorCount = 5 + random.nextInt(4); 
+        String hitMetaKey = "Pyroclasm_" + waveIndex + "_" + caster.getUniqueId(); 
 
         for (int i = 0; i < meteorCount; i++) {
             // Random vị trí xuất hiện trên trời (Bán kính 5m)
@@ -169,7 +169,7 @@ public class PyroclasmFusion implements IFusion {
             // [ĐIỀU CHỈNH ĐỘ CAO]: Rải từ 6 đến 7.5 block
             Location skyLoc = center.clone().add(offsetX, 6.0 + (random.nextDouble() * 1.5), offsetZ);
 
-            Vector fallDir = new Vector((random.nextDouble() - 0.5)*0.2, -1.0, (random.nextDouble() - 0.5)*0.2); //[cite: 9]
+            Vector fallDir = new Vector((random.nextDouble() - 0.5)*0.2, -1.0, (random.nextDouble() - 0.5)*0.2); 
 
             new BukkitRunnable() {
                 Location current = skyLoc.clone();
@@ -178,26 +178,26 @@ public class PyroclasmFusion implements IFusion {
                     if (current.getY() <= center.getY() || current.getBlock().getType().isSolid()) {
                         current.getWorld().playSound(current, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.5f);
                         current.getWorld().spawnParticle(Particle.EXPLOSION, current, 1); // Đã sửa tên Particle cho 1.21
-                        current.getWorld().spawnParticle(Particle.LAVA, current, 5, 0.5, 0.5, 0.5, 0.1); //[cite: 9]
+                        current.getWorld().spawnParticle(Particle.LAVA, current, 5, 0.5, 0.5, 0.5, 0.1); 
 
-                        for (Entity entity : current.getWorld().getNearbyEntities(current, 2.5, 2.5, 2.5)) { //[cite: 9]
+                        for (Entity entity : current.getWorld().getNearbyEntities(current, 2.5, 2.5, 2.5)) { 
                             if (entity instanceof LivingEntity && !entity.equals(caster) && CombatManager.canTarget(caster, entity)) {
                                 LivingEntity target = (LivingEntity) entity;
 
                                 // [LOGIC PENALTY]: Check tái va chạm[cite: 9]
                                 double finalMultiToApply = waveDmgMulti;
                                 if (target.hasMetadata(hitMetaKey)) {
-                                    finalMultiToApply = waveDmgMulti * 0.10; //[cite: 9]
+                                    finalMultiToApply = waveDmgMulti * 0.10; 
                                 } else {
-                                    target.setMetadata(hitMetaKey, new FixedMetadataValue(RPGCore.getInstance(), true)); //[cite: 9]
+                                    target.setMetadata(hitMetaKey, new FixedMetadataValue(RPGCore.getInstance(), true)); 
                                     new BukkitRunnable() {
                                         @Override
                                         public void run() { target.removeMetadata(hitMetaKey, RPGCore.getInstance()); }
-                                    }.runTaskLater(RPGCore.getInstance(), 20L); //[cite: 9]
+                                    }.runTaskLater(RPGCore.getInstance(), 20L); 
                                 }
 
-                                double hitDmg = CombatManager.calculateDamage(caster, rpgPlayer, target, finalMultiToApply, 0, true, false); //[cite: 9]
-                                CombatManager.applySkillDamage(caster, target, hitDmg); //[cite: 9]
+                                double hitDmg = CombatManager.calculateDamage(caster, rpgPlayer, target, finalMultiToApply, 0, true, false); 
+                                CombatManager.applySkillDamage(caster, target, hitDmg); 
                             }
                         }
                         this.cancel();
@@ -209,7 +209,7 @@ public class PyroclasmFusion implements IFusion {
                     current.getWorld().spawnParticle(Particle.FLAME, current, 10, 0.3, 0.3, 0.3, 0.05);
                     current.getWorld().spawnParticle(Particle.BLOCK_CRUMBLE, current, 10, 0.4, 0.4, 0.4, 0.1, org.bukkit.Bukkit.createBlockData(Material.MAGMA_BLOCK));
                 }
-            }.runTaskTimer(RPGCore.getInstance(), 0L, 1L); //[cite: 9]
+            }.runTaskTimer(RPGCore.getInstance(), 0L, 1L); 
         }
     }
 }

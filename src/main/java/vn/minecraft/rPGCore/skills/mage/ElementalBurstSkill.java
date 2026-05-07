@@ -196,9 +196,23 @@ public class ElementalBurstSkill implements ISkill {
                     for (org.bukkit.entity.Entity ent : loc.getWorld().getNearbyEntities(loc, 1.5, 4.0, 1.5)) {
                         if (ent instanceof LivingEntity && CombatManager.canTarget(player, ent)) {
                             LivingEntity target = (LivingEntity) ent;
+
+                            // Tính Multiplier gốc (Bị giảm nếu trúng nhiều cột)
                             double multi = hitTargets.contains(target.getUniqueId()) ? (baseMulti * 0.15) : baseMulti;
-                            double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, multi, 0, true, false);
+
+                            // =====================================
+                            // [FIX]: GỌI REACTION ENGINE HỆ HỎA
+                            // =====================================
+                            vn.minecraft.rPGCore.classes.impl.mage.ReactionEngine.ReactionResult reaction =
+                                    vn.minecraft.rPGCore.classes.impl.mage.ReactionEngine.processHit(player, target, vn.minecraft.rPGCore.classes.impl.mage.MageElement.FIRE);
+
+                            // Nhân thêm hệ số sát thương từ phản ứng (nếu có)
+                            double finalMultiToApply = multi * reaction.damageMultiplier;
+
+                            // Truyền hệ số đã buff qua CombatManager
+                            double finalDmg = CombatManager.calculateDamage(player, rpgPlayer, target, finalMultiToApply, 0, true, false);
                             CombatManager.applySkillDamage(player, target, finalDmg);
+
                             target.setVelocity(new Vector(0, 0.7, 0));
                             hitTargets.add(target.getUniqueId());
                         }

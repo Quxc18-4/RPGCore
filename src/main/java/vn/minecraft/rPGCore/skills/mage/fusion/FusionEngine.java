@@ -41,6 +41,7 @@ public class FusionEngine {
         registerFusion(new CycloneFusion()); // Gió + Gió
         registerFusion(new HolyBladesFusion()); // Ánh sáng + Ánh sáng
         registerFusion(new AbyssalRiftFusion()); // Bóng tối + Bóng tối
+        registerFusion(new SteamBurstFusion()); // Lửa + Nước
     }
 
     public static IFusion getActiveFusion(MageElement tnt, MageElement nth) {
