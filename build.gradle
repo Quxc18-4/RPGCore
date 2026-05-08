@@ -15,11 +15,22 @@ repositories {
     maven {
         url = uri("https://mvn.lumine.io/repository/maven-public/")
     }
+    // 1. Repo của FAWE
+    maven { url = 'https://repo.intellectualsites.com/content/groups/public/' }
+    // 2. Thêm Repo của WorldEdit (EngineHub)
+    maven { url = 'https://maven.enginehub.org/repo/' }
 }
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
     compileOnly 'io.lumine:Mythic-Dist:5.11.2'
+    // Khai báo bộ API gốc của WorldEdit để IDE hết báo lỗi đỏ
+    compileOnly 'com.sk89q.worldedit:worldedit-core:7.3.0'
+    compileOnly 'com.sk89q.worldedit:worldedit-bukkit:7.3.0'
+
+    // Khai báo FAWE
+    compileOnly 'com.fastasyncworldedit:FastAsyncWorldEdit-Core:2.11.2'
+    compileOnly 'com.fastasyncworldedit:FastAsyncWorldEdit-Bukkit:2.11.2'
 }
 
 tasks {

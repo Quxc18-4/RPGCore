@@ -43,6 +43,8 @@ public final class RPGCore extends JavaPlugin {
         this.boredomManager = new BoredomManager(this);
         this.foodBuffManager = new FoodBuffManager(this);
 
+        //SchemaManager.loadSchemas();
+
         // [MỚI]: KHỞI TẠO MANAGER CHO NGÂN HÀNG & CỬA HÀNG
         CurrencyManager currencyManager = new CurrencyManager(this);
         ShopManager shopManager = new ShopManager(this, currencyManager);

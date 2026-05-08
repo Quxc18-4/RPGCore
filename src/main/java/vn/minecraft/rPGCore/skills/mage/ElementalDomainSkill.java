@@ -373,25 +373,6 @@ public class ElementalDomainSkill implements ISkill {
         }
     }
 
-    private void drawLinkToPlayer(Player player, MageElement element, double radius) {
-        Location center = player.getLocation().add(0, 0.1, 0);
-        for (int i = 0; i < 360; i += 60) {
-            double rad = Math.toRadians(i);
-            Location ringPoint = center.clone().add(Math.cos(rad) * radius, 0, Math.sin(rad) * radius);
-            drawParticleLine(ringPoint, player.getLocation().add(0, 1, 0), element);
-        }
-    }
-
-    private void drawLinkBetweenRings(Player player, MageElement element, double rOuter, double rInner) {
-        Location center = player.getLocation().add(0, 0.1, 0);
-        for (int i = 0; i < 360; i += 45) {
-            double rad = Math.toRadians(i);
-            Location p1 = center.clone().add(Math.cos(rad) * rOuter, 0, Math.sin(rad) * rOuter);
-            Location p2 = center.clone().add(Math.cos(rad + 0.4) * rInner, 0, Math.sin(rad + 0.4) * rInner);
-            drawParticleLine(p1, p2, element);
-        }
-    }
-
     private void drawParticleLine(Location l1, Location l2, MageElement element) {
         org.bukkit.util.Vector dir = l2.toVector().subtract(l1.toVector());
         double dist = dir.length();

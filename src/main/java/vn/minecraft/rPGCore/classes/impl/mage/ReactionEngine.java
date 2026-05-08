@@ -181,7 +181,7 @@ public class ReactionEngine {
 
             @Override
             public void run() {
-                // Nếu đạn bay quá 5 giây (100 ticks) hoặc Player offline -> tự hủy
+                // Nếu đạn bay quá 5 giây (100 ticks) hoặc Player offline/chết -> tự hủy
                 if (!targetPlayer.isOnline() || targetPlayer.isDead() || lifespan > 100) {
                     this.cancel();
                     return;
@@ -193,8 +193,19 @@ public class ReactionEngine {
 
                 // Nếu đạn bay trúng ngực người chơi -> Hút và Hồi máu
                 if (dist < 1.0) {
-                    double maxHp = targetPlayer.getAttribute(Attribute.MAX_HEALTH).getValue();
-                    double healAmount = maxHp * 0.05; // 5% HP Tối đa
+                    this.cancel(); // Dừng đạn ngay lập tức
+
+                    // 1. KIỂM TRA ANTI-HEAL (VẾT THƯƠNG SÂU)
+                    if (vn.minecraft.rPGCore.managers.StatusEffectManager.isHealingBlocked(targetPlayer)) {
+                        // Hạt xịt khói báo hiệu hồi máu thất bại (Tùy chọn cho sinh động)
+                        targetPlayer.getWorld().playSound(targetPlayer.getLocation(), Sound.BLOCK_FIRE_EXTINGUISH, 0.5f, 1.5f);
+                        targetPlayer.getWorld().spawnParticle(Particle.SMOKE, targetPlayer.getLocation().add(0, 1, 0), 5, 0.2, 0.2, 0.2, 0.05);
+                        return;
+                    }
+
+                    // 2. CÔNG THỨC HỒI MÁU MỚI (Cân bằng Early - Late)
+                    double maxHp = targetPlayer.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue();
+                    double healAmount = (maxHp * 0.005) + 200.0; // 0.5% HP Tối đa + 200 máu cứng
 
                     targetPlayer.setHealth(Math.min(maxHp, targetPlayer.getHealth() + healAmount));
                     targetPlayer.getWorld().playSound(targetPlayer.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1.2f);
@@ -203,7 +214,6 @@ public class ReactionEngine {
                     targetPlayer.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR,
                             net.md_5.bungee.api.chat.TextComponent.fromLegacyText("§a+ §c" + String.format("%.1f", healAmount) + " ♥ §a(Sinh Sôi)"));
 
-                    this.cancel();
                     return;
                 }
 
@@ -214,7 +224,7 @@ public class ReactionEngine {
 
                 lifespan++;
             }
-        }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
+        }.runTaskTimer(vn.minecraft.rPGCore.RPGCore.getInstance(), 0L, 1L);
     }
 
     // ==========================================

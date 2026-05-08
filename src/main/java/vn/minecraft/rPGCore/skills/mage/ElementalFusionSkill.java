@@ -31,7 +31,7 @@ public class ElementalFusionSkill implements ISkill {
 
     @Override public int getMaxLevel() { return 10; }
     @Override public int getUpgradeCost(int currentLevel) { return 2; }
-    @Override public int getRequiredPlayerLevel() { return 20; }
+    @Override public int getRequiredPlayerLevel() { return 24; }
 
     @Override
     public Map<String, Integer> getRequiredSkills() {
@@ -51,7 +51,7 @@ public class ElementalFusionSkill implements ISkill {
         return cost;
     }
 
-    @Override public long getCooldown(int level) { return (long) ((18.0 - (level * 0.5)) * 1000L); }
+    @Override public long getCooldown(int level) { return (long) ((24.0 - (level * 0.5)) * 1000L); }
 
     @Override public List<String> getDescription(int level) { return getDescription(null, level); }
 
