@@ -81,7 +81,8 @@ public class BurningBramblesFusion implements IFusion {
 
             @Override
             public void run() {
-                if (!caster.isOnline() || ticks > 140) {
+                // TỔNG THỜI GIAN: 120 ticks = 6 giây (2s Slow + 4s Cháy)
+                if (!caster.isOnline() || ticks > 120) {
                     clearVines(vinePillars, center);
                     this.cancel();
                     return;
@@ -97,12 +98,11 @@ public class BurningBramblesFusion implements IFusion {
                         VinePillar touchedVine = getTouchedVine(target.getLocation(), vinePillars);
 
                         if (touchedVine != null) {
-                            // GIAI ĐOẠN 1: XUM XUÊ (LÀM CHẬM)
-                            if (ticks < 60) {
-                                // Sửa lại: Thêm tham số 3 (Amplifier 3 = Slowness 4 = 60%)
+                            // GIAI ĐOẠN 1: LÀM CHẬM 2 GIÂY ĐẦU (tick 0 -> 39)
+                            if (ticks < 40) {
                                 StatusEffectManager.applySlow(target, 10, 0.60, 3);
                             }
-                            // GIAI ĐOẠN 2: THIÊU ĐỐT (SÁT THƯƠNG BÙNG NỔ & REACTION)
+                            // GIAI ĐOẠN 2: BÙNG CHÁY (TỪ GIÂY THỨ 2 TRỞ ĐI)
                             else {
                                 applyBurstAndIgnite(caster, rpgPlayer, target, dmgMulti, touchedVine.isBlueFire, markKey);
                             }
@@ -110,12 +110,13 @@ public class BurningBramblesFusion implements IFusion {
                     }
                 }
 
-                if (ticks == 60) {
+                // Giây thứ 2 (Tick 40) bắt đầu bùng lửa
+                if (ticks == 40) {
                     center.getWorld().playSound(center, Sound.ENTITY_BLAZE_SHOOT, 1.5f, 0.5f);
                     center.getWorld().playSound(center, Sound.ITEM_FIRECHARGE_USE, 1.5f, 1.0f);
                 }
 
-                if (ticks > 60) {
+                if (ticks > 40) {
                     for (VinePillar pillar : vinePillars) {
                         if (Math.random() < 0.4) {
                             Particle pType = pillar.isBlueFire ? Particle.SOUL_FIRE_FLAME : Particle.FLAME;
@@ -190,8 +191,9 @@ public class BurningBramblesFusion implements IFusion {
         List<VinePillar> pillars = new ArrayList<>();
         Random random = new Random();
 
+        // TĂNG SỐ LƯỢNG THÊM 15 DÂY LEO (Từ 57 lên 72 trụ)
         double[] rings = {5.0, 9.5, 14.0};
-        int[] counts = {10, 18, 29};
+        int[] counts = {13, 23, 36}; // 13 + 23 + 36 = 72
 
         for (int rIndex = 0; rIndex < rings.length; rIndex++) {
             double currentR = rings[rIndex];
@@ -215,7 +217,7 @@ public class BurningBramblesFusion implements IFusion {
                 boolean isBlueFire = random.nextDouble() <= 0.10;
                 VinePillar pillar = new VinePillar(centerBase, isBlueFire);
 
-                for (int h = 0; h < 4; h++) {
+                for (int h = 0; h < 5; h++) {
                     Location blockLoc = centerBase.clone().add(0, h, 0);
 
                     BlockDisplay vine = center.getWorld().spawn(blockLoc, BlockDisplay.class, display -> {
