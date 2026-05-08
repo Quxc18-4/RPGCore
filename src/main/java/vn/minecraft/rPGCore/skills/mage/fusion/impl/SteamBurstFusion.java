@@ -41,11 +41,7 @@ public class SteamBurstFusion implements IFusion {
                 "§f- Khi va chạm sẽ lơ lửng và liên tục nén lại",
                 "§f  trong §a2.5s §fsau đó phát nổ cực mạnh§f.",
                 "§f- Sóng xung kích hình cầu bành trướng §a12 block§f,",
-                "§f  gây §c" + (int)baseFusionDmg + "% §fSát thương gốc và hất văng địch.",
-                "",
-                "§b[Cộng Hưởng Hệ Thống]§f: Áp ấn §bThủy§f lên toàn bộ vùng nổ",
-                "§f  và lập tức dùng §cHoa§f để kích hoạt §c§lBỐC HƠI§f.",
-                "§f  §8(Tổng sát thương bùng nổ lên tới §c" + (int)maxReactionDmg + "%§8!)"
+                "§f  kích hoạt §c§lBỐC HƠI, gây §c" + (int)maxReactionDmg + "% §fSát thương và thổi tung kẻ địch."
         );
     }
 
