@@ -42,7 +42,7 @@ public class MageLevitationSkill implements ISkill {
     }
 
     @Override public String getId() { return "mage_levitation"; }
-    @Override public String getName() { return "§b§lNgự Không Thuật"; }
+    @Override public String getName() { return "§b§lThuật Phi Hành"; }
     @Override public String getRequiredClass() { return "mage"; }
     @Override public Material getIcon() { return Material.FEATHER; }
 
@@ -109,10 +109,10 @@ public class MageLevitationSkill implements ISkill {
 
         MageElement element = ElementalSwapSkill.getActiveElement(player);
         double drain = getManaCost(level);
-        float flySpeed = 0.04f + (level * 0.02f);
+        float flySpeed = 0.03f + (level * 0.015f);
 
         // Xử lý nguyên tố
-        if (element == MageElement.FIRE) { drain += 20.0; flySpeed += 0.06f; }
+        if (element == MageElement.FIRE) { drain += 20.0; flySpeed += 0.03f; }
         else if (element == MageElement.WATER) {
             StatusEffectManager.cleanseNegativeEffects(player);
             player.getWorld().playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXTINGUISH_FIRE, 1f, 1.5f);
