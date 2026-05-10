@@ -28,7 +28,8 @@ public class MageClass extends RPGClass {
                      double maxHealth, double maxResource, ResourceType resourceType,
                      double regenRate, boolean isEnchanted) {
         super(id, displayName, icon, description, maxHealth, maxResource, resourceType, regenRate, isEnchanted);
-        this.magicPenCap = 80.0;
+        this.magicPenCap = 60.0;
+        this.resourceRegenCap = 600.0;
 
         // Đăng ký 6 Chiến lược (Strategy) cho đòn đánh thường
         attackStrategies.put(MageElement.LIGHT, new LightAttack());
@@ -92,6 +93,18 @@ public class MageClass extends RPGClass {
     public void applyPassiveBonusStats(RPGPlayer rpgPlayer, Map<String, Double> stats) {
         double currentMagicPen = stats.getOrDefault("Tỉ lệ xuyên kháng phép", 0.0);
         stats.put("Tỉ lệ xuyên kháng phép", currentMagicPen + 25.0);
+
+        // ==========================================
+        // [THÊM MỚI]: ĐỌC NỘI TẠI "DÒNG CHẢY MA LỰC" (Copy logic Summoner)
+        // ==========================================
+        int manaFlowLevel = rpgPlayer.getSkillData().getSkillLevel("mage_mana_flow");
+        if (manaFlowLevel > 0) {
+            double bonusMana = manaFlowLevel * 10.0; // 10 Mana/Cấp
+            double bonusRegen = manaFlowLevel * 10.0; // 10% Regen/Cấp
+
+            stats.put("Năng lượng tối đa", stats.getOrDefault("Năng lượng tối đa", 0.0) + bonusMana);
+            stats.put("Hồi Năng lượng", stats.getOrDefault("Hồi Năng lượng", 0.0) + bonusRegen);
+        }
 
         // ==========================================
         // [BẠN THÊM ĐOẠN NÀY VÀO]: ÉP TỈ LỆ TỐC ĐỘ TỪ KỸ NĂNG GIÓ

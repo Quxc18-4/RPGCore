@@ -53,7 +53,9 @@ public abstract class RPGClass {
     protected double blockCap = 20.0;
     protected double lifeStealCap = 50.0;
     protected double effectResistCap = 80.0;
-    protected double moveSpeedCap = 500.0;
+    protected double moveSpeedCap = 400.0;
+    // [THÊM MỚI]: Cap hồi năng lượng mặc định cho tất cả các phái là 400%
+    protected double resourceRegenCap = 400.0;
 
     // ==========================================
     // CÁC HÀM SỰ KIỆN (HOOKS) CHO PHÉP OVERRIDE
@@ -144,7 +146,8 @@ public abstract class RPGClass {
         combatStats.put("Tỉ lệ hút máu phép", Math.min(combatStats.getOrDefault("Tỉ lệ hút máu phép", 0.0), lifeStealCap));
         combatStats.put("Tốc độ đánh", Math.min(combatStats.getOrDefault("Tốc độ đánh", 0.0), 100.0));
         combatStats.put("Tốc độ di chuyển", Math.min(combatStats.getOrDefault("Tốc độ di chuyển", 0.0), moveSpeedCap));
-
+        // Khóa Cap Hồi Năng Lượng
+        combatStats.put("Hồi Năng lượng", Math.min(combatStats.getOrDefault("Hồi Năng lượng", 0.0), resourceRegenCap));
         // Nhóm Chí mạng
         processCrit(combatStats, combatStats.getOrDefault("Tỉ lệ chí mạng", 5.0));
     }
