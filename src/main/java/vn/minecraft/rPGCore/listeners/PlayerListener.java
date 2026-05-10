@@ -364,19 +364,26 @@ public class PlayerListener implements Listener {
         RPGPlayer rpgPlayer = playerManager.loadPlayer(player);
         bossBarManager.createBars(player, rpgPlayer);
     }
+
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
 
-        // [MỚI]: Thu hồi toàn bộ đệ tử trước khi thoát để tránh kẹt Entity và lỗi Mana
+        // Dọn dẹp Summoner
         if (rpgPlayer != null && rpgPlayer.getCurrentClass() instanceof vn.minecraft.rPGCore.classes.impl.SummonerClass) {
             ((vn.minecraft.rPGCore.classes.impl.SummonerClass) rpgPlayer.getCurrentClass()).clearAllPets(player);
+        }
+
+        // [MỚI]: Dọn dẹp trạng thái bay khi thoát game - KHÔNG cho Safe Fall (Phòng trường hợp lạm dụng thoát game khi rớt)
+        if (player.hasMetadata("RPGCore_Hovering")) {
+            vn.minecraft.rPGCore.managers.StatusEffectManager.removeCustomHover(player, false);
         }
 
         bossBarManager.removeBars(player);
         playerManager.savePlayer(player.getUniqueId());
     }
+
     @EventHandler public void onVanillaRegen(EntityRegainHealthEvent event) {
         if (event.getEntity() instanceof Player && (event.getRegainReason() == EntityRegainHealthEvent.RegainReason.SATIATED || event.getRegainReason() == EntityRegainHealthEvent.RegainReason.REGEN)) {
             event.setCancelled(true);
@@ -589,14 +596,15 @@ public class PlayerListener implements Listener {
         }
     }
 
-    @org.bukkit.event.EventHandler
+    @EventHandler
     public void onPlayerSneak(org.bukkit.event.player.PlayerToggleSneakEvent event) {
-        if (event.isSneaking()) {
-            Player player = event.getPlayer();
-            if (player.hasMetadata("RPGCore_Hovering")) {
-                vn.minecraft.rPGCore.managers.StatusEffectManager.removeCustomHover(player);
-                player.sendMessage("§a§o(Đã hủy trạng thái lơ lửng)");
-            }
+        Player player = event.getPlayer();
+        if (event.isSneaking() && player.hasMetadata("RPGCore_Hovering")) {
+            // Nếu có cờ NoSneakCancel (của Mage) thì không được tự ý hủy bay
+            if (player.hasMetadata("RPGCore_NoSneakCancel")) return;
+
+            vn.minecraft.rPGCore.managers.StatusEffectManager.removeCustomHover(player, true);
+            player.sendMessage("§a§o(Đã hủy trạng thái lơ lửng)");
         }
     }
 

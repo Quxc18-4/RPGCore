@@ -220,13 +220,23 @@ public class StatusEffectManager {
     // ==========================================
     // 4. BAY LƠ LỬNG AN TOÀN
     // ==========================================
+    // Hàm cũ: Giữ nguyên để không gây lỗi cho các Kỹ năng khác đang xài
     public static void applyCustomHover(Player player, int durationTicks, float flySpeed, boolean safeFall) {
+        applyCustomHover(player, durationTicks, flySpeed, safeFall, true); // Mặc định là cho phép tắt bằng Shift
+    }
+
+    // Hàm mới: Bổ sung tham số cancelOnSneak (Không tắt khi bấm Shift)
+    public static void applyCustomHover(Player player, int durationTicks, float flySpeed, boolean safeFall, boolean cancelOnSneak) {
         player.setAllowFlight(true);
         player.setFlying(true);
         player.setFlySpeed(flySpeed);
 
         if (safeFall) {
             player.setMetadata("RPGCore_SafeFall", new FixedMetadataValue(RPGCore.getInstance(), true));
+        }
+
+        if (!cancelOnSneak) {
+            player.setMetadata("RPGCore_NoSneakCancel", new FixedMetadataValue(RPGCore.getInstance(), true));
         }
 
         player.setMetadata("RPGCore_Hovering", new FixedMetadataValue(RPGCore.getInstance(), System.currentTimeMillis() + (durationTicks * 50L)));
@@ -247,16 +257,30 @@ public class StatusEffectManager {
         }.runTaskTimer(RPGCore.getInstance(), 0L, 2L);
     }
 
-    public static void removeCustomHover(Player player) {
+    public static void removeCustomHover(Player player, boolean grantSafeFall) {
         if (player.hasMetadata("RPGCore_Hovering")) {
             player.removeMetadata("RPGCore_Hovering", RPGCore.getInstance());
+            player.removeMetadata("RPGCore_NoSneakCancel", RPGCore.getInstance()); // Dọn cờ của Mage nếu có
+
             if (player.getGameMode() != org.bukkit.GameMode.CREATIVE && player.getGameMode() != org.bukkit.GameMode.SPECTATOR) {
                 player.setFlying(false);
                 player.setAllowFlight(false);
             }
             player.setFlySpeed(0.1f);
-            player.setFallDistance(0f);
+
+            // [CHỈNH SỬA]: Nếu grantSafeFall = true thì mới reset FallDistance và giữ Meta SafeFall
+            if (grantSafeFall) {
+                player.setFallDistance(0f);
+            } else {
+                // Nếu cạn mana hoặc out game -> Tước quyền miễn sát thương rơi
+                player.removeMetadata("RPGCore_SafeFall", RPGCore.getInstance());
+            }
         }
+    }
+
+    // Giữ lại hàm cũ (Overload) để không làm lỗi các class cũ đang gọi
+    public static void removeCustomHover(Player player) {
+        removeCustomHover(player, true);
     }
 
     // ==========================================
@@ -299,5 +323,40 @@ public class StatusEffectManager {
         if (!target.hasMetadata("STATUS_ANTI_HEAL")) return false;
         long expire = target.getMetadata("STATUS_ANTI_HEAL").get(0).asLong();
         return System.currentTimeMillis() < expire;
+    }
+
+    /**
+     * Giải trừ toàn bộ hiệu ứng xấu (Debuffs) và hỏa thiêu.
+     * Không ảnh hưởng đến các chỉ số cộng thêm hoặc cơ chế tăng/giảm sát thương từ Metadata.
+     */
+    public static void cleanseNegativeEffects(LivingEntity target) {
+        if (target == null) return;
+
+        // Danh sách các PotionEffect xấu (Debuffs)
+        PotionEffectType[] debuffs = {
+                PotionEffectType.SLOWNESS,            // Chậm chạp
+                PotionEffectType.MINING_FATIGUE,    // Đào chậm
+                PotionEffectType.NAUSEA,       // Chóng mặt
+                PotionEffectType.BLINDNESS,       // Mù lòa
+                PotionEffectType.HUNGER,          // Đói khát
+                PotionEffectType.WEAKNESS,        // Yếu ớt
+                PotionEffectType.POISON,          // Thuốc độc
+                PotionEffectType.WITHER,          // Héo mòn
+                PotionEffectType.DARKNESS,        // Bóng tối (1.19+)
+                PotionEffectType.UNLUCK,          // Xui xẻo
+                PotionEffectType.BAD_OMEN         // Điềm gở
+        };
+
+        for (PotionEffectType type : debuffs) {
+            if (target.hasPotionEffect(type)) {
+                target.removePotionEffect(type);
+            }
+        }
+
+        // Dập lửa ngay lập tức
+        target.setFireTicks(0);
+
+        // Xóa hiệu ứng Vết thương sâu (Anti-heal) do chính Manager này quản lý
+        target.removeMetadata("STATUS_ANTI_HEAL", vn.minecraft.rPGCore.RPGCore.getInstance());
     }
 }
