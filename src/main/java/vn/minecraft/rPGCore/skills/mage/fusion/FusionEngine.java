@@ -45,6 +45,7 @@ public class FusionEngine {
         registerFusion(new ThunderstormFusion()); // Lửa + Ánh Sáng
         registerFusion(new WorldTreeFusion()); // Thiên nhiên + Nước
         registerFusion(new BurningBramblesFusion()); // Lửa + Thiên Nhiên
+        registerFusion(new DoomExecutionFusion()); // Lửa + Bóng Tối
     }
 
     public static IFusion getActiveFusion(MageElement tnt, MageElement nth) {
