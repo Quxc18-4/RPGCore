@@ -90,6 +90,7 @@ public class SkillManager {
         registerSkill(new ElementalFusionSkill(plugin));
         registerSkill(new MageManaFlowPassive());
         registerSkill(new MageLevitationSkill());
+        registerSkill(new UltimateElementGate(plugin));
     }
 
     public void registerSkill(ISkill skill) {
