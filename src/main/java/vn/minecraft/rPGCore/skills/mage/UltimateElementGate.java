@@ -14,7 +14,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
-import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.classes.impl.mage.MageElement;
@@ -102,8 +101,6 @@ public class UltimateElementGate implements ISkill {
         player.getWorld().playSound(player.getLocation(), Sound.BLOCK_END_PORTAL_SPAWN, 1.0f, 1.2f);
 
         double baseBulletDmg = getBulletBaseDamage(level);
-
-        // Quản lý các Gate để dọn dẹp nếu người chơi thoát game đột ngột
         List<ItemDisplay> activeGates = new ArrayList<>();
 
         new BukkitRunnable() {
@@ -124,29 +121,28 @@ public class UltimateElementGate implements ISkill {
                 // BẮN MỖI 3 TICKS (0.15s)
                 // ==========================================
                 if (ticks % 3 == 0) {
-                    // 1. SMART PICKER: Chọn nguyên tố Combo
                     MageElement element = getSmartComboElement(lastFiredElement, unlockedElements);
                     lastFiredElement = element;
 
-                    // 2. TÍNH VỊ TRÍ XUẤT HIỆN RANDOM QUANH LƯNG
+                    // 1. TÍNH VỊ TRÍ XUẤT HIỆN TRONG KHÔNG GIAN 3D RỘNG LỚN
                     Location eyeLoc = player.getEyeLocation();
                     Vector lookDir = eyeLoc.getDirection().normalize();
                     Vector right = new Vector(-lookDir.getZ(), 0, lookDir.getX()).normalize();
                     Vector up = right.clone().crossProduct(lookDir).normalize();
 
-                    // Random Offset
-                    double offsetX = (random.nextDouble() - 0.5) * 4.0; // Rộng trái phải 4 block
-                    double offsetY = (random.nextDouble() - 0.5) * 3.0 + 0.5; // Cao thấp 3 block
-                    double offsetZ = -0.5 - random.nextDouble() * 1.5; // Lùi về sau lưng 0.5 - 2 block
+                    // Rải rác theo không gian 3D để không đè nhau
+                    double offsetX = (random.nextDouble() - 0.5) * 6.0; // Rộng 6 block
+                    double offsetY = (random.nextDouble() - 0.5) * 4.0 + 1.0; // Cao 4 block
+                    double offsetZ = -0.5 - random.nextDouble() * 3.0; // Sâu 3.5 block sau lưng
 
                     Location gateLoc = eyeLoc.clone()
                             .add(right.clone().multiply(offsetX))
                             .add(up.clone().multiply(offsetY))
                             .add(lookDir.clone().multiply(offsetZ));
 
-                    gateLoc.setDirection(lookDir); // Mặt hướng cùng chiều nhìn của player
+                    gateLoc.setDirection(lookDir);
 
-                    // 3. TRIỆU HỒI GATE
+                    // 2. TRIỆU HỒI GATE
                     ItemDisplay gate = player.getWorld().spawn(gateLoc, ItemDisplay.class);
                     ItemStack item = new ItemStack(Material.PAPER);
                     ItemMeta meta = item.getItemMeta();
@@ -157,35 +153,34 @@ public class UltimateElementGate implements ISkill {
                     gate.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
                     activeGates.add(gate);
 
-                    // Setup Animation: Mở rộng từ 0 -> 2.5
+                    // Random kích thước vòng (Từ 1.2 đến 1.8) để nhìn chân thực hơn
+                    float gateScale = 1.2f + random.nextFloat() * 0.6f;
+
                     org.bukkit.util.Transformation trans = gate.getTransformation();
                     trans.getScale().set(0f, 0f, 0f);
                     gate.setTransformation(trans);
 
                     gate.setInterpolationDelay(0);
-                    gate.setInterpolationDuration(4); // Phóng to trong 4 ticks
+                    gate.setInterpolationDuration(4);
 
-                    trans.getScale().set(2.5f, 2.5f, 2.5f);
+                    trans.getScale().set(gateScale, gateScale, gateScale);
                     gate.setTransformation(trans);
 
-                    // 4. BẮN ĐẠN & THU GỌN LẠI SAU 4 TICKS
+                    // 3. BẮN ĐẠN & THU GỌN
                     new BukkitRunnable() {
                         @Override
                         public void run() {
                             if (!gate.isValid()) return;
 
-                            // Nã đạn
                             Location target = findTarget(player);
                             fireHighSpeedBullet(player, rpgPlayer, gate.getLocation(), target, element, baseBulletDmg);
 
-                            // Thu nhỏ Gate về 0
                             gate.setInterpolationDelay(0);
                             gate.setInterpolationDuration(3);
                             org.bukkit.util.Transformation shrinkTrans = gate.getTransformation();
                             shrinkTrans.getScale().set(0f, 0f, 0f);
                             gate.setTransformation(shrinkTrans);
 
-                            // Xóa Gate sau khi thu nhỏ xong (3 ticks)
                             new BukkitRunnable() {
                                 @Override
                                 public void run() {
@@ -196,7 +191,6 @@ public class UltimateElementGate implements ISkill {
                         }
                     }.runTaskLater(plugin, 4L);
                 }
-
                 ticks++;
             }
         }.runTaskTimer(plugin, 0L, 1L);
@@ -204,9 +198,6 @@ public class UltimateElementGate implements ISkill {
         return true;
     }
 
-    // ==========================================
-    // THUẬT TOÁN TÌM NGUYÊN TỐ COMBO
-    // ==========================================
     private MageElement getSmartComboElement(MageElement last, List<MageElement> available) {
         if (last == null || available.size() <= 1) return available.get(random.nextInt(available.size()));
 
@@ -215,7 +206,6 @@ public class UltimateElementGate implements ISkill {
             if (isReactionPair(last, e)) comboMatches.add(e);
         }
 
-        // Tỉ lệ 80% sẽ đánh ra Combo nếu có hệ tương ứng, 20% đánh random để giữ tính hỗn loạn
         if (!comboMatches.isEmpty() && random.nextInt(100) < 80) {
             return comboMatches.get(random.nextInt(comboMatches.size()));
         }
@@ -224,7 +214,7 @@ public class UltimateElementGate implements ISkill {
     }
 
     private boolean isReactionPair(MageElement e1, MageElement e2) {
-        if (e1 == e2) return true; // Bùng nổ thuật pháp
+        if (e1 == e2) return true;
         if ((e1 == MageElement.FIRE && e2 == MageElement.WATER) || (e2 == MageElement.FIRE && e1 == MageElement.WATER)) return true;
         if ((e1 == MageElement.LIGHT && e2 == MageElement.DARK) || (e2 == MageElement.LIGHT && e1 == MageElement.DARK)) return true;
         if ((e1 == MageElement.FIRE && e2 == MageElement.LIGHT) || (e2 == MageElement.FIRE && e1 == MageElement.LIGHT)) return true;
@@ -249,12 +239,12 @@ public class UltimateElementGate implements ISkill {
         Vector p2 = end.toVector();
 
         Vector dir = p2.clone().subtract(p0).normalize();
-        Vector randomVec = Vector.getRandom().subtract(new Vector(0.5, 0.5, 0.5)).multiply(8.0); // Độ cong gắt hơn
+        Vector randomVec = Vector.getRandom().subtract(new Vector(0.5, 0.5, 0.5)).multiply(8.0);
         Vector p1 = p0.clone().add(p2).multiply(0.5).add(randomVec);
 
         new BukkitRunnable() {
             double t = 0.0;
-            final double speed = 0.15; // Cực nhanh: Bay tới nơi trong ~6-7 tick
+            final double speed = 0.15;
 
             @Override
             public void run() {
@@ -270,12 +260,11 @@ public class UltimateElementGate implements ISkill {
                         .add(p2.clone().multiply(t * t));
                 Location loc = current.toLocation(start.getWorld());
 
-                // 1. HẠT NHÂN (CORE) SÁNG CHÓI
-                loc.getWorld().spawnParticle(Particle.FLASH, loc, 1, 0, 0, 0, 0); // Lõi chớp sáng
-                Particle.DustOptions coreColor = getCoreColor(element);
-                loc.getWorld().spawnParticle(Particle.DUST, loc, 3, 0.1, 0.1, 0.1, 0, coreColor); // Khối cầu màu
+                // [ĐÃ SỬA LỖI CRASH]: Thay Particle.FLASH thành Particle.END_ROD để an toàn trên 1.21+
+                loc.getWorld().spawnParticle(Particle.END_ROD, loc, 1, 0, 0, 0, 0);
 
-                // 2. TRAIL (Vệt kéo đuôi)
+                Particle.DustOptions coreColor = getCoreColor(element);
+                loc.getWorld().spawnParticle(Particle.DUST, loc, 3, 0.1, 0.1, 0.1, 0, coreColor);
                 spawnBulletTrail(element, loc);
 
                 for (org.bukkit.entity.Entity e : loc.getWorld().getNearbyEntities(loc, 1.5, 1.5, 1.5)) {
@@ -293,9 +282,12 @@ public class UltimateElementGate implements ISkill {
             }
         }.runTaskTimer(plugin, 0L, 1L);
     }
-
+    // ==========================================
+    // VỤ NỔ ĐẠN VÀ TÍCH HỢP REACTION ENGINE
+    // ==========================================
     private void impact(Location loc, Player shooter, RPGPlayer rpgPlayer, MageElement element, double dmg) {
-        loc.getWorld().spawnParticle(Particle.EXPLOSION, loc, 1);
+        // [ĐÃ SỬA]: Thay Particle.EXPLOSION thành LARGE_SMOKE để chống crash
+        loc.getWorld().spawnParticle(Particle.LARGE_SMOKE, loc, 15, 0.5, 0.5, 0.5, 0.05);
         loc.getWorld().playSound(loc, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.8f);
         spawnExplosionParticle(element, loc);
 
@@ -315,27 +307,28 @@ public class UltimateElementGate implements ISkill {
     }
 
     // ==========================================
-    // HIỆU ỨNG THỊ GIÁC
+    // HIỆU ỨNG THỊ GIÁC (ĐÃ FIX LỖI DATA CLASS)
     // ==========================================
     private Particle.DustOptions getCoreColor(MageElement e) {
         switch (e) {
-            case FIRE: return new Particle.DustOptions(org.bukkit.Color.RED, 2.0f);
-            case WATER: return new Particle.DustOptions(org.bukkit.Color.AQUA, 2.0f);
-            case WIND: return new Particle.DustOptions(org.bukkit.Color.WHITE, 2.0f);
-            case NATURE: return new Particle.DustOptions(org.bukkit.Color.LIME, 2.0f);
-            case LIGHT: return new Particle.DustOptions(org.bukkit.Color.YELLOW, 2.0f);
-            case DARK: return new Particle.DustOptions(org.bukkit.Color.PURPLE, 2.0f);
-            default: return new Particle.DustOptions(org.bukkit.Color.WHITE, 2.0f);
+            case FIRE: return new Particle.DustOptions(org.bukkit.Color.RED, 1.5f);
+            case WATER: return new Particle.DustOptions(org.bukkit.Color.AQUA, 1.5f);
+            case WIND: return new Particle.DustOptions(org.bukkit.Color.WHITE, 1.5f);
+            case NATURE: return new Particle.DustOptions(org.bukkit.Color.LIME, 1.5f);
+            case LIGHT: return new Particle.DustOptions(org.bukkit.Color.YELLOW, 1.5f);
+            case DARK: return new Particle.DustOptions(org.bukkit.Color.PURPLE, 1.5f);
+            default: return new Particle.DustOptions(org.bukkit.Color.WHITE, 1.5f);
         }
     }
 
     private void spawnBulletTrail(MageElement e, Location l) {
-        Particle p = (e == MageElement.FIRE) ? Particle.SMALL_FLAME : (e == MageElement.WATER) ? Particle.SPLASH : (e == MageElement.WIND) ? Particle.SNOWFLAKE : (e == MageElement.NATURE) ? Particle.CHERRY_LEAVES : (e == MageElement.LIGHT) ? Particle.INSTANT_EFFECT : Particle.SQUID_INK;
+        Particle p = (e == MageElement.FIRE) ? Particle.SMALL_FLAME : (e == MageElement.WATER) ? Particle.SPLASH : (e == MageElement.WIND) ? Particle.SNOWFLAKE : (e == MageElement.NATURE) ? Particle.CHERRY_LEAVES : (e == MageElement.LIGHT) ? Particle.GLOW : Particle.SQUID_INK;
         l.getWorld().spawnParticle(p, l, 5, 0.2, 0.2, 0.2, 0.01);
     }
 
     private void spawnExplosionParticle(MageElement e, Location l) {
-        Particle p = (e == MageElement.FIRE) ? Particle.LAVA : (e == MageElement.WATER) ? Particle.NAUTILUS : (e == MageElement.WIND) ? Particle.EXPLOSION : (e == MageElement.NATURE) ? Particle.COMPOSTER : (e == MageElement.LIGHT) ? Particle.FIREWORK : Particle.DRAGON_BREATH;
+        // [ĐÃ SỬA]: Thay Particle.EXPLOSION của hệ WIND thành Particle.CLOUD
+        Particle p = (e == MageElement.FIRE) ? Particle.LAVA : (e == MageElement.WATER) ? Particle.NAUTILUS : (e == MageElement.WIND) ? Particle.CLOUD : (e == MageElement.NATURE) ? Particle.COMPOSTER : (e == MageElement.LIGHT) ? Particle.FIREWORK : Particle.DRAGON_BREATH;
         l.getWorld().spawnParticle(p, l, 30, 1.2, 1.2, 1.2, 0.1);
     }
 }
