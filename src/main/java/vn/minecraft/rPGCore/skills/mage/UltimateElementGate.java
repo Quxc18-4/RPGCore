@@ -14,8 +14,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
-import org.joml.Vector3f;
-import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.classes.impl.mage.MageElement;
 import vn.minecraft.rPGCore.classes.impl.mage.ReactionEngine;
 import vn.minecraft.rPGCore.managers.CombatManager;
@@ -54,7 +52,6 @@ public class UltimateElementGate implements ISkill {
     @Override public double getManaCost(int level) { return 150.0 + (level * 50.0); }
     @Override public long getCooldown(int level) { return (65 - (level * 5)) * 1000L; }
 
-    // SÁT THƯƠNG GỐC: 250% - 280% - 310% cho mỗi viên đạn
     private double getBulletBaseDamage(int level) { return 2.5 + (level * 0.3); }
 
     @Override
@@ -117,23 +114,18 @@ public class UltimateElementGate implements ISkill {
                     return;
                 }
 
-                // ==========================================
-                // BẮN MỖI 3 TICKS (0.15s)
-                // ==========================================
                 if (ticks % 3 == 0) {
                     MageElement element = getSmartComboElement(lastFiredElement, unlockedElements);
                     lastFiredElement = element;
 
-                    // 1. TÍNH VỊ TRÍ XUẤT HIỆN TRONG KHÔNG GIAN 3D RỘNG LỚN
                     Location eyeLoc = player.getEyeLocation();
                     Vector lookDir = eyeLoc.getDirection().normalize();
                     Vector right = new Vector(-lookDir.getZ(), 0, lookDir.getX()).normalize();
                     Vector up = right.clone().crossProduct(lookDir).normalize();
 
-                    // Rải rác theo không gian 3D để không đè nhau
-                    double offsetX = (random.nextDouble() - 0.5) * 6.0; // Rộng 6 block
-                    double offsetY = (random.nextDouble() - 0.5) * 4.0 + 1.0; // Cao 4 block
-                    double offsetZ = -0.5 - random.nextDouble() * 3.0; // Sâu 3.5 block sau lưng
+                    double offsetX = (random.nextDouble() - 0.5) * 6.0;
+                    double offsetY = (random.nextDouble() - 0.5) * 4.0 + 1.0;
+                    double offsetZ = -0.5 - random.nextDouble() * 3.0;
 
                     Location gateLoc = eyeLoc.clone()
                             .add(right.clone().multiply(offsetX))
@@ -142,7 +134,6 @@ public class UltimateElementGate implements ISkill {
 
                     gateLoc.setDirection(lookDir);
 
-                    // 2. TRIỆU HỒI GATE
                     ItemDisplay gate = player.getWorld().spawn(gateLoc, ItemDisplay.class);
                     ItemStack item = new ItemStack(Material.PAPER);
                     ItemMeta meta = item.getItemMeta();
@@ -153,7 +144,6 @@ public class UltimateElementGate implements ISkill {
                     gate.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
                     activeGates.add(gate);
 
-                    // Random kích thước vòng (Từ 1.2 đến 1.8) để nhìn chân thực hơn
                     float gateScale = 1.2f + random.nextFloat() * 0.6f;
 
                     org.bukkit.util.Transformation trans = gate.getTransformation();
@@ -166,7 +156,6 @@ public class UltimateElementGate implements ISkill {
                     trans.getScale().set(gateScale, gateScale, gateScale);
                     gate.setTransformation(trans);
 
-                    // 3. BẮN ĐẠN & THU GỌN
                     new BukkitRunnable() {
                         @Override
                         public void run() {
@@ -229,9 +218,6 @@ public class UltimateElementGate implements ISkill {
         return (ray != null && ray.getHitPosition() != null) ? ray.getHitPosition().toLocation(p.getWorld()) : p.getEyeLocation().add(p.getEyeLocation().getDirection().multiply(50));
     }
 
-    // ==========================================
-    // ĐẠN TỐC ĐỘ CAO VỚI HẠT NHÂN (CORE)
-    // ==========================================
     private void fireHighSpeedBullet(Player shooter, RPGPlayer rpgPlayer, Location start, Location end, MageElement element, double dmg) {
         shooter.getWorld().playSound(start, Sound.ENTITY_BLAZE_SHOOT, 0.6f, 2.0f);
 
@@ -260,9 +246,7 @@ public class UltimateElementGate implements ISkill {
                         .add(p2.clone().multiply(t * t));
                 Location loc = current.toLocation(start.getWorld());
 
-                // [ĐÃ SỬA LỖI CRASH]: Thay Particle.FLASH thành Particle.END_ROD để an toàn trên 1.21+
                 loc.getWorld().spawnParticle(Particle.END_ROD, loc, 1, 0, 0, 0, 0);
-
                 Particle.DustOptions coreColor = getCoreColor(element);
                 loc.getWorld().spawnParticle(Particle.DUST, loc, 3, 0.1, 0.1, 0.1, 0, coreColor);
                 spawnBulletTrail(element, loc);
@@ -282,11 +266,9 @@ public class UltimateElementGate implements ISkill {
             }
         }.runTaskTimer(plugin, 0L, 1L);
     }
-    // ==========================================
-    // VỤ NỔ ĐẠN VÀ TÍCH HỢP REACTION ENGINE
-    // ==========================================
+
     private void impact(Location loc, Player shooter, RPGPlayer rpgPlayer, MageElement element, double dmg) {
-        // [ĐÃ SỬA]: Thay Particle.EXPLOSION thành LARGE_SMOKE để chống crash
+        // [1.21.x SAFE]: Dùng Khói lớn để giả lập vụ nổ thay vì EXPLOSION
         loc.getWorld().spawnParticle(Particle.LARGE_SMOKE, loc, 15, 0.5, 0.5, 0.5, 0.05);
         loc.getWorld().playSound(loc, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.8f);
         spawnExplosionParticle(element, loc);
@@ -306,9 +288,6 @@ public class UltimateElementGate implements ISkill {
         }
     }
 
-    // ==========================================
-    // HIỆU ỨNG THỊ GIÁC (ĐÃ FIX LỖI DATA CLASS)
-    // ==========================================
     private Particle.DustOptions getCoreColor(MageElement e) {
         switch (e) {
             case FIRE: return new Particle.DustOptions(org.bukkit.Color.RED, 1.5f);
@@ -322,13 +301,29 @@ public class UltimateElementGate implements ISkill {
     }
 
     private void spawnBulletTrail(MageElement e, Location l) {
-        Particle p = (e == MageElement.FIRE) ? Particle.SMALL_FLAME : (e == MageElement.WATER) ? Particle.SPLASH : (e == MageElement.WIND) ? Particle.SNOWFLAKE : (e == MageElement.NATURE) ? Particle.CHERRY_LEAVES : (e == MageElement.LIGHT) ? Particle.GLOW : Particle.SQUID_INK;
+        Particle p = Particle.END_ROD;
+        switch (e) {
+            case FIRE: p = Particle.FLAME; break;
+            case WATER: p = Particle.SPLASH; break;
+            case WIND: p = Particle.SNOWFLAKE; break;
+            case NATURE: p = Particle.CHERRY_LEAVES; break;
+            case LIGHT: p = Particle.GLOW; break;
+            case DARK: p = Particle.SQUID_INK; break;
+        }
         l.getWorld().spawnParticle(p, l, 5, 0.2, 0.2, 0.2, 0.01);
     }
 
     private void spawnExplosionParticle(MageElement e, Location l) {
-        // [ĐÃ SỬA]: Thay Particle.EXPLOSION của hệ WIND thành Particle.CLOUD
-        Particle p = (e == MageElement.FIRE) ? Particle.LAVA : (e == MageElement.WATER) ? Particle.NAUTILUS : (e == MageElement.WIND) ? Particle.CLOUD : (e == MageElement.NATURE) ? Particle.COMPOSTER : (e == MageElement.LIGHT) ? Particle.FIREWORK : Particle.DRAGON_BREATH;
+        // [1.21.x SAFE]: Không dùng hạt nổ nào yêu cầu Float data
+        Particle p = Particle.LARGE_SMOKE;
+        switch (e) {
+            case FIRE: p = Particle.LAVA; break;
+            case WATER: p = Particle.SPLASH; break; // Thay NAUTILUS
+            case WIND: p = Particle.CLOUD; break;
+            case NATURE: p = Particle.HAPPY_VILLAGER; break; // Thay COMPOSTER
+            case LIGHT: p = Particle.END_ROD; break;
+            case DARK: p = Particle.SQUID_INK; break;
+        }
         l.getWorld().spawnParticle(p, l, 30, 1.2, 1.2, 1.2, 0.1);
     }
 }
