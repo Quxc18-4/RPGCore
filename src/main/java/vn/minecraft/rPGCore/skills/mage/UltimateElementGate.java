@@ -14,8 +14,11 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
 import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.classes.impl.mage.MageElement;
+import vn.minecraft.rPGCore.classes.impl.mage.ReactionEngine;
 import vn.minecraft.rPGCore.managers.CombatManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 import vn.minecraft.rPGCore.skills.ISkill;
@@ -26,10 +29,10 @@ public class UltimateElementGate implements ISkill {
 
     private final JavaPlugin plugin;
     private final Map<MageElement, Integer> elementModelIds = new HashMap<>();
+    private final Random random = new Random();
 
     public UltimateElementGate(JavaPlugin plugin) {
         this.plugin = plugin;
-        // Mapping CustomModelData cho 6 hệ dựa trên Resource Pack của Sếp
         elementModelIds.put(MageElement.FIRE, 1001);
         elementModelIds.put(MageElement.WATER, 1002);
         elementModelIds.put(MageElement.WIND, 1003);
@@ -38,9 +41,6 @@ public class UltimateElementGate implements ISkill {
         elementModelIds.put(MageElement.DARK, 1006);
     }
 
-    // ==========================================
-    // 1. THÔNG SỐ CƠ BẢN TỪ ISKILL
-    // ==========================================
     @Override public String getId() { return "mage_ultimate_element_gate"; }
     @Override public String getName() { return "§6§l[TUYỆT KỸ TỐI THƯỢNG: VẠN PHÁP QUY TÔNG]"; }
     @Override public String getRequiredClass() { return "mage"; }
@@ -52,157 +52,149 @@ public class UltimateElementGate implements ISkill {
     @Override public Map<String, Integer> getRequiredSkills() { return Collections.emptyMap(); }
     @Override public boolean isPassiveSkill() { return false; }
 
-    // Năng lượng: Rất đắt (250 - 300 - 350)
-    @Override public double getManaCost(int level) { return 200.0 + (level * 50.0); }
-    // Hồi chiêu: 60s - 55s - 50s
+    @Override public double getManaCost(int level) { return 150.0 + (level * 50.0); }
     @Override public long getCooldown(int level) { return (65 - (level * 5)) * 1000L; }
 
-    // ==========================================
-    // 2. CÂN BẰNG SÁT THƯƠNG
-    // Mỗi viên đạn cơ bản: 60% - 80% - 100% Sát thương
-    // Kích nổ 3 Ấn: 400% - 500% - 600% Sát thương
-    // ==========================================
-    private double getBulletDamageMultiplier(int level) { return 0.4 + (level * 0.2); }
-    private double getDetonateDamageMultiplier(int level) { return 3.0 + (level * 1.0); }
+    // SÁT THƯƠNG GỐC: 250% - 280% - 310% cho mỗi viên đạn
+    private double getBulletBaseDamage(int level) { return 2.5 + (level * 0.3); }
 
     @Override
     public List<String> getDescription(int level) {
-        int bulletDmg = (int) (getBulletDamageMultiplier(level) * 100);
-        int detonateDmg = (int) (getDetonateDamageMultiplier(level) * 100);
-
+        int bulletDmg = (int) (getBulletBaseDamage(level) * 100);
         return Arrays.asList(
-                "§6§o\"Tri thức là sức mạnh, và ta nắm giữ mọi chân lý...\"",
+                "§6§o\"Trời đất cuồng nộ, vạn pháp tuôn trào...\"",
                 "",
                 "§f§l[THÔNG SỐ TUYỆT KỸ]",
-                "§7Triệu hồi các Vòng Ma Pháp sau lưng dựa trên số Nguyên Tố",
-                "§7đã mở khóa. Liên tục nã đạn ma pháp theo hướng nhìn.",
+                "§7Khởi động trận pháp, liên tục triệu hồi các cổng ma thuật",
+                "§7chớp nhoáng xung quanh để nã pháo bão hòa về phía kẻ địch.",
                 "",
-                "§f▪ Thời gian duy trì: §a10 giây",
+                "§f▪ Thời gian bùng nổ: §a5 giây",
+                "§f▪ Tốc độ xả đạn: §e0.15 giây / Viên",
                 "§f▪ Sát thương đạn: §c" + bulletDmg + "% §fMỗi viên",
                 "",
-                "§e§l❂ KÍCH ỨNG NGUYÊN TỐ ❂",
-                "§7Đạn ma pháp áp §e[Ấn Nguyên Tố]§7 lên kẻ địch.",
-                "§7Tích đủ §c3 Ấn§7 sẽ kích nổ diện rộng, gây thêm",
-                "§c" + detonateDmg + "% §fSát thương chuẩn và xóa Ấn.",
+                "§e§l❂ THUẬT TOÁN CỘNG HƯỞNG ❂",
+                "§7Pháp trận tự động lựa chọn nguyên tố tiếp theo sao cho",
+                "§7tối đa hóa khả năng kích nổ §dReaction Engine§7.",
                 "",
-                "§8§o*Mở khóa càng nhiều hệ, sức mạnh càng khủng khiếp."
+                "§8§o*Một cơn bão sát thương không thể cản phá."
         );
     }
 
     @Override
     public boolean execute(Player player, RPGPlayer rpgPlayer, int level) {
-        // [ĐÃ SỬA]: Lấy danh sách tên nguyên tố (dạng String) từ RPGPlayer
         List<String> unlockedElementNames = rpgPlayer.getUnlockedElements();
         if (unlockedElementNames == null || unlockedElementNames.isEmpty()) {
             player.sendMessage("§cBạn chưa mở khóa bất kỳ nguyên tố nào!");
             return false;
         }
 
-        // [MỚI]: Chuyển đổi các chuỗi tên nguyên tố sang Enum MageElement
         List<MageElement> unlockedElements = new ArrayList<>();
         for (String elName : unlockedElementNames) {
-            try {
-                unlockedElements.add(MageElement.valueOf(elName.toUpperCase()));
-            } catch (IllegalArgumentException ignored) {
-                // Bỏ qua nếu có chuỗi rác không khớp với hệ thống Enum
-            }
+            try { unlockedElements.add(MageElement.valueOf(elName.toUpperCase())); }
+            catch (IllegalArgumentException ignored) {}
         }
 
-        // Đề phòng trường hợp danh sách có lỗi
-        if (unlockedElements.isEmpty()) {
-            player.sendMessage("§cDữ liệu nguyên tố bị lỗi, không thể kích hoạt!");
-            return false;
-        }
-
-        // Kiểm tra Mana & Cooldown từ Siêu Hàm
         if (!handleCostAndCooldown(player, rpgPlayer, level)) return false;
         applyGlobalCooldown(player, rpgPlayer, level);
 
-        player.sendMessage("§6§l[!] VẠN PHÁP QUY TÔNG!");
-        player.getWorld().playSound(player.getLocation(), Sound.BLOCK_END_PORTAL_SPAWN, 1.0f, 1.5f);
+        player.sendMessage("§6§l[!] VẠN PHÁP QUY TÔNG: BÙNG NỔ!");
+        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_WITHER_SPAWN, 0.8f, 1.5f);
+        player.getWorld().playSound(player.getLocation(), Sound.BLOCK_END_PORTAL_SPAWN, 1.0f, 1.2f);
 
-        // ==========================================
-        // 3. TRIỆU HỒI CÁC ITEM DISPLAY VÒNG MA PHÁP
-        // ==========================================
-        List<ItemDisplay> gates = new ArrayList<>();
+        double baseBulletDmg = getBulletBaseDamage(level);
 
-        for (MageElement element : unlockedElements) {
-            ItemDisplay display = player.getWorld().spawn(player.getLocation(), ItemDisplay.class);
-            ItemStack item = new ItemStack(Material.PAPER);
-            ItemMeta meta = item.getItemMeta();
+        // Quản lý các Gate để dọn dẹp nếu người chơi thoát game đột ngột
+        List<ItemDisplay> activeGates = new ArrayList<>();
 
-            // DÙNG CÚ PHÁP MỚI CỦA 1.21 CHO CUSTOM MODEL DATA
-            meta.setCustomModelData(elementModelIds.get(element));
-            item.setItemMeta(meta);
-
-            display.setItemStack(item);
-            display.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED); // Dùng FIXED cho hiển thị phẳng
-            display.setTeleportDuration(2); // Nội suy mượt mà trong 2 tick
-
-            gates.add(display);
-        }
-
-        double bulletDmgMulti = getBulletDamageMultiplier(level);
-        double detonateDmgMulti = getDetonateDamageMultiplier(level);
-
-        // ==========================================
-        // 4. VÒNG LẶP DUY TRÌ & TOÁN HỌC VECTOR
-        // ==========================================
         new BukkitRunnable() {
             int ticks = 0;
-            final int maxTicks = 200; // 10 giây
+            final int maxTicks = 100; // 5 giây
+            MageElement lastFiredElement = null;
 
             @Override
             public void run() {
-                // Tự động hủy nếu người chơi out, chết hoặc hết giờ
                 if (!player.isOnline() || player.isDead() || ticks >= maxTicks) {
-                    gates.forEach(ItemDisplay::remove);
-                    if (player.isOnline()) player.sendMessage("§8§oCác vòng ma pháp đã tan biến...");
+                    activeGates.forEach(ItemDisplay::remove);
+                    activeGates.clear();
                     this.cancel();
                     return;
                 }
 
-                Location eyeLoc = player.getEyeLocation();
-                Vector lookDir = eyeLoc.getDirection().normalize();
-
-                // Toán học lấy Trục ngang (Right) và Trục dọc (Up) dựa trên hướng nhìn
-                Vector right = new Vector(-lookDir.getZ(), 0, lookDir.getX()).normalize();
-                Vector up = right.clone().crossProduct(lookDir).normalize();
-
-                // Điểm tâm bán nguyệt (Lùi sau lưng 1.5 block, cao lên 0.5)
-                Location haloCenter = eyeLoc.clone().subtract(lookDir.clone().multiply(1.5)).add(0, 0.5, 0);
-
                 // ==========================================
-                // XẾP CÁC VÒNG MA PHÁP THÀNH HÌNH CUNG (VẦNG HÀO QUANG)
+                // BẮN MỖI 3 TICKS (0.15s)
                 // ==========================================
-                int count = gates.size();
-                double arcSpread = Math.PI; // Trải rộng 180 độ
-                double startAngle = -arcSpread / 2;
-                double angleStep = count > 1 ? arcSpread / (count - 1) : 0;
-                double radius = 1.8; // Khoảng cách từ tâm đến các vòng
+                if (ticks % 3 == 0) {
+                    // 1. SMART PICKER: Chọn nguyên tố Combo
+                    MageElement element = getSmartComboElement(lastFiredElement, unlockedElements);
+                    lastFiredElement = element;
 
-                for (int i = 0; i < count; i++) {
-                    ItemDisplay gate = gates.get(i);
-                    double angle = startAngle + (i * angleStep);
+                    // 2. TÍNH VỊ TRÍ XUẤT HIỆN RANDOM QUANH LƯNG
+                    Location eyeLoc = player.getEyeLocation();
+                    Vector lookDir = eyeLoc.getDirection().normalize();
+                    Vector right = new Vector(-lookDir.getZ(), 0, lookDir.getX()).normalize();
+                    Vector up = right.clone().crossProduct(lookDir).normalize();
 
-                    // Tính tọa độ dựa trên góc
-                    Location gateLoc = haloCenter.clone()
-                            .add(right.clone().multiply(Math.sin(angle) * radius))
-                            .add(up.clone().multiply(Math.cos(angle) * radius));
+                    // Random Offset
+                    double offsetX = (random.nextDouble() - 0.5) * 4.0; // Rộng trái phải 4 block
+                    double offsetY = (random.nextDouble() - 0.5) * 3.0 + 0.5; // Cao thấp 3 block
+                    double offsetZ = -0.5 - random.nextDouble() * 1.5; // Lùi về sau lưng 0.5 - 2 block
 
-                    // Ép các vòng xoay mặt hướng về phía người chơi đang nhìn
-                    gateLoc.setYaw(player.getLocation().getYaw());
-                    gateLoc.setPitch(player.getLocation().getPitch());
+                    Location gateLoc = eyeLoc.clone()
+                            .add(right.clone().multiply(offsetX))
+                            .add(up.clone().multiply(offsetY))
+                            .add(lookDir.clone().multiply(offsetZ));
 
-                    gate.teleport(gateLoc);
+                    gateLoc.setDirection(lookDir); // Mặt hướng cùng chiều nhìn của player
 
-                    // ==========================================
-                    // NÃ ĐẠN MỖI 10 TICKS (0.5 Giây) / VÒNG
-                    // Càng nhiều hệ -> Càng nhiều đạn!
-                    // ==========================================
-                    if (ticks % 10 == 0) {
-                        fireMagicBullet(player, rpgPlayer, gateLoc, lookDir, bulletDmgMulti, detonateDmgMulti);
-                    }
+                    // 3. TRIỆU HỒI GATE
+                    ItemDisplay gate = player.getWorld().spawn(gateLoc, ItemDisplay.class);
+                    ItemStack item = new ItemStack(Material.PAPER);
+                    ItemMeta meta = item.getItemMeta();
+                    meta.setCustomModelData(elementModelIds.get(element));
+                    item.setItemMeta(meta);
+
+                    gate.setItemStack(item);
+                    gate.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
+                    activeGates.add(gate);
+
+                    // Setup Animation: Mở rộng từ 0 -> 2.5
+                    org.bukkit.util.Transformation trans = gate.getTransformation();
+                    trans.getScale().set(0f, 0f, 0f);
+                    gate.setTransformation(trans);
+
+                    gate.setInterpolationDelay(0);
+                    gate.setInterpolationDuration(4); // Phóng to trong 4 ticks
+
+                    trans.getScale().set(2.5f, 2.5f, 2.5f);
+                    gate.setTransformation(trans);
+
+                    // 4. BẮN ĐẠN & THU GỌN LẠI SAU 4 TICKS
+                    new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            if (!gate.isValid()) return;
+
+                            // Nã đạn
+                            Location target = findTarget(player);
+                            fireHighSpeedBullet(player, rpgPlayer, gate.getLocation(), target, element, baseBulletDmg);
+
+                            // Thu nhỏ Gate về 0
+                            gate.setInterpolationDelay(0);
+                            gate.setInterpolationDuration(3);
+                            org.bukkit.util.Transformation shrinkTrans = gate.getTransformation();
+                            shrinkTrans.getScale().set(0f, 0f, 0f);
+                            gate.setTransformation(shrinkTrans);
+
+                            // Xóa Gate sau khi thu nhỏ xong (3 ticks)
+                            new BukkitRunnable() {
+                                @Override
+                                public void run() {
+                                    activeGates.remove(gate);
+                                    gate.remove();
+                                }
+                            }.runTaskLater(plugin, 3L);
+                        }
+                    }.runTaskLater(plugin, 4L);
                 }
 
                 ticks++;
@@ -213,86 +205,137 @@ public class UltimateElementGate implements ISkill {
     }
 
     // ==========================================
-    // 5. CƠ CHẾ ĐẠN MA PHÁP & KÍCH NỔ ẤN
+    // THUẬT TOÁN TÌM NGUYÊN TỐ COMBO
     // ==========================================
-    private void fireMagicBullet(Player shooter, RPGPlayer rpgPlayer, Location start, Vector dir, double bulletDmg, double detonateDmg) {
-        shooter.getWorld().playSound(start, Sound.ENTITY_ALLAY_HURT, 0.5f, 2.0f);
+    private MageElement getSmartComboElement(MageElement last, List<MageElement> available) {
+        if (last == null || available.size() <= 1) return available.get(random.nextInt(available.size()));
+
+        List<MageElement> comboMatches = new ArrayList<>();
+        for (MageElement e : available) {
+            if (isReactionPair(last, e)) comboMatches.add(e);
+        }
+
+        // Tỉ lệ 80% sẽ đánh ra Combo nếu có hệ tương ứng, 20% đánh random để giữ tính hỗn loạn
+        if (!comboMatches.isEmpty() && random.nextInt(100) < 80) {
+            return comboMatches.get(random.nextInt(comboMatches.size()));
+        }
+
+        return available.get(random.nextInt(available.size()));
+    }
+
+    private boolean isReactionPair(MageElement e1, MageElement e2) {
+        if (e1 == e2) return true; // Bùng nổ thuật pháp
+        if ((e1 == MageElement.FIRE && e2 == MageElement.WATER) || (e2 == MageElement.FIRE && e1 == MageElement.WATER)) return true;
+        if ((e1 == MageElement.LIGHT && e2 == MageElement.DARK) || (e2 == MageElement.LIGHT && e1 == MageElement.DARK)) return true;
+        if ((e1 == MageElement.FIRE && e2 == MageElement.LIGHT) || (e2 == MageElement.FIRE && e1 == MageElement.LIGHT)) return true;
+        if ((e1 == MageElement.FIRE && e2 == MageElement.NATURE) || (e2 == MageElement.FIRE && e1 == MageElement.NATURE)) return true;
+        if ((e1 == MageElement.FIRE && e2 == MageElement.DARK) || (e2 == MageElement.FIRE && e1 == MageElement.DARK)) return true;
+        if ((e1 == MageElement.WATER && e2 == MageElement.NATURE) || (e2 == MageElement.WATER && e1 == MageElement.NATURE)) return true;
+        return false;
+    }
+
+    private Location findTarget(Player p) {
+        RayTraceResult ray = p.getWorld().rayTraceBlocks(p.getEyeLocation(), p.getEyeLocation().getDirection(), 50);
+        return (ray != null && ray.getHitPosition() != null) ? ray.getHitPosition().toLocation(p.getWorld()) : p.getEyeLocation().add(p.getEyeLocation().getDirection().multiply(50));
+    }
+
+    // ==========================================
+    // ĐẠN TỐC ĐỘ CAO VỚI HẠT NHÂN (CORE)
+    // ==========================================
+    private void fireHighSpeedBullet(Player shooter, RPGPlayer rpgPlayer, Location start, Location end, MageElement element, double dmg) {
+        shooter.getWorld().playSound(start, Sound.ENTITY_BLAZE_SHOOT, 0.6f, 2.0f);
+
+        Vector p0 = start.toVector();
+        Vector p2 = end.toVector();
+
+        Vector dir = p2.clone().subtract(p0).normalize();
+        Vector randomVec = Vector.getRandom().subtract(new Vector(0.5, 0.5, 0.5)).multiply(8.0); // Độ cong gắt hơn
+        Vector p1 = p0.clone().add(p2).multiply(0.5).add(randomVec);
 
         new BukkitRunnable() {
-            Location current = start.clone();
-            int t = 0;
+            double t = 0.0;
+            final double speed = 0.15; // Cực nhanh: Bay tới nơi trong ~6-7 tick
 
             @Override
             public void run() {
-                if (t > 30) { this.cancel(); return; } // Tầm bay tối đa 30 block
+                if (t > 1.0) {
+                    impact(end, shooter, rpgPlayer, element, dmg);
+                    this.cancel();
+                    return;
+                }
 
-                current.add(dir.clone().multiply(1.5)); // Tốc độ bay: 1.5 block / tick
+                double invT = 1.0 - t;
+                Vector current = p0.clone().multiply(invT * invT)
+                        .add(p1.clone().multiply(2 * invT * t))
+                        .add(p2.clone().multiply(t * t));
+                Location loc = current.toLocation(start.getWorld());
 
-                // Hiệu ứng hạt của đạn
-                shooter.getWorld().spawnParticle(Particle.END_ROD, current, 1, 0, 0, 0, 0.05);
-                shooter.getWorld().spawnParticle(Particle.GLOW, current, 2, 0.1, 0.1, 0.1, 0.02);
+                // 1. HẠT NHÂN (CORE) SÁNG CHÓI
+                loc.getWorld().spawnParticle(Particle.FLASH, loc, 1, 0, 0, 0, 0); // Lõi chớp sáng
+                Particle.DustOptions coreColor = getCoreColor(element);
+                loc.getWorld().spawnParticle(Particle.DUST, loc, 3, 0.1, 0.1, 0.1, 0, coreColor); // Khối cầu màu
 
-                // Quét chạm quái
-                for (org.bukkit.entity.Entity e : shooter.getWorld().getNearbyEntities(current, 1.2, 1.2, 1.2)) {
+                // 2. TRAIL (Vệt kéo đuôi)
+                spawnBulletTrail(element, loc);
+
+                for (org.bukkit.entity.Entity e : loc.getWorld().getNearbyEntities(loc, 1.5, 1.5, 1.5)) {
                     if (e instanceof LivingEntity && CombatManager.canTarget(shooter, e)) {
-                        LivingEntity target = (LivingEntity) e;
-
-                        // Sát thương viên đạn chạm vào
-                        shooter.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(plugin, true));
-                        double dmg = CombatManager.calculateDamage(shooter, rpgPlayer, target, bulletDmg, 0, 0, 0, false, false);
-                        CombatManager.applySkillDamage(shooter, target, dmg);
-                        shooter.removeMetadata("Ghost_L_Blocker", plugin);
-
-                        // TÍCH LŨY ẤN NGUYÊN TỐ
-                        int marks = target.hasMetadata("Mage_Element_Marks") ? target.getMetadata("Mage_Element_Marks").get(0).asInt() : 0;
-                        marks++;
-
-                        if (marks >= 3) {
-                            // KÍCH NỔ
-                            target.removeMetadata("Mage_Element_Marks", plugin);
-                            detonateMarks(shooter, rpgPlayer, target, detonateDmg);
-                        } else {
-                            // Cập nhật Ấn
-                            target.setMetadata("Mage_Element_Marks", new FixedMetadataValue(plugin, marks));
-                            shooter.getWorld().spawnParticle(Particle.ENCHANT, target.getLocation().add(0, 1, 0), 10, 0.5, 0.5, 0.5, 0.1);
-                        }
-
-                        this.cancel();
-                        return;
+                        impact(loc, shooter, rpgPlayer, element, dmg);
+                        this.cancel(); return;
                     }
                 }
-
-                // Chạm tường thì hủy
-                if (current.getBlock().getType().isSolid()) {
-                    shooter.getWorld().spawnParticle(Particle.FIREWORK, current, 5, 0.2, 0.2, 0.2, 0.05);
-                    this.cancel();
+                if (loc.getBlock().getType().isSolid()) {
+                    impact(loc, shooter, rpgPlayer, element, dmg);
+                    this.cancel(); return;
                 }
 
-                t++;
+                t += speed;
             }
         }.runTaskTimer(plugin, 0L, 1L);
     }
 
-    private void detonateMarks(Player shooter, RPGPlayer rpgPlayer, LivingEntity epicenter, double detonateDmgMulti) {
-        Location loc = epicenter.getLocation().add(0, 1, 0);
-        loc.getWorld().playSound(loc, Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.5f);
-        loc.getWorld().playSound(loc, Sound.BLOCK_AMETHYST_CLUSTER_BREAK, 1.5f, 0.5f);
-
-        // Hiệu ứng nổ cầu vồng
+    private void impact(Location loc, Player shooter, RPGPlayer rpgPlayer, MageElement element, double dmg) {
         loc.getWorld().spawnParticle(Particle.EXPLOSION, loc, 1);
-        loc.getWorld().spawnParticle(Particle.WITCH, loc, 50, 1.5, 1.5, 1.5, 0.1);
+        loc.getWorld().playSound(loc, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.8f);
+        spawnExplosionParticle(element, loc);
 
-        // Sát thương chuẩn diện rộng (Bán kính 3 block)
-        for (org.bukkit.entity.Entity e : loc.getWorld().getNearbyEntities(loc, 3, 3, 3)) {
+        for (org.bukkit.entity.Entity e : loc.getWorld().getNearbyEntities(loc, 3.5, 3.5, 3.5)) {
             if (e instanceof LivingEntity && CombatManager.canTarget(shooter, e)) {
+                LivingEntity target = (LivingEntity) e;
+
+                ReactionEngine.ReactionResult result = ReactionEngine.processHit(shooter, target, element);
+                double finalDmgMulti = dmg * result.damageMultiplier;
+
                 shooter.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(plugin, true));
-
-                // Set true cho bỏ qua phòng thủ (Sát thương chuẩn)
-                double splashDmg = CombatManager.calculateDamage(shooter, rpgPlayer, (LivingEntity)e, detonateDmgMulti, 0, 100.0, 0, true, false);
-                CombatManager.applySkillDamage(shooter, (LivingEntity)e, splashDmg);
-
+                double finalDmg = CombatManager.calculateDamage(shooter, rpgPlayer, target, finalDmgMulti, 0, 100.0, 0, true, false);
+                CombatManager.applySkillDamage(shooter, target, finalDmg);
                 shooter.removeMetadata("Ghost_L_Blocker", plugin);
             }
         }
+    }
+
+    // ==========================================
+    // HIỆU ỨNG THỊ GIÁC
+    // ==========================================
+    private Particle.DustOptions getCoreColor(MageElement e) {
+        switch (e) {
+            case FIRE: return new Particle.DustOptions(org.bukkit.Color.RED, 2.0f);
+            case WATER: return new Particle.DustOptions(org.bukkit.Color.AQUA, 2.0f);
+            case WIND: return new Particle.DustOptions(org.bukkit.Color.WHITE, 2.0f);
+            case NATURE: return new Particle.DustOptions(org.bukkit.Color.LIME, 2.0f);
+            case LIGHT: return new Particle.DustOptions(org.bukkit.Color.YELLOW, 2.0f);
+            case DARK: return new Particle.DustOptions(org.bukkit.Color.PURPLE, 2.0f);
+            default: return new Particle.DustOptions(org.bukkit.Color.WHITE, 2.0f);
+        }
+    }
+
+    private void spawnBulletTrail(MageElement e, Location l) {
+        Particle p = (e == MageElement.FIRE) ? Particle.SMALL_FLAME : (e == MageElement.WATER) ? Particle.SPLASH : (e == MageElement.WIND) ? Particle.SNOWFLAKE : (e == MageElement.NATURE) ? Particle.CHERRY_LEAVES : (e == MageElement.LIGHT) ? Particle.INSTANT_EFFECT : Particle.SQUID_INK;
+        l.getWorld().spawnParticle(p, l, 5, 0.2, 0.2, 0.2, 0.01);
+    }
+
+    private void spawnExplosionParticle(MageElement e, Location l) {
+        Particle p = (e == MageElement.FIRE) ? Particle.LAVA : (e == MageElement.WATER) ? Particle.NAUTILUS : (e == MageElement.WIND) ? Particle.EXPLOSION : (e == MageElement.NATURE) ? Particle.COMPOSTER : (e == MageElement.LIGHT) ? Particle.FIREWORK : Particle.DRAGON_BREATH;
+        l.getWorld().spawnParticle(p, l, 30, 1.2, 1.2, 1.2, 0.1);
     }
 }
