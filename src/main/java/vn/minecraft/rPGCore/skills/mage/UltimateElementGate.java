@@ -14,6 +14,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
+import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.classes.impl.mage.MageElement;
 import vn.minecraft.rPGCore.classes.impl.mage.ReactionEngine;
 import vn.minecraft.rPGCore.managers.CombatManager;
@@ -52,6 +53,7 @@ public class UltimateElementGate implements ISkill {
     @Override public double getManaCost(int level) { return 150.0 + (level * 50.0); }
     @Override public long getCooldown(int level) { return (65 - (level * 5)) * 1000L; }
 
+    // Sát thương cao cho mỗi viên
     private double getBulletBaseDamage(int level) { return 2.5 + (level * 0.3); }
 
     @Override
@@ -61,18 +63,18 @@ public class UltimateElementGate implements ISkill {
                 "§6§o\"Trời đất cuồng nộ, vạn pháp tuôn trào...\"",
                 "",
                 "§f§l[THÔNG SỐ TUYỆT KỸ]",
-                "§7Khởi động trận pháp, liên tục triệu hồi các cổng ma thuật",
-                "§7chớp nhoáng xung quanh để nã pháo bão hòa về phía kẻ địch.",
+                "§7Tụ lực triệu hồi hàng loạt cổng không gian ma thuật xung quanh.",
+                "§7Sau 1.5 giây chờ đợi, các cổng sẽ đồng loạt nã pháo bão hòa.",
                 "",
-                "§f▪ Thời gian bùng nổ: §a5 giây",
-                "§f▪ Tốc độ xả đạn: §e0.15 giây / Viên",
+                "§f▪ Thời gian xuất cổng: §a5 giây",
+                "§f▪ Tốc độ xả đạn: §e0.3 giây / Viên",
                 "§f▪ Sát thương đạn: §c" + bulletDmg + "% §fMỗi viên",
                 "",
-                "§e§l❂ THUẬT TOÁN CỘNG HƯỞNG ❂",
-                "§7Pháp trận tự động lựa chọn nguyên tố tiếp theo sao cho",
-                "§7tối đa hóa khả năng kích nổ §dReaction Engine§7.",
+                "§e§l❂ ĐẠN ĐẠO GIA TỐC ❂",
+                "§7Đạn ma pháp ban đầu bay chậm, uốn lượn biến ảo",
+                "§7sau đó đột ngột gia tốc găm thẳng vào kẻ địch.",
                 "",
-                "§8§o*Một cơn bão sát thương không thể cản phá."
+                "§8§o*Vẻ đẹp chí mạng của nghệ thuật pháp sư."
         );
     }
 
@@ -93,39 +95,45 @@ public class UltimateElementGate implements ISkill {
         if (!handleCostAndCooldown(player, rpgPlayer, level)) return false;
         applyGlobalCooldown(player, rpgPlayer, level);
 
-        player.sendMessage("§6§l[!] VẠN PHÁP QUY TÔNG: BÙNG NỔ!");
-        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_WITHER_SPAWN, 0.8f, 1.5f);
-        player.getWorld().playSound(player.getLocation(), Sound.BLOCK_END_PORTAL_SPAWN, 1.0f, 1.2f);
+        player.sendMessage("§6§l[!] VẠN PHÁP QUY TÔNG: KHỞI ĐỘNG!");
+        player.getWorld().playSound(player.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 1.5f);
 
         double baseBulletDmg = getBulletBaseDamage(level);
         List<ItemDisplay> activeGates = new ArrayList<>();
 
         new BukkitRunnable() {
             int ticks = 0;
-            final int maxTicks = 100; // 5 giây
-            MageElement lastFiredElement = null;
+            final int maxTicks = 100; // Mở cổng liên tục trong 5 giây
+
+            // [ĐÃ SỬA]: Chuyển trí nhớ vào trong Runnable để mỗi người chơi có trí nhớ riêng
+            final LinkedList<MageElement> recentElements = new LinkedList<>();
 
             @Override
             public void run() {
-                if (!player.isOnline() || player.isDead() || ticks >= maxTicks) {
+                if (!player.isOnline() || player.isDead()) {
                     activeGates.forEach(ItemDisplay::remove);
                     activeGates.clear();
                     this.cancel();
                     return;
                 }
 
-                if (ticks % 3 == 0) {
-                    MageElement element = getSmartComboElement(lastFiredElement, unlockedElements);
-                    lastFiredElement = element;
+                if (ticks >= maxTicks) {
+                    this.cancel();
+                    return;
+                }
+
+                if (ticks % 6 == 0) {
+                    // [ĐÃ SỬA]: Gọi hàm với 2 biến mới: Trí nhớ của Runnable này và Danh sách hệ
+                    MageElement element = getSmartComboElement(recentElements, unlockedElements);
 
                     Location eyeLoc = player.getEyeLocation();
                     Vector lookDir = eyeLoc.getDirection().normalize();
                     Vector right = new Vector(-lookDir.getZ(), 0, lookDir.getX()).normalize();
                     Vector up = right.clone().crossProduct(lookDir).normalize();
 
-                    double offsetX = (random.nextDouble() - 0.5) * 6.0;
-                    double offsetY = (random.nextDouble() - 0.5) * 4.0 + 1.0;
-                    double offsetZ = -0.5 - random.nextDouble() * 3.0;
+                    double offsetX = (random.nextDouble() - 0.5) * 7.0;
+                    double offsetY = (random.nextDouble() - 0.5) * 5.0 + 1.0;
+                    double offsetZ = -0.5 - random.nextDouble() * 3.5;
 
                     Location gateLoc = eyeLoc.clone()
                             .add(right.clone().multiply(offsetX))
@@ -144,14 +152,14 @@ public class UltimateElementGate implements ISkill {
                     gate.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
                     activeGates.add(gate);
 
-                    float gateScale = 1.2f + random.nextFloat() * 0.6f;
+                    float gateScale = 1.4f + random.nextFloat() * 0.8f;
 
                     org.bukkit.util.Transformation trans = gate.getTransformation();
                     trans.getScale().set(0f, 0f, 0f);
                     gate.setTransformation(trans);
 
                     gate.setInterpolationDelay(0);
-                    gate.setInterpolationDuration(4);
+                    gate.setInterpolationDuration(20);
 
                     trans.getScale().set(gateScale, gateScale, gateScale);
                     gate.setTransformation(trans);
@@ -162,10 +170,10 @@ public class UltimateElementGate implements ISkill {
                             if (!gate.isValid()) return;
 
                             Location target = findTarget(player);
-                            fireHighSpeedBullet(player, rpgPlayer, gate.getLocation(), target, element, baseBulletDmg);
+                            fireAcceleratingCurvedBullet(player, rpgPlayer, gate.getLocation(), target, element, baseBulletDmg);
 
                             gate.setInterpolationDelay(0);
-                            gate.setInterpolationDuration(3);
+                            gate.setInterpolationDuration(10);
                             org.bukkit.util.Transformation shrinkTrans = gate.getTransformation();
                             shrinkTrans.getScale().set(0f, 0f, 0f);
                             gate.setTransformation(shrinkTrans);
@@ -176,9 +184,9 @@ public class UltimateElementGate implements ISkill {
                                     activeGates.remove(gate);
                                     gate.remove();
                                 }
-                            }.runTaskLater(plugin, 3L);
+                            }.runTaskLater(plugin, 10L);
                         }
-                    }.runTaskLater(plugin, 4L);
+                    }.runTaskLater(plugin, 20L);
                 }
                 ticks++;
             }
@@ -187,19 +195,40 @@ public class UltimateElementGate implements ISkill {
         return true;
     }
 
-    private MageElement getSmartComboElement(MageElement last, List<MageElement> available) {
-        if (last == null || available.size() <= 1) return available.get(random.nextInt(available.size()));
+    // ==========================================
+    // THUẬT TOÁN TÌM NGUYÊN TỐ COMBO (ĐÃ SỬA LỖI ĐẦU VÀO)
+    // ==========================================
+    private MageElement getSmartComboElement(LinkedList<MageElement> recentElements, List<MageElement> available) {
+        if (available.size() <= 1) return available.get(0);
 
+        List<MageElement> validChoices = new ArrayList<>(available);
+        if (recentElements.size() >= 1 && validChoices.size() > 1) {
+            validChoices.remove(recentElements.getLast());
+        }
+        if (recentElements.size() >= 2 && validChoices.size() > 2) {
+            validChoices.remove(recentElements.get(recentElements.size() - 2));
+        }
+
+        MageElement last = recentElements.isEmpty() ? null : recentElements.getLast();
         List<MageElement> comboMatches = new ArrayList<>();
-        for (MageElement e : available) {
-            if (isReactionPair(last, e)) comboMatches.add(e);
+
+        if (last != null) {
+            for (MageElement e : validChoices) {
+                if (isReactionPair(last, e)) comboMatches.add(e);
+            }
         }
 
+        MageElement chosen;
         if (!comboMatches.isEmpty() && random.nextInt(100) < 80) {
-            return comboMatches.get(random.nextInt(comboMatches.size()));
+            chosen = comboMatches.get(random.nextInt(comboMatches.size()));
+        } else {
+            chosen = validChoices.get(random.nextInt(validChoices.size()));
         }
 
-        return available.get(random.nextInt(available.size()));
+        recentElements.add(chosen);
+        if (recentElements.size() > 3) recentElements.removeFirst();
+
+        return chosen;
     }
 
     private boolean isReactionPair(MageElement e1, MageElement e2) {
@@ -214,23 +243,27 @@ public class UltimateElementGate implements ISkill {
     }
 
     private Location findTarget(Player p) {
-        RayTraceResult ray = p.getWorld().rayTraceBlocks(p.getEyeLocation(), p.getEyeLocation().getDirection(), 50);
-        return (ray != null && ray.getHitPosition() != null) ? ray.getHitPosition().toLocation(p.getWorld()) : p.getEyeLocation().add(p.getEyeLocation().getDirection().multiply(50));
+        RayTraceResult ray = p.getWorld().rayTraceBlocks(p.getEyeLocation(), p.getEyeLocation().getDirection(), 60);
+        return (ray != null && ray.getHitPosition() != null) ? ray.getHitPosition().toLocation(p.getWorld()) : p.getEyeLocation().add(p.getEyeLocation().getDirection().multiply(60));
     }
 
-    private void fireHighSpeedBullet(Player shooter, RPGPlayer rpgPlayer, Location start, Location end, MageElement element, double dmg) {
-        shooter.getWorld().playSound(start, Sound.ENTITY_BLAZE_SHOOT, 0.6f, 2.0f);
+    // ==========================================
+    // ĐẠN BÁN KÍNH CONG BIẾN ẢO + GIA TỐC (CHẬM -> NHANH)
+    // ==========================================
+    private void fireAcceleratingCurvedBullet(Player shooter, RPGPlayer rpgPlayer, Location start, Location end, MageElement element, double dmg) {
+        shooter.getWorld().playSound(start, Sound.ENTITY_ILLUSIONER_CAST_SPELL, 0.8f, 2.0f);
 
         Vector p0 = start.toVector();
         Vector p2 = end.toVector();
 
+        // Điểm kiểm soát uốn cong: Bị đẩy xa ra 5 block ngẫu nhiên về các phía
         Vector dir = p2.clone().subtract(p0).normalize();
-        Vector randomVec = Vector.getRandom().subtract(new Vector(0.5, 0.5, 0.5)).multiply(8.0);
-        Vector p1 = p0.clone().add(p2).multiply(0.5).add(randomVec);
+        Vector randomOffset = Vector.getRandom().subtract(new Vector(0.5, 0.5, 0.5)).normalize().multiply(5.0);
+        Vector p1 = p0.clone().add(dir.clone().multiply(p0.distance(p2) * 0.3)).add(randomOffset);
 
         new BukkitRunnable() {
             double t = 0.0;
-            final double speed = 0.15;
+            Vector lastPos = p0.clone();
 
             @Override
             public void run() {
@@ -240,16 +273,31 @@ public class UltimateElementGate implements ISkill {
                     return;
                 }
 
+                // Bezier Bậc 2
                 double invT = 1.0 - t;
                 Vector current = p0.clone().multiply(invT * invT)
                         .add(p1.clone().multiply(2 * invT * t))
                         .add(p2.clone().multiply(t * t));
                 Location loc = current.toLocation(start.getWorld());
 
+                // ==========================================
+                // GIẢI QUYẾT LỖI HẠT BỊ THƯA: NỘI SUY TUYẾN TÍNH
+                // ==========================================
+                double dist = current.distance(lastPos);
+                int steps = Math.max(1, (int) (dist * 4)); // Tối thiểu 4 hạt mỗi block
+                Vector stepVec = current.clone().subtract(lastPos).multiply(1.0 / steps);
+                Vector tempPos = lastPos.clone();
+
+                for (int i = 0; i < steps; i++) {
+                    tempPos.add(stepVec);
+                    Location trailLoc = tempPos.toLocation(start.getWorld());
+                    spawnBulletTrail(element, trailLoc);
+                }
+
+                // Lõi đạn di chuyển
                 loc.getWorld().spawnParticle(Particle.END_ROD, loc, 1, 0, 0, 0, 0);
                 Particle.DustOptions coreColor = getCoreColor(element);
                 loc.getWorld().spawnParticle(Particle.DUST, loc, 3, 0.1, 0.1, 0.1, 0, coreColor);
-                spawnBulletTrail(element, loc);
 
                 for (org.bukkit.entity.Entity e : loc.getWorld().getNearbyEntities(loc, 1.5, 1.5, 1.5)) {
                     if (e instanceof LivingEntity && CombatManager.canTarget(shooter, e)) {
@@ -262,13 +310,19 @@ public class UltimateElementGate implements ISkill {
                     this.cancel(); return;
                 }
 
-                t += speed;
+                lastPos = current.clone();
+
+                // ==========================================
+                // TOÁN HỌC GIA TỐC [SIÊU TỐC ĐỘ]:
+                // Vận tốc gốc x2 (0.08) và Gia tốc x2 (+0.50)
+                // ==========================================
+                double currentSpeed = 0.08 + (0.50 * t * t);
+                t += currentSpeed;
             }
         }.runTaskTimer(plugin, 0L, 1L);
     }
 
     private void impact(Location loc, Player shooter, RPGPlayer rpgPlayer, MageElement element, double dmg) {
-        // [1.21.x SAFE]: Dùng Khói lớn để giả lập vụ nổ thay vì EXPLOSION
         loc.getWorld().spawnParticle(Particle.LARGE_SMOKE, loc, 15, 0.5, 0.5, 0.5, 0.05);
         loc.getWorld().playSound(loc, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.8f);
         spawnExplosionParticle(element, loc);
@@ -310,17 +364,16 @@ public class UltimateElementGate implements ISkill {
             case LIGHT: p = Particle.GLOW; break;
             case DARK: p = Particle.SQUID_INK; break;
         }
-        l.getWorld().spawnParticle(p, l, 5, 0.2, 0.2, 0.2, 0.01);
+        l.getWorld().spawnParticle(p, l, 2, 0.1, 0.1, 0.1, 0.01);
     }
 
     private void spawnExplosionParticle(MageElement e, Location l) {
-        // [1.21.x SAFE]: Không dùng hạt nổ nào yêu cầu Float data
         Particle p = Particle.LARGE_SMOKE;
         switch (e) {
             case FIRE: p = Particle.LAVA; break;
-            case WATER: p = Particle.SPLASH; break; // Thay NAUTILUS
+            case WATER: p = Particle.SPLASH; break;
             case WIND: p = Particle.CLOUD; break;
-            case NATURE: p = Particle.HAPPY_VILLAGER; break; // Thay COMPOSTER
+            case NATURE: p = Particle.HAPPY_VILLAGER; break;
             case LIGHT: p = Particle.END_ROD; break;
             case DARK: p = Particle.SQUID_INK; break;
         }
