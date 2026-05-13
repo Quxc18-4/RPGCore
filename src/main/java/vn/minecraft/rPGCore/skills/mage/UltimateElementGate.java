@@ -1,21 +1,17 @@
 package vn.minecraft.rPGCore.skills.mage;
 
+import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
-import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.RayTraceResult;
-import org.bukkit.util.Transformation;
 import org.bukkit.util.Vector;
-import org.joml.Vector3f;
 import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.classes.impl.mage.MageElement;
 import vn.minecraft.rPGCore.classes.impl.mage.ReactionEngine;
@@ -28,21 +24,14 @@ import java.util.*;
 public class UltimateElementGate implements ISkill {
 
     private final JavaPlugin plugin;
-    private final Map<MageElement, Integer> elementModelIds = new HashMap<>();
     private final Random random = new Random();
 
     public UltimateElementGate(JavaPlugin plugin) {
         this.plugin = plugin;
-        elementModelIds.put(MageElement.FIRE, 1001);
-        elementModelIds.put(MageElement.WATER, 1002);
-        elementModelIds.put(MageElement.WIND, 1003);
-        elementModelIds.put(MageElement.NATURE, 1004);
-        elementModelIds.put(MageElement.LIGHT, 1005);
-        elementModelIds.put(MageElement.DARK, 1006);
     }
 
     @Override public String getId() { return "mage_ultimate_element_gate"; }
-    @Override public String getName() { return "§6§l[TUYỆT KỸ TỐI THƯỢNG: VẠN PHÁP QUY TÔNG]"; }
+    @Override public String getName() { return "§6§l[TUYỆT KỸ TỐI THƯỢNG: MA PHÁP HỦY DIỆT]"; }
     @Override public String getRequiredClass() { return "mage"; }
     @Override public Material getIcon() { return Material.END_CRYSTAL; }
     @Override public int getMaxLevel() { return 3; }
@@ -53,27 +42,36 @@ public class UltimateElementGate implements ISkill {
     @Override public double getManaCost(int level) { return 150.0 + (level * 50.0); }
     @Override public long getCooldown(int level) { return (65 - (level * 5)) * 1000L; }
 
-    private double getBulletBaseDamage(int level) { return 2.5 + (level * 0.3); }
+    // ==========================================
+    // CÂN BẰNG SÁT THƯƠNG CHUẨN (GIÁM ĐỐC DUYỆT)
+    // Cấp 1: 120% | Cấp 2: 150% | Cấp 3: 180%
+    // Tổng 34 viên đạn trong 5 giây.
+    // ==========================================
+    private double getBulletBaseDamage(int level) {
+        // 1.2 (120%) + (level - 1) * 0.3
+        return 1.2 + (level - 1) * 0.3;
+    }
 
     @Override
     public List<String> getDescription(int level) {
-        int bulletDmg = (int) (getBulletBaseDamage(level) * 100);
+        double bulletDmgMulti = getBulletBaseDamage(level);
+        int bulletDmgPercent = (int) Math.round(bulletDmgMulti * 100);
+
         return Arrays.asList(
-                "§6§o\"Trời đất cuồng nộ, vạn pháp tuôn trào...\"",
+                "§6§o\"Ma tố hội tụ, vạn pháp tuôn trào...\"",
                 "",
                 "§f§l[THÔNG SỐ TUYỆT KỸ]",
-                "§7Khởi động trận pháp ma thuật cực đại phía trước mặt.",
-                "§7Các cổng không gian sẽ tự động khóa mục tiêu và nã pháo.",
+                "§7Khởi động trận pháp ma thuật cực đại rực sáng không gian.",
+                "§7Triệu hồi vô số ma pháp trận liên tục tấn công về phía trước.",
                 "",
                 "§f▪ Thời gian duy trì: §a5 giây",
-                "§f▪ Tốc độ xả đạn: §e0.3 giây / Viên",
-                "§f▪ Sát thương đạn: §c" + bulletDmg + "% §fMỗi viên",
+                "§f▪ Sát thương mỗi viên: §c" + bulletDmgPercent + "% §fSát thương",
                 "",
-                "§e§l❂ CÔNG NGHỆ SIÊU GIA TỐC ❂",
-                "§7Đạn đạo đạt vận tốc tối đa ngay sau khi rời nòng,",
-                "§7không thể né tránh, không thể cản phá.",
+                "§e§l❂ TINH TÚ MA PHÁP ❂",
+                "§7Mỗi viên đạn bắn ra đều có khả năng kích hoạt §dPhản Ứng Nguyên Tố§7.",
+                "§7Càng lĩnh hội nhiều nguyên tố, ma pháp trận càng trở nên đa dạng.",
                 "",
-                "§8§o*Vạn vật định hình, ma lực vĩnh hằng."
+                "§8§o(Sức mạnh của trí tuệ vượt xa mọi lưỡi gươm)."
         );
     }
 
@@ -97,128 +95,92 @@ public class UltimateElementGate implements ISkill {
         player.getWorld().playSound(player.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 2.0f);
 
         double baseBulletDmg = getBulletBaseDamage(level);
-        List<ItemDisplay> activeGates = new ArrayList<>();
 
         new BukkitRunnable() {
             int ticks = 0;
             final int maxTicks = 100;
             final LinkedList<MageElement> recentElements = new LinkedList<>();
+            final List<Location> activeGateLocs = new ArrayList<>();
 
             @Override
             public void run() {
-                if (!player.isOnline() || player.isDead()) {
-                    activeGates.forEach(ItemDisplay::remove);
-                    activeGates.clear();
+                if (!player.isOnline() || player.isDead() || ticks >= maxTicks) {
                     this.cancel();
                     return;
                 }
 
-                if (ticks >= maxTicks) { this.cancel(); return; }
-
-                if (ticks % 6 == 0) {
+                // [SỬA TỐC ĐỘ]: Bắn mỗi 3 tick (0.15s) -> Tổng cộng 34 viên đạn!
+                if (ticks % 3 == 0) {
                     MageElement element = getSmartComboElement(recentElements, unlockedElements);
 
                     Location eyeLoc = player.getEyeLocation();
                     Vector lookDir = eyeLoc.getDirection().normalize();
                     Location lockedTarget = findTarget(player);
 
-                    // ==========================================
-                    // THUẬT TOÁN TÌM VỊ TRÍ CHIẾN THUẬT (TRÁNH CHỒNG LẤP & NÉ TÂM)
-                    // ==========================================
                     Location gateLoc = null;
                     int attempts = 0;
+                    while (attempts < 30) {
+                        double rYaw = (random.nextDouble() - 0.5) * 110;
+                        double rPitch = (random.nextDouble() - 0.5) * 80;
 
-                    while (attempts < 15) { // Thử tối đa 15 lần để tìm chỗ trống
-                        // Random góc lệch Yaw (-45 đến 45) và Pitch (-35 đến 35)
-                        double rYaw = (random.nextDouble() - 0.5) * 90;
-                        double rPitch = (random.nextDouble() - 0.5) * 70;
-
-                        // [NÉ TÂM]: Nếu góc lệch quá nhỏ (nằm ngay chính giữa), bỏ qua thử lại
-                        if (Math.abs(rYaw) < 18 && Math.abs(rPitch) < 12) {
+                        if (Math.abs(rYaw) < 35 && Math.abs(rPitch) < 25) {
                             attempts++; continue;
                         }
 
-                        // Khoảng cách kéo gần 20%: 2.2 - 4.5 block
-                        double dist = 2.2 + random.nextDouble() * 2.3;
-
+                        double dist = 3.5 + random.nextDouble() * 2.5;
                         Location candidate = eyeLoc.clone();
                         Vector spawnDir = lookDir.clone();
                         rotateVector(spawnDir, rYaw, rPitch);
                         candidate.add(spawnDir.multiply(dist));
 
-                        // [CHỐNG CHỒNG LẤP]: Kiểm tra khoảng cách với các cổng hiện có
-                        boolean tooClose = false;
-                        for (ItemDisplay other : activeGates) {
-                            if (other.isValid() && other.getLocation().distance(candidate) < 1.6) {
-                                tooClose = true;
-                                break;
+                        boolean overlap = false;
+                        for (Location activeLoc : activeGateLocs) {
+                            if (activeLoc.distance(candidate) < 2.0) {
+                                overlap = true; break;
                             }
                         }
 
-                        if (!tooClose) {
-                            gateLoc = candidate;
-                            break;
+                        if (!overlap && !candidate.getBlock().getType().isSolid()) {
+                            gateLoc = candidate; break;
                         }
                         attempts++;
                     }
 
-                    // Nếu sau 15 lần vẫn không tìm được chỗ (quá chật), lấy đại vị trí cuối cùng
                     if (gateLoc == null) return;
 
-                    // Chống lún đất
-                    if (gateLoc.getBlock().getType().isSolid()) gateLoc.add(0, 1.2, 0);
+                    activeGateLocs.add(gateLoc);
+                    Vector faceDir = lockedTarget.toVector().subtract(gateLoc.toVector()).normalize();
+                    gateLoc.setDirection(faceDir);
 
-                    // Hướng mặt về mục tiêu
-                    gateLoc.setDirection(lockedTarget.toVector().subtract(gateLoc.toVector()).normalize());
-
-                    // TRIỆU HỒI
-                    ItemDisplay gate = player.getWorld().spawn(gateLoc, ItemDisplay.class);
-                    ItemStack item = new ItemStack(Material.PAPER);
-                    ItemMeta meta = item.getItemMeta();
-                    meta.setCustomModelData(elementModelIds.get(element));
-                    item.setItemMeta(meta);
-                    gate.setItemStack(item);
-                    gate.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
-                    gate.setBillboard(org.bukkit.entity.Display.Billboard.FIXED);
-
-                    activeGates.add(gate);
-
-                    // ANIMATION TÂM CHUẨN (Fix Pivot)
-                    float gateScale = 1.6f + random.nextFloat() * 1.0f;
-                    Transformation trans = gate.getTransformation();
-                    trans.getScale().set(0.001f, 0.001f, 0.001f);
-                    trans.getTranslation().set(0, 0, 0); // Đưa về 0 để Minecraft tự hiểu pivot center
-                    gate.setTransformation(trans);
-
-                    // NỞ RA
-                    gate.setInterpolationDelay(0);
-                    gate.setInterpolationDuration(5);
-                    trans.getScale().set(gateScale, gateScale, gateScale);
-                    gate.setTransformation(trans);
+                    final Location finalGateLoc = gateLoc.clone();
+                    final float finalScale = 0.8f + random.nextFloat() * 0.4f;
 
                     new BukkitRunnable() {
+                        int gateTicks = 0;
                         @Override
                         public void run() {
-                            if (!gate.isValid()) return;
+                            if (gateTicks > 15) {
+                                activeGateLocs.remove(finalGateLoc);
+                                this.cancel();
+                                return;
+                            }
 
-                            fireHyperFastBullet(player, rpgPlayer, gate.getLocation(), lockedTarget, element, baseBulletDmg);
-
-                            // THU VÀO TÂM
-                            gate.setInterpolationDelay(0);
-                            gate.setInterpolationDuration(5);
-                            Transformation shrink = gate.getTransformation();
-                            shrink.getScale().set(0.001f, 0.001f, 0.001f);
-                            gate.setTransformation(shrink);
-
-                            new BukkitRunnable() {
-                                @Override
-                                public void run() {
-                                    activeGates.remove(gate);
-                                    gate.remove();
+                            // [ĐÃ SỬA ẢO GIÁC ĐỒNG TÂM]: Không vẽ hạt trong lúc đang scale
+                            // Chỉ vẽ đúng hình dáng vòng và sao khi cổng đã đạt đỉnh (Từ tick 5 đến 10)
+                            if (gateTicks >= 5 && gateTicks <= 10) {
+                                if (gateTicks % 2 == 0) { // Vẽ 3 lần để giữ cho nó sáng rực
+                                    drawMagicCircleParticles(finalGateLoc, element, finalScale);
                                 }
-                            }.runTaskLater(plugin, 5L);
+                            }
+
+                            // KHAI HỎA Ở TICK 8
+                            if (gateTicks == 8) {
+                                fireHyperFastBullet(player, rpgPlayer, finalGateLoc, lockedTarget, element, baseBulletDmg);
+                            }
+
+                            gateTicks++;
                         }
-                    }.runTaskLater(plugin, 10L);
+                    }.runTaskTimer(plugin, 0L, 1L);
                 }
                 ticks++;
             }
@@ -227,52 +189,91 @@ public class UltimateElementGate implements ISkill {
         return true;
     }
 
-    private void rotateVector(Vector v, double yawDegrees, double pitchOffset) {
-        double yaw = Math.toRadians(-yawDegrees);
-        double pitch = Math.toRadians(-pitchOffset);
+    // ==========================================
+    // THUẬT TOÁN VẼ MA PHÁP TRẬN (SẮC NÉT - CHUẨN NGÔI SAO LỤC GIÁC)
+    // ==========================================
+    private void drawMagicCircleParticles(Location loc, MageElement element, float scale) {
+        Vector dir = loc.getDirection().normalize();
+        Vector v1 = new Vector(-dir.getZ(), 0, dir.getX()).normalize();
+        if (v1.lengthSquared() < 0.01) v1 = new Vector(1, 0, 0);
+        Vector v2 = dir.clone().crossProduct(v1).normalize();
 
-        double cosY = Math.cos(yaw);
-        double sinY = Math.sin(yaw);
-        double x = v.getX() * cosY - v.getZ() * sinY;
-        double z = v.getX() * sinY + v.getZ() * cosY;
+        Particle.DustOptions dust = getThinElementDust(element);
+        double radius = 1.0 * scale;
 
-        // Cập nhật X, Z và sau đó xử lý Pitch bằng cách cộng vector UP
-        v.setX(x).setZ(z);
-        Vector up = new Vector(0, 1, 0).multiply(Math.tan(pitch));
-        v.add(up).normalize();
+        // 1. Vẽ vòng tròn ngoài cùng (60 hạt rải đều -> siêu mịn)
+        int circlePoints = 60;
+        for (int i = 0; i < circlePoints; i++) {
+            double angle = (i * Math.PI * 2) / circlePoints;
+            Location p = loc.clone().add(v1.clone().multiply(Math.cos(angle) * radius))
+                    .add(v2.clone().multiply(Math.sin(angle) * radius));
+            loc.getWorld().spawnParticle(Particle.DUST, p, 1, 0, 0, 0, 0, dust);
+        }
+
+        // 2. Vẽ Ngôi sao 6 cánh (Đỉnh chạm đúng vào vòng tròn ngoài)
+        drawEquilateralTriangle(loc, v1, v2, radius, 0, dust);
+        drawEquilateralTriangle(loc, v1, v2, radius, Math.PI, dust);
     }
 
-    private Location findTarget(Player p) {
-        // Tăng tầm bắn lên 120 blocks
-        RayTraceResult ray = p.getWorld().rayTraceBlocks(p.getEyeLocation(), p.getEyeLocation().getDirection(), 120);
-        return (ray != null && ray.getHitPosition() != null) ? ray.getHitPosition().toLocation(p.getWorld()) : p.getEyeLocation().add(p.getEyeLocation().getDirection().multiply(120));
+    private void drawEquilateralTriangle(Location center, Vector v1, Vector v2, double radius, double rotation, Particle.DustOptions dust) {
+        Location p1 = center.clone().add(v1.clone().multiply(Math.cos(rotation) * radius)).add(v2.clone().multiply(Math.sin(rotation) * radius));
+        Location p2 = center.clone().add(v1.clone().multiply(Math.cos(rotation + 2 * Math.PI / 3) * radius)).add(v2.clone().multiply(Math.sin(rotation + 2 * Math.PI / 3) * radius));
+        Location p3 = center.clone().add(v1.clone().multiply(Math.cos(rotation + 4 * Math.PI / 3) * radius)).add(v2.clone().multiply(Math.sin(rotation + 4 * Math.PI / 3) * radius));
+
+        // Vẽ 3 cạnh của tam giác
+        drawLine(p1, p2, dust);
+        drawLine(p2, p3, dust);
+        drawLine(p3, p1, dust);
     }
 
+    private void drawLine(Location start, Location end, Particle.DustOptions dust) {
+        double length = start.distance(end);
+        // [SỬA MẬT ĐỘ]: 15 hạt cho mỗi 1 block -> Đảm bảo cạnh ngôi sao liền mạch như 1 đường kẻ!
+        int points = (int) (length * 15);
+        if (points <= 0) return;
+
+        Vector link = end.toVector().subtract(start.toVector()).normalize().multiply(length / points);
+        Location curr = start.clone();
+        for (int i = 0; i <= points; i++) {
+            start.getWorld().spawnParticle(Particle.DUST, curr, 1, 0, 0, 0, 0, dust);
+            curr.add(link);
+        }
+    }
+
+    private Particle.DustOptions getThinElementDust(MageElement element) {
+        float thickness = 0.5f; // Nét vẽ mỏng vừa đủ nhìn, không bị cục
+        switch (element) {
+            case FIRE: return new Particle.DustOptions(org.bukkit.Color.fromRGB(255, 60, 0), thickness);
+            case WATER: return new Particle.DustOptions(org.bukkit.Color.fromRGB(0, 150, 255), thickness);
+            case WIND: return new Particle.DustOptions(org.bukkit.Color.fromRGB(200, 255, 230), thickness);
+            case NATURE: return new Particle.DustOptions(org.bukkit.Color.fromRGB(50, 255, 50), thickness);
+            case LIGHT: return new Particle.DustOptions(org.bukkit.Color.fromRGB(255, 255, 120), thickness);
+            case DARK: return new Particle.DustOptions(org.bukkit.Color.fromRGB(150, 0, 255), thickness);
+            default: return new Particle.DustOptions(org.bukkit.Color.WHITE, thickness);
+        }
+    }
+
+    // ==========================================
+    // CÁC HÀM CÒN LẠI (GIỮ NGUYÊN LOGIC)
+    // ==========================================
     private void fireHyperFastBullet(Player shooter, RPGPlayer rpgPlayer, Location start, Location end, MageElement element, double dmg) {
         shooter.getWorld().playSound(start, Sound.ENTITY_ILLUSIONER_CAST_SPELL, 0.8f, 2.0f);
-
         Vector p0 = start.toVector();
         Vector p2 = end.toVector();
         Vector dir = p2.clone().subtract(p0).normalize();
-
-        // Offset 10 và đẩy điểm uốn xa 45% để tạo đường cong Fern-style
-        Vector sideOffset = Vector.getRandom().subtract(new Vector(0.5, 0.5, 0.5)).normalize().multiply(10.0);
-        Vector p1 = p0.clone().add(dir.clone().multiply(p0.distance(p2) * 0.45)).add(sideOffset);
+        Vector sideOffset = Vector.getRandom().subtract(new Vector(0.5, 0.5, 0.5)).normalize().multiply(8.0);
+        Vector p1 = p0.clone().add(dir.clone().multiply(p0.distance(p2) * 0.4)).add(sideOffset);
 
         new BukkitRunnable() {
             double currentT = 0.0;
             int lifeTicks = 0;
-
             @Override
             public void run() {
                 if (currentT >= 1.0 || lifeTicks > 100) {
                     impact(end, shooter, rpgPlayer, element, dmg);
-                    this.cancel();
-                    return;
+                    this.cancel(); return;
                 }
-
                 double oldT = currentT;
-                // Tốc độ: Khởi đầu 0.2, gia tốc 3.0 (Cực nhanh)
                 double currentSpeed = 0.2 + (3.0 * currentT * currentT);
                 currentT += currentSpeed;
                 if (currentT > 1.0) currentT = 1.0;
@@ -287,7 +288,6 @@ public class UltimateElementGate implements ISkill {
                     spawnBulletTrail(element, loc);
                     if (loc.getBlock().getType().isSolid()) { impact(loc, shooter, rpgPlayer, element, dmg); this.cancel(); return; }
                 }
-
                 if (loc != null) {
                     loc.getWorld().spawnParticle(Particle.END_ROD, loc, 1, 0, 0, 0, 0);
                     loc.getWorld().spawnParticle(Particle.DUST, loc, 3, 0.1, 0.1, 0.1, 0, getCoreColor(element));
@@ -307,18 +307,21 @@ public class UltimateElementGate implements ISkill {
         loc.getWorld().spawnParticle(Particle.LARGE_SMOKE, loc, 15, 0.5, 0.5, 0.5, 0.05);
         loc.getWorld().playSound(loc, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.8f);
         spawnExplosionParticle(element, loc);
-
         for (org.bukkit.entity.Entity e : loc.getWorld().getNearbyEntities(loc, 4.5, 4.5, 4.5)) {
             if (e instanceof LivingEntity && CombatManager.canTarget(shooter, e)) {
                 LivingEntity target = (LivingEntity) e;
                 ReactionEngine.ReactionResult result = ReactionEngine.processHit(shooter, target, element);
-
                 shooter.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(plugin, true));
                 double calcDmg = CombatManager.calculateDamage(shooter, rpgPlayer, target, dmg * result.damageMultiplier, 0, 100.0, 0, true, false);
                 CombatManager.applySkillDamage(shooter, target, calcDmg);
                 shooter.removeMetadata("Ghost_L_Blocker", plugin);
             }
         }
+    }
+
+    private Location findTarget(Player p) {
+        RayTraceResult ray = p.getWorld().rayTraceBlocks(p.getEyeLocation(), p.getEyeLocation().getDirection(), 65);
+        return (ray != null && ray.getHitPosition() != null) ? ray.getHitPosition().toLocation(p.getWorld()) : p.getEyeLocation().add(p.getEyeLocation().getDirection().multiply(65));
     }
 
     private MageElement getSmartComboElement(LinkedList<MageElement> recent, List<MageElement> available) {
@@ -330,15 +333,26 @@ public class UltimateElementGate implements ISkill {
         return chosen;
     }
 
-    private org.bukkit.Particle.DustOptions getCoreColor(MageElement e) {
+    private void rotateVector(Vector v, double yawDegrees, double pitchOffset) {
+        double yaw = Math.toRadians(-yawDegrees);
+        double pitch = Math.toRadians(-pitchOffset);
+        double cosY = Math.cos(yaw);
+        double sinY = Math.sin(yaw);
+        double x = v.getX() * cosY - v.getZ() * sinY;
+        double z = v.getX() * sinY + v.getZ() * cosY;
+        v.setX(x).setZ(z);
+        v.add(new Vector(0, 1, 0).multiply(Math.tan(pitch))).normalize();
+    }
+
+    private Particle.DustOptions getCoreColor(MageElement e) {
         switch (e) {
-            case FIRE: return new org.bukkit.Particle.DustOptions(org.bukkit.Color.RED, 1.5f);
-            case WATER: return new org.bukkit.Particle.DustOptions(org.bukkit.Color.AQUA, 1.5f);
-            case WIND: return new org.bukkit.Particle.DustOptions(org.bukkit.Color.WHITE, 1.5f);
-            case NATURE: return new org.bukkit.Particle.DustOptions(org.bukkit.Color.LIME, 1.5f);
-            case LIGHT: return new org.bukkit.Particle.DustOptions(org.bukkit.Color.YELLOW, 1.5f);
-            case DARK: return new org.bukkit.Particle.DustOptions(org.bukkit.Color.PURPLE, 1.5f);
-            default: return new org.bukkit.Particle.DustOptions(org.bukkit.Color.WHITE, 1.5f);
+            case FIRE: return new Particle.DustOptions(Color.RED, 1.5f);
+            case WATER: return new Particle.DustOptions(Color.AQUA, 1.5f);
+            case WIND: return new Particle.DustOptions(Color.WHITE, 1.5f);
+            case NATURE: return new Particle.DustOptions(Color.LIME, 1.5f);
+            case LIGHT: return new Particle.DustOptions(Color.YELLOW, 1.5f);
+            case DARK: return new Particle.DustOptions(Color.PURPLE, 1.5f);
+            default: return new Particle.DustOptions(Color.WHITE, 1.5f);
         }
     }
 

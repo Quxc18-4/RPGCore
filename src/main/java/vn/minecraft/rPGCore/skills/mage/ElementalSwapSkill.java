@@ -27,7 +27,7 @@ public class ElementalSwapSkill implements ISkill {
     @Override public String getId() { return "mage_elemental_swap"; }
     @Override public String getName() { return "§d§lChuyển Hóa Nguyên Tố"; }
     @Override public String getRequiredClass() { return "mage"; }
-    @Override public Material getIcon() { return Material.END_CRYSTAL; }
+    @Override public Material getIcon() { return Material.POPPED_CHORUS_FRUIT; }
 
     @Override public int getMaxLevel() { return 1; }
     @Override public int getUpgradeCost(int currentLevel) { return 0; }
