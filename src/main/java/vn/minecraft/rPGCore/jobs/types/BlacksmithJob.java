@@ -35,9 +35,9 @@ public class BlacksmithJob extends RPGJob {
         lore.add("");
         lore.add("§a§lNỘI TẠI NGHỀ:");
         lore.add("§8▪ §fTỉ lệ thành công khi rèn: §a+" + String.format("%.1f", getForgeSuccessBonus(currentLevel)) + "%");
-        lore.add("§8▪ §fTỉ lệ nhận Dòng dõi (Mốc an toàn): §6" + String.format("%.1f", (50.0 + getLineageStarBonus(currentLevel) * 100)) + "%");
-        lore.add("§8▪ §fTỉ lệ hoàn trả Mạt Thợ Rèn khi xịt: §c" + String.format("%.1f", getScrapRefundChance(currentLevel)) + "%");
-        lore.add("§8▪ §fXác suất giữ lại Đá khi đập: §b" + String.format("%.1f", getStoneSaveChance(currentLevel)) + "%");
+        lore.add("§8▪ §fTỉ lệ nhận thêm nâng cấp Dòng dõi: §6" + String.format("%.1f", (50.0 + getLineageStarBonus(currentLevel) * 100)) + "%");
+        lore.add("§8▪ §fTỉ lệ hoàn trả Mạt Thợ Rèn khi thất bại: §c" + String.format("%.1f", getScrapRefundChance(currentLevel)) + "%");
+        lore.add("§8▪ §fXác suất không tiêu hao Đá khi rèn trang bị: §b" + String.format("%.1f", getStoneSaveChance(currentLevel)) + "%");
         return lore;
     }
 

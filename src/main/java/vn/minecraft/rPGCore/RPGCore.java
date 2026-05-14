@@ -3,6 +3,7 @@ package vn.minecraft.rPGCore;
 import org.bukkit.plugin.java.JavaPlugin;
 import vn.minecraft.rPGCore.classes.ClassManager;
 import vn.minecraft.rPGCore.commands.*;
+import vn.minecraft.rPGCore.jobs.core.JobManager;
 import vn.minecraft.rPGCore.jobs.core.JobRegister;
 import vn.minecraft.rPGCore.jobs.gui.JobSelectionGUI;
 import vn.minecraft.rPGCore.listeners.*;
@@ -80,6 +81,8 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(elementRotationGUI, this);
         // Đăng ký Listener cho Hệ thống Vật phẩm tiêu hao (Bình máu, Tinh thể...)
         getServer().getPluginManager().registerEvents(new ConsumableListener(this.itemManager), this);
+        // Đăng ký Event tự động Load/Save Nghề khi người chơi ra vào server
+        getServer().getPluginManager().registerEvents(new JobManager.JobDataListener(), this);
         getServer().getPluginManager().registerEvents(new JobSelectionGUI(), this);
 
         new RegenTask(playerManager, bossBarManager).runTaskTimer(this, 0L, 20L);
@@ -126,6 +129,11 @@ public final class RPGCore extends JavaPlugin {
                 bossBarManager.createBars(player, rpgPlayer);
             }
         }
+
+        // [Dự phòng]: Load Data cho những người đang online (Nếu dùng lệnh /reload)
+        for (org.bukkit.entity.Player p : org.bukkit.Bukkit.getOnlinePlayers()) {
+            vn.minecraft.rPGCore.jobs.core.JobManager.loadPlayerData(p.getUniqueId());
+        }
     }
 
     @Override
@@ -133,6 +141,9 @@ public final class RPGCore extends JavaPlugin {
         if (playerManager != null) {
             playerManager.saveAllPlayers();
         }
+        // [MỚI]: Lưu toàn bộ dữ liệu Nghề Phụ
+        vn.minecraft.rPGCore.jobs.core.JobManager.saveAll();
+
         getLogger().info("RPGCore da tat va luu du lieu an toan.");
     }
 
