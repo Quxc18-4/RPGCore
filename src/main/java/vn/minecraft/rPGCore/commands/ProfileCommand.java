@@ -44,6 +44,14 @@ public class ProfileCommand implements CommandExecutor {
         player.sendMessage("");
         player.sendMessage(" §7▶ §fNgười chơi: §e" + player.getName());
         player.sendMessage(" §7▶ §fLớp nhân vật: " + ChatColor.translateAlternateColorCodes('&', rpgPlayer.getCurrentClass().getDisplayName()));
+        // [MỚI] Lấy và hiển thị thông tin Nghề Phụ (Cấp độ & Tên)
+        vn.minecraft.rPGCore.jobs.core.RPGJob currentJob = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerJob(player);
+        if (currentJob != null) {
+            int jobLevel = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerJobLevel(player);
+            player.sendMessage(" §7▶ §fNghề nghiệp: §d" + currentJob.getName() + " §8(Cấp " + jobLevel + ")");
+        } else {
+            player.sendMessage(" §7▶ §fNghề nghiệp: §7Chưa chọn (Dùng /job)");
+        }
         player.sendMessage(" §7▶ §fCấp độ: §a" + player.getLevel() + " §8(§7" + (int)rpgPlayer.getCurrentExp() + "§8/§7" + (int)rpgPlayer.getRequiredExp() + " XP§8)");
 
         player.sendMessage("    " + getProgressBar(rpgPlayer.getCurrentExp(), rpgPlayer.getRequiredExp()));

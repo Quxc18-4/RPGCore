@@ -3,11 +3,9 @@ package vn.minecraft.rPGCore;
 import org.bukkit.plugin.java.JavaPlugin;
 import vn.minecraft.rPGCore.classes.ClassManager;
 import vn.minecraft.rPGCore.commands.*;
+import vn.minecraft.rPGCore.jobs.core.JobRegister;
 import vn.minecraft.rPGCore.jobs.gui.JobSelectionGUI;
-import vn.minecraft.rPGCore.listeners.ComboListener;
-import vn.minecraft.rPGCore.listeners.EquipmentListener;
-import vn.minecraft.rPGCore.listeners.PlayerListener;
-import vn.minecraft.rPGCore.listeners.ClassGUIListener;
+import vn.minecraft.rPGCore.listeners.*;
 import vn.minecraft.rPGCore.managers.*;
 import vn.minecraft.rPGCore.player.PlayerManager;
 import vn.minecraft.rPGCore.skills.SkillManager;
@@ -58,6 +56,8 @@ public final class RPGCore extends JavaPlugin {
         AdminArrowCraftingUI adminArrowCraftingUI = new AdminArrowCraftingUI(arrowRecipeManager);
         ElementRotationGUI elementRotationGUI = new ElementRotationGUI();
 
+        JobRegister.registerAllJobs();
+
         RepairGUI repairGUI = new RepairGUI();
 
         getServer().getPluginManager().registerEvents(new PlayerListener(playerManager, bossBarManager), this);
@@ -69,17 +69,17 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(skillUI, this);
         getServer().getPluginManager().registerEvents(arrowCraftingUI, this);
         getServer().getPluginManager().registerEvents(adminArrowCraftingUI, this);
-        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.DurabilityListener(playerManager), this);
+        getServer().getPluginManager().registerEvents(new DurabilityListener(playerManager), this);
         getServer().getPluginManager().registerEvents(blacksmithGUI, this);
         getServer().getPluginManager().registerEvents(cookingManager, this);
-        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.FoodListener(this, this.boredomManager, this.foodBuffManager), this);
+        getServer().getPluginManager().registerEvents(new FoodListener(this, this.boredomManager, this.foodBuffManager), this);
         // [MỚI]: ĐĂNG KÝ BANK LISTENER
-        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.BankListener(this, bankManager, currencyManager, playerManager), this);
+        getServer().getPluginManager().registerEvents(new BankListener(this, bankManager, currencyManager, playerManager), this);
         // [MỚI]: ĐĂNG KÝ SỰ KIỆN CHO CỬA HÀNG (SHOP)
-        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.ShopListener(shopManager, currencyManager, playerManager), this);
+        getServer().getPluginManager().registerEvents(new ShopListener(shopManager, currencyManager, playerManager), this);
         getServer().getPluginManager().registerEvents(elementRotationGUI, this);
         // Đăng ký Listener cho Hệ thống Vật phẩm tiêu hao (Bình máu, Tinh thể...)
-        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.ConsumableListener(this.itemManager), this);
+        getServer().getPluginManager().registerEvents(new ConsumableListener(this.itemManager), this);
         getServer().getPluginManager().registerEvents(new JobSelectionGUI(), this);
 
         new RegenTask(playerManager, bossBarManager).runTaskTimer(this, 0L, 20L);
@@ -115,7 +115,7 @@ public final class RPGCore extends JavaPlugin {
         }
         // ĐĂNG KÝ LỆNH DUMMY
         if (this.getCommand("dummy") != null) {
-            this.getCommand("dummy").setExecutor(new vn.minecraft.rPGCore.commands.DummyCommand());
+            this.getCommand("dummy").setExecutor(new DummyCommand());
         }
 
         getLogger().info("RPGCore đã được bật thành công!");

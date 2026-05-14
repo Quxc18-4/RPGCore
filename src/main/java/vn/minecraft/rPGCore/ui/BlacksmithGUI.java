@@ -17,6 +17,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.commands.RepairAdminCommand;
+import vn.minecraft.rPGCore.managers.ItemManager;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -60,7 +61,9 @@ public class BlacksmithGUI implements Listener {
         inv.setItem(13, createButton(Material.LIGHT_BLUE_STAINED_GLASS_PANE, "§9[+] Đập Tự Động (Max 10 Lần)", "§7Tiêu hao: Tối đa 10 Đá Nâng Cấp", "§7(Sẽ dừng lại ngay khi lên cấp)"));
         inv.setItem(14, createButton(Material.PURPLE_STAINED_GLASS_PANE, "§5[+] Đập Tự Động (Max 100 Lần)", "§7Tiêu hao: Tối đa 100 Đá Nâng Cấp", "§7(Sẽ dừng lại ngay khi lên cấp)"));
         inv.setItem(15, glass);
-        inv.setItem(16, createButton(Material.YELLOW_STAINED_GLASS_PANE, "§6[★] Rèn Bậc Thầy (Thợ Rèn)", "§cĐang phát triển (TODO)", "§7Cần nghề phụ Thợ Rèn để sử dụng."));
+
+        // [MỚI]: Render UI động cho Nút Rèn Bậc Thầy
+        updateMasterForgeButton(inv);
 
         player.openInventory(inv);
         player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_USE, 1f, 1f);
@@ -75,14 +78,65 @@ public class BlacksmithGUI implements Listener {
         return item;
     }
 
+    // ===============================================
+    // [MỚI]: HÀM LẤY CHI PHÍ MẠT THỢ RÈN THEO CẤP
+    // ===============================================
+    private int getScrapCost(int currentLevel) {
+        // Tương ứng từ cấp 0 -> 14
+        int[] costs = {2, 4, 8, 12, 16, 22, 30, 40, 50, 60, 70, 80, 150, 300, 600};
+        if (currentLevel >= 0 && currentLevel < costs.length) {
+            return costs[currentLevel];
+        }
+        return -1; // Max level
+    }
+
+    // ===============================================
+    // [MỚI]: HÀM CẬP NHẬT UI ĐỘNG CHO NÚT RÈN BẬC THẦY
+    // ===============================================
+    private void updateMasterForgeButton(Inventory inv) {
+        ItemStack equipment = inv.getItem(10);
+
+        if (equipment == null || equipment.getType().isAir() || !equipment.hasItemMeta() || !equipment.getItemMeta().hasLore()) {
+            inv.setItem(16, createButton(Material.YELLOW_STAINED_GLASS_PANE, "§6[★] Rèn Bậc Thầy", "§cHãy đặt trang bị vào để xem chi phí.", "§7Cần nghề phụ Thợ Rèn để sử dụng."));
+            return;
+        }
+
+        int currentLevel = getUpgradeLevel(equipment);
+        if (currentLevel >= 15) {
+            inv.setItem(16, createButton(Material.YELLOW_STAINED_GLASS_PANE, "§6[★] Rèn Bậc Thầy", "§cTrang bị đã đạt cấp độ tối đa."));
+            return;
+        }
+
+        int cost = getScrapCost(currentLevel);
+        inv.setItem(16, createButton(Material.YELLOW_STAINED_GLASS_PANE, "§6[★] Rèn Bậc Thầy",
+                "§7Đột phá thẳng lên " + getLevelColor(currentLevel + 1) + "[+" + (currentLevel + 1) + "]",
+                "§7Tiêu hao: §e" + cost + " Mạt Thợ Rèn",
+                "",
+                "§aTỉ lệ thành công: 100%"));
+    }
+
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         if (!event.getView().getTitle().equals(GUI_NAME)) return;
 
         int slot = event.getRawSlot();
-        if (slot >= 0 && slot < 27 && slot != 10) {
+
+        // [MỚI]: Cập nhật UI nếu thao tác liên quan tới việc đặt/lấy đồ ở slot 10
+        if (slot == 10 || event.getClick().isShiftClick()) {
+            Bukkit.getScheduler().runTaskLater(RPGCore.getInstance(), () -> {
+                if (event.getWhoClicked().getOpenInventory().getTitle().equals(GUI_NAME)) {
+                    updateMasterForgeButton(event.getWhoClicked().getOpenInventory().getTopInventory());
+                }
+            }, 1L);
+            // Không setCancelled vì cho phép người chơi bỏ đồ vào
+            return;
+        }
+
+        if (slot >= 0 && slot < 27) {
             event.setCancelled(true);
-        } else { return; }
+        } else {
+            return; // Click vào túi đồ của người chơi thì thả qua
+        }
 
         Player player = (Player) event.getWhoClicked();
         ItemStack equipment = event.getInventory().getItem(10);
@@ -90,6 +144,7 @@ public class BlacksmithGUI implements Listener {
         if (slot >= 12 && slot <= 14) {
             if (equipment == null || equipment.getType().isAir() || !equipment.hasItemMeta() || !equipment.getItemMeta().hasLore()) {
                 player.sendMessage("§cBạn chưa đặt trang bị RPG vào ô nâng cấp!");
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
                 return;
             }
 
@@ -99,11 +154,63 @@ public class BlacksmithGUI implements Listener {
 
             processUpgradeLoop(player, equipment, attempts);
         }
+        // ===============================================
+        // [MỚI]: THỰC THI LOGIC RÈN BẬC THẦY (NÚT VÀNG)
+        // ===============================================
+        else if (slot == 16) {
+            if (equipment == null || equipment.getType().isAir() || !equipment.hasItemMeta() || !equipment.getItemMeta().hasLore()) {
+                player.sendMessage("§cBạn chưa đặt trang bị RPG vào ô nâng cấp!");
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
+                return;
+            }
+
+            // 1. Kiểm tra Nghề
+            vn.minecraft.rPGCore.jobs.core.RPGJob currentJob = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerJob(player);
+            if (!(currentJob instanceof vn.minecraft.rPGCore.jobs.types.BlacksmithJob)) {
+                player.sendMessage("§c§l[!] §cKỹ năng này chỉ dành riêng cho Bậc thầy Thợ Rèn!");
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
+                return;
+            }
+
+            // 2. Kiểm tra Cấp độ
+            int currentLevel = getUpgradeLevel(equipment);
+            if (currentLevel >= 15) {
+                player.sendMessage("§cTrang bị này đã đạt cấp độ tối đa (+15)!");
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
+                return;
+            }
+
+            // 3. Tính toán chi phí và kiểm tra kho
+            int cost = getScrapCost(currentLevel);
+            ItemManager itemManager = RPGCore.getInstance().getItemManager();
+            ItemStack scrapTemplate = itemManager.buildItem("misc_blacksmith_scrap", 1);
+
+            if (itemManager.countItem(player, scrapTemplate) < cost) {
+                player.sendMessage("§c§l[!] §cBạn không có đủ §e" + cost + " Mạt Thợ Rèn §cđể thực hiện Rèn Bậc Thầy!");
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
+                return;
+            }
+
+            // 4. Thực thi (Trừ Mạt, Tăng Cấp, Cộng EXP)
+            itemManager.takeItem(player, scrapTemplate, cost);
+            int newLevel = currentLevel + 1;
+
+            // EXP thưởng lớn cho việc xài Nút Vàng
+            vn.minecraft.rPGCore.jobs.core.JobManager.addExp(player, 100.0 + (newLevel * 10.0));
+
+            if (SAFE_LEVELS.contains(newLevel)) {
+                applyMilestoneBonus(player, equipment);
+            }
+            applyStatsChange(equipment, currentLevel, newLevel);
+
+            player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1.5f);
+            player.sendMessage("§e✨ §l[Rèn Bậc Thầy] §fThao tác thần sầu! Trang bị đột phá thẳng lên " + getLevelColor(newLevel) + "[+" + newLevel + "]");
+
+            // Ép cập nhật lại nút Vàng cho cấp độ tiếp theo
+            updateMasterForgeButton(event.getInventory());
+        }
     }
 
-    // ===============================================
-    // HỆ THỐNG XỬ LÝ VÒNG LẶP & DỪNG THÔNG MINH
-    // ===============================================
     private void processUpgradeLoop(Player player, ItemStack item, int maxAttempts) {
         ItemStack stoneTemplate = RepairAdminCommand.getStoneItem(5, 1);
         int stonesUsed = 0;
@@ -121,12 +228,26 @@ public class BlacksmithGUI implements Listener {
             if (currentLevel >= 15) break;
             if (countCustomItem(player, stoneTemplate) <= 0) break; // Hết đá
 
-            removeCustomItem(player, stoneTemplate, 1);
+            // [MỚI]: HOOK CƠ CHẾ BẢO QUẢN ĐÁ (STONE SAVE CHANCE)
+            double saveChance = 0.0;
+            vn.minecraft.rPGCore.jobs.core.RPGJob currentJob = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerJob(player);
+            if (currentJob instanceof vn.minecraft.rPGCore.jobs.types.BlacksmithJob) {
+                int jobLevel = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerJobLevel(player);
+                saveChance = ((vn.minecraft.rPGCore.jobs.types.BlacksmithJob) currentJob).getStoneSaveChance(jobLevel);
+            }
+
+            // Nếu hên (roll trúng xác suất) -> Không trừ đá
+            if (rand.nextDouble() * 100.0 <= saveChance) {
+                // Không gọi removeCustomItem
+                // (Có thể bỏ dòng thông báo này nếu sợ spam chat khi đập 100 lần)
+                // player.sendMessage("§e✨ [Thợ Rèn] §fKỹ năng bảo quản nguyên liệu: Không tiêu hao đá nâng cấp!");
+            } else {
+                removeCustomItem(player, stoneTemplate, 1);
+            }
             stonesUsed++;
 
-            // [HOOK 1 - THỢ RÈN]: Tăng tỉ lệ thành công
+            // [HOOK 1 - THỢ RÈN]: Tăng tỉ lệ thành công (Nhân Hệ Số)
             double jobSuccessBonus = vn.minecraft.rPGCore.jobs.core.JobManager.getForgeBonus(player);
-            // Nghề thợ rèn cấp 50 (jobSuccessBonus = 10.0) -> Hệ số là 1.1
             double successRate = RATES[currentLevel] * (1.0 + (jobSuccessBonus / 100.0));
             double roll = rand.nextDouble() * 100.0;
 
@@ -134,8 +255,10 @@ public class BlacksmithGUI implements Listener {
                 // Thành công Lên cấp
                 currentLevel++;
 
+                // Trả EXP đập thành công
+                vn.minecraft.rPGCore.jobs.core.JobManager.addExp(player, 30.0 + (currentLevel * 5.0));
+
                 if (SAFE_LEVELS.contains(currentLevel)) {
-                    // Đã sửa lỗi: Truyền thêm biến 'player' vào hàm
                     applyMilestoneBonus(player, item);
                 }
 
@@ -148,17 +271,25 @@ public class BlacksmithGUI implements Listener {
                     currentLevel--;
                 }
 
+                // Trả EXP đập xịt (Farm chính)
+                vn.minecraft.rPGCore.jobs.core.JobManager.addExp(player, 15.0);
+
                 // [HOOK 2 - THỢ RÈN]: Trả lại Mạt thợ rèn khi xịt
-                vn.minecraft.rPGCore.jobs.core.RPGJob currentJob = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerJob(player);
                 if (currentJob instanceof vn.minecraft.rPGCore.jobs.types.BlacksmithJob) {
                     int jobLevel = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerJobLevel(player);
                     double scrapChance = ((vn.minecraft.rPGCore.jobs.types.BlacksmithJob) currentJob).getScrapRefundChance(jobLevel);
 
                     if (rand.nextDouble() * 100 <= scrapChance) {
                         player.sendMessage("§cĐập đồ thất bại... §aNhưng bạn thu lại được 1 Mạt Thợ Rèn!");
-                        // Ép lệnh console chạy ẩn để đưa đồ cho người chơi theo chuẩn của ItemAdminCommand
-                        String cmd = "ig give " + player.getName() + " misc_blacksmith_scrap 1";
-                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
+
+                        // Gọi trực tiếp API im lặng (Không Spam Console)
+                        ItemManager itemManager = vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager();
+                        if (itemManager != null) {
+                            org.bukkit.inventory.ItemStack scrap = itemManager.buildItem("misc_blacksmith_scrap", 1);
+                            if (scrap != null) {
+                                player.getInventory().addItem(scrap);
+                            }
+                        }
                     }
                 }
             }
@@ -168,24 +299,25 @@ public class BlacksmithGUI implements Listener {
             applyStatsChange(item, startLevel, currentLevel);
         }
 
-        // Gửi thông báo (Giữ nguyên gốc)
         if (stonesUsed > 0) {
             if (currentLevel > startLevel) {
                 player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1.5f);
                 player.sendMessage("§a§lNâng cấp thành công! §fTrang bị đạt mức " + getLevelColor(currentLevel) + "[+" + currentLevel + "] §8(Dừng sau " + stonesUsed + " lần đập)");
             } else if (currentLevel < startLevel) {
                 player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_DESTROY, 1f, 0.5f);
-                player.sendMessage("§c§lNâng cấp thất bại! §fTrang bị rớt xuống " + getLevelColor(currentLevel) + "[+" + currentLevel + "] §8(Tiêu hao " + stonesUsed + " đá)");
+                player.sendMessage("§c§lNâng cấp thất bại! §fTrang bị rớt xuống " + getLevelColor(currentLevel) + "[+" + currentLevel + "] §8(Tiêu hao " + stonesUsed + " lượt đập)");
             } else {
                 player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1f, 1f);
                 player.sendMessage("§eĐập " + stonesUsed + " lần thất bại! §fTrang bị giữ nguyên " + getLevelColor(currentLevel) + "[+" + currentLevel + "]");
             }
+
+            // Cập nhật lại giao diện sau khi đập xong
+            updateMasterForgeButton(player.getOpenInventory().getTopInventory());
         } else {
             player.sendMessage("§cBạn không có Đá Nâng Cấp trong túi!");
         }
     }
 
-    // Lấy cấp độ an toàn bằng Regex
     private int getUpgradeLevel(ItemStack item) {
         String name = ChatColor.stripColor(item.getItemMeta().getDisplayName());
         java.util.regex.Matcher m = java.util.regex.Pattern.compile("\\[\\+(\\d+)\\]$").matcher(name);
@@ -193,30 +325,25 @@ public class BlacksmithGUI implements Listener {
         return 0;
     }
 
-    // Trả về Mã màu dựa theo Cấp độ
     private String getLevelColor(int level) {
-        if (level >= 1 && level <= 3) return "§a";   // Xanh lá
-        if (level >= 4 && level <= 6) return "§9";   // Xanh dương
-        if (level >= 7 && level <= 9) return "§5";   // Tím
-        if (level >= 10 && level <= 12) return "§c"; // Đỏ
-        if (level >= 13 && level <= 15) return "§6"; // Vàng
+        if (level >= 1 && level <= 3) return "§a";
+        if (level >= 4 && level <= 6) return "§9";
+        if (level >= 7 && level <= 9) return "§5";
+        if (level >= 10 && level <= 12) return "§c";
+        if (level >= 13 && level <= 15) return "§6";
         return "§e";
     }
 
-    // Tính hệ số nhân dựa trên Cấp độ
     private double getMultiplier(int level) {
         if (level == 0) return 1.0;
         double multi = 1.0;
-        multi += Math.min(level, 10) * 0.10; // +10% cho mỗi cấp từ 1-10
+        multi += Math.min(level, 10) * 0.10;
         if (level > 10) {
-            multi += (level - 10) * 0.15; // +15% cho mỗi cấp từ 11-15
+            multi += (level - 10) * 0.15;
         }
         return multi;
     }
 
-    // ===============================================
-    // CẬP NHẬT CHỈ SỐ KHI LÊN CẤP (Hỗ trợ Kháng Phép)
-    // ===============================================
     private void applyStatsChange(ItemStack item, int oldLevel, int newLevel) {
         ItemMeta meta = item.getItemMeta();
         List<String> lore = meta.getLore();
@@ -240,7 +367,6 @@ public class BlacksmithGUI implements Listener {
 
                 lore.set(i, prefix + " §f" + String.format("%.1f", newMin) + " §8~ §f" + String.format("%.1f", newMax));
             }
-            // THÊM: Hỗ trợ cộng dồn Kháng Phép
             else if (clean.startsWith("- Máu tối đa:") || clean.startsWith("- Giáp:") || clean.startsWith("- Kháng phép:")) {
                 String[] parts = clean.split(":");
                 String prefix = line.substring(0, line.indexOf(":") + 1);
@@ -260,8 +386,7 @@ public class BlacksmithGUI implements Listener {
         item.setItemMeta(meta);
     }
 
-    // Buff ngẫu nhiên Dòng dõi và 1 Dòng phụ
-    private void applyMilestoneBonus(Player player, ItemStack item) { // Đã update signature
+    private void applyMilestoneBonus(Player player, ItemStack item) {
         ItemMeta meta = item.getItemMeta();
         List<String> lore = meta.getLore();
 
@@ -282,23 +407,21 @@ public class BlacksmithGUI implements Listener {
             if (isSubStatSection && clean.startsWith("- ")) subStatLines.add(i);
         }
 
-        // [HOOK 3 - THỢ RÈN]: Tỉ lệ nổ Dòng dõi ở mốc bảo hiểm
         if (!lineageLines.isEmpty()) {
             double jobLineageBonus = vn.minecraft.rPGCore.jobs.core.JobManager.getLineageBonus(player);
-            double lineageChance = 0.50 + jobLineageBonus; // Cơ bản 50% [cite: 15] + bonus từ nghề [cite: 17]
+            double lineageChance = 0.50 + jobLineageBonus;
 
             if (rand.nextDouble() <= lineageChance) {
                 int index1 = lineageLines.get(rand.nextInt(lineageLines.size()));
                 boostStatLine(lore, index1);
 
-                // Cơ chế nổ 2 dòng của Thợ rèn
                 vn.minecraft.rPGCore.jobs.core.RPGJob currentJob = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerJob(player);
                 if (currentJob instanceof vn.minecraft.rPGCore.jobs.types.BlacksmithJob && lineageLines.size() > 1) {
                     if (rand.nextDouble() <= jobLineageBonus) {
                         int index2;
                         do {
                             index2 = lineageLines.get(rand.nextInt(lineageLines.size()));
-                        } while (index2 == index1); // Đảm bảo không trùng dòng 1
+                        } while (index2 == index1);
 
                         boostStatLine(lore, index2);
                         player.sendMessage("§e✨ [Thợ Rèn] §fKỹ năng thượng thừa! Đột phá 2 dòng dòng dõi!");
@@ -316,9 +439,6 @@ public class BlacksmithGUI implements Listener {
         item.setItemMeta(meta);
     }
 
-    // ===============================================
-    // HÀM ĐỘT PHÁ MỐC BẢO HIỂM (NERF CÒN 30%)
-    // ===============================================
     private void boostStatLine(List<String> lore, int index) {
         String line = lore.get(index);
         int starCount = 0;
@@ -333,7 +453,6 @@ public class BlacksmithGUI implements Listener {
 
         try {
             double val = Double.parseDouble(valueStr);
-            // YÊU CẦU: Giảm từ tăng 50% (1.5) xuống còn 30% (1.3)
             double newVal = val * 1.3;
 
             StringBuilder stars = new StringBuilder(" §e");

@@ -48,3 +48,6 @@ commands:
     description: Triệu hồi bù nhìn thử nghiệm sát thương.
     usage: /dummy
     permission: rpgcore.admin
+  job:
+    description: Mo menu lua chon Nghe Nghiep
+    usage: /job

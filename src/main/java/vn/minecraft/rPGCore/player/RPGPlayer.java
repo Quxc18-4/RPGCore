@@ -339,10 +339,27 @@ public class RPGPlayer {
 
         for (ItemStack item : allEquips) {
             if (item == null || !item.hasItemMeta() || !item.getItemMeta().hasLore()) continue;
+
             ItemMeta meta = item.getItemMeta();
+            List<String> lore = meta.getLore();
+
+            // ==========================================
+            // [MÀNG LỌC BẢO VỆ]: Phân biệt Trang bị vs Vật phẩm
+            // ==========================================
+            boolean isEquipment = false;
+            for (String l : lore) {
+                if (ChatColor.stripColor(l).trim().startsWith("▶ Thuộc class:")) {
+                    isEquipment = true;
+                    break;
+                }
+            }
+
+            // Nếu không phải là Trang Bị/Vũ Khí -> THA MẠNG (Bỏ qua luôn)
+            if (!isEquipment) continue;
+
             boolean updated = false;
 
-            // [MỚI]: Tự động ép cờ ẩn các thông số mặc định của Minecraft (Main Hand, Attributes...)
+            // Tự động ép cờ ẩn các thông số mặc định của Minecraft
             if (!meta.hasItemFlag(org.bukkit.inventory.ItemFlag.HIDE_ATTRIBUTES)) {
                 meta.addItemFlags(
                         org.bukkit.inventory.ItemFlag.HIDE_ATTRIBUTES,
@@ -352,7 +369,6 @@ public class RPGPlayer {
                 updated = true;
             }
 
-            List<String> lore = meta.getLore();
             String currentLineage = null;
             for (String l : lore) {
                 String clean = ChatColor.stripColor(l).trim();
