@@ -217,36 +217,12 @@ public class ArrowCraftingUI implements Listener {
         return item;
     }
 
-    // Hàm kiểm tra xem túi đồ có đủ số lượng của 1 Item cụ thể không (Check chính xác ItemMeta)
     private boolean hasItem(Player player, ItemStack required) {
-        int count = 0;
-        for (ItemStack item : player.getInventory().getContents()) {
-            // isSimilar kiểm tra Material, Name, Lore, Enchantment, v.v. (Không quan tâm số lượng)
-            if (item != null && item.isSimilar(required)) {
-                count += item.getAmount();
-            }
-        }
-        return count >= required.getAmount();
+        return vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager().countItem(player, required) >= required.getAmount();
     }
 
-    // Hàm trừ vật phẩm an toàn từ túi đồ (Cộng dồn qua nhiều stack nếu cần)
     private void consumeItem(Player player, ItemStack required) {
-        int amountNeeded = required.getAmount();
-        ItemStack[] contents = player.getInventory().getContents();
-
-        for (int i = 0; i < contents.length; i++) {
-            ItemStack item = contents[i];
-            if (item != null && item.isSimilar(required)) {
-                if (item.getAmount() > amountNeeded) {
-                    item.setAmount(item.getAmount() - amountNeeded);
-                    amountNeeded = 0;
-                    break;
-                } else {
-                    amountNeeded -= item.getAmount();
-                    player.getInventory().setItem(i, null);
-                }
-            }
-        }
+        vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager().takeItem(player, required, required.getAmount());
     }
 
     // =========================================

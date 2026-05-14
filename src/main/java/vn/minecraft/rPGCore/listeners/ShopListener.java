@@ -197,6 +197,9 @@ public class ShopListener implements Listener {
             if (event.isLeftClick()) {
                 if (shopItem.buyPrice <= 0) return;
 
+                // [MÃ MỚI] Gọi bộ lọc thông minh từ ItemManager để check và trừ đồ
+                vn.minecraft.rPGCore.managers.ItemManager itemManager = vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager();
+
                 if (player.getInventory().containsAtLeast(shopItem.item, shopItem.item.getAmount())) {
                     player.getInventory().removeItem(shopItem.item);
 

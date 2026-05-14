@@ -15,6 +15,7 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.commands.RepairAdminCommand;
 
 import java.util.ArrayList;
@@ -109,7 +110,6 @@ public class BlacksmithGUI implements Listener {
         int currentLevel = getUpgradeLevel(item);
         int startLevel = currentLevel;
 
-        // Mục tiêu của người chơi là nâng được 1 cấp so với ban đầu
         int targetLevel = startLevel + 1;
 
         if (currentLevel >= 15) {
@@ -124,19 +124,21 @@ public class BlacksmithGUI implements Listener {
             removeCustomItem(player, stoneTemplate, 1);
             stonesUsed++;
 
-            double successRate = RATES[currentLevel];
+            // [HOOK 1 - THỢ RÈN]: Tăng tỉ lệ thành công
+            double jobSuccessBonus = vn.minecraft.rPGCore.jobs.core.JobManager.getForgeBonus(player);
+            // Nghề thợ rèn cấp 50 (jobSuccessBonus = 10.0) -> Hệ số là 1.1
+            double successRate = RATES[currentLevel] * (1.0 + (jobSuccessBonus / 100.0));
             double roll = rand.nextDouble() * 100.0;
 
             if (roll <= successRate) {
                 // Thành công Lên cấp
                 currentLevel++;
 
-                // Chỉ buff Ngôi Sao khi vừa đạp trúng mốc bảo hiểm BẰNG CÁCH NÂNG CẤP THÀNH CÔNG
                 if (SAFE_LEVELS.contains(currentLevel)) {
-                    applyMilestoneBonus(item);
+                    // Đã sửa lỗi: Truyền thêm biến 'player' vào hàm
+                    applyMilestoneBonus(player, item);
                 }
 
-                // [QUAN TRỌNG] NẾU ĐÃ ĐẠT ĐƯỢC MỤC TIÊU LÊN 1 CẤP -> DỪNG ĐẬP NGAY LẬP TỨC
                 if (currentLevel == targetLevel) {
                     break;
                 }
@@ -145,15 +147,28 @@ public class BlacksmithGUI implements Listener {
                 if (!SAFE_LEVELS.contains(currentLevel)) {
                     currentLevel--;
                 }
+
+                // [HOOK 2 - THỢ RÈN]: Trả lại Mạt thợ rèn khi xịt
+                vn.minecraft.rPGCore.jobs.core.RPGJob currentJob = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerJob(player);
+                if (currentJob instanceof vn.minecraft.rPGCore.jobs.types.BlacksmithJob) {
+                    int jobLevel = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerJobLevel(player);
+                    double scrapChance = ((vn.minecraft.rPGCore.jobs.types.BlacksmithJob) currentJob).getScrapRefundChance(jobLevel);
+
+                    if (rand.nextDouble() * 100 <= scrapChance) {
+                        player.sendMessage("§cĐập đồ thất bại... §aNhưng bạn thu lại được 1 Mạt Thợ Rèn!");
+                        // Ép lệnh console chạy ẩn để đưa đồ cho người chơi theo chuẩn của ItemAdminCommand
+                        String cmd = "ig give " + player.getName() + " misc_blacksmith_scrap 1";
+                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
+                    }
+                }
             }
         }
 
-        // Áp dụng thay đổi chỉ số chính ĐÚNG 1 LẦN sau khi chốt kết quả
         if (currentLevel != startLevel) {
             applyStatsChange(item, startLevel, currentLevel);
         }
 
-        // Gửi thông báo
+        // Gửi thông báo (Giữ nguyên gốc)
         if (stonesUsed > 0) {
             if (currentLevel > startLevel) {
                 player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1.5f);
@@ -245,8 +260,8 @@ public class BlacksmithGUI implements Listener {
         item.setItemMeta(meta);
     }
 
-    // Buff ngẫu nhiên Dòng dõi (Tỉ lệ 50%) và 1 Dòng phụ
-    private void applyMilestoneBonus(ItemStack item) {
+    // Buff ngẫu nhiên Dòng dõi và 1 Dòng phụ
+    private void applyMilestoneBonus(Player player, ItemStack item) { // Đã update signature
         ItemMeta meta = item.getItemMeta();
         List<String> lore = meta.getLore();
 
@@ -267,15 +282,31 @@ public class BlacksmithGUI implements Listener {
             if (isSubStatSection && clean.startsWith("- ")) subStatLines.add(i);
         }
 
-        // [SỬA ĐỔI]: Dòng dõi giờ chỉ có 50% cơ hội được nhận Ngôi sao nâng cấp
+        // [HOOK 3 - THỢ RÈN]: Tỉ lệ nổ Dòng dõi ở mốc bảo hiểm
         if (!lineageLines.isEmpty()) {
-            if (rand.nextBoolean()) { // Trả về true/false (50/50)
-                int index = lineageLines.get(rand.nextInt(lineageLines.size()));
-                boostStatLine(lore, index);
+            double jobLineageBonus = vn.minecraft.rPGCore.jobs.core.JobManager.getLineageBonus(player);
+            double lineageChance = 0.50 + jobLineageBonus; // Cơ bản 50% [cite: 15] + bonus từ nghề [cite: 17]
+
+            if (rand.nextDouble() <= lineageChance) {
+                int index1 = lineageLines.get(rand.nextInt(lineageLines.size()));
+                boostStatLine(lore, index1);
+
+                // Cơ chế nổ 2 dòng của Thợ rèn
+                vn.minecraft.rPGCore.jobs.core.RPGJob currentJob = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerJob(player);
+                if (currentJob instanceof vn.minecraft.rPGCore.jobs.types.BlacksmithJob && lineageLines.size() > 1) {
+                    if (rand.nextDouble() <= jobLineageBonus) {
+                        int index2;
+                        do {
+                            index2 = lineageLines.get(rand.nextInt(lineageLines.size()));
+                        } while (index2 == index1); // Đảm bảo không trùng dòng 1
+
+                        boostStatLine(lore, index2);
+                        player.sendMessage("§e✨ [Thợ Rèn] §fKỹ năng thượng thừa! Đột phá 2 dòng dòng dõi!");
+                    }
+                }
             }
         }
 
-        // Dòng phụ luôn luôn được nhận 1 nâng cấp (Đảm bảo người chơi không bị lỗ hoàn toàn)
         if (!subStatLines.isEmpty()) {
             int index = subStatLines.get(rand.nextInt(subStatLines.size()));
             boostStatLine(lore, index);
@@ -313,27 +344,11 @@ public class BlacksmithGUI implements Listener {
     }
 
     private int countCustomItem(Player player, ItemStack template) {
-        int count = 0;
-        for (ItemStack item : player.getInventory().getContents()) {
-            if (item != null && item.isSimilar(template)) count += item.getAmount();
-        }
-        return count;
+        return vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager().countItem(player, template);
     }
 
     private void removeCustomItem(Player player, ItemStack template, int amount) {
-        if (amount <= 0) return;
-        for (ItemStack item : player.getInventory().getContents()) {
-            if (item != null && item.isSimilar(template)) {
-                int amt = item.getAmount();
-                if (amt >= amount) {
-                    item.setAmount(amt - amount);
-                    return;
-                } else {
-                    item.setAmount(0);
-                    amount -= amt;
-                }
-            }
-        }
+        vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager().takeItem(player, template, amount);
     }
 
     @EventHandler

@@ -167,6 +167,8 @@ public class ItemManager {
         register(new ItemData("misc_steel_string", Rarity.UNCOMMON, Category.MISC, 0.0, Material.STRING, "Sợi Tơ Thép", null, "Cứng cáp lạ thường, cực kỳ bền bỉ.")); // Rớt từ: Nhện Con
         register(new ItemData("misc_wolf_fang", Rarity.UNCOMMON, Category.MISC, 0.0, Material.IRON_NUGGET, "Nanh Sói", null, "Một chiếc nanh vô cùng sắc nhọn,", "thường được dùng để chế tạo vũ khí.")); // Rớt từ: Sói Hoang
         register(new ItemData("misc_leather_pouch_piece", Rarity.COMMON, Category.MISC, 0.0, Material.ARMADILLO_SCUTE, "Mảnh Túi Da Đạo Tặc", null, "Một mảnh da cắt ra từ túi của bọn Đạo Tặc.", "Có vẻ như chúng dùng nó để giấu tiền vàng...")); // Rớt từ: Đạo Tặc
+        register(new ItemData("misc_blacksmith_scrap", Rarity.UNCOMMON, Category.MISC, 0.0, Material.IRON_NUGGET, "Mạt Thợ Rèn", null, "Những mảnh vụn ma thuật xót lại khi đập đồ thất bại.", "Tích lũy đủ số lượng, chúng mang sức mạnh", "thần bí giúp đột phá trang bị thành công."));
+        register(new ItemData("misc_job_change_card", Rarity.EPIC, Category.MISC, 0.0, Material.NAME_TAG, "Thẻ Học Nghề", null, "Giấy phép đặc biệt từ Hiệp hội Nghề nghiệp.", "Sẽ tự động tiêu hao khi bạn chọn đổi nghề", "tại Menu Trung Tâm Nghề Nghiệp."));
 
         // --- 10. CÁC VẬT PHẨM TIÊU THỤ ---
         // Tinh thể ma thuật
@@ -251,5 +253,51 @@ public class ItemManager {
     public ItemData getItemData(String id) {
         if (id == null) return null;
         return registry.get(id.toLowerCase());
+    }
+
+    // ===============================================
+    // HÀM TIỆN ÍCH DÙNG CHUNG: CHỐNG LỖI METADATA (CỰC KỲ QUAN TRỌNG)
+    // ===============================================
+    public boolean isMatch(ItemStack item1, ItemStack item2) {
+        if (item1 == null || item2 == null || item1.getType() == Material.AIR) return false;
+
+        String id1 = getItemId(item1);
+        String id2 = getItemId(item2);
+
+        // 1. Nếu cả 2 đều là đồ RPG (Có ID ẩn) -> Chỉ cần so sánh ID là an toàn 100%
+        if (id1 != null && id2 != null) {
+            return id1.equalsIgnoreCase(id2);
+        }
+        // 2. Nếu là đồ Vanilla bình thường (Không có ID) -> Dùng isSimilar làm phương án dự phòng
+        return item1.isSimilar(item2);
+    }
+
+    public int countItem(org.bukkit.entity.Player player, ItemStack template) {
+        int count = 0;
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (isMatch(item, template)) count += item.getAmount();
+        }
+        return count;
+    }
+
+    public boolean takeItem(org.bukkit.entity.Player player, ItemStack template, int amountToRemove) {
+        if (countItem(player, template) < amountToRemove) return false;
+
+        org.bukkit.inventory.Inventory inv = player.getInventory();
+        for (int i = 0; i < inv.getSize(); i++) {
+            ItemStack item = inv.getItem(i);
+            if (isMatch(item, template)) {
+                int amt = item.getAmount();
+                if (amt > amountToRemove) {
+                    item.setAmount(amt - amountToRemove);
+                    return true;
+                } else {
+                    inv.setItem(i, null);
+                    amountToRemove -= amt;
+                    if (amountToRemove <= 0) return true;
+                }
+            }
+        }
+        return true;
     }
 }

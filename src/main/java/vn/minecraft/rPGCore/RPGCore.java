@@ -3,6 +3,7 @@ package vn.minecraft.rPGCore;
 import org.bukkit.plugin.java.JavaPlugin;
 import vn.minecraft.rPGCore.classes.ClassManager;
 import vn.minecraft.rPGCore.commands.*;
+import vn.minecraft.rPGCore.jobs.gui.JobSelectionGUI;
 import vn.minecraft.rPGCore.listeners.ComboListener;
 import vn.minecraft.rPGCore.listeners.EquipmentListener;
 import vn.minecraft.rPGCore.listeners.PlayerListener;
@@ -22,6 +23,7 @@ public final class RPGCore extends JavaPlugin {
     private BoredomManager boredomManager;
     private FoodBuffManager foodBuffManager;
     private SkillManager skillManager; // [THÊM DÒNG NÀY VÀO ĐÂY]
+    private ItemManager itemManager; // [THÊM DÒNG NÀY]
 
     @Override
     public void onEnable() {
@@ -37,8 +39,8 @@ public final class RPGCore extends JavaPlugin {
         SkillUIManager skillUI = new SkillUIManager(playerManager, skillManager);
         BlacksmithGUI blacksmithGUI = new BlacksmithGUI();
 
-        ItemManager ingredientManager = new ItemManager(this);
-        CookingManager cookingManager = new CookingManager(this, ingredientManager);
+        this.itemManager = new ItemManager(this);
+        CookingManager cookingManager = new CookingManager(this, this.itemManager);
 
         this.boredomManager = new BoredomManager(this);
         this.foodBuffManager = new FoodBuffManager(this);
@@ -77,7 +79,8 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.ShopListener(shopManager, currencyManager, playerManager), this);
         getServer().getPluginManager().registerEvents(elementRotationGUI, this);
         // Đăng ký Listener cho Hệ thống Vật phẩm tiêu hao (Bình máu, Tinh thể...)
-        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.ConsumableListener(ingredientManager), this);
+        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.ConsumableListener(this.itemManager), this);
+        getServer().getPluginManager().registerEvents(new JobSelectionGUI(), this);
 
         new RegenTask(playerManager, bossBarManager).runTaskTimer(this, 0L, 20L);
 
@@ -89,7 +92,8 @@ public final class RPGCore extends JavaPlugin {
         getCommand("binds").setExecutor(new BindsCommand(skillUI));
         getCommand("rpgclassadmin").setExecutor(new RPGClassAdminCommand(adminArrowCraftingUI));
         getCommand("arrow").setExecutor(new ArrowCommand(arrowRecipeManager));
-        getCommand("ig").setExecutor(new ItemAdminCommand(ingredientManager));
+        getCommand("ig").setExecutor(new ItemAdminCommand(this.itemManager));
+        getCommand("job").setExecutor(new vn.minecraft.rPGCore.jobs.commands.JobCommand());
 
         // [MỚI]: ĐĂNG KÝ LỆNH NGÂN HÀNG (/bal)
         if (this.getCommand("bal") != null) {
@@ -153,5 +157,9 @@ public final class RPGCore extends JavaPlugin {
 
     public vn.minecraft.rPGCore.ui.BossBarManager getBossBarManager() {
         return this.bossBarManager;
+    }
+
+    public vn.minecraft.rPGCore.managers.ItemManager getItemManager() {
+        return this.itemManager;
     }
 }
