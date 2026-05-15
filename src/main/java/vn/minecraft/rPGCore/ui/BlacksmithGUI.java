@@ -17,6 +17,9 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.commands.RepairAdminCommand;
+import vn.minecraft.rPGCore.jobs.core.JobManager;
+import vn.minecraft.rPGCore.jobs.core.JobQuestManager;
+import vn.minecraft.rPGCore.jobs.core.PlayerJobData;
 import vn.minecraft.rPGCore.managers.ItemManager;
 
 import java.util.ArrayList;
@@ -193,6 +196,12 @@ public class BlacksmithGUI implements Listener {
 
             // 4. Thực thi (Trừ Mạt, Tăng Cấp, Cộng EXP)
             itemManager.takeItem(player, scrapTemplate, cost);
+
+            // Gửi tín hiệu thành công (Vì Rèn Bậc Thầy là thành công 100%)
+            vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.FORGE_ANY, currentLevel);
+            vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.USE_MASTER_FORGE);
+            vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.FORGE_SUCCESS, currentLevel);
+
             int newLevel = currentLevel + 1;
 
             // EXP thưởng lớn cho việc xài Nút Vàng
@@ -242,21 +251,32 @@ public class BlacksmithGUI implements Listener {
                 // (Có thể bỏ dòng thông báo này nếu sợ spam chat khi đập 100 lần)
                 // player.sendMessage("§e✨ [Thợ Rèn] §fKỹ năng bảo quản nguyên liệu: Không tiêu hao đá nâng cấp!");
             } else {
+                JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.CONSUME_UPGRADE_STONE);
                 removeCustomItem(player, stoneTemplate, 1);
             }
             stonesUsed++;
 
+            // 1. TÍN HIỆU ĐẬP ĐỒ (Bất kể thành bại)
+            // (Chèn ngay trước lúc tính toán tỉ lệ roll)
+            JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.FORGE_ANY, currentLevel);
+
             // [HOOK 1 - THỢ RÈN]: Tăng tỉ lệ thành công (Nhân Hệ Số)
-            double jobSuccessBonus = vn.minecraft.rPGCore.jobs.core.JobManager.getForgeBonus(player);
+            double jobSuccessBonus = JobManager.getForgeBonus(player);
             double successRate = RATES[currentLevel] * (1.0 + (jobSuccessBonus / 100.0));
             double roll = rand.nextDouble() * 100.0;
 
             if (roll <= successRate) {
+                // [THIẾU DÒNG NÀY]: Báo cáo đập thành công cho Nhiệm Vụ!
+                JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.FORGE_SUCCESS, currentLevel);
+                // Tăng Streak và Báo cáo
+                PlayerJobData data = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(player);
+                data.setCurrentForgeStreak(data.getCurrentForgeStreak() + 1);
+                vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.FORGE_STREAK, data.getCurrentForgeStreak());
                 // Thành công Lên cấp
                 currentLevel++;
 
                 // Trả EXP đập thành công
-                vn.minecraft.rPGCore.jobs.core.JobManager.addExp(player, 30.0 + (currentLevel * 5.0));
+                JobManager.addExp(player, 30.0 + (currentLevel * 5.0));
 
                 if (SAFE_LEVELS.contains(currentLevel)) {
                     applyMilestoneBonus(player, item);
@@ -266,13 +286,16 @@ public class BlacksmithGUI implements Listener {
                     break;
                 }
             } else {
+                // 3. TÍN HIỆU ĐẬP THẤT BẠI
+                JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.FORGE_FAIL, currentLevel);
+                JobManager.getPlayerData(player).setCurrentForgeStreak(0);
                 // Thất bại Rớt cấp (Nếu không nằm ở mốc bảo hiểm)
                 if (!SAFE_LEVELS.contains(currentLevel)) {
                     currentLevel--;
                 }
 
                 // Trả EXP đập xịt (Farm chính)
-                vn.minecraft.rPGCore.jobs.core.JobManager.addExp(player, 15.0);
+                JobManager.addExp(player, 15.0);
 
                 // [HOOK 2 - THỢ RÈN]: Trả lại Mạt thợ rèn khi xịt
                 if (currentJob instanceof vn.minecraft.rPGCore.jobs.types.BlacksmithJob) {

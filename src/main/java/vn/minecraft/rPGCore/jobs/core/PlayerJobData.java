@@ -12,6 +12,12 @@ public class PlayerJobData {
 
     private int blacksmithScraps;
 
+    // Hệ thống Daily/Weekly Commission
+    private java.util.List<String> activeDailyQuests;
+    private java.util.List<String> activeWeeklyQuests;
+    private int dailyMilestone; // Điểm năng động ngày (0 -> 3)
+    private int currentForgeStreak; // Đếm chuỗi đập thành công
+
     // Lưu trữ Nhiệm Vụ
     private Map<String, Integer> questProgress;
     private Map<String, Boolean> questClaimed;
@@ -28,6 +34,11 @@ public class PlayerJobData {
         this.questClaimed = new HashMap<>();
         this.lastDailyReset = System.currentTimeMillis();
         this.lastWeeklyReset = System.currentTimeMillis();
+
+        this.activeDailyQuests = new java.util.ArrayList<>();
+        this.activeWeeklyQuests = new java.util.ArrayList<>();
+        this.dailyMilestone = 0;
+        this.currentForgeStreak = 0;
     }
 
     // Các hàm Getter/Setter cơ bản
@@ -67,4 +78,20 @@ public class PlayerJobData {
     public Map<String, Double> getJobExpsMap() { return this.jobExps; }
     public Map<String, Integer> getQuestProgressMap() { return this.questProgress; }
     public Map<String, Boolean> getQuestClaimedMap() { return this.questClaimed; }
+
+    // ==========================================
+    // CÁC HÀM QUẢN LÝ GACHA COMMISSION
+    // ==========================================
+    public java.util.List<String> getActiveDailyQuests() { return activeDailyQuests; }
+    public void setActiveDailyQuests(java.util.List<String> activeDailyQuests) { this.activeDailyQuests = activeDailyQuests; }
+
+    public java.util.List<String> getActiveWeeklyQuests() { return activeWeeklyQuests; }
+    public void setActiveWeeklyQuests(java.util.List<String> activeWeeklyQuests) { this.activeWeeklyQuests = activeWeeklyQuests; }
+
+    public int getDailyMilestone() { return dailyMilestone; }
+    public void setDailyMilestone(int dailyMilestone) { this.dailyMilestone = dailyMilestone; }
+    public void addDailyMilestone(int amount) { this.dailyMilestone += amount; }
+
+    public int getCurrentForgeStreak() { return currentForgeStreak; }
+    public void setCurrentForgeStreak(int streak) { this.currentForgeStreak = streak; }
 }

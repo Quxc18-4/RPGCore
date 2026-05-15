@@ -17,6 +17,9 @@ public abstract class RPGJob {
     public String getName() { return name; }
     public int getMaxLevel() { return maxLevel; }
 
+    // Thêm hàm này vào class RPGJob (dưới phần getMaxLevel)
+    public abstract java.util.Map<String, vn.minecraft.rPGCore.jobs.quests.RPGQuest> getQuests();
+
     // Giao diện hiển thị trên GUI
     public abstract ItemStack getIcon(int currentLevel);
     public abstract List<String> getDescription(int currentLevel);

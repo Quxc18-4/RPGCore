@@ -84,8 +84,13 @@ public final class RPGCore extends JavaPlugin {
         // Đăng ký Event tự động Load/Save Nghề khi người chơi ra vào server
         getServer().getPluginManager().registerEvents(new JobManager.JobDataListener(), this);
         getServer().getPluginManager().registerEvents(new JobSelectionGUI(), this);
+        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.jobs.gui.QuestBoardGUI(), this);
 
         new RegenTask(playerManager, bossBarManager).runTaskTimer(this, 0L, 20L);
+
+        // Chạy bộ đếm Reset Nhiệm vụ mỗi 5 phút (6000 ticks).
+        // Nếu bạn muốn đúng 1 tiếng thì đổi số 6000 thành 72000 nhé!
+        new vn.minecraft.rPGCore.jobs.core.JobResetTask().runTaskTimerAsynchronously(this, 6000L, 6000L);
 
         getCommand("class").setExecutor(new ClassCommand(classManager, classGUI));
         getCommand("rpgadmin").setExecutor(new RPGAdminCommand(playerManager));

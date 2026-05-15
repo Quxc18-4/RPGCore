@@ -30,7 +30,18 @@ public class JobCommand implements CommandExecutor, TabCompleter {
 
         // Xử lý các lệnh phụ: /job menu
         if (args[0].equalsIgnoreCase("menu")) {
-            //JobSelectionGUI.openStatusMenu(player);
+            JobSelectionGUI.openStatusMenu(player);
+            return true;
+        }
+
+        // [MỚI]: Lệnh bốc lại toàn bộ nhiệm vụ (Dành cho Admin test hoặc Reset qua ngày)
+        if (args[0].equalsIgnoreCase("roll")) {
+            if (!player.isOp()) {
+                player.sendMessage("§cBạn không có quyền dùng lệnh này!");
+                return true;
+            }
+            vn.minecraft.rPGCore.jobs.core.JobQuestManager.rollNewQuests(player, true, true);
+            player.sendMessage("§a§l[!] §fĐã làm mới lại toàn bộ Nhiệm vụ Ngày & Tuần của bạn!");
             return true;
         }
 
@@ -44,6 +55,7 @@ public class JobCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             List<String> subCommands = new ArrayList<>();
             subCommands.add("menu");
+            subCommands.add("roll");
 
             String current = args[0].toLowerCase();
             return subCommands.stream()

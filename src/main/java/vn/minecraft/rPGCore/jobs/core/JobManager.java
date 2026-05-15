@@ -167,7 +167,13 @@ public class JobManager {
     public static class JobDataListener implements Listener {
         @EventHandler
         public void onJoin(PlayerJoinEvent event) {
-            loadPlayerData(event.getPlayer().getUniqueId());
+            Player player = event.getPlayer();
+            loadPlayerData(player.getUniqueId());
+
+            // Tự động kiểm tra và bốc nhiệm vụ nếu là ngày mới hoặc người chơi chưa có quest
+            Bukkit.getScheduler().runTaskLater(vn.minecraft.rPGCore.RPGCore.getInstance(), () -> {
+                vn.minecraft.rPGCore.jobs.core.JobQuestManager.checkAndResetQuests(player);
+            }, 20L); // Delay 1 giây (20 Ticks) cho an toàn lúc đăng nhập
         }
 
         @EventHandler

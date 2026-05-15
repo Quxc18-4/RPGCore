@@ -78,6 +78,14 @@ public class JobSelectionGUI implements Listener {
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
+        // [MỚI]: Xử lý chặn click và mở Bảng nhiệm vụ cho GUI "HỒ SƠ NGHỀ NGHIỆP"
+        if (event.getView().getTitle().equals("§l§8HỒ SƠ NGHỀ NGHIỆP")) {
+            event.setCancelled(true);
+            if (event.getRawSlot() == 11) { // Bấm vào nút Bảng Nhiệm Vụ
+                vn.minecraft.rPGCore.jobs.gui.QuestBoardGUI.openGUI((Player) event.getWhoClicked());
+            }
+            return;
+        }
         if (!event.getView().getTitle().equals(GUI_NAME)) return;
         event.setCancelled(true);
 
@@ -145,5 +153,102 @@ public class JobSelectionGUI implements Listener {
 
         // Uỷ quyền toàn bộ việc đếm, check ID và trừ đồ cho ItemManager
         return itemManager.takeItem(player, cardTemplate, 1);
+    }
+
+    // ===============================================
+    // [MỚI]: GIAO DIỆN HỒ SƠ NGHỀ NGHIỆP & NHIỆM VỤ
+    // ===============================================
+    public static void openStatusMenu(Player player) {
+        PlayerJobData data = JobManager.getPlayerData(player);
+        RPGJob currentJob = JobManager.getPlayerJob(player);
+
+        if (currentJob == null) {
+            player.sendMessage("§cBạn chưa có nghề! Hãy click vào một nghề để học.");
+            openGUI(player); // Mở lại menu chọn nghề
+            return;
+        }
+
+        Inventory inv = Bukkit.createInventory(null, 27, "§l§8HỒ SƠ NGHỀ NGHIỆP");
+        ItemStack glass = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+        ItemMeta glassMeta = glass.getItemMeta();
+        glassMeta.setDisplayName(" ");
+        glass.setItemMeta(glassMeta);
+        for (int i = 0; i < 27; i++) inv.setItem(i, glass);
+
+        // 1. Ô TRUNG TÂM (SLOT 13) - ICON NGHỀ & THANH KINH NGHIỆM
+        ItemStack icon = currentJob.getIcon(data.getLevel()).clone();
+        ItemMeta iconMeta = icon.getItemMeta();
+        List<String> iconLore = iconMeta.hasLore() ? iconMeta.getLore() : new ArrayList<>();
+
+        double currentExp = data.getExp();
+        double requiredExp = JobManager.getRequiredJobExp(data.getLevel());
+
+        iconLore.add(" ");
+        iconLore.add("§fTiến độ thăng cấp: §e" + (int)currentExp + "§8/§e" + (int)requiredExp + " EXP");
+        iconLore.add("   " + getProgressBar(currentExp, requiredExp, 20));
+        iconLore.add(" ");
+        iconLore.add("§fMạt Thợ Rèn đang có: §6" + data.getBlacksmithScraps());
+        iconMeta.setLore(iconLore);
+        icon.setItemMeta(iconMeta);
+        inv.setItem(13, icon);
+
+        // ==========================================
+        // 2. NÚT MỞ BẢNG NHIỆM VỤ (SLOT 11)
+        // ==========================================
+        ItemStack questBoard = new ItemStack(Material.WRITABLE_BOOK);
+        ItemMeta qbMeta = questBoard.getItemMeta();
+        qbMeta.setDisplayName("§e§lBẢNG NHIỆM VỤ (COMMISSIONS)");
+        qbMeta.setLore(java.util.Arrays.asList(
+                "§7Nhấn vào để mở Bảng nhiệm vụ.",
+                "§7Hoàn thành các mốc để nhận phần thưởng lớn!"
+        ));
+        questBoard.setItemMeta(qbMeta);
+        inv.setItem(11, questBoard);
+
+        player.openInventory(inv);
+        player.playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, 1f, 1f);
+    }
+
+    private static ItemStack createQuestIcon(vn.minecraft.rPGCore.jobs.quests.RPGQuest quest, PlayerJobData data, boolean isWeekly) {
+        ItemStack item = new ItemStack(isWeekly ? Material.ENCHANTED_BOOK : Material.WRITTEN_BOOK);
+        ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName((isWeekly ? "§d§lNHIỆM VỤ TUẦN: " : "§6§lNHIỆM VỤ NGÀY: ") + quest.getName());
+
+        int progress = data.getQuestProgress(quest.getId());
+        int goal = quest.getGoal();
+        boolean claimed = data.isQuestClaimed(quest.getId());
+
+        List<String> lore = new ArrayList<>();
+        lore.add("§7" + quest.getDescription());
+        lore.add(" ");
+
+        if (claimed) {
+            lore.add("§a§lTrạng thái: ĐÃ HOÀN THÀNH");
+            lore.add("§8Tiến độ: " + goal + "/" + goal);
+        } else {
+            lore.add("§e§lTrạng thái: ĐANG TIẾN HÀNH");
+            lore.add("§fTiến độ: §e" + Math.min(progress, goal) + "§8/§e" + goal);
+            lore.add("   " + getProgressBar(progress, goal, 15));
+        }
+
+        lore.add(" ");
+        lore.add("§fPhần thưởng dự kiến:");
+        lore.add("§8▪ §a+" + quest.getDynamicExpReward(data.getLevel()) + " EXP Nghề");
+        lore.add("§8▪ §6+" + quest.getDynamicScrapReward(data.getLevel()) + " Mạt Thợ Rèn");
+
+        meta.setLore(lore);
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    private static String getProgressBar(double current, double max, int barSize) {
+        int completed = (int) ((current / max) * barSize);
+        StringBuilder bar = new StringBuilder("§8[");
+        for (int i = 0; i < barSize; i++) {
+            if (i < completed) bar.append("§a■");
+            else bar.append("§7■");
+        }
+        bar.append("§8]");
+        return bar.toString();
     }
 }
