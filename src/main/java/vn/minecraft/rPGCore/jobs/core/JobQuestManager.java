@@ -94,15 +94,13 @@ public class JobQuestManager {
     // KIỂM TRA VÀ RESET TỰ ĐỘNG (AUTO-RESET)
     // ==========================================
     public static void checkAndResetQuests(Player player) {
-        PlayerJobData data = JobManager.getPlayerData(player);
+        vn.minecraft.rPGCore.jobs.core.PlayerJobData data = JobManager.getPlayerData(player);
         if (data.getJobId().equals("NONE")) return;
 
         long now = System.currentTimeMillis();
 
-        // Điều kiện Roll Ngày: Đã qua 00:00 HOẶC chưa có quest nào
+        // 1. Logic Roll Nhiệm Vụ Ngày / Tuần (Giữ nguyên)
         boolean rollDaily = isNewDay(data.getLastDailyReset()) || data.getActiveDailyQuests() == null || data.getActiveDailyQuests().isEmpty();
-
-        // Điều kiện Roll Tuần: Đã qua 00:00 Thứ 2 HOẶC chưa có quest nào
         boolean rollWeekly = isNewWeek(data.getLastWeeklyReset()) || data.getActiveWeeklyQuests() == null || data.getActiveWeeklyQuests().isEmpty();
 
         if (rollDaily || rollWeekly) {
@@ -117,6 +115,17 @@ public class JobQuestManager {
                 player.sendMessage("§d§l[!] §fThử Thách Tuần của bạn đã được làm mới!");
             }
             player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
+        }
+
+        // 2. [MỚI]: Logic Reset Giới Hạn Shop Theo Tháng
+        if (isNewMonth(data.getLastMonthlyShopReset())) {
+            // Xóa toàn bộ lịch sử mua hàng
+            data.getShopMonthlyPurchases().clear();
+            // Cập nhật lại thời gian reset
+            data.setLastMonthlyShopReset(now);
+
+            player.sendMessage("§6§l[Shop Nghề Nghiệp] §fGiới hạn mua sắm tháng mới đã được làm mới!");
+            player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_BELL_USE, 1f, 1f);
         }
     }
 
@@ -136,5 +145,12 @@ public class JobQuestManager {
 
         // Nếu lần reset cuối cùng nằm TRƯỚC Thứ 2 tuần này -> Bắt buộc reset
         return last.isBefore(currentMonday);
+    }
+
+    private static boolean isNewMonth(long lastTime) {
+        java.time.LocalDate lastDate = java.time.Instant.ofEpochMilli(lastTime).atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+        java.time.LocalDate nowDate = java.time.LocalDate.now();
+        // Kiểm tra xem có khác tháng HOẶC khác năm không
+        return nowDate.getMonthValue() != lastDate.getMonthValue() || nowDate.getYear() != lastDate.getYear();
     }
 }

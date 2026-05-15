@@ -24,6 +24,17 @@ public abstract class RPGJob {
     public abstract ItemStack getIcon(int currentLevel);
     public abstract List<String> getDescription(int currentLevel);
 
+    // =========================================
+    // HỆ THỐNG GIAO DIỆN ĐỘNG (SHOP & SKILL TREE)
+    // =========================================
+    public abstract String getShopGUITitle();
+    public abstract void openShop(org.bukkit.entity.Player player);
+    public abstract void handleShopClick(org.bukkit.event.inventory.InventoryClickEvent event);
+
+    public abstract String getSkillTreeGUITitle();
+    public abstract void openSkillTree(org.bukkit.entity.Player player);
+    public abstract void handleSkillTreeClick(org.bukkit.event.inventory.InventoryClickEvent event);
+
     /* =========================================
      * CÁC HÀM ẢO (VIRTUAL METHODS) CHO HOOK API
      * (Chỉ override ở class nghề tương ứng)

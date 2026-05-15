@@ -257,12 +257,27 @@ public class BlacksmithGUI implements Listener {
             stonesUsed++;
 
             // 1. TÍN HIỆU ĐẬP ĐỒ (Bất kể thành bại)
-            // (Chèn ngay trước lúc tính toán tỉ lệ roll)
             JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.FORGE_ANY, currentLevel);
+
+            // ===============================================
+            // [MỚI]: KIỂM TRA BÚA RÈN MAY MẮN (LUCKY HAMMER)
+            // ===============================================
+            ItemManager itemManager = vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager();
+            org.bukkit.inventory.ItemStack luckyHammerTemplate = itemManager.buildItem("misc_lucky_hammer", 1);
+
+            double luckyBonus = 0.0;
+            // Nếu trong túi có Búa May Mắn -> Tự động tiêu hao 1 cái và cộng 10%
+            if (luckyHammerTemplate != null && itemManager.takeItem(player, luckyHammerTemplate, 1)) {
+                luckyBonus = 10.0; // Tăng thẳng 10% tỉ lệ thành công
+                player.sendMessage("§e✨ [Búa May Mắn] §fSức mạnh tỏa ra! Tỉ lệ đập đồ tăng thêm 10%!");
+                player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_USE, 1f, 2f);
+            }
 
             // [HOOK 1 - THỢ RÈN]: Tăng tỉ lệ thành công (Nhân Hệ Số)
             double jobSuccessBonus = JobManager.getForgeBonus(player);
-            double successRate = RATES[currentLevel] * (1.0 + (jobSuccessBonus / 100.0));
+
+            // Công thức mới: (Tỉ lệ gốc * (1 + Buff nghề)) + Buff Búa May Mắn
+            double successRate = (RATES[currentLevel] * (1.0 + (jobSuccessBonus / 100.0))) + luckyBonus;
             double roll = rand.nextDouble() * 100.0;
 
             if (roll <= successRate) {
@@ -289,8 +304,20 @@ public class BlacksmithGUI implements Listener {
                 // 3. TÍN HIỆU ĐẬP THẤT BẠI
                 JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.FORGE_FAIL, currentLevel);
                 JobManager.getPlayerData(player).setCurrentForgeStreak(0);
-                // Thất bại Rớt cấp (Nếu không nằm ở mốc bảo hiểm)
-                if (!SAFE_LEVELS.contains(currentLevel)) {
+
+                // [MỚI]: KIỂM TRA BÙA BẢO VỆ QUA ITEM MANAGER
+                org.bukkit.inventory.ItemStack charmTemplate = itemManager.buildItem("misc_protection_charm", 1);
+
+                boolean savedByCharm = false;
+                // Uỷ quyền đếm và trừ bùa cho ItemManager (Chuẩn quy trình)
+                if (charmTemplate != null && itemManager.takeItem(player, charmTemplate, 1)) {
+                    savedByCharm = true;
+                    player.sendMessage("§d✨ [Bùa Bảo Vệ] §fSức mạnh ma thuật đã bảo vệ trang bị khỏi rớt cấp!");
+                    player.playSound(player.getLocation(), org.bukkit.Sound.ITEM_TOTEM_USE, 1f, 1.5f);
+                }
+
+                // Thất bại Rớt cấp (Nếu không nằm ở mốc bảo hiểm VÀ KHÔNG CÓ BÙA BẢO VỆ)
+                if (!SAFE_LEVELS.contains(currentLevel) && !savedByCharm) {
                     currentLevel--;
                 }
 
@@ -306,7 +333,6 @@ public class BlacksmithGUI implements Listener {
                         player.sendMessage("§cĐập đồ thất bại... §aNhưng bạn thu lại được 1 Mạt Thợ Rèn!");
 
                         // Gọi trực tiếp API im lặng (Không Spam Console)
-                        ItemManager itemManager = vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager();
                         if (itemManager != null) {
                             org.bukkit.inventory.ItemStack scrap = itemManager.buildItem("misc_blacksmith_scrap", 1);
                             if (scrap != null) {

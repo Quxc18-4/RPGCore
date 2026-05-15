@@ -2,6 +2,7 @@ package vn.minecraft.rPGCore.managers;
 
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -169,6 +170,20 @@ public class ItemManager {
         register(new ItemData("misc_leather_pouch_piece", Rarity.COMMON, Category.MISC, 0.0, Material.ARMADILLO_SCUTE, "Mảnh Túi Da Đạo Tặc", null, "Một mảnh da cắt ra từ túi của bọn Đạo Tặc.", "Có vẻ như chúng dùng nó để giấu tiền vàng...")); // Rớt từ: Đạo Tặc
         register(new ItemData("misc_blacksmith_scrap", Rarity.UNCOMMON, Category.MISC, 0.0, Material.IRON_NUGGET, "Mạt Thợ Rèn", null, "Những mảnh vụn ma thuật xót lại khi đập đồ thất bại.", "Tích lũy đủ số lượng, chúng mang sức mạnh", "thần bí giúp đột phá trang bị thành công."));
         register(new ItemData("misc_job_change_card", Rarity.EPIC, Category.MISC, 0.0, Material.NAME_TAG, "Thẻ Học Nghề", null, "Giấy phép đặc biệt từ Hiệp hội Nghề nghiệp.", "Sẽ tự động tiêu hao khi bạn chọn đổi nghề", "tại Menu Trung Tâm Nghề Nghiệp."));
+        // [MỚI]: CÁC VẬT PHẨM TRONG SHOP THỢ RÈN
+        register(new ItemData("misc_protection_charm", Rarity.EPIC, Category.MISC, 0.0, Material.PAPER, "Bùa Bảo Vệ Trang Bị", null, "Sức mạnh phòng hộ ma thuật.", "Tự động tiêu hao khi rèn thất bại", "để ngăn chặn việc rớt 1 cấp độ."));
+        register(new ItemData("misc_lucky_hammer", Rarity.RARE, Category.MISC, 0.0, Material.GOLDEN_AXE, "Búa Rèn May Mắn", null, "Sẽ được thêm vào cơ chế sau:", "Để trong túi đồ, tự động tiêu hao", "để tăng 10% tỉ lệ thành công."));
+        // --- TÚI VŨ KHÍ (4 TIER) ---
+        register(new ItemData("bag_weapon_common", Rarity.COMMON, Category.MISC, 0.0, Material.BUNDLE, "Túi Vũ Khí Thường", null, "Chuột phải để mở.", "Nhận 1 Vũ khí Phẩm chất Common.", "Cấp độ vũ khí bằng với cấp của bạn."));
+        register(new ItemData("bag_weapon_uncommon", Rarity.UNCOMMON, Category.MISC, 0.0, Material.BUNDLE, "Túi Vũ Khí Hiếm", null, "Chuột phải để mở.", "Nhận 1 Vũ khí Phẩm chất Uncommon.", "Cấp độ vũ khí bằng với cấp của bạn."));
+        register(new ItemData("bag_weapon_rare", Rarity.RARE, Category.MISC, 0.0, Material.BUNDLE, "Túi Vũ Khí Tuyệt Đỉnh", null, "Chuột phải để mở.", "Nhận 1 Vũ khí Phẩm chất Rare.", "Cấp độ vũ khí bằng với cấp của bạn."));
+        register(new ItemData("bag_weapon_epic", Rarity.EPIC, Category.MISC, 0.0, Material.BUNDLE, "Túi Vũ Khí Sử Thi", null, "Chuột phải để mở.", "Nhận 1 Vũ khí Phẩm chất Epic.", "Cấp độ vũ khí bằng với cấp của bạn."));
+
+        // --- TÚI PHÒNG CỤ (4 TIER) ---
+        register(new ItemData("bag_armor_common", Rarity.COMMON, Category.MISC, 0.0, Material.BUNDLE, "Túi Phòng Cụ Thường", null, "Chuột phải để mở.", "Nhận 1 Giáp Phẩm chất Common.", "Cấp độ giáp bằng với cấp của bạn."));
+        register(new ItemData("bag_armor_uncommon", Rarity.UNCOMMON, Category.MISC, 0.0, Material.BUNDLE, "Túi Phòng Cụ Hiếm", null, "Chuột phải để mở.", "Nhận 1 Giáp Phẩm chất Uncommon.", "Cấp độ giáp bằng với cấp của bạn."));
+        register(new ItemData("bag_armor_rare", Rarity.RARE, Category.MISC, 0.0, Material.BUNDLE, "Túi Phòng Cụ Tuyệt Đỉnh", null, "Chuột phải để mở.", "Nhận 1 Giáp Phẩm chất Rare.", "Cấp độ giáp bằng với cấp của bạn."));
+        register(new ItemData("bag_armor_epic", Rarity.EPIC, Category.MISC, 0.0, Material.BUNDLE, "Túi Phòng Cụ Sử Thi", null, "Chuột phải để mở.", "Nhận 1 Giáp Phẩm chất Epic.", "Cấp độ giáp bằng với cấp của bạn."));
 
         // --- 10. CÁC VẬT PHẨM TIÊU THỤ ---
         // Tinh thể ma thuật
@@ -237,6 +252,15 @@ public class ItemManager {
 
         meta.setLore(lore);
         meta.getPersistentDataContainer().set(ITEM_KEY, PersistentDataType.STRING, data.id);
+
+        // [MỚI]: THÊM CỜ ẨN TOÀN BỘ CHỈ SỐ VANILLA (Bundle UI, Sát thương rìu vàng...)
+        meta.addItemFlags(
+                org.bukkit.inventory.ItemFlag.HIDE_ATTRIBUTES, // Ẩn sát thương vũ khí
+                org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS,
+                ItemFlag.HIDE_PLACED_ON, // Ẩn UI của Bundle/Sách
+                org.bukkit.inventory.ItemFlag.HIDE_UNBREAKABLE
+        );
+
         item.setItemMeta(meta);
         return item;
     }

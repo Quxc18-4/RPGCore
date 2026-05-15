@@ -91,7 +91,7 @@ public class UltimateElementGate implements ISkill {
         if (!handleCostAndCooldown(player, rpgPlayer, level)) return false;
         applyGlobalCooldown(player, rpgPlayer, level);
 
-        player.sendMessage("§6§l[!] VẠN PHÁP QUY TÔNG: KHỞI ĐỘNG!");
+        player.sendMessage("§6§l[!] MA PHÁP HỦY DIỆT: KHỞI ĐỘNG!");
         player.getWorld().playSound(player.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 2.0f);
 
         double baseBulletDmg = getBulletBaseDamage(level);

@@ -63,6 +63,34 @@ public class ConsumableListener implements Listener {
             consumed = true;
         }
 
+        // 3. Logic Mở Túi Vũ Khí & Phòng Cụ (8 Tier)
+        else if (itemId.startsWith("bag_weapon_") || itemId.startsWith("bag_armor_")) {
+            // Nhận diện Loại túi
+            String type = itemId.startsWith("bag_weapon_") ? "weapon" : "armor";
+            String typeName = type.equals("weapon") ? "Vũ Khí" : "Phòng Cụ";
+
+            // Nhận diện Tier (0 -> 3)
+            int tierIndex = 0;
+            if (itemId.endsWith("uncommon")) tierIndex = 1;
+            else if (itemId.endsWith("rare")) tierIndex = 2;
+            else if (itemId.endsWith("epic")) tierIndex = 3;
+
+            // Lấy cấp độ hiện tại của người chơi để đúc đồ
+            int playerLevel = player.getLevel();
+            if (playerLevel <= 0) playerLevel = 1; // Đảm bảo tối thiểu cấp 1
+
+            player.sendMessage("§a§l[!] §fĐang mở Túi " + typeName + "...");
+
+            // Gọi API từ EquipmentCommand: Truyền tierIndex cố định, mọi chỉ số phụ khác random (-1 / null)
+            ItemStack gachaItem = vn.minecraft.rPGCore.commands.EquipmentCommand.createGachaItem(
+                    type, playerLevel, null, tierIndex, null, -1, -1
+            );
+            player.getInventory().addItem(gachaItem);
+
+            player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_FIREWORK_ROCKET_BLAST, 1f, 1f);
+            consumed = true;
+        }
+
         // 3. Trừ Item sau khi dùng thành công
         if (consumed) {
             event.setCancelled(true); // Cản sự kiện đặt block (nếu item là block)

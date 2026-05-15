@@ -97,10 +97,12 @@ public class JobSelectionGUI implements Listener {
                 vn.minecraft.rPGCore.jobs.gui.QuestBoardGUI.openGUI(player);
             }
             else if (slot == 15) {
-                vn.minecraft.rPGCore.jobs.gui.JobShopGUI.openGUI(player);
+                // Thay vì JobShopGUI.openGUI(player) -> Gọi lệnh của Job
+                JobManager.getPlayerJob(player).openShop(player);
             }
             else if (slot == 16) {
-                vn.minecraft.rPGCore.jobs.gui.JobSkillTreeGUI.openGUI(player);
+                // Thay vì JobSkillTreeGUI.openGUI(player) -> Gọi lệnh của Job
+                JobManager.getPlayerJob(player).openSkillTree(player);
             }
 
             return; // Rất quan trọng: Xử lý xong menu này thì DỪNG LẠI, không chạy xuống dưới
