@@ -17,6 +17,7 @@ import vn.minecraft.rPGCore.jobs.core.PlayerJobData;
 import vn.minecraft.rPGCore.jobs.core.RPGJob;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class JobSelectionGUI implements Listener {
@@ -78,22 +79,42 @@ public class JobSelectionGUI implements Listener {
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
-        // [MỚI]: Xử lý chặn click và mở Bảng nhiệm vụ cho GUI "HỒ SƠ NGHỀ NGHIỆP"
+        Player player = (Player) event.getWhoClicked();
+        int slot = event.getRawSlot();
+
+        // =========================================================
+        // 1. XỬ LÝ GUI: "HỒ SƠ NGHỀ NGHIỆP" (Menu Quản Lý Cá Nhân)
+        // =========================================================
         if (event.getView().getTitle().equals("§l§8HỒ SƠ NGHỀ NGHIỆP")) {
             event.setCancelled(true);
-            if (event.getRawSlot() == 11) { // Bấm vào nút Bảng Nhiệm Vụ
-                vn.minecraft.rPGCore.jobs.gui.QuestBoardGUI.openGUI((Player) event.getWhoClicked());
+
+            if (slot == 10) {
+                // Tạm thời báo đang bảo trì, hoặc bạn có thể gọi GUI Leaderboard ở đây sau
+                player.sendMessage("§e[!] Bảng xếp hạng sẽ cập nhật trong 1 giờ tới!");
+                player.closeInventory();
             }
-            return;
+            else if (slot == 11) {
+                vn.minecraft.rPGCore.jobs.gui.QuestBoardGUI.openGUI(player);
+            }
+            else if (slot == 15) {
+                vn.minecraft.rPGCore.jobs.gui.JobShopGUI.openGUI(player);
+            }
+            else if (slot == 16) {
+                vn.minecraft.rPGCore.jobs.gui.JobSkillTreeGUI.openGUI(player);
+            }
+
+            return; // Rất quan trọng: Xử lý xong menu này thì DỪNG LẠI, không chạy xuống dưới
         }
+
+        // =========================================================
+        // 2. XỬ LÝ GUI: "TRUNG TÂM NGHỀ NGHIỆP" (Chọn / Đổi Nghề)
+        // =========================================================
         if (!event.getView().getTitle().equals(GUI_NAME)) return;
         event.setCancelled(true);
 
-        if (event.getRawSlot() < 0 || event.getRawSlot() >= 27) return;
+        if (slot < 0 || slot >= 27) return;
 
-        Player player = (Player) event.getWhoClicked();
         ItemStack clicked = event.getCurrentItem();
-
         if (clicked == null || clicked.getType() == Material.AIR || clicked.getType() == Material.GRAY_STAINED_GLASS_PANE) return;
 
         // Tìm xem người chơi click vào nghề nào dựa trên Tên hiển thị
@@ -111,14 +132,14 @@ public class JobSelectionGUI implements Listener {
         String oldJobId = data.getJobId();
         String newJobId = targetJob.getId();
 
-        // 1. Nếu click vào nghề đang làm
+        // [A]. Nếu click vào nghề đang làm
         if (oldJobId.equalsIgnoreCase(newJobId)) {
             player.sendMessage("§cBạn đang làm nghề này rồi!");
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
             return;
         }
 
-        // 2. Nếu đã có nghề và muốn ĐỔI NGHỀ (Check Thẻ)
+        // [B]. Nếu đã có nghề và muốn ĐỔI NGHỀ (Check Thẻ)
         if (!oldJobId.equals("NONE")) {
             boolean hasCard = removeJobChangeCard(player);
 
@@ -126,12 +147,12 @@ public class JobSelectionGUI implements Listener {
                 player.sendMessage("§a✨ Đã sử dụng 1x Thẻ Đổi Nghề! Nghề §e" + JobManager.getPlayerJob(player).getName() + " §ađược giữ nguyên cấp độ.");
             } else {
                 int oldLevel = data.getLevel(oldJobId);
-                int penalizedLevel = Math.max(1, oldLevel - 5); // Phạt 3 cấp, tối thiểu là cấp 1
+                int penalizedLevel = Math.max(1, oldLevel - 5); // Phạt 5 cấp, tối thiểu là cấp 1
                 data.setLevel(oldJobId, penalizedLevel);
                 player.sendMessage("§cBạn đã đổi nghề mà không có Thẻ! Nghề cũ bị giảm xuống cấp §e" + penalizedLevel + "§c.");
             }
         } else {
-            // 3. Lần đầu chọn nghề
+            // [C]. Lần đầu chọn nghề
             player.sendMessage("§aChúc mừng bạn đã chính thức gia nhập nghề §e" + targetJob.getName() + "§a!");
         }
 
@@ -155,88 +176,46 @@ public class JobSelectionGUI implements Listener {
         return itemManager.takeItem(player, cardTemplate, 1);
     }
 
-    // ===============================================
-    // [MỚI]: GIAO DIỆN HỒ SƠ NGHỀ NGHIỆP & NHIỆM VỤ
-    // ===============================================
     public static void openStatusMenu(Player player) {
         PlayerJobData data = JobManager.getPlayerData(player);
         RPGJob currentJob = JobManager.getPlayerJob(player);
-
-        if (currentJob == null) {
-            player.sendMessage("§cBạn chưa có nghề! Hãy click vào một nghề để học.");
-            openGUI(player); // Mở lại menu chọn nghề
-            return;
-        }
+        if (currentJob == null) { openGUI(player); return; }
 
         Inventory inv = Bukkit.createInventory(null, 27, "§l§8HỒ SƠ NGHỀ NGHIỆP");
         ItemStack glass = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-        ItemMeta glassMeta = glass.getItemMeta();
-        glassMeta.setDisplayName(" ");
-        glass.setItemMeta(glassMeta);
         for (int i = 0; i < 27; i++) inv.setItem(i, glass);
 
-        // 1. Ô TRUNG TÂM (SLOT 13) - ICON NGHỀ & THANH KINH NGHIỆM
+        // 1. Nút Bảng Xếp Hạng (Slot 10)
+        inv.setItem(10, createMenuButton(Material.GOLD_BLOCK, "§e§lBẢNG XẾP HẠNG", "§7Xem những nghệ nhân xuất sắc nhất."));
+
+        // 2. Nút Bảng Nhiệm Vụ (Slot 11)
+        inv.setItem(11, createMenuButton(Material.WRITABLE_BOOK, "§a§lBẢNG NHIỆM VỤ", "§7Làm nhiệm vụ để nhận phần thưởng."));
+
+        // 3. Icon Nghề (Slot 13 - Trung tâm)
         ItemStack icon = currentJob.getIcon(data.getLevel()).clone();
-        ItemMeta iconMeta = icon.getItemMeta();
-        List<String> iconLore = iconMeta.hasLore() ? iconMeta.getLore() : new ArrayList<>();
-
-        double currentExp = data.getExp();
-        double requiredExp = JobManager.getRequiredJobExp(data.getLevel());
-
-        iconLore.add(" ");
-        iconLore.add("§fTiến độ thăng cấp: §e" + (int)currentExp + "§8/§e" + (int)requiredExp + " EXP");
-        iconLore.add("   " + getProgressBar(currentExp, requiredExp, 20));
-        iconLore.add(" ");
-        iconLore.add("§fMạt Thợ Rèn đang có: §6" + data.getBlacksmithScraps());
-        iconMeta.setLore(iconLore);
-        icon.setItemMeta(iconMeta);
+        ItemMeta meta = icon.getItemMeta();
+        List<String> lore = meta.getLore();
+        lore.add(" ");
+        lore.add("§fTiến độ: §e" + (int)data.getExp() + "§8/§e" + (int)JobManager.getRequiredJobExp(data.getLevel()) + " EXP");
+        lore.add(getProgressBar(data.getExp(), JobManager.getRequiredJobExp(data.getLevel()), 20));
+        meta.setLore(lore);
+        icon.setItemMeta(meta);
         inv.setItem(13, icon);
 
-        // ==========================================
-        // 2. NÚT MỞ BẢNG NHIỆM VỤ (SLOT 11)
-        // ==========================================
-        ItemStack questBoard = new ItemStack(Material.WRITABLE_BOOK);
-        ItemMeta qbMeta = questBoard.getItemMeta();
-        qbMeta.setDisplayName("§e§lBẢNG NHIỆM VỤ (COMMISSIONS)");
-        qbMeta.setLore(java.util.Arrays.asList(
-                "§7Nhấn vào để mở Bảng nhiệm vụ.",
-                "§7Hoàn thành các mốc để nhận phần thưởng lớn!"
-        ));
-        questBoard.setItemMeta(qbMeta);
-        inv.setItem(11, questBoard);
+        // 4. Nút Cửa Hàng (Slot 15)
+        inv.setItem(15, createMenuButton(Material.EMERALD, "§6§lCỬA HÀNG NGHỀ", "§7Dùng Mạt Thợ Rèn để mua đồ quý."));
+
+        // 5. Nút Kỹ Năng Tối Thượng (Slot 16)
+        inv.setItem(16, createMenuButton(Material.NETHER_STAR, "§d§lKỸ NĂNG TỐI THƯỢNG", "§7Yêu cầu Cấp 50 để mở khóa."));
 
         player.openInventory(inv);
-        player.playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, 1f, 1f);
     }
 
-    private static ItemStack createQuestIcon(vn.minecraft.rPGCore.jobs.quests.RPGQuest quest, PlayerJobData data, boolean isWeekly) {
-        ItemStack item = new ItemStack(isWeekly ? Material.ENCHANTED_BOOK : Material.WRITTEN_BOOK);
+    private static ItemStack createMenuButton(Material mat, String name, String loreLine) {
+        ItemStack item = new ItemStack(mat);
         ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName((isWeekly ? "§d§lNHIỆM VỤ TUẦN: " : "§6§lNHIỆM VỤ NGÀY: ") + quest.getName());
-
-        int progress = data.getQuestProgress(quest.getId());
-        int goal = quest.getGoal();
-        boolean claimed = data.isQuestClaimed(quest.getId());
-
-        List<String> lore = new ArrayList<>();
-        lore.add("§7" + quest.getDescription());
-        lore.add(" ");
-
-        if (claimed) {
-            lore.add("§a§lTrạng thái: ĐÃ HOÀN THÀNH");
-            lore.add("§8Tiến độ: " + goal + "/" + goal);
-        } else {
-            lore.add("§e§lTrạng thái: ĐANG TIẾN HÀNH");
-            lore.add("§fTiến độ: §e" + Math.min(progress, goal) + "§8/§e" + goal);
-            lore.add("   " + getProgressBar(progress, goal, 15));
-        }
-
-        lore.add(" ");
-        lore.add("§fPhần thưởng dự kiến:");
-        lore.add("§8▪ §a+" + quest.getDynamicExpReward(data.getLevel()) + " EXP Nghề");
-        lore.add("§8▪ §6+" + quest.getDynamicScrapReward(data.getLevel()) + " Mạt Thợ Rèn");
-
-        meta.setLore(lore);
+        meta.setDisplayName(name);
+        meta.setLore(Arrays.asList(loreLine));
         item.setItemMeta(meta);
         return item;
     }

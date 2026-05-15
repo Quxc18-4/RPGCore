@@ -85,6 +85,9 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new JobManager.JobDataListener(), this);
         getServer().getPluginManager().registerEvents(new JobSelectionGUI(), this);
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.jobs.gui.QuestBoardGUI(), this);
+        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.QuestListener(), this);
+        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.jobs.gui.JobShopGUI(), this);
+        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.jobs.gui.JobSkillTreeGUI(), this);
 
         new RegenTask(playerManager, bossBarManager).runTaskTimer(this, 0L, 20L);
 
