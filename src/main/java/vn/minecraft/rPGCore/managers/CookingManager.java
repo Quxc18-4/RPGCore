@@ -45,10 +45,10 @@ public class CookingManager implements Listener {
     public final NamespacedKey FAT_DEBUFF_KEY;
     public final NamespacedKey STAT_LS, STAT_CRIT, STAT_DROP, POTION_EFFECTS_KEY;
 
-    public CookingManager(JavaPlugin plugin, ItemManager itemManager) {
+    public CookingManager(JavaPlugin plugin, ItemManager itemManager, CookingEngine cookingEngine) {
         this.plugin = plugin;
         this.itemManager = itemManager;
-        this.cookingEngine = new CookingEngine();
+        this.cookingEngine = cookingEngine; // Nhận engine từ RPGCore thay vì tạo mới
 
         this.COOKED_TIME_KEY = new NamespacedKey(plugin, "food_cooked_time");
         this.MAX_FRESHNESS_KEY = new NamespacedKey(plugin, "food_max_freshness");
@@ -342,7 +342,7 @@ public class CookingManager implements Listener {
         activePots.put(loc, new FinishedPot(resultItem, finalScoops, pColor));
     }
 
-    private ItemStack buildFoodItem(FoodItemData data, NutritionStats stats) {
+    public ItemStack buildFoodItem(FoodItemData data, NutritionStats stats) {
         ItemStack item = new ItemStack(data.material);
         ItemMeta meta = item.getItemMeta();
         NamespacedKey SPICE_KEY = new NamespacedKey(plugin, "food_spice");
@@ -512,5 +512,37 @@ public class CookingManager implements Listener {
                 break;
             }
         }
+    }
+    // [MỚI]: API Sinh Súp Ngẫu Nhiên cho Túi Cơm Hộp
+    public ItemStack generateRandomSoup(Player cook) {
+        List<ItemManager.ItemData> randomRecipe = new ArrayList<>();
+        List<String> pool = itemManager.getAllIds();
+        Random rand = new Random();
+
+        List<ItemManager.ItemData> cores = new ArrayList<>();
+        List<ItemManager.ItemData> spices = new ArrayList<>();
+
+        for(String id : pool) {
+            ItemManager.ItemData data = itemManager.getItemData(id);
+            if(data == null) continue;
+            if(data.category == ItemManager.Category.MEAT || data.category == ItemManager.Category.FISH || data.category == ItemManager.Category.VEG || data.category == ItemManager.Category.STARCH) {
+                cores.add(data);
+            } else if(data.category == ItemManager.Category.SPICE || data.category == ItemManager.Category.FAT) {
+                spices.add(data);
+            }
+        }
+
+        // Bốc ngẫu nhiên 2 Nguyên liệu chính và 1 Gia vị
+        if(!cores.isEmpty()) {
+            randomRecipe.add(cores.get(rand.nextInt(cores.size())));
+            randomRecipe.add(cores.get(rand.nextInt(cores.size())));
+        }
+        if(!spices.isEmpty()) {
+            randomRecipe.add(spices.get(rand.nextInt(spices.size())));
+        }
+
+        FoodItemData data = cookingEngine.evaluate(randomRecipe, cook);
+        NutritionStats stats = new NutritionStats(randomRecipe);
+        return buildFoodItem(data, stats);
     }
 }

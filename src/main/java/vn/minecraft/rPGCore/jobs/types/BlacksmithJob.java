@@ -66,25 +66,24 @@ public class BlacksmithJob extends RPGJob {
         lore.add("§fCấp độ hiện tại: §b" + currentLevel + "§8/§b" + maxLevel);
         lore.add("");
         lore.add("§a§lNỘI TẠI NGHỀ CƠ BẢN:");
-        // Tìm dòng này và sửa lại để nó hiển thị động khoảng %
-        double minBonus = getForgeSuccessBonus(currentLevel, 14); // Bonus ở cấp cao nhất
-        double maxBonus = getForgeSuccessBonus(currentLevel, 1);  // Bonus ở cấp thấp nhất
-        lore.add("§8▪ §fNội tại Rèn: §aCộng thêm " + String.format("%.1f", minBonus) + "% -> " + String.format("%.1f", maxBonus) + "% §7(Tùy bậc đồ)");
+
+        double minBonus = getForgeSuccessBonus(currentLevel, 14);
+        double maxBonus = getForgeSuccessBonus(currentLevel, 1);
+        lore.add("§8▪ §fNội tại Rèn: §aCộng thẳng " + String.format("%.1f", minBonus) + "% -> " + String.format("%.1f", maxBonus) + "% §7(Tùy bậc đồ)");
         lore.add("§8▪ §fTỉ lệ nhận thêm nâng cấp Dòng dõi: §6" + String.format("%.1f", (50.0 + getLineageStarBonus(currentLevel) * 100)) + "%");
 
-        // Hiển thị đồng bộ kỹ năng
         double scrapChance = getScrapRefundChance(currentLevel);
         if (data.hasUnlockedSkill("BLACKSMITH", "BS_HAND_OF_GOD")) scrapChance += 20.0;
         lore.add("§8▪ §fTỉ lệ hoàn trả Mạt Thợ Rèn khi thất bại: §c" + String.format("%.1f", scrapChance) + "%" + (data.hasUnlockedSkill("BLACKSMITH", "BS_HAND_OF_GOD") ? " §d(+20% Kỹ Năng)" : ""));
-
         lore.add("§8▪ §fXác suất không tiêu hao Đá khi rèn: §b" + String.format("%.1f", getStoneSaveChance(currentLevel)) + "%");
 
-        // Liệt kê các Kỹ năng Tối Thượng đã học
+        boolean hasGod = data.hasUnlockedSkill("BLACKSMITH", "BS_HAND_OF_GOD");
         boolean hasSaver = data.hasUnlockedSkill("BLACKSMITH", "BS_MASTER_SAVER");
         boolean hasCharm = data.hasUnlockedSkill("BLACKSMITH", "BS_GUARDIAN_CHARM");
-        if (hasSaver || hasCharm) {
+        if (hasGod || hasSaver || hasCharm) {
             lore.add("");
             lore.add("§d§lKỸ NĂNG TỐI THƯỢNG ĐÃ MỞ:");
+            if (hasGod) lore.add("§8▪ §eBàn Tay Của Chúa: §f+20% tỉ lệ hoàn mạt thợ rèn.");
             if (hasSaver) lore.add("§8▪ §eBậc Thầy Tiết Kiệm: §fGiảm 20% Mạt khi Rèn Bậc Thầy.");
             if (hasCharm) lore.add("§8▪ §eBùa Hộ Mệnh: §f15% không mất Búa May Mắn/Bùa Bảo Vệ.");
         }
@@ -94,13 +93,12 @@ public class BlacksmithJob extends RPGJob {
 
     @Override
     public double getForgeSuccessBonus(int jobLevel, int itemLevel) {
-        // Tính % sức mạnh dựa trên cấp độ Nghề (Max 50 = 100% sức mạnh)
         double power = Math.min(jobLevel, maxLevel) / (double) maxLevel;
-
-        if (itemLevel <= 5) return 10.0 * power;      // Giai đoạn đầu: Max +10%
-        else if (itemLevel <= 10) return 5.0 * power; // Giai đoạn giữa: Max +5%
-        else return 1.0 * power;                      // Giai đoạn cuối: Max +1%
+        if (itemLevel <= 5) return 10.0 * power;
+        else if (itemLevel <= 10) return 5.0 * power;
+        else return 1.0 * power;
     }
+
     @Override
     public double getLineageStarBonus(int level) { return (level * 0.6) / 100.0; }
     @Override
@@ -109,7 +107,7 @@ public class BlacksmithJob extends RPGJob {
     public double getStoneSaveChance(int level) { return level * 0.5; }
 
     // =========================================
-    // TRIỂN KHAI CỬA HÀNG NGHỀ (SHOP)
+    // CỬA HÀNG THỢ RÈN (VIỀN CAM - RUỘT ĐEN)
     // =========================================
     @Override
     public String getShopGUITitle() { return "§l§8SHOP THỢ RÈN"; }
@@ -121,36 +119,42 @@ public class BlacksmithJob extends RPGJob {
         vn.minecraft.rPGCore.jobs.core.PlayerJobData data = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(player);
         int jobLevel = data.getLevel("BLACKSMITH");
 
-        ItemStack glass = new ItemStack(Material.ORANGE_STAINED_GLASS_PANE);
-        ItemMeta gMeta = glass.getItemMeta(); gMeta.setDisplayName(" "); glass.setItemMeta(gMeta);
-        for (int i = 0; i < 54; i++) inv.setItem(i, glass);
+        ItemStack orangeGlass = new ItemStack(Material.ORANGE_STAINED_GLASS_PANE);
+        ItemMeta oMeta = orangeGlass.getItemMeta(); oMeta.setDisplayName(" "); orangeGlass.setItemMeta(oMeta);
 
-        // HÀNG 1,2,3,4 (Giữ nguyên như tin nhắn trước)
+        ItemStack blackGlass = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
+        ItemMeta blMeta = blackGlass.getItemMeta(); blMeta.setDisplayName(" "); blackGlass.setItemMeta(blMeta);
+
+        // Đổ kính viền cam, ruột đen
+        for (int i = 0; i < 54; i++) {
+            if (i < 9 || i >= 45 || i % 9 == 0 || i % 9 == 8) inv.setItem(i, orangeGlass);
+            else inv.setItem(i, blackGlass);
+        }
+
+        // Đặt vật phẩm vào khu vực trung tâm
         inv.setItem(10, createShopItem(vn.minecraft.rPGCore.commands.RepairAdminCommand.getStoneItem(5, 10), "BS_STONE_1", data, 10, "§e5 Mạt", jobLevel >= 1, 1));
-        inv.setItem(11, createShopItem(im.buildItem("misc_protection_charm", 1), "BS_CHARM", data, 5, "§e30 Mạt Thợ Rèn", jobLevel >= 10, 10));
-        inv.setItem(12, createShopItem(im.buildItem("misc_lucky_hammer", 1), "BS_LUCKY_HAMMER", data, 3, "§e50 Mạt Thợ Rèn", jobLevel >= 20, 20));
-        inv.setItem(13, createShopItem(im.buildItem("misc_job_change_card", 1), "BS_JOB_CARD", data, 1, "§e200 Mạt Thợ Rèn", jobLevel >= 1, 1));
+        inv.setItem(11, createShopItem(im.buildItem("misc_protection_charm", 1), "BS_CHARM", data, 5, "§e30 Mạt", jobLevel >= 10, 10));
+        inv.setItem(12, createShopItem(im.buildItem("misc_lucky_hammer", 1), "BS_LUCKY_HAMMER", data, 3, "§e50 Mạt", jobLevel >= 20, 20));
+        inv.setItem(13, createShopItem(im.buildItem("misc_job_change_card", 1), "BS_JOB_CARD", data, 1, "§e200 Mạt", jobLevel >= 1, 1));
 
-        inv.setItem(19, createShopItem(im.buildItem("bag_weapon_common", 1), "BS_W_COM", data, 5, "§e20 Mạt Thợ Rèn", jobLevel >= 5, 5));
-        inv.setItem(20, createShopItem(im.buildItem("bag_weapon_uncommon", 1), "BS_W_UNC", data, 3, "§e50 Mạt Thợ Rèn", jobLevel >= 15, 15));
-        inv.setItem(21, createShopItem(im.buildItem("bag_weapon_rare", 1), "BS_W_RAR", data, 2, "§e120 Mạt Thợ Rèn", jobLevel >= 25, 25));
-        inv.setItem(22, createShopItem(im.buildItem("bag_weapon_epic", 1), "BS_W_EPI", data, 1, "§e300 Mạt Thợ Rèn", jobLevel >= 40, 40));
+        inv.setItem(19, createShopItem(im.buildItem("bag_weapon_common", 1), "BS_W_COM", data, 5, "§e20 Mạt", jobLevel >= 5, 5));
+        inv.setItem(20, createShopItem(im.buildItem("bag_weapon_uncommon", 1), "BS_W_UNC", data, 3, "§e50 Mạt", jobLevel >= 15, 15));
+        inv.setItem(21, createShopItem(im.buildItem("bag_weapon_rare", 1), "BS_W_RAR", data, 2, "§e120 Mạt", jobLevel >= 25, 25));
+        inv.setItem(22, createShopItem(im.buildItem("bag_weapon_epic", 1), "BS_W_EPI", data, 1, "§e300 Mạt", jobLevel >= 40, 40));
 
-        inv.setItem(28, createShopItem(im.buildItem("bag_armor_common", 1), "BS_A_COM", data, 5, "§e20 Mạt Thợ Rèn", jobLevel >= 5, 5));
-        inv.setItem(29, createShopItem(im.buildItem("bag_armor_uncommon", 1), "BS_A_UNC", data, 3, "§e50 Mạt Thợ Rèn", jobLevel >= 15, 15));
-        inv.setItem(30, createShopItem(im.buildItem("bag_armor_rare", 1), "BS_A_RAR", data, 2, "§e120 Mạt Thợ Rèn", jobLevel >= 25, 25));
-        inv.setItem(31, createShopItem(im.buildItem("bag_armor_epic", 1), "BS_A_EPI", data, 1, "§e300 Mạt Thợ Rèn", jobLevel >= 40, 40));
+        inv.setItem(28, createShopItem(im.buildItem("bag_armor_common", 1), "BS_A_COM", data, 5, "§e20 Mạt", jobLevel >= 5, 5));
+        inv.setItem(29, createShopItem(im.buildItem("bag_armor_uncommon", 1), "BS_A_UNC", data, 3, "§e50 Mạt", jobLevel >= 15, 15));
+        inv.setItem(30, createShopItem(im.buildItem("bag_armor_rare", 1), "BS_A_RAR", data, 2, "§e120 Mạt", jobLevel >= 25, 25));
+        inv.setItem(31, createShopItem(im.buildItem("bag_armor_epic", 1), "BS_A_EPI", data, 1, "§e300 Mạt", jobLevel >= 40, 40));
 
         inv.setItem(37, createShopItem(new ItemStack(Material.ANVIL), "BS_ANVIL", data, 9999, "§a10 Xu Bạc", jobLevel >= 1, 1));
         inv.setItem(38, createShopItem(new ItemStack(Material.COAL, 64), "BS_COAL", data, 9999, "§a2 Xu Bạc", jobLevel >= 5, 5));
         inv.setItem(39, createShopItem(new ItemStack(Material.DIAMOND_PICKAXE), "BS_DIA_PICKAXE", data, 1, "§a20 Xu Bạc", jobLevel >= 15, 15));
 
-        // NÚT QUAY LẠI HỒ SƠ (Góc trái dưới Slot 45)
+        // NÚT QUAY LẠI (Dời sang Góc phải dưới Slot 53)
         ItemStack back = new ItemStack(Material.RED_STAINED_GLASS_PANE);
-        ItemMeta bMeta = back.getItemMeta();
-        bMeta.setDisplayName("§c§l[!] QUAY LẠI HỒ SƠ");
-        back.setItemMeta(bMeta);
-        inv.setItem(45, back);
+        ItemMeta bMeta = back.getItemMeta(); bMeta.setDisplayName("§c§l[!] QUAY LẠI HỒ SƠ"); back.setItemMeta(bMeta);
+        inv.setItem(53, back);
 
         player.openInventory(inv);
     }
@@ -161,19 +165,17 @@ public class BlacksmithJob extends RPGJob {
         int currentBought = data.getPurchasedAmount(purchaseId);
 
         if (!isUnlocked) {
-            meta.setDisplayName("§c§l🔒 CHƯA MỞ KHÓA");
+            meta.setDisplayName("§c§lCHƯA MỞ KHÓA");
             meta.setLore(java.util.Arrays.asList("§7Yêu cầu Cấp độ Thợ Rèn: §b" + reqLevel));
             item.setType(Material.BARRIER);
         } else if (currentBought >= maxStock && maxStock != 9999) {
             meta.setDisplayName("§8§m" + org.bukkit.ChatColor.stripColor(meta.getDisplayName()));
-            meta.setLore(java.util.Arrays.asList("§c§lĐÃ HẾT HÀNG THÁNG NÀY", "§7Hãy quay lại vào đầu tháng sau!"));
+            meta.setLore(java.util.Arrays.asList("§c§lĐÃ HẾT HÀNG THÁNG NÀY"));
         } else {
             List<String> lore = meta.hasLore() ? meta.getLore() : new ArrayList<>();
-            lore.add("");
-            lore.add("§8§m------------------------");
+            lore.add(""); lore.add("§8§m------------------------");
             lore.add("§fGiá: " + price);
             if (maxStock != 9999) lore.add("§fGiới hạn mua: §a" + currentBought + "§8/§a" + maxStock + " §7(Tháng này)");
-            else lore.add("§fGiới hạn mua: §aKhông giới hạn");
             meta.setLore(lore);
         }
         item.setItemMeta(meta);
@@ -187,7 +189,8 @@ public class BlacksmithJob extends RPGJob {
         int slot = event.getRawSlot();
         vn.minecraft.rPGCore.managers.ItemManager im = vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager();
 
-        if (slot == 45) { vn.minecraft.rPGCore.jobs.gui.JobSelectionGUI.openStatusMenu(player); return; }
+        // Check nút back ở Slot 53
+        if (slot == 53) { vn.minecraft.rPGCore.jobs.gui.JobSelectionGUI.openStatusMenu(player); return; }
 
         if (slot == 10) processScrapPurchase(player, data, "BS_STONE_1", 10, 5, vn.minecraft.rPGCore.commands.RepairAdminCommand.getStoneItem(5, 10));
         else if (slot == 11) processScrapPurchase(player, data, "BS_CHARM", 5, 30, im.buildItem("misc_protection_charm", 1));
@@ -204,9 +207,9 @@ public class BlacksmithJob extends RPGJob {
         else if (slot == 30) processScrapPurchase(player, data, "BS_A_RAR", 2, 120, im.buildItem("bag_armor_rare", 1));
         else if (slot == 31) processScrapPurchase(player, data, "BS_A_EPI", 1, 300, im.buildItem("bag_armor_epic", 1));
 
-        else if (slot == 37) processMoneyPurchase(player, data, "BS_ANVIL", 9999, 640, new ItemStack(Material.ANVIL));
-        else if (slot == 38) processMoneyPurchase(player, data, "BS_COAL", 9999, 128, new ItemStack(Material.COAL, 64));
-        else if (slot == 39) processMoneyPurchase(player, data, "BS_DIA_PICKAXE", 1, 1280, new ItemStack(Material.DIAMOND_PICKAXE));
+        else if (slot == 37) processMoneyPurchase(player, data, "BS_ANVIL", 9999, 10 * 64, new ItemStack(Material.ANVIL));
+        else if (slot == 38) processMoneyPurchase(player, data, "BS_COAL", 9999, 2 * 64, new ItemStack(Material.COAL, 64));
+        else if (slot == 39) processMoneyPurchase(player, data, "BS_DIA_PICKAXE", 1, 200 * 64, new ItemStack(Material.DIAMOND_PICKAXE));
     }
 
     private void processScrapPurchase(org.bukkit.entity.Player player, vn.minecraft.rPGCore.jobs.core.PlayerJobData data, String id, int maxStock, int price, ItemStack reward) {
@@ -214,10 +217,8 @@ public class BlacksmithJob extends RPGJob {
         vn.minecraft.rPGCore.managers.ItemManager im = vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager();
         org.bukkit.inventory.ItemStack scrapTemplate = im.buildItem("misc_blacksmith_scrap", 1);
         if (scrapTemplate != null && im.takeItem(player, scrapTemplate, price)) {
-            data.addPurchase(id, 1);
-            player.getInventory().addItem(reward);
-            player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f);
-            openShop(player);
+            data.addPurchase(id, 1); player.getInventory().addItem(reward);
+            player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f); openShop(player);
         } else {
             player.sendMessage("§cKhông đủ " + price + " Mạt Thợ Rèn trong túi đồ!");
             player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_VILLAGER_NO, 1f, 1f);
@@ -228,18 +229,16 @@ public class BlacksmithJob extends RPGJob {
         if (maxStock != 9999 && data.getPurchasedAmount(id) >= maxStock) { player.sendMessage("§cĐã đạt giới hạn mua trong tháng này!"); return; }
         vn.minecraft.rPGCore.managers.CurrencyManager cm = new vn.minecraft.rPGCore.managers.CurrencyManager(vn.minecraft.rPGCore.RPGCore.getInstance());
         if (cm.takePhysicalCurrency(player, price)) {
-            data.addPurchase(id, 1);
-            player.getInventory().addItem(reward);
-            player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
-            openShop(player);
+            data.addPurchase(id, 1); player.getInventory().addItem(reward);
+            player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f); openShop(player);
         } else {
-            player.sendMessage("§cKhông đủ " + cm.formatCurrency(price) + " trong túi đồ!");
+            player.sendMessage("§cKhông đủ tiền trong túi đồ!");
             player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_VILLAGER_NO, 1f, 1f);
         }
     }
 
     // =========================================
-    // TRIỂN KHAI CÂY KỸ NĂNG (SKILL TREE)
+    // CÂY KỸ NĂNG THỢ RÈN (QUY CHUẨN ĐẸP 5 HÀNG)
     // =========================================
     @Override
     public String getSkillTreeGUITitle() { return "§l§dCÂY KỸ NĂNG THỢ RÈN"; }
@@ -247,66 +246,47 @@ public class BlacksmithJob extends RPGJob {
     @Override
     public void openSkillTree(org.bukkit.entity.Player player) {
         vn.minecraft.rPGCore.jobs.core.PlayerJobData data = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(player);
-
-        // Đóng chặn an toàn tuyệt đối
         if (data.getLevel("BLACKSMITH") < 50) {
             player.sendMessage("§c§l(!) §cKỹ năng tối thượng chỉ mở khóa khi đạt Cấp 50!");
-            player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_CHEST_LOCKED, 1f, 1f);
-            player.closeInventory();
-            return;
+            player.closeInventory(); return;
         }
 
-        org.bukkit.inventory.Inventory inv = org.bukkit.Bukkit.createInventory(null, 36, getSkillTreeGUITitle());
-
+        // Đổi thành 45 ô (5 hàng x 9 ô)
+        org.bukkit.inventory.Inventory inv = org.bukkit.Bukkit.createInventory(null, 45, getSkillTreeGUITitle());
         ItemStack glass = new ItemStack(Material.PURPLE_STAINED_GLASS_PANE);
         ItemMeta gMeta = glass.getItemMeta(); gMeta.setDisplayName(" "); glass.setItemMeta(gMeta);
-        for (int i = 0; i < 36; i++) inv.setItem(i, glass);
+        for (int i = 0; i < 45; i++) inv.setItem(i, glass);
 
-        inv.setItem(4, createSkillIcon("BS_INFO", Material.BOOK, "§d§lTHÔNG TIN ĐIỂM JP", 0, data, "§fSố JP hiện có: §d" + data.getJobPoints("BLACKSMITH")));
+        // Hàng 2: Sách thông tin đặt ở Slot 13 (Chính giữa hàng 2)
+        inv.setItem(13, createSkillIcon("BS_INFO", Material.BOOK, "§d§lTHÔNG TIN ĐIỂM JP", 0, data, "§fSố JP hiện có: §d" + data.getJobPoints("BLACKSMITH")));
 
-        // Cập nhật Kỹ năng mới, Tất cả tốn 2 JP
-        inv.setItem(11, createSkillIcon("BS_HAND_OF_GOD", Material.ENCHANTED_GOLDEN_APPLE, "§e§lBÀN TAY CỦA CHÚA", 2, data, "§fCó §a20% xác suất §fnhận lại", "§fMạt Thợ Rèn khi đập đồ thất bại."));
-        inv.setItem(13, createSkillIcon("BS_MASTER_SAVER", Material.GOLD_INGOT, "§6§lBẬC THẦY TIẾT KIỆM", 2, data, "§fGiảm §e20% §fchi phí Mạt Thợ Rèn", "§fkhi sử dụng nút Rèn Bậc Thầy."));
-        inv.setItem(15, createSkillIcon("BS_GUARDIAN_CHARM", Material.TOTEM_OF_UNDYING, "§d§lBÙA HỘ MỆNH", 2, data, "§fCó §a15% xác suất §fkhông tiêu hao", "§fBúa May Mắn và Bùa Bảo Vệ khi rèn."));
+        // Hàng 4: 3 Kỹ năng tối thượng chia đều ở các ô 29, 31, 33
+        inv.setItem(29, createSkillIcon("BS_HAND_OF_GOD", Material.ENCHANTED_GOLDEN_APPLE, "§e§lBÀN TAY NGHỆ NHÂN", 2, data, "§fCó §a20% xác suất §fnhận lại", "§fMạt Thợ Rèn khi đập đồ thất bại."));
+        inv.setItem(31, createSkillIcon("BS_MASTER_SAVER", Material.GOLD_INGOT, "§6§lBẬC THẦY TIẾT KIỆM", 2, data, "§fGiảm §e20% §fchi phí Mạt Thợ Rèn", "§fkhi sử dụng nút Rèn Bậc Thầy."));
+        inv.setItem(33, createSkillIcon("BS_GUARDIAN_CHARM", Material.TOTEM_OF_UNDYING, "§d§lBÙA HỘ MỆNH", 2, data, "§fCó §a15% xác suất §fkhông tiêu hao", "§fBúa May Mắn và Bùa Bảo Vệ khi rèn."));
 
-        // NÚT QUAY LẠI HỒ SƠ (Góc phải dưới Slot 35)
+        // Hàng 5: Nút quay lại chuyển sang Góc phải dưới (Slot 44)
         ItemStack back = new ItemStack(Material.RED_STAINED_GLASS_PANE);
-        ItemMeta bMeta = back.getItemMeta();
-        bMeta.setDisplayName("§c§l[!] QUAY LẠI HỒ SƠ");
-        back.setItemMeta(bMeta);
-        inv.setItem(35, back);
+        ItemMeta bMeta = back.getItemMeta(); bMeta.setDisplayName("§c§l[!] QUAY LẠI HỒ SƠ"); back.setItemMeta(bMeta);
+        inv.setItem(44, back);
 
         player.openInventory(inv);
-        player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_BEACON_ACTIVATE, 1f, 1f);
     }
 
     private ItemStack createSkillIcon(String skillId, Material mat, String name, int jpCost, vn.minecraft.rPGCore.jobs.core.PlayerJobData data, String... desc) {
-        ItemStack item = new ItemStack(mat);
-        ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName(name);
-
-        List<String> lore = new ArrayList<>();
-        lore.add("§7Nội tại Kỹ năng Tối thượng");
-        lore.add("");
+        ItemStack item = new ItemStack(mat); ItemMeta meta = item.getItemMeta(); meta.setDisplayName(name);
+        List<String> lore = new ArrayList<>(); lore.add("§7Nội tại Kỹ năng Tối thượng"); lore.add("");
         for (String line : desc) lore.add("§8▪ " + line);
         lore.add("");
 
-        if (skillId.equals("BS_INFO")) {
-            // Nothing
-        } else if (data.hasUnlockedSkill("BLACKSMITH", skillId)) {
-            if (data.getLevel("BLACKSMITH") >= 50) lore.add("§a§l✔ ĐÃ KÍCH HOẠT VÀ ĐANG HOẠT ĐỘNG");
-            else {
-                lore.add("§c§l✖ BỊ KHÓA TẠM THỜI");
-                lore.add("§c(Yêu cầu đạt lại Cấp 50 để kích hoạt)");
+        if (!skillId.equals("BS_INFO")) {
+            if (data.hasUnlockedSkill("BLACKSMITH", skillId)) {
+                lore.add("§a§l✔ ĐÃ KÍCH HOẠT VÀ ĐANG HOẠT ĐỘNG");
+            } else {
+                lore.add("§e§lCLICK ĐỂ HỌC KỸ NĂNG NÀY!"); lore.add("§fTiêu hao: §d" + jpCost + " JP");
             }
-        } else {
-            lore.add("§e§lCLICK ĐỂ HỌC KỸ NĂNG NÀY!");
-            lore.add("§fTiêu hao: §d" + jpCost + " JP");
         }
-
-        meta.setLore(lore);
-        item.setItemMeta(meta);
-        return item;
+        meta.setLore(lore); item.setItemMeta(meta); return item;
     }
 
     @Override
@@ -315,31 +295,35 @@ public class BlacksmithJob extends RPGJob {
         vn.minecraft.rPGCore.jobs.core.PlayerJobData data = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(player);
         int slot = event.getRawSlot();
 
-        if (slot == 35) { vn.minecraft.rPGCore.jobs.gui.JobSelectionGUI.openStatusMenu(player); return; }
+        // Check nút back ở Slot 44
+        if (slot == 44) { vn.minecraft.rPGCore.jobs.gui.JobSelectionGUI.openStatusMenu(player); return; }
 
-        if (slot == 11) processSkillPurchase(player, data, "BS_HAND_OF_GOD", 2);
-        else if (slot == 13) processSkillPurchase(player, data, "BS_MASTER_SAVER", 2);
-        else if (slot == 15) processSkillPurchase(player, data, "BS_GUARDIAN_CHARM", 2);
+        if (slot == 29) processSkillPurchase(player, data, "BS_HAND_OF_GOD", 2);
+        else if (slot == 31) processSkillPurchase(player, data, "BS_MASTER_SAVER", 2);
+        else if (slot == 33) processSkillPurchase(player, data, "BS_GUARDIAN_CHARM", 2);
     }
 
     private void processSkillPurchase(org.bukkit.entity.Player player, vn.minecraft.rPGCore.jobs.core.PlayerJobData data, String skillId, int cost) {
-        if (data.hasUnlockedSkill("BLACKSMITH", skillId)) {
-            player.sendMessage("§cBạn đã học kỹ năng này rồi!");
-            return;
-        }
+        if (data.hasUnlockedSkill("BLACKSMITH", skillId)) return;
         if (data.getJobPoints("BLACKSMITH") >= cost) {
-            data.addJobPoints("BLACKSMITH", -cost);
-            data.unlockSkill("BLACKSMITH", skillId);
-            player.playSound(player.getLocation(), org.bukkit.Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f);
-            player.sendMessage("§d✨ Đã mở khóa thành công Kỹ Năng Tối Thượng!");
-            openSkillTree(player);
+            data.addJobPoints("BLACKSMITH", -cost); data.unlockSkill("BLACKSMITH", skillId);
+            player.playSound(player.getLocation(), org.bukkit.Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f); openSkillTree(player);
         } else {
             player.sendMessage("§cBạn không có đủ " + cost + " JP để học kỹ năng này!");
             player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_VILLAGER_NO, 1f, 1f);
         }
     }
 
-    // [ĐƯA VÀO CUỐI FILE BLACKSMITHJOB]
+    @Override
+    public List<String> getDailyRewardLore(int milestone) {
+        if (milestone == 1) return java.util.Arrays.asList("§e+1 Mạt Thợ Rèn");
+        if (milestone == 2) return java.util.Arrays.asList("§e+1 Mạt Thợ Rèn");
+        return java.util.Arrays.asList("§e+2 Mạt Thợ Rèn", "§a+10 Đá Nâng Cấp");
+    }
+
+    @Override
+    public List<String> getWeeklyRewardLore() { return java.util.Arrays.asList("§e+20 Mạt Thợ Rèn"); }
+
     @Override
     public void giveDailyMilestoneReward(org.bukkit.entity.Player player, int milestone) {
         vn.minecraft.rPGCore.managers.ItemManager im = vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager();

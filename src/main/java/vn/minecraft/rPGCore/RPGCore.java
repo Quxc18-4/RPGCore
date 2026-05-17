@@ -4,6 +4,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 import vn.minecraft.rPGCore.classes.ClassManager;
 import vn.minecraft.rPGCore.commands.*;
+import vn.minecraft.rPGCore.cooking.CookingEngine;
 import vn.minecraft.rPGCore.jobs.core.JobLeaderboard;
 import vn.minecraft.rPGCore.jobs.core.JobManager;
 import vn.minecraft.rPGCore.jobs.core.JobRegister;
@@ -41,7 +42,10 @@ public final class RPGCore extends JavaPlugin {
         BlacksmithGUI blacksmithGUI = new BlacksmithGUI();
 
         this.itemManager = new ItemManager(this);
-        CookingManager cookingManager = new CookingManager(this, this.itemManager);
+
+        // Khởi tạo Engine và Cooking Manager ĐÚNG THỨ TỰ
+        vn.minecraft.rPGCore.cooking.CookingEngine cookingEngine = new vn.minecraft.rPGCore.cooking.CookingEngine();
+        CookingManager cookingManager = new CookingManager(this, this.itemManager, cookingEngine);
 
         this.boredomManager = new BoredomManager(this);
         this.foodBuffManager = new FoodBuffManager(this);
@@ -83,8 +87,7 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ShopListener(shopManager, currencyManager, playerManager), this);
         getServer().getPluginManager().registerEvents(elementRotationGUI, this);
         // Đăng ký Listener cho Hệ thống Vật phẩm tiêu hao (Bình máu, Tinh thể...)
-        getServer().getPluginManager().registerEvents(new ConsumableListener(this.itemManager), this);
-        // Đăng ký Event tự động Load/Save Nghề khi người chơi ra vào server
+        getServer().getPluginManager().registerEvents(new ConsumableListener(this.itemManager, this.boredomManager, cookingManager), this);
         getServer().getPluginManager().registerEvents(new JobManager.JobDataListener(), this);
         getServer().getPluginManager().registerEvents(new JobSelectionGUI(), this);
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.jobs.gui.QuestBoardGUI(), this);

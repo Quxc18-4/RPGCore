@@ -20,16 +20,13 @@ public class ChefJob extends RPGJob {
         registerQuests();
     }
 
-    // 1. CHÉP ĐÈ HÀM NÀY ĐỂ CẬP NHẬT QUEST
     private void registerQuests() {
-        // NHIỆM VỤ NGÀY
         questPool.put("DAILY_COOK_1", new AdvancedQuest("DAILY_COOK_1", "Khởi Nguồn Khói Lửa", "Nấu thành công 5 vạc súp bất kỳ.", 5, QuestAction.COOK_ANY, null));
         questPool.put("DAILY_COOK_2", new AdvancedQuest("DAILY_COOK_2", "Thời Đại Khó Khăn", "Nấu 1 vạc súp chỉ dùng đúng 1 nguyên liệu.", 1, QuestAction.COOK_SINGLE, null));
         questPool.put("DAILY_COOK_3", new AdvancedQuest("DAILY_COOK_3", "Lẩu Thập Cẩm", "Nấu 1 vạc súp no nê với 9 nguyên liệu.", 1, QuestAction.COOK_FULL, null));
         questPool.put("DAILY_COOK_4", new AdvancedQuest("DAILY_COOK_4", "Dạ Dày Không Đáy", "Tiêu thụ 10 món ăn bất kỳ.", 10, QuestAction.CONSUME_FOOD, null));
         questPool.put("DAILY_COOK_5", new AdvancedQuest("DAILY_COOK_5", "Khổ Tu", "Bị cộng điểm Tuyệt thực 3 lần.", 3, QuestAction.BOREDOM_GAIN, null));
 
-        // NHIỆM VỤ TUẦN
         questPool.put("WEEKLY_COOK_1", new AdvancedQuest("WEEKLY_COOK_1", "Siêu Đầu Bếp", "Nấu thành công 30 vạc súp bất kỳ.", 30, QuestAction.COOK_ANY, null));
         questPool.put("WEEKLY_COOK_2", new AdvancedQuest("WEEKLY_COOK_2", "Bậc Thầy Gia Vị", "Tiêu thụ 50 món ăn bất kỳ.", 50, QuestAction.CONSUME_FOOD, null));
         questPool.put("WEEKLY_COOK_3", new AdvancedQuest("WEEKLY_COOK_3", "Khổ Tận Cam Lai", "Bị cộng điểm Tuyệt thực 15 lần.", 15, QuestAction.BOREDOM_GAIN, null));
@@ -72,7 +69,7 @@ public class ChefJob extends RPGJob {
         lore.add("§8▪ §fXác suất Nhân đôi thời gian No Căng: §6" + String.format("%.1f", durationMulti) + "%");
         lore.add("§8▪ §fXác suất Nhân đôi thời gian Bảo quản: §e" + String.format("%.1f", freshMulti) + "%");
         lore.add("§8▪ §fBàn tay hào phóng (Cộng thêm 0.5 điểm nguyên liệu): §b" + String.format("%.1f", bonusChance) + "%");
-        //lore.add("§8▪ §fSát thủ bếp (Xác suất giấu Độc trong Lore): §c" + String.format("%.1f", hideChance) + "%");
+        lore.add("§8▪ §fSát thủ bếp (Xác suất giấu Độc trong Lore): §c" + String.format("%.1f", hideChance) + "%");
 
         boolean hasStomach = data.hasUnlockedSkill("CHEF", "CHEF_IRON_STOMACH");
         boolean hasHands = data.hasUnlockedSkill("CHEF", "CHEF_MAGIC_HANDS");
@@ -89,7 +86,7 @@ public class ChefJob extends RPGJob {
     }
 
     // =========================================
-    // CỬA HÀNG ĐẦU BẾP (SHOP XOAY TUA THEO THÁNG)
+    // CỬA HÀNG ĐẦU BẾP (VIỀN CAM - RUỘT ĐEN)
     // =========================================
     @Override
     public String getShopGUITitle() { return "§l§2CHỢ THỰC PHẨM"; }
@@ -101,11 +98,18 @@ public class ChefJob extends RPGJob {
         vn.minecraft.rPGCore.jobs.core.PlayerJobData data = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(player);
         int jobLevel = data.getLevel("CHEF");
 
-        ItemStack glass = new ItemStack(Material.LIME_STAINED_GLASS_PANE);
-        ItemMeta gMeta = glass.getItemMeta(); gMeta.setDisplayName(" "); glass.setItemMeta(gMeta);
-        for (int i = 0; i < 9; i++) inv.setItem(i, glass); // Viền trên
+        ItemStack orangeGlass = new ItemStack(Material.ORANGE_STAINED_GLASS_PANE);
+        ItemMeta oMeta = orangeGlass.getItemMeta(); oMeta.setDisplayName(" "); orangeGlass.setItemMeta(oMeta);
 
-        // --- HÀNG 2: ĐỒ ĐẶC BIỆT MUA BẰNG TINH TÚY ẨM THỰC ---
+        ItemStack blackGlass = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
+        ItemMeta blMeta = blackGlass.getItemMeta(); blMeta.setDisplayName(" "); blackGlass.setItemMeta(blMeta);
+
+        for (int i = 0; i < 54; i++) {
+            if (i < 9 || i >= 45 || i % 9 == 0 || i % 9 == 8) inv.setItem(i, orangeGlass);
+            else inv.setItem(i, blackGlass);
+        }
+
+        // Hàng 2 (Slot 10-15) - Mua bằng Tinh Túy
         inv.setItem(10, createEssenceItem(im.buildItem("misc_job_change_card", 1), "CHEF_JOB_CARD", data, 1, 30, jobLevel >= 1, 1));
         inv.setItem(11, createEssenceItem(im.buildItem("potion_digestion", 1), "CHEF_POTION_DIGEST", data, 5, 10, jobLevel >= 10, 10));
         inv.setItem(12, createEssenceItem(im.buildItem("potion_anti_anorexia", 1), "CHEF_POTION_ANOREXIA", data, 2, 25, jobLevel >= 20, 20));
@@ -113,46 +117,38 @@ public class ChefJob extends RPGJob {
         inv.setItem(14, createEssenceItem(im.buildItem("misc_lunch_bag", 1), "CHEF_LUNCH_BAG", data, 5, 20, jobLevel >= 15, 15));
         inv.setItem(15, createEssenceItem(im.buildItem("misc_preservative_powder", 1), "CHEF_PRESERVATIVE", data, 3, 50, jobLevel >= 40, 40));
 
-        // --- HÀNG 3 & 4: NGUYÊN LIỆU XOAY TUA (Dùng Seed Năm+Tháng) ---
+        // Hàng 3 & 4 (Slot 19-25, 28-34) - Nguyên liệu xoay tua
         Calendar cal = Calendar.getInstance();
         long currentSeed = cal.get(Calendar.YEAR) * 100L + cal.get(Calendar.MONTH);
         Random shopRand = new Random(currentSeed);
 
         List<ItemManager.ItemData> normalItems = new ArrayList<>();
         List<ItemManager.ItemData> magicItems = new ArrayList<>();
-
         for (String id : im.getAllIds()) {
-            ItemManager.ItemData itemData = im.getItemData(id);
-            if (itemData.category == ItemManager.Category.MEAT || itemData.category == ItemManager.Category.FISH || itemData.category == ItemManager.Category.VEG || itemData.category == ItemManager.Category.STARCH) {
-                normalItems.add(itemData);
-            } else if (itemData.category == ItemManager.Category.MAGIC) {
-                magicItems.add(itemData);
-            }
+            ItemManager.ItemData iData = im.getItemData(id);
+            if (iData.category == ItemManager.Category.MEAT || iData.category == ItemManager.Category.FISH || iData.category == ItemManager.Category.VEG || iData.category == ItemManager.Category.STARCH) normalItems.add(iData);
+            else if (iData.category == ItemManager.Category.MAGIC) magicItems.add(iData);
         }
-
         Collections.shuffle(normalItems, shopRand);
         Collections.shuffle(magicItems, shopRand);
 
         int[] rotatingSlots = {19, 20, 21, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34};
-
-        // 10 Slot đầu cho Đồ Thường (Giá 1-5 Bạc)
         for (int i = 0; i < 10; i++) {
             if (i < normalItems.size()) {
-                ItemManager.ItemData itemData = normalItems.get(i);
-                int silverPrice = 1 + shopRand.nextInt(4); // 1-5 bạc
-                inv.setItem(rotatingSlots[i], createCoinItem(im.buildItem(itemData.id, 1), "CHEF_ROT_" + itemData.id, data, 100, silverPrice * 64, jobLevel >= 1, 1));
+                ItemManager.ItemData iData = normalItems.get(i);
+                int sP = 1 + shopRand.nextInt(5);
+                inv.setItem(rotatingSlots[i], createCoinItem(im.buildItem(iData.id, 1), "CHEF_ROT_" + iData.id, data, 100, sP * 64, jobLevel >= 1, 1));
             }
         }
-        // 4 Slot cuối cho Đồ Magic (Giá 32-50 Bạc)
         for (int i = 0; i < 4; i++) {
             if (i < magicItems.size()) {
-                ItemManager.ItemData itemData = magicItems.get(i);
-                int silverPrice = 32 + shopRand.nextInt(18); // 32-50 bạc
-                inv.setItem(rotatingSlots[10 + i], createCoinItem(im.buildItem(itemData.id, 1), "CHEF_ROT_" + itemData.id, data, 10, silverPrice * 64, jobLevel >= 25, 25));
+                ItemManager.ItemData iData = magicItems.get(i);
+                int sP = 32 + shopRand.nextInt(19);
+                inv.setItem(rotatingSlots[10 + i], createCoinItem(im.buildItem(iData.id, 1), "CHEF_ROT_" + iData.id, data, 10, sP * 64, jobLevel >= 25, 25));
             }
         }
 
-        // --- HÀNG 5 & 6: GIA VỊ CỐ ĐỊNH ---
+        // Hàng 5 (Slot 37-43) - Gia vị cơ bản
         inv.setItem(37, createCoinItem(im.buildItem("spice_salt", 1), "CHEF_SALT", data, 200, 1 * 64, jobLevel >= 1, 1));
         inv.setItem(38, createCoinItem(im.buildItem("spice_pepper", 1), "CHEF_PEPPER", data, 200, 1 * 64, jobLevel >= 1, 1));
         inv.setItem(39, createCoinItem(im.buildItem("spice_chili", 1), "CHEF_CHILI", data, 200, 2 * 64, jobLevel >= 5, 5));
@@ -161,7 +157,7 @@ public class ChefJob extends RPGJob {
         inv.setItem(42, createCoinItem(im.buildItem("spice_sugar", 1), "CHEF_SUGAR", data, 50, 8 * 64, jobLevel >= 15, 15));
         inv.setItem(43, createCoinItem(im.buildItem("spice_honey", 1), "CHEF_HONEY", data, 50, 10 * 64, jobLevel >= 20, 20));
 
-        // Nút Quay Lại
+        // Góc phải dưới: Nút thoát
         ItemStack back = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta bMeta = back.getItemMeta(); bMeta.setDisplayName("§c§l[!] QUAY LẠI HỒ SƠ"); back.setItemMeta(bMeta);
         inv.setItem(53, back);
@@ -175,7 +171,7 @@ public class ChefJob extends RPGJob {
         int currentBought = data.getPurchasedAmount(purchaseId);
 
         if (!isUnlocked) {
-            meta.setDisplayName("§c§l🔒 CHƯA MỞ KHÓA");
+            meta.setDisplayName("§c§l🔒 CHƯA M mở KHÓA");
             meta.setLore(java.util.Arrays.asList("§7Yêu cầu Cấp độ Đầu Bếp: §b" + reqLevel));
             item.setType(Material.BARRIER);
         } else if (currentBought >= maxStock) {
@@ -250,7 +246,6 @@ public class ChefJob extends RPGJob {
         cleanReward.setAmount(1);
         ItemMeta cleanMeta = cleanReward.getItemMeta();
 
-        // Dọn dẹp lore UI trước khi give cho player
         List<String> cleanLore = cleanMeta.getLore();
         if (cleanLore != null) {
             cleanLore.removeIf(l -> l.contains("Giá:") || l.contains("Giới hạn mua:") || l.contains("---"));
@@ -258,7 +253,6 @@ public class ChefJob extends RPGJob {
         }
         cleanReward.setItemMeta(cleanMeta);
 
-        // NẾU LÀ MÓN ĐỒ MUA BẰNG TINH TÚY
         if (meta.getPersistentDataContainer().has(new org.bukkit.NamespacedKey(vn.minecraft.rPGCore.RPGCore.getInstance(), "buy_essence_cost"), org.bukkit.persistence.PersistentDataType.INTEGER)) {
             int essenceCost = meta.getPersistentDataContainer().get(new org.bukkit.NamespacedKey(vn.minecraft.rPGCore.RPGCore.getInstance(), "buy_essence_cost"), org.bukkit.persistence.PersistentDataType.INTEGER);
             ItemStack essenceTemplate = im.buildItem("misc_culinary_essence", 1);
@@ -273,7 +267,6 @@ public class ChefJob extends RPGJob {
                 player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_VILLAGER_NO, 1f, 1f);
             }
         }
-        // NẾU LÀ MÓN ĐỒ MUA BẰNG XU VẬT LÝ
         else if (meta.getPersistentDataContainer().has(new org.bukkit.NamespacedKey(vn.minecraft.rPGCore.RPGCore.getInstance(), "buy_coin_cost"), org.bukkit.persistence.PersistentDataType.INTEGER)) {
             int coinCost = meta.getPersistentDataContainer().get(new org.bukkit.NamespacedKey(vn.minecraft.rPGCore.RPGCore.getInstance(), "buy_coin_cost"), org.bukkit.persistence.PersistentDataType.INTEGER);
             vn.minecraft.rPGCore.managers.CurrencyManager cm = new vn.minecraft.rPGCore.managers.CurrencyManager(vn.minecraft.rPGCore.RPGCore.getInstance());
@@ -291,7 +284,7 @@ public class ChefJob extends RPGJob {
     }
 
     // =========================================
-    // CÂY KỸ NĂNG TỐI THƯỢNG ĐẦU BẾP
+    // CÂY KỸ NĂNG ĐẦU BẾP (CHUẨN 5 HÀNG)
     // =========================================
     @Override
     public String getSkillTreeGUITitle() { return "§l§dCÂY KỸ NĂNG ĐẦU BẾP"; }
@@ -304,20 +297,20 @@ public class ChefJob extends RPGJob {
             player.closeInventory(); return;
         }
 
-        org.bukkit.inventory.Inventory inv = org.bukkit.Bukkit.createInventory(null, 36, getSkillTreeGUITitle());
+        org.bukkit.inventory.Inventory inv = org.bukkit.Bukkit.createInventory(null, 45, getSkillTreeGUITitle());
         ItemStack glass = new ItemStack(Material.GREEN_STAINED_GLASS_PANE);
         ItemMeta gMeta = glass.getItemMeta(); gMeta.setDisplayName(" "); glass.setItemMeta(gMeta);
-        for (int i = 0; i < 36; i++) inv.setItem(i, glass);
+        for (int i = 0; i < 45; i++) inv.setItem(i, glass);
 
-        inv.setItem(4, createSkillIcon("CHEF_INFO", Material.BOOK, "§d§lTHÔNG TIN ĐIỂM JP", 0, data, "§fSố JP hiện có: §d" + data.getJobPoints("CHEF")));
+        inv.setItem(13, createSkillIcon("CHEF_INFO", Material.BOOK, "§d§lTHÔNG TIN ĐIỂM JP", 0, data, "§fSố JP hiện có: §d" + data.getJobPoints("CHEF")));
 
-        inv.setItem(11, createSkillIcon("CHEF_IRON_STOMACH", Material.RABBIT_STEW, "§e§lDẠ DÀY THÉP", 2, data, "§fGiảm §a50% §ftỉ lệ nhận điểm ngấy.", "§fGiảm §a50% §fthời gian bị cấm ăn.", "§fĐồ ăn tăng thêm §a50% §fthời gian bảo quản."));
-        inv.setItem(13, createSkillIcon("CHEF_MAGIC_HANDS", Material.ENCHANTED_GOLDEN_APPLE, "§6§lBÀN TAY MA THUẬT", 2, data, "§fCộng thêm §e20% §ftất cả buff (như Đường).", "§fTăng §e100% §fthời gian độ no nê."));
-        inv.setItem(15, createSkillIcon("CHEF_ASCENDED_TASTE", Material.DRAGON_BREATH, "§d§lTHĂNG HOA VỊ GIÁC", 2, data, "§fSố lượng nguyên liệu tối đa trong vạc", "§ftăng từ 9 lên §d12 món§f."));
+        inv.setItem(29, createSkillIcon("CHEF_IRON_STOMACH", Material.RABBIT_STEW, "§e§lDẠ DÀY THÉP", 2, data, "§fGiảm §a50% §ftỉ lệ nhận điểm ngấy.", "§fGiảm §a50% §fthời gian bị cấm ăn.", "§fĐồ ăn tăng thêm §a50% §fthời gian bảo quản."));
+        inv.setItem(31, createSkillIcon("CHEF_MAGIC_HANDS", Material.ENCHANTED_GOLDEN_APPLE, "§6§lBÀN TAY MA THUẬT", 2, data, "§fCộng thêm §e20% §ftất cả buff (như Đường).", "§fTăng §e100% §fthời gian độ no nê."));
+        inv.setItem(33, createSkillIcon("CHEF_ASCENDED_TASTE", Material.DRAGON_BREATH, "§d§lTHĂNG HOA VỊ GIÁC", 2, data, "§fSố lượng nguyên liệu tối đa trong vạc", "§ftăng từ 9 lên §d12 món§f."));
 
         ItemStack back = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta bMeta = back.getItemMeta(); bMeta.setDisplayName("§c§l[!] QUAY LẠI HỒ SƠ"); back.setItemMeta(bMeta);
-        inv.setItem(35, back);
+        inv.setItem(44, back);
 
         player.openInventory(inv);
     }
@@ -333,13 +326,13 @@ public class ChefJob extends RPGJob {
         for (String line : desc) lore.add("§8▪ " + line);
         lore.add("");
 
-        if (skillId.equals("CHEF_INFO")) {
-        } else if (data.hasUnlockedSkill("CHEF", skillId)) {
-            if (data.getLevel("CHEF") >= 50) lore.add("§a§l✔ ĐÃ KÍCH HOẠT VÀ ĐANG HOẠT ĐỘNG");
-            else { lore.add("§c§l✖ BỊ KHÓA TẠM THỜI"); lore.add("§c(Yêu cầu đạt lại Cấp 50)"); }
-        } else {
-            lore.add("§e§lCLICK ĐỂ HỌC KỸ NĂNG NÀY!");
-            lore.add("§fTiêu hao: §d" + jpCost + " JP");
+        if (!skillId.equals("CHEF_INFO")) {
+            if (data.hasUnlockedSkill("CHEF", skillId)) {
+                lore.add("§a§l✔ ĐÃ KÍCH HOẠT VÀ ĐANG HOẠT ĐỘNG");
+            } else {
+                lore.add("§e§lCLICK ĐỂ HỌC KỸ NĂNG NÀY!");
+                lore.add("§fTiêu hao: §d" + jpCost + " JP");
+            }
         }
 
         meta.setLore(lore);
@@ -353,11 +346,11 @@ public class ChefJob extends RPGJob {
         vn.minecraft.rPGCore.jobs.core.PlayerJobData data = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(player);
         int slot = event.getRawSlot();
 
-        if (slot == 35) { vn.minecraft.rPGCore.jobs.gui.JobSelectionGUI.openStatusMenu(player); return; }
+        if (slot == 44) { vn.minecraft.rPGCore.jobs.gui.JobSelectionGUI.openStatusMenu(player); return; }
 
-        if (slot == 11) processSkillPurchase(player, data, "CHEF_IRON_STOMACH", 2);
-        else if (slot == 13) processSkillPurchase(player, data, "CHEF_MAGIC_HANDS", 2);
-        else if (slot == 15) processSkillPurchase(player, data, "CHEF_ASCENDED_TASTE", 2);
+        if (slot == 29) processSkillPurchase(player, data, "CHEF_IRON_STOMACH", 2);
+        else if (slot == 31) processSkillPurchase(player, data, "CHEF_MAGIC_HANDS", 2);
+        else if (slot == 33) processSkillPurchase(player, data, "CHEF_ASCENDED_TASTE", 2);
     }
 
     private void processSkillPurchase(org.bukkit.entity.Player player, vn.minecraft.rPGCore.jobs.core.PlayerJobData data, String skillId, int cost) {
@@ -373,7 +366,9 @@ public class ChefJob extends RPGJob {
         }
     }
 
-    // Kéo xuống cuối class ChefJob.java và chép đè / thêm các hàm này vào:
+    // =========================================
+    // TRẢ THƯỞNG NHIỆM VỤ NGÀY / TUẦN ĐẦU BẾP
+    // =========================================
     @Override
     public List<String> getDailyRewardLore(int milestone) {
         if (milestone == 1) return Arrays.asList("§d+1 Tinh Túy Ẩm Thực");

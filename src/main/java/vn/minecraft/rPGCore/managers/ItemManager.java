@@ -98,7 +98,7 @@ public class ItemManager {
         register(new ItemData("veg_potato", Rarity.COMMON, Category.VEG, 0.5, Material.POTATO, "Khoai Tây Vàng", "Cung cấp thêm 0.5 Điểm Tinh bột", "Củ khoai tây bùi béo."));
 
         // --- 4. NHÓM TINH BỘT ---
-        register(new ItemData("starch_bread", Rarity.COMMON, Category.STARCH, 1.0, Material.BREAD, "Ổ Bánh Mì Nướng", null, "Thơm mùi lúa mạch."));
+        register(new ItemData("starch_bread", Rarity.COMMON, Category.STARCH, 1.0, Material.BREAD, "Ổ Bánh Mì Nướng", "Dùng ngay: Hồi 5 Điểm đói", "Thơm mùi lúa mạch."));
         register(new ItemData("starch_flour", Rarity.COMMON, Category.STARCH, 0.25, Material.SUGAR, "Bột Mì Thượng Hạng", null, "Xay nhuyễn từ lúa mì ngon nhất."));
 
         // --- 5. NHÓM GIA VỊ (XÓA CÁC EFFECT ẢO) ---
@@ -169,8 +169,8 @@ public class ItemManager {
 
         // --- 12. ĐẦU BẾP & TINH TÚY ẨM THỰC ---
         register(new ItemData("misc_culinary_essence", Rarity.EPIC, Category.MISC, 0.0, Material.GLOWSTONE_DUST, "Tinh Túy Ẩm Thực", null, "Kết tinh từ những món ăn tuyệt hảo.", "Được giới sành ăn săn lùng gắt gao."));
-        register(new ItemData("potion_digestion", Rarity.RARE, Category.MISC, 0.0, Material.HONEY_BOTTLE, "Thuốc Giải Ngấy", "Dùng ngay: Giảm 50% lượng điểm Tuyệt thực", "Công thức bí truyền của Hội Đầu Bếp."));
-        register(new ItemData("potion_anti_anorexia", Rarity.EPIC, Category.MISC, 0.0, Material.MILK_BUCKET, "Thuốc Trị Tuyệt Thực", "Dùng ngay: Chữa khỏi hoàn toàn chứng biếng ăn", "Uống vào là thèm ăn ngay!"));
+        register(new ItemData("potion_digestion", Rarity.RARE, Category.MISC, 0.0, Material.POTION, "Thuốc Giải Ngấy", "Dùng ngay: Giảm 50% lượng điểm Tuyệt thực", "Công thức bí truyền của Hội Đầu Bếp."));
+        register(new ItemData("potion_anti_anorexia", Rarity.EPIC, Category.MISC, 0.0, Material.DRAGON_BREATH, "Thuốc Trị Tuyệt Thực", "Dùng ngay: Chữa khỏi hoàn toàn chứng biếng ăn", "Uống vào là thèm ăn ngay!"));
         //register(new ItemData("spice_all_in_one", Rarity.EPIC, Category.SPICE, 0.5, Material.SUGAR, "Gia Vị Tổng Hợp", "Cung cấp 0.5 điểm cho TẤT CẢ gia vị", "Sự kết hợp hoàn hảo của mặn, ngọt, chua, cay.")); Đã thêm ở trên
         register(new ItemData("misc_lunch_bag", Rarity.RARE, Category.MISC, 0.0, Material.PIGLIN_BANNER_PATTERN, "Túi Đồ Ăn Dự Phòng", "Dùng ngay: Mở ra 3 bát súp ngẫu nhiên", "Chuẩn bị sẵn cho những chuyến đi dài."));
         register(new ItemData("misc_preservative_powder", Rarity.MYTHIC, Category.MISC, 0.0, Material.GUNPOWDER, "Bột Bảo Quản Thần Kỳ", "Chặn 100% nguy cơ hỏng của món ăn", "Một loại bột sáng lấp lánh..."));
@@ -203,7 +203,7 @@ public class ItemManager {
             if (data.points > 0 && data.effect != null && !data.effect.isEmpty()) lore.add("");
             if (data.effect != null && !data.effect.isEmpty()) {
                 lore.add("§fHiệu quả Đặc biệt:");
-                lore.add("  ➥ §a" + data.effect); // Chỉ dùng mũi tên cho hiệu quả đặc biệt
+                lore.add("§f  ➥ §a" + data.effect); // Chỉ dùng mũi tên cho hiệu quả đặc biệt
             }
         }
 

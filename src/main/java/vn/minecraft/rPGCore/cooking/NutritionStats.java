@@ -10,33 +10,35 @@ public class NutritionStats {
     public double fat = 0, monster = 0, magic = 0;
     public double salt = 0, sugar = 0, chili = 0, garlic = 0, pepper = 0, sour = 0;
 
-    // BỘ ĐẾM RIÊNG BIỆT CHO CÁC VẬT PHẨM ĐẶC THÙ (MAGIC)
     public Map<String, Integer> itemCounts = new HashMap<>();
 
     public NutritionStats(List<ItemData> ingredients) {
         for (ItemData data : ingredients) {
             String id = data.id.toLowerCase();
 
-            // Ghi nhận số lượng từng ID
             itemCounts.put(id, itemCounts.getOrDefault(id, 0) + 1);
 
-            // Xử lý ngoại lệ Khoai tây: Vừa là Rau, vừa là Tinh bột
             if (id.equals("veg_potato")) {
                 veg += 0.5;
                 starch += 0.5;
-                continue; // Bỏ qua switch bên dưới
+                continue;
             }
 
-            // [MỚI THÊM]: Xử lý ngoại lệ Xương Sói: Cho điểm Thịt và thêm điểm Ngọt (sugar)
             if (id.equals("meat_wolf_bone")) {
-                meat += data.points; // Cộng 0.25 Thịt
-                sugar += 0.25;       // Cộng 0.25 Ngọt
-                continue; // Bỏ qua switch bên dưới
+                meat += data.points;
+                sugar += 0.25;
+                continue;
+            }
+
+            // [MỚI]: Gia vị tổng hợp (All in one)
+            if (id.equals("spice_all_in_one")) {
+                salt += 0.5; sugar += 0.5; chili += 0.5; garlic += 0.5; pepper += 0.5; sour += 0.5;
+                continue;
             }
 
             switch (data.category) {
                 case MEAT: meat += data.points; break;
-                case FISH: fish += data.points; break; // Fish tách riêng
+                case FISH: fish += data.points; break;
                 case VEG: veg += data.points; break;
                 case STARCH: starch += data.points; break;
                 case FAT: fat += data.points; break;
