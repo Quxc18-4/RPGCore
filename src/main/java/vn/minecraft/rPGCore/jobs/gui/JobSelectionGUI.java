@@ -89,9 +89,8 @@ public class JobSelectionGUI implements Listener {
             event.setCancelled(true);
 
             if (slot == 10) {
-                // Tạm thời báo đang bảo trì, hoặc bạn có thể gọi GUI Leaderboard ở đây sau
-                player.sendMessage("§e[!] Bảng xếp hạng sẽ cập nhật trong 1 giờ tới!");
-                player.closeInventory();
+                // [ĐÃ SỬA]: Mở Bảng xếp hạng thay vì báo đang bảo trì
+                vn.minecraft.rPGCore.jobs.gui.JobLeaderboardGUI.openGUI(player);
             }
             else if (slot == 11) {
                 vn.minecraft.rPGCore.jobs.gui.QuestBoardGUI.openGUI(player);

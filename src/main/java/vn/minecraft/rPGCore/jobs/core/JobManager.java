@@ -227,9 +227,9 @@ public class JobManager {
     /* =========================================
      * HOOK API DÀNH CHO CÁC CLASS BÊN NGOÀI
      * ========================================= */
-    public static double getForgeBonus(Player player) {
+    public static double getForgeBonus(Player player, int itemLevel) {
         RPGJob job = getPlayerJob(player);
-        return (job != null) ? job.getForgeSuccessBonus(getPlayerJobLevel(player)) : 0.0;
+        return (job != null) ? job.getForgeSuccessBonus(getPlayerJobLevel(player), itemLevel) : 0.0;
     }
     public static double getLineageBonus(Player player) {
         RPGJob job = getPlayerJob(player);

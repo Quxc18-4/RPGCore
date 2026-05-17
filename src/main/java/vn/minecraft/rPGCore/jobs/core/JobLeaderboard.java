@@ -25,8 +25,8 @@ public class JobLeaderboard {
         }
     }
 
-    // Hàm cập nhật bảng xếp hạng (Nên chạy Async)
     public static void updateLeaderboards() {
+        Bukkit.getLogger().info("[RPGCore] Đang cập nhật Bảng Xếp Hạng Nghề Nghiệp...");
         File dataDir = new File(RPGCore.getInstance().getDataFolder(), "job_data");
         if (!dataDir.exists() || dataDir.listFiles() == null) return;
 
@@ -47,19 +47,20 @@ public class JobLeaderboard {
                 int level = config.getInt("levels." + jobId, 1);
                 double exp = config.getDouble("exps." + jobId, 0);
 
-                tempMap.computeIfAbsent(jobId, k -> new ArrayList<>())
+                tempMap.computeIfAbsent(jobId.toUpperCase(), k -> new ArrayList<>())
                         .add(new LeaderboardEntry(playerName, level, exp));
             } catch (Exception ignored) {}
         }
 
-        // Sắp xếp: Level cao trước -> Exp cao trước
+        // Sắp xếp: Level cao trước -> Exp cao trước, cắt lấy Top 10
         for (String jobId : tempMap.keySet()) {
             List<LeaderboardEntry> sorted = tempMap.get(jobId).stream()
                     .sorted((e1, e2) -> e2.level != e1.level ? Integer.compare(e2.level, e1.level) : Double.compare(e2.exp, e1.exp))
                     .limit(10)
                     .collect(Collectors.toList());
-            topPlayers.put(jobId.toUpperCase(), sorted);
+            topPlayers.put(jobId, sorted);
         }
+        Bukkit.getLogger().info("[RPGCore] Đã cập nhật xong Bảng Xếp Hạng!");
     }
 
     public static List<LeaderboardEntry> getTop10(String jobId) {

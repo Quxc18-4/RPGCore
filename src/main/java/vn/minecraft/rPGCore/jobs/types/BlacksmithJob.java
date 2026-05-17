@@ -66,7 +66,10 @@ public class BlacksmithJob extends RPGJob {
         lore.add("§fCấp độ hiện tại: §b" + currentLevel + "§8/§b" + maxLevel);
         lore.add("");
         lore.add("§a§lNỘI TẠI NGHỀ CƠ BẢN:");
-        lore.add("§8▪ §fTỉ lệ thành công khi rèn: §a+" + String.format("%.1f", getForgeSuccessBonus(currentLevel)) + "%");
+        // Tìm dòng này và sửa lại để nó hiển thị động khoảng %
+        double minBonus = getForgeSuccessBonus(currentLevel, 14); // Bonus ở cấp cao nhất
+        double maxBonus = getForgeSuccessBonus(currentLevel, 1);  // Bonus ở cấp thấp nhất
+        lore.add("§8▪ §fNội tại Rèn: §aCộng thêm " + String.format("%.1f", minBonus) + "% -> " + String.format("%.1f", maxBonus) + "% §7(Tùy bậc đồ)");
         lore.add("§8▪ §fTỉ lệ nhận thêm nâng cấp Dòng dõi: §6" + String.format("%.1f", (50.0 + getLineageStarBonus(currentLevel) * 100)) + "%");
 
         // Hiển thị đồng bộ kỹ năng
@@ -90,7 +93,14 @@ public class BlacksmithJob extends RPGJob {
     }
 
     @Override
-    public double getForgeSuccessBonus(int level) { return level * 0.2; }
+    public double getForgeSuccessBonus(int jobLevel, int itemLevel) {
+        // Tính % sức mạnh dựa trên cấp độ Nghề (Max 50 = 100% sức mạnh)
+        double power = Math.min(jobLevel, maxLevel) / (double) maxLevel;
+
+        if (itemLevel <= 5) return 10.0 * power;      // Giai đoạn đầu: Max +10%
+        else if (itemLevel <= 10) return 5.0 * power; // Giai đoạn giữa: Max +5%
+        else return 1.0 * power;                      // Giai đoạn cuối: Max +1%
+    }
     @Override
     public double getLineageStarBonus(int level) { return (level * 0.6) / 100.0; }
     @Override

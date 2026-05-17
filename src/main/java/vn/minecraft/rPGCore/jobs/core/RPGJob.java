@@ -43,7 +43,7 @@ public abstract class RPGJob {
      * ========================================= */
 
     // --- DÀNH CHO BLACKSMITH (Thợ Rèn) ---
-    public double getForgeSuccessBonus(int level) { return 0.0; }
+    public double getForgeSuccessBonus(int jobLevel, int itemLevel) { return 0.0; }
     public double getLineageStarBonus(int level) { return 0.0; }
     public double getStoneSaveChance(int level) { return 0; }
     public double getScrapRefundChance(int level) { return 0.0; }

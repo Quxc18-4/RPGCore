@@ -1,8 +1,10 @@
 package vn.minecraft.rPGCore;
 
+import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 import vn.minecraft.rPGCore.classes.ClassManager;
 import vn.minecraft.rPGCore.commands.*;
+import vn.minecraft.rPGCore.jobs.core.JobLeaderboard;
 import vn.minecraft.rPGCore.jobs.core.JobManager;
 import vn.minecraft.rPGCore.jobs.core.JobRegister;
 import vn.minecraft.rPGCore.jobs.gui.JobSelectionGUI;
@@ -58,6 +60,7 @@ public final class RPGCore extends JavaPlugin {
         ElementRotationGUI elementRotationGUI = new ElementRotationGUI();
 
         JobRegister.registerAllJobs();
+        JobLeaderboard.updateLeaderboards();
 
         RepairGUI repairGUI = new RepairGUI();
 
@@ -88,6 +91,8 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.QuestListener(), this);
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.jobs.gui.JobShopGUI(), this);
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.jobs.gui.JobSkillTreeGUI(), this);
+        // Đăng ký Listener cho GUI Xếp hạng
+        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.jobs.gui.JobLeaderboardGUI(), this);
 
         new RegenTask(playerManager, bossBarManager).runTaskTimer(this, 0L, 20L);
 
@@ -142,6 +147,11 @@ public final class RPGCore extends JavaPlugin {
         for (org.bukkit.entity.Player p : org.bukkit.Bukkit.getOnlinePlayers()) {
             vn.minecraft.rPGCore.jobs.core.JobManager.loadPlayerData(p.getUniqueId());
         }
+
+        // Setup lặp lại mỗi 2 giờ (2 giờ = 120 phút = 7200 giây = 144,000 Ticks)
+        Bukkit.getScheduler().runTaskTimerAsynchronously(this,
+                vn.minecraft.rPGCore.jobs.core.JobLeaderboard::updateLeaderboards,
+                144000L, 144000L);
     }
 
     @Override

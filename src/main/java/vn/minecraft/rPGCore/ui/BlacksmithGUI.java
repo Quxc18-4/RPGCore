@@ -90,23 +90,24 @@ public class BlacksmithGUI implements Listener {
             hasItem = true;
         }
 
+        // ĐỔI TỪ HỆ SỐ NHÂN SANG CỘNG THẲNG
         double baseRate = hasItem && currentLevel < 15 ? RATES[currentLevel] : 0;
-        double jobBonus = JobManager.getForgeBonus(player);
-        double finalRate = baseRate * (1.0 + (jobBonus / 100.0));
+        double jobBonus = JobManager.getForgeBonus(player, currentLevel);
+        double finalRate = baseRate + jobBonus; // <-- Cộng thẳng!
 
         List<String> lore1 = new ArrayList<>(Arrays.asList("§7Tiêu hao: 1 Đá Nâng Cấp"));
         List<String> lore10 = new ArrayList<>(Arrays.asList("§7Tiêu hao: Tối đa 10 Đá Nâng Cấp", "§7(Sẽ dừng lại ngay khi lên cấp)"));
         List<String> lore100 = new ArrayList<>(Arrays.asList("§7Tiêu hao: Tối đa 100 Đá Nâng Cấp", "§7(Sẽ dừng lại ngay khi lên cấp)"));
 
         if (hasItem && currentLevel < 15) {
-            lore1.add(""); lore1.add("§f✦ Tỉ lệ cơ bản: §a" + baseRate + "%");
-            lore10.add(""); lore10.add("§f✦ Tỉ lệ cơ bản: §a" + baseRate + "%");
-            lore100.add(""); lore100.add("§f✦ Tỉ lệ cơ bản: §a" + baseRate + "%");
+            lore1.add(""); lore1.add("§fTỉ lệ cơ bản: §a" + baseRate + "%");
+            lore10.add(""); lore10.add("§fTỉ lệ cơ bản: §a" + baseRate + "%");
+            lore100.add(""); lore100.add("§fTỉ lệ cơ bản: §a" + baseRate + "%");
 
             if (jobBonus > 0) {
-                lore1.add("§f✦ Tỉ lệ điều chỉnh (Nghề): §e" + String.format("%.2f", finalRate) + "%");
-                lore10.add("§f✦ Tỉ lệ điều chỉnh (Nghề): §e" + String.format("%.2f", finalRate) + "%");
-                lore100.add("§f✦ Tỉ lệ điều chỉnh (Nghề): §e" + String.format("%.2f", finalRate) + "%");
+                lore1.add("§fTỉ lệ điều chỉnh (Nghề): §e" + String.format("%.2f", finalRate) + "%");
+                lore10.add("§fTỉ lệ điều chỉnh (Nghề): §e" + String.format("%.2f", finalRate) + "%");
+                lore100.add("§fTỉ lệ điều chỉnh (Nghề): §e" + String.format("%.2f", finalRate) + "%");
             }
         } else {
             lore1.add(""); lore1.add("§cChưa có trang bị");
@@ -237,7 +238,7 @@ public class BlacksmithGUI implements Listener {
             applyStatsChange(equipment, currentLevel, newLevel);
 
             player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1.5f);
-            player.sendMessage("§e✨ §l[Rèn Bậc Thầy] §fThao tác thần sầu! Trang bị đột phá thẳng lên " + getLevelColor(newLevel) + "[+" + newLevel + "]");
+            player.sendMessage("§e§l[Rèn Bậc Thầy] §fThao tác thần sầu! Trang bị đột phá thẳng lên " + getLevelColor(newLevel) + "[+" + newLevel + "]");
 
             updateMasterForgeButton(event.getInventory(), player);
             updateUpgradeButtons(event.getInventory(), player);
@@ -284,8 +285,12 @@ public class BlacksmithGUI implements Listener {
 
             // LOGIC BÚA MAY MẮN + BÙA HỘ MỆNH
             if (luckyHammerTemplate != null && countCustomItem(player, luckyHammerTemplate) > 0) {
-                luckyBonus = 10.0;
-                player.sendMessage("§e[Búa May Mắn] §fSức mạnh tỏa ra! Tỉ lệ đập đồ tăng thêm 10%!");
+                // Đồ < 5: +10% | Đồ < 10: +5% | Đồ > 10: +2%
+                if (currentLevel <= 5) luckyBonus = 10.0;
+                else if (currentLevel <= 10) luckyBonus = 5.0;
+                else luckyBonus = 2.0;
+
+                player.sendMessage("§e[Búa May Mắn] §fSức mạnh tỏa ra! Cộng thẳng " + luckyBonus + "% tỉ lệ!");
                 player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_USE, 1f, 2f);
 
                 boolean saved = false;
@@ -296,8 +301,8 @@ public class BlacksmithGUI implements Listener {
                 if (!saved) removeCustomItem(player, luckyHammerTemplate, 1);
             }
 
-            double jobSuccessBonus = JobManager.getForgeBonus(player);
-            double successRate = (RATES[currentLevel] * (1.0 + (jobSuccessBonus / 100.0))) + luckyBonus;
+            double jobSuccessBonus = JobManager.getForgeBonus(player, currentLevel);
+            double successRate = RATES[currentLevel] + jobSuccessBonus + luckyBonus;
             double roll = rand.nextDouble() * 100.0;
 
             if (roll <= successRate) {
