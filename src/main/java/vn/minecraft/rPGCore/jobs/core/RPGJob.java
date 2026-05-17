@@ -3,6 +3,7 @@ package vn.minecraft.rPGCore.jobs.core;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import java.util.List;
+import java.util.Arrays;
 
 public abstract class RPGJob {
     protected String id;
@@ -18,17 +19,11 @@ public abstract class RPGJob {
     public String getName() { return name; }
     public int getMaxLevel() { return maxLevel; }
 
-    // Thêm hàm này vào class RPGJob (dưới phần getMaxLevel)
     public abstract java.util.Map<String, vn.minecraft.rPGCore.jobs.quests.RPGQuest> getQuests();
 
-    // Giao diện hiển thị trên GUI
-// [ĐÃ SỬA]: Truyền Player vào để đồng bộ hóa Dữ liệu Kỹ Năng
     public abstract ItemStack getIcon(Player player);
     public abstract List<String> getDescription(Player player);
 
-    // =========================================
-    // HỆ THỐNG GIAO DIỆN ĐỘNG (SHOP & SKILL TREE)
-    // =========================================
     public abstract String getShopGUITitle();
     public abstract void openShop(Player player);
     public abstract void handleShopClick(org.bukkit.event.inventory.InventoryClickEvent event);
@@ -37,24 +32,29 @@ public abstract class RPGJob {
     public abstract void openSkillTree(Player player);
     public abstract void handleSkillTreeClick(org.bukkit.event.inventory.InventoryClickEvent event);
 
+    // =========================================
+    // HỆ THỐNG TRẢ THƯỞNG NHIỆM VỤ THEO NGHỀ
+    // =========================================
+    public void giveDailyMilestoneReward(Player player, int milestone) {}
+    public void giveWeeklyMilestoneReward(Player player) {}
+
+    // [MỚI]: Lấy Lore hiển thị cho Rương Phần Thưởng (Tránh hardcode)
+    public List<String> getDailyRewardLore(int milestone) { return Arrays.asList("§6+ Phần thưởng nghề"); }
+    public List<String> getWeeklyRewardLore() { return Arrays.asList("§6+ Phần thưởng nghề lớn"); }
+
     /* =========================================
      * CÁC HÀM ẢO (VIRTUAL METHODS) CHO HOOK API
-     * (Chỉ override ở class nghề tương ứng)
      * ========================================= */
-
-    // --- DÀNH CHO BLACKSMITH (Thợ Rèn) ---
     public double getForgeSuccessBonus(int jobLevel, int itemLevel) { return 0.0; }
     public double getLineageStarBonus(int level) { return 0.0; }
     public double getStoneSaveChance(int level) { return 0; }
     public double getScrapRefundChance(int level) { return 0.0; }
 
-    // --- DÀNH CHO MASTER CHEF (Đầu Bếp) ---
-    public double getFreshnessMultiplier(int level) { return 1.0; } // 1.0 = 100% (Bình thường)
+    public double getFreshnessMultiplier(int level) { return 1.0; }
     public double getDurationMultiplier(int level) { return 1.0; }
     public double getBoredomReduction(int level) { return 0.0; }
     public double getDoublePortionChance(int level) { return 0.0; }
 
-    // --- DÀNH CHO MERCHANT (Thương Nhân) ---
     public double getCoinDropBonus(int level) { return 0.0; }
     public double getDepositInterestBonus(int level) { return 0.0; }
 }

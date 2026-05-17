@@ -32,6 +32,7 @@ public class FoodItemData {
     public boolean isRuined = false;
     public boolean hasFatDebuff = false;
     public boolean isMagicReversed = false;
+    public boolean isHiddenPoison = false; // [MỚI]: Cờ Giấu Độc của Sát Thủ Bếp
 
     public List<String> flavorTags = new ArrayList<>();
 }

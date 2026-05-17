@@ -36,12 +36,18 @@ public class BoredomManager {
                     double current = anorexiaPoints.get(uuid);
                     boolean isBanned = bannedPlayers.getOrDefault(uuid, false);
 
-                    // Giảm 3% nếu đang bị cấm, 1% nếu bình thường
+                    // Mặc định: Giảm 3% nếu đang bị cấm, 1% nếu bình thường
                     double reduction = isBanned ? 3.0 : 1.0;
+
+                    // [KỸ NĂNG TỐI THƯỢNG]: DẠ DÀY THÉP
+                    vn.minecraft.rPGCore.jobs.core.PlayerJobData data = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(player);
+                    if (data != null && data.hasUnlockedSkill("CHEF", "CHEF_IRON_STOMACH") && isBanned) {
+                        reduction = 6.0; // Trừ lẹ gấp đôi -> Giảm 50% thời gian tuyệt thực
+                    }
+
                     double newPoints = Math.max(0, current - reduction);
                     anorexiaPoints.put(uuid, newPoints);
 
-                    // Tự động gỡ cấm nếu điểm giảm xuống mức an toàn (VD: dưới 20%)
                     if (isBanned && newPoints <= 20.0) {
                         unban(uuid);
                         player.sendMessage("§aCơ thể bạn đã tiêu hóa xong. Cảm giác thèm ăn đã quay trở lại!");

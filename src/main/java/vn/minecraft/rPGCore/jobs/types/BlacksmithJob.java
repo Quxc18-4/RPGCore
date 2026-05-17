@@ -338,4 +338,22 @@ public class BlacksmithJob extends RPGJob {
             player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_VILLAGER_NO, 1f, 1f);
         }
     }
+
+    // [ĐƯA VÀO CUỐI FILE BLACKSMITHJOB]
+    @Override
+    public void giveDailyMilestoneReward(org.bukkit.entity.Player player, int milestone) {
+        vn.minecraft.rPGCore.managers.ItemManager im = vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager();
+        if (milestone == 1) player.getInventory().addItem(im.buildItem("misc_blacksmith_scrap", 1));
+        else if (milestone == 2) player.getInventory().addItem(im.buildItem("misc_blacksmith_scrap", 1));
+        else if (milestone == 3) {
+            player.getInventory().addItem(im.buildItem("misc_blacksmith_scrap", 2));
+            player.getInventory().addItem(vn.minecraft.rPGCore.commands.RepairAdminCommand.getStoneItem(5, 10));
+        }
+    }
+
+    @Override
+    public void giveWeeklyMilestoneReward(org.bukkit.entity.Player player) {
+        vn.minecraft.rPGCore.managers.ItemManager im = vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager();
+        player.getInventory().addItem(im.buildItem("misc_blacksmith_scrap", 20));
+    }
 }

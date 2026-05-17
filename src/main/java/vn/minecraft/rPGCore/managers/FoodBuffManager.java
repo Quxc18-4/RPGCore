@@ -3,8 +3,9 @@ package vn.minecraft.rPGCore.managers;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -12,7 +13,7 @@ public class FoodBuffManager {
 
     public enum StatType {
         DMG, CDR, MOVE_SPEED, ATK_SPEED, ARMOR_PEN, REGEN, MAX_HP,
-        LIFE_STEAL, CRIT_RATE, DROP_RATE // THÊM 3 CHỈ SỐ NÀY
+        LIFE_STEAL, CRIT_RATE, DROP_RATE
     }
 
     private static class ActiveBuff {
@@ -25,17 +26,18 @@ public class FoodBuffManager {
         }
     }
 
-    // Map lưu trữ: UUID -> (Loại Stat -> Buff)
-    private final Map<UUID, Map<StatType, ActiveBuff>> playerBuffs = new HashMap<>();
+    // [ĐÃ SỬA]: Map lồng List để lưu nhiều Buff cùng lúc thay vì ghi đè
+    private final Map<UUID, Map<StatType, List<ActiveBuff>>> playerBuffs = new HashMap<>();
 
     public FoodBuffManager(JavaPlugin plugin) {
-        // Vòng lặp dọn dẹp Buff hết hạn mỗi giây
         new BukkitRunnable() {
             @Override
             public void run() {
                 long now = System.currentTimeMillis();
-                for (Map<StatType, ActiveBuff> buffs : playerBuffs.values()) {
-                    buffs.entrySet().removeIf(entry -> now > entry.getValue().expiryTime);
+                for (Map<StatType, List<ActiveBuff>> types : playerBuffs.values()) {
+                    for (List<ActiveBuff> buffs : types.values()) {
+                        buffs.removeIf(buff -> now > buff.expiryTime);
+                    }
                 }
             }
         }.runTaskTimer(plugin, 20L, 20L);
@@ -44,19 +46,28 @@ public class FoodBuffManager {
     public void applyBuff(UUID uuid, StatType type, double amount, int durationMinutes) {
         if (amount == 0) return;
         playerBuffs.putIfAbsent(uuid, new HashMap<>());
-        long expiry = System.currentTimeMillis() + (durationMinutes * 60000L);
+        playerBuffs.get(uuid).putIfAbsent(type, new ArrayList<>());
 
-        // Ghi đè buff mới (có thể code cộng dồn tùy ý, nhưng ghi đè hợp lý với đồ ăn hơn)
-        playerBuffs.get(uuid).put(type, new ActiveBuff(amount, expiry));
+        long expiry = System.currentTimeMillis() + (durationMinutes * 60000L);
+        // Thêm vào danh sách thay vì ghi đè
+        playerBuffs.get(uuid).get(type).add(new ActiveBuff(amount, expiry));
     }
 
-    // Các hàm này sẽ được gọi ở hệ thống Chiến đấu / Profile của bạn
     public double getBonus(UUID uuid, StatType type) {
         if (!playerBuffs.containsKey(uuid)) return 0;
-        ActiveBuff buff = playerBuffs.get(uuid).get(type);
-        if (buff != null && System.currentTimeMillis() < buff.expiryTime) {
-            return buff.amount;
+
+        List<ActiveBuff> buffs = playerBuffs.get(uuid).get(type);
+        if (buffs == null || buffs.isEmpty()) return 0;
+
+        double totalBonus = 0;
+        long now = System.currentTimeMillis();
+
+        // Cộng dồn toàn bộ Buff và Debuff đang có hiệu lực
+        for (ActiveBuff buff : buffs) {
+            if (now < buff.expiryTime) {
+                totalBonus += buff.amount;
+            }
         }
-        return 0;
+        return totalBonus;
     }
 }

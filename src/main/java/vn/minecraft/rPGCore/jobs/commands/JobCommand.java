@@ -15,52 +15,91 @@ public class JobCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player)) {
-            sender.sendMessage("§cLệnh này chỉ dành cho người chơi!");
-            return true;
-        }
-
+        if (!(sender instanceof Player)) return true;
         Player player = (Player) sender;
 
-        // Nếu chỉ gõ /job -> Mở menu chọn nghề
         if (args.length == 0) {
             JobSelectionGUI.openGUI(player);
             return true;
         }
 
-        // Xử lý các lệnh phụ: /job menu
         if (args[0].equalsIgnoreCase("menu")) {
             JobSelectionGUI.openStatusMenu(player);
             return true;
         }
 
-        // [MỚI]: Lệnh bốc lại toàn bộ nhiệm vụ (Dành cho Admin test hoặc Reset qua ngày)
-        if (args[0].equalsIgnoreCase("roll")) {
+        // [MỚI]: CỤM LỆNH ẨN DÀNH RIÊNG CHO ADMIN
+        if (args[0].equalsIgnoreCase("admin")) {
+            // Nếu không có OP, giả vờ như lệnh không tồn tại
             if (!player.isOp()) {
-                player.sendMessage("§cBạn không có quyền dùng lệnh này!");
+                player.sendMessage("§c§l(!) §cThao tác không hợp lệ. Dùng /job hoặc /job menu.");
                 return true;
             }
-            vn.minecraft.rPGCore.jobs.core.JobQuestManager.rollNewQuests(player, true, true);
-            player.sendMessage("§a§l[!] §fĐã làm mới lại toàn bộ Nhiệm vụ Ngày & Tuần của bạn!");
-            return true;
+
+            if (args.length < 2) {
+                player.sendMessage("§cCú pháp Admin: /job admin <roll/level> [số]");
+                return true;
+            }
+
+            if (args[1].equalsIgnoreCase("roll")) {
+                vn.minecraft.rPGCore.jobs.core.JobQuestManager.rollNewQuests(player, true, true);
+                player.sendMessage("§a§l[!] §fĐã làm mới lại toàn bộ Nhiệm vụ Ngày & Tuần của bạn!");
+                return true;
+            }
+
+            if (args[1].equalsIgnoreCase("level")) {
+                if (args.length < 3) {
+                    player.sendMessage("§cCú pháp: /job admin level <số>");
+                    return true;
+                }
+                try {
+                    int amount = Integer.parseInt(args[2]);
+                    vn.minecraft.rPGCore.jobs.core.PlayerJobData data = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(player);
+                    String jobId = data.getJobId();
+
+                    if (jobId.equals("NONE")) {
+                        player.sendMessage("§cNgười chơi chưa có nghề!");
+                        return true;
+                    }
+
+                    vn.minecraft.rPGCore.jobs.core.RPGJob currentJob = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerJob(player);
+                    int currentLvl = data.getLevel(jobId);
+                    int maxLvl = currentJob.getMaxLevel();
+
+                    if (currentLvl >= maxLvl) {
+                        data.addJobPoints(jobId, amount);
+                        player.sendMessage("§aĐã đạt cấp tối đa! Tự động chuyển thành cộng §d" + amount + " JP§a.");
+                    } else {
+                        int newLvl = Math.min(maxLvl, currentLvl + amount);
+                        data.setLevel(jobId, newLvl);
+                        player.sendMessage("§aĐã tăng cấp nghề lên §bCấp " + newLvl + "§a.");
+                    }
+                } catch (Exception e) {
+                    player.sendMessage("§cVui lòng nhập một số hợp lệ!");
+                }
+                return true;
+            }
         }
 
         player.sendMessage("§c§l(!) §cThao tác không hợp lệ. Dùng /job hoặc /job menu.");
         return true;
     }
 
-    // Gợi ý khi bấm Tab (Remind)
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
             List<String> subCommands = new ArrayList<>();
             subCommands.add("menu");
-            subCommands.add("roll");
+            if (sender.isOp()) subCommands.add("admin"); // Ẩn hoàn toàn chữ "admin" với mem thường
 
             String current = args[0].toLowerCase();
-            return subCommands.stream()
-                    .filter(s -> s.startsWith(current))
-                    .collect(Collectors.toList());
+            return subCommands.stream().filter(s -> s.startsWith(current)).collect(Collectors.toList());
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("admin") && sender.isOp()) {
+            List<String> adminCmds = new ArrayList<>();
+            adminCmds.add("roll");
+            adminCmds.add("level");
+            String current = args[1].toLowerCase();
+            return adminCmds.stream().filter(s -> s.startsWith(current)).collect(Collectors.toList());
         }
         return new ArrayList<>();
     }

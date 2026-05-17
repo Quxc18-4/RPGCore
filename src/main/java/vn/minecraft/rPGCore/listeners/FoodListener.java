@@ -218,5 +218,8 @@ public class FoodListener implements Listener {
         if (item.getType() == Material.MUSHROOM_STEW || item.getType() == Material.RABBIT_STEW || item.getType() == Material.BEETROOT_SOUP) {
             player.getInventory().addItem(new ItemStack(Material.BOWL));
         }
+
+        // [MỚI]: BÁO CÁO HÀNH ĐỘNG ĂN CHO HỆ THỐNG NHIỆM VỤ
+        vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.CONSUME_FOOD);
     }
 }

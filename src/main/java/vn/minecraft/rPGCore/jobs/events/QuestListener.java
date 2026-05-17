@@ -1,4 +1,4 @@
-package vn.minecraft.rPGCore.listeners;
+package vn.minecraft.rPGCore.jobs.events;
 
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
