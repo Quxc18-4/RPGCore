@@ -62,6 +62,7 @@ public final class RPGCore extends JavaPlugin {
         ArrowCraftingUI arrowCraftingUI = new ArrowCraftingUI(playerManager, arrowRecipeManager);
         AdminArrowCraftingUI adminArrowCraftingUI = new AdminArrowCraftingUI(arrowRecipeManager);
         ElementRotationGUI elementRotationGUI = new ElementRotationGUI();
+        vn.minecraft.rPGCore.managers.CropManager cropManager = new vn.minecraft.rPGCore.managers.CropManager(this, this.itemManager);
 
         JobRegister.registerAllJobs();
         JobLeaderboard.updateLeaderboards();
@@ -96,6 +97,7 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.jobs.gui.JobSkillTreeGUI(), this);
         // Đăng ký Listener cho GUI Xếp hạng
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.jobs.gui.JobLeaderboardGUI(), this);
+        getServer().getPluginManager().registerEvents(cropManager, this);
 
         new RegenTask(playerManager, bossBarManager).runTaskTimer(this, 0L, 20L);
 
