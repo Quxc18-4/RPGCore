@@ -1,5 +1,6 @@
 package vn.minecraft.rPGCore.jobs.core;
 
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import java.util.List;
 
@@ -21,18 +22,19 @@ public abstract class RPGJob {
     public abstract java.util.Map<String, vn.minecraft.rPGCore.jobs.quests.RPGQuest> getQuests();
 
     // Giao diện hiển thị trên GUI
-    public abstract ItemStack getIcon(int currentLevel);
-    public abstract List<String> getDescription(int currentLevel);
+// [ĐÃ SỬA]: Truyền Player vào để đồng bộ hóa Dữ liệu Kỹ Năng
+    public abstract ItemStack getIcon(Player player);
+    public abstract List<String> getDescription(Player player);
 
     // =========================================
     // HỆ THỐNG GIAO DIỆN ĐỘNG (SHOP & SKILL TREE)
     // =========================================
     public abstract String getShopGUITitle();
-    public abstract void openShop(org.bukkit.entity.Player player);
+    public abstract void openShop(Player player);
     public abstract void handleShopClick(org.bukkit.event.inventory.InventoryClickEvent event);
 
     public abstract String getSkillTreeGUITitle();
-    public abstract void openSkillTree(org.bukkit.entity.Player player);
+    public abstract void openSkillTree(Player player);
     public abstract void handleSkillTreeClick(org.bukkit.event.inventory.InventoryClickEvent event);
 
     /* =========================================

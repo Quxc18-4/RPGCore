@@ -45,7 +45,7 @@ public class JobSelectionGUI implements Listener {
             if (slot > 16) break; // Tránh tràn GUI
 
             int jobLevel = data.getLevel(job.getId());
-            ItemStack icon = job.getIcon(jobLevel).clone();
+            ItemStack icon = job.getIcon(player).clone();
             ItemMeta meta = icon.getItemMeta();
             List<String> lore = meta.getLore();
             if (lore == null) lore = new ArrayList<>();
@@ -122,7 +122,7 @@ public class JobSelectionGUI implements Listener {
         // Tìm xem người chơi click vào nghề nào dựa trên Tên hiển thị
         RPGJob targetJob = null;
         for (RPGJob job : JobManager.getAllJobs()) {
-            if (clicked.getItemMeta().getDisplayName().equals(job.getIcon(1).getItemMeta().getDisplayName())) {
+            if (clicked.getItemMeta().getDisplayName().equals(job.getIcon(player).getItemMeta().getDisplayName())) {
                 targetJob = job;
                 break;
             }
@@ -194,7 +194,7 @@ public class JobSelectionGUI implements Listener {
         inv.setItem(11, createMenuButton(Material.WRITABLE_BOOK, "§a§lBẢNG NHIỆM VỤ", "§7Làm nhiệm vụ để nhận phần thưởng."));
 
         // 3. Icon Nghề (Slot 13 - Trung tâm)
-        ItemStack icon = currentJob.getIcon(data.getLevel()).clone();
+        ItemStack icon = currentJob.getIcon(player).clone();
         ItemMeta meta = icon.getItemMeta();
         List<String> lore = meta.getLore();
         lore.add(" ");

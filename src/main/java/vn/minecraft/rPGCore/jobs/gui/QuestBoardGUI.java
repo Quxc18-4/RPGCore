@@ -82,6 +82,13 @@ public class QuestBoardGUI implements Listener {
         // ==========================================
         inv.setItem(25, createWeeklyChest(allWeeklyDone, data.isQuestClaimed("WEEKLY_MILESTONE_FINAL"))); // [ĐÃ SỬA] Slot 25 (Giữa)
 
+        // NÚT QUAY LẠI MENU
+        ItemStack back = new ItemStack(Material.RED_STAINED_GLASS_PANE);
+        ItemMeta bMeta = back.getItemMeta();
+        bMeta.setDisplayName("§c§l[!] QUAY LẠI");
+        back.setItemMeta(bMeta);
+        inv.setItem(44, back);
+
         player.openInventory(inv);
         player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BELL, 1f, 1f);
     }
@@ -157,6 +164,12 @@ public class QuestBoardGUI implements Listener {
         int slot = event.getRawSlot();
         PlayerJobData data = JobManager.getPlayerData(player);
         ItemManager im = RPGCore.getInstance().getItemManager();
+
+        // Xử lý nút Back
+        if (slot == 44) {
+            vn.minecraft.rPGCore.jobs.gui.JobSelectionGUI.openStatusMenu(player);
+            return;
+        }
 
         // Nhận Mốc 1 (Cập nhật đúng Slot 12)
         if (slot == 12 && data.getDailyMilestone() >= 1 && !data.isQuestClaimed("DAILY_MILESTONE_1")) {
