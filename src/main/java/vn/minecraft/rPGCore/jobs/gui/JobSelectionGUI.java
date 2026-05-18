@@ -9,6 +9,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import vn.minecraft.rPGCore.RPGCore;
@@ -57,6 +58,8 @@ public class JobSelectionGUI implements Listener {
                 lore.add("§a§l[ĐANG CHỌN]");
                 meta.addEnchant(Enchantment.UNBREAKING, 1, true);
                 meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
+                meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+                meta.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
             } else {
                 lore.add("§eNhấp để chọn/đổi sang nghề này!");
                 if (!data.getJobId().equals("NONE")) {

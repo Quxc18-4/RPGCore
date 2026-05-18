@@ -69,7 +69,7 @@ public class ChefJob extends RPGJob {
         lore.add("§8▪ §fXác suất Nhân đôi thời gian No Căng: §6" + String.format("%.1f", durationMulti) + "%");
         lore.add("§8▪ §fXác suất Nhân đôi thời gian Bảo quản: §e" + String.format("%.1f", freshMulti) + "%");
         lore.add("§8▪ §fBàn tay hào phóng (Cộng thêm 0.5 điểm nguyên liệu): §b" + String.format("%.1f", bonusChance) + "%");
-        lore.add("§8▪ §fSát thủ bếp (Xác suất giấu Độc trong Lore): §c" + String.format("%.1f", hideChance) + "%");
+        //lore.add("§8▪ §fSát thủ bếp (Xác suất giấu Độc trong Lore): §c" + String.format("%.1f", hideChance) + "%");
 
         boolean hasStomach = data.hasUnlockedSkill("CHEF", "CHEF_IRON_STOMACH");
         boolean hasHands = data.hasUnlockedSkill("CHEF", "CHEF_MAGIC_HANDS");

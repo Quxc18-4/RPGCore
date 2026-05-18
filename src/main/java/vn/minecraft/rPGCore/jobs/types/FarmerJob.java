@@ -1,6 +1,7 @@
 package vn.minecraft.rPGCore.jobs.types;
 
 import org.bukkit.Material;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import vn.minecraft.rPGCore.jobs.core.RPGJob;
@@ -44,6 +45,7 @@ public class FarmerJob extends RPGJob {
         if (meta != null) {
             meta.setDisplayName("§a§lNGHỀ NÔNG DÂN");
             meta.setLore(getDescription(player));
+            meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
             icon.setItemMeta(meta);
         }
         return icon;
