@@ -112,44 +112,54 @@ public class FarmerJob extends RPGJob {
             else inv.setItem(i, blackGlass);
         }
 
-        // Hàng 2 (Slot 10-15) - Mua bằng Tinh Chất Tự Nhiên
-        inv.setItem(10, createEssenceItem(im.buildItem("misc_job_change_card", 1), "FARM_JOB_CARD", data, 1, 30, jobLevel >= 1, 1));
-        inv.setItem(11, createEssenceItem(im.buildItem("bag_seeds_common", 1), "FARM_BAG_COMMON", data, 5, 2, jobLevel >= 1, 1));
-        inv.setItem(12, createEssenceItem(im.buildItem("bag_seeds_magic", 1), "FARM_BAG_MAGIC", data, 3, 10, jobLevel >= 25, 25));
+        // ==============================================
+        // HÀNG 2: MUA BẰNG TINH CHẤT TỰ NHIÊN
+        // ==============================================
+        inv.setItem(10, createEssenceItem(im.buildItem("misc_job_change_card", 1), "FARM_JOB_CARD", data, 1, 150, jobLevel >= 1, 1));
+        inv.setItem(11, createEssenceItem(im.buildItem("bag_seeds_common", 1), "FARM_BAG_COMMON", data, 5, 5, jobLevel >= 1, 1));
+        inv.setItem(12, createEssenceItem(im.buildItem("bag_seeds_magic", 1), "FARM_BAG_MAGIC", data, 3, 25, jobLevel >= 25, 25));
         inv.setItem(13, createEssenceItem(im.buildItem("misc_watering_can", 1), "FARM_WATER_CAN", data, 10, 5, jobLevel >= 10, 10));
-        inv.setItem(14, createEssenceItem(im.buildItem("misc_fertilizer", 1), "FARM_FERTILIZER", data, 5, 8, jobLevel >= 20, 20));
-        inv.setItem(15, createEssenceItem(im.buildItem("armor_farmer_hat", 1), "FARM_HAT", data, 1, 25, jobLevel >= 30, 30));
+        inv.setItem(14, createEssenceItem(im.buildItem("misc_fertilizer", 1), "FARM_FERTILIZER", data, 5, 15, jobLevel >= 20, 20));
+        inv.setItem(15, createEssenceItem(im.buildItem("armor_farmer_hat", 1), "FARM_HAT", data, 1, 50, jobLevel >= 30, 30));
+        inv.setItem(16, createEssenceItem(im.buildItem("misc_seed_pouch", 1), "FARM_SEED_POUCH", data, 2, 30, jobLevel >= 15, 15));
 
-        // Hàng 3 (Slot 19-25) - Hạt giống Ma thuật (Bán lẻ bằng Bạc)
-        inv.setItem(19, createCoinItem(im.buildItem("seed_magic_golden_carrot", 1), "FARM_SEED_M1", data, 20, 500, jobLevel >= 1, 1));
-        inv.setItem(20, createCoinItem(im.buildItem("seed_magic_flame_beetroot", 1), "FARM_SEED_M2", data, 20, 500, jobLevel >= 1, 1));
-        inv.setItem(21, createCoinItem(im.buildItem("seed_magic_golden_melon", 1), "FARM_SEED_M3", data, 10, 800, jobLevel >= 1, 1));
-        inv.setItem(22, createCoinItem(im.buildItem("seed_magic_glowing_mushroom", 1), "FARM_SEED_M4", data, 10, 800, jobLevel >= 1, 1));
-        inv.setItem(23, createCoinItem(im.buildItem("seed_magic_star_wheat", 1), "FARM_SEED_M5", data, 20, 500, jobLevel >= 1, 1));
-        inv.setItem(24, createCoinItem(im.buildItem("seed_magic_soul_sweet_berry", 1), "FARM_SEED_M6", data, 10, 800, jobLevel >= 1, 1));
-        inv.setItem(25, createCoinItem(im.buildItem("seed_magic_dragon_cocoa", 1), "FARM_SEED_M7", data, 10, 1000, jobLevel >= 1, 1));
+        // ==============================================
+        // HÀNG 3: HẠT MA THUẬT (MUA BẰNG TINH CHẤT THEO SỐ VỤ)
+        // 1 Vụ = 5 TC, 3 Vụ = 10 TC, 5 Vụ = 20 TC
+        // ==============================================
+        inv.setItem(19, createEssenceItem(im.buildItem("seed_magic_golden_carrot", 1), "FARM_SEED_M1", data, 20, 5, jobLevel >= 1, 1));
+        inv.setItem(20, createEssenceItem(im.buildItem("seed_magic_flame_beetroot", 1), "FARM_SEED_M2", data, 20, 5, jobLevel >= 1, 1));
+        inv.setItem(21, createEssenceItem(im.buildItem("seed_magic_golden_melon", 1), "FARM_SEED_M3", data, 10, 10, jobLevel >= 1, 1));
+        inv.setItem(22, createEssenceItem(im.buildItem("seed_magic_glowing_mushroom", 1), "FARM_SEED_M4", data, 10, 5, jobLevel >= 1, 1));
+        inv.setItem(23, createEssenceItem(im.buildItem("seed_magic_star_wheat", 1), "FARM_SEED_M5", data, 20, 5, jobLevel >= 1, 1));
+        inv.setItem(24, createEssenceItem(im.buildItem("seed_magic_soul_sweet_berry", 1), "FARM_SEED_M6", data, 10, 20, jobLevel >= 1, 1));
+        inv.setItem(25, createEssenceItem(im.buildItem("seed_magic_dragon_cocoa", 1), "FARM_SEED_M7", data, 10, 10, jobLevel >= 1, 1));
 
-        // Hàng 4 (Slot 28-34) - Hạt giống thường (Bán lẻ bằng Bạc)
-        inv.setItem(28, createCoinItem(im.buildItem("seed_wheat", 1), "FARM_SEED_1", data, 100, 50, jobLevel >= 1, 1));
-        inv.setItem(29, createCoinItem(im.buildItem("seed_carrot", 1), "FARM_SEED_2", data, 100, 50, jobLevel >= 1, 1));
-        inv.setItem(30, createCoinItem(im.buildItem("seed_potato", 1), "FARM_SEED_3", data, 100, 50, jobLevel >= 1, 1));
-        inv.setItem(31, createCoinItem(im.buildItem("seed_melon", 1), "FARM_SEED_4", data, 50, 80, jobLevel >= 1, 1));
-        inv.setItem(32, createCoinItem(im.buildItem("seed_sweet_berry", 1), "FARM_SEED_5", data, 50, 80, jobLevel >= 1, 1));
-        inv.setItem(33, createCoinItem(im.buildItem("seed_kelp", 1), "FARM_SEED_6", data, 50, 80, jobLevel >= 1, 1));
-        inv.setItem(34, createCoinItem(im.buildItem("seed_cocoa", 1), "FARM_SEED_7", data, 50, 100, jobLevel >= 1, 1));
+        // ==============================================
+        // HÀNG 4: HẠT THƯỜNG (MUA BẰNG BẠC THEO SỐ VỤ -> NHÂN 64)
+        // 1 Vụ = 10 Bạc, 3 Vụ = 15 Bạc, 5 Vụ = 20 Bạc
+        // ==============================================
+        inv.setItem(28, createCoinItem(im.buildItem("seed_wheat", 1), "FARM_SEED_1", data, 100, 10 * 64, jobLevel >= 1, 1));
+        inv.setItem(29, createCoinItem(im.buildItem("seed_carrot", 1), "FARM_SEED_2", data, 100, 10 * 64, jobLevel >= 1, 1));
+        inv.setItem(30, createCoinItem(im.buildItem("seed_potato", 1), "FARM_SEED_3", data, 100, 10 * 64, jobLevel >= 1, 1));
+        inv.setItem(31, createCoinItem(im.buildItem("seed_melon", 1), "FARM_SEED_4", data, 50, 15 * 64, jobLevel >= 1, 1));
+        inv.setItem(32, createCoinItem(im.buildItem("seed_sweet_berry", 1), "FARM_SEED_5", data, 50, 20 * 64, jobLevel >= 1, 1));
+        inv.setItem(33, createCoinItem(im.buildItem("seed_kelp", 1), "FARM_SEED_6", data, 50, 15 * 64, jobLevel >= 1, 1));
+        inv.setItem(34, createCoinItem(im.buildItem("seed_cocoa", 1), "FARM_SEED_7", data, 50, 15 * 64, jobLevel >= 1, 1));
 
-        // Hàng 5 (Slot 37-43) - Dụng cụ & Vật tư (Bằng Bạc)
-        inv.setItem(37, createCoinItem(im.buildItem("tool_harvest_hoe", 1), "FARM_TOOL_HOE", data, 5, 200, jobLevel >= 1, 1));
+        // ==============================================
+        // HÀNG 5: NÔNG CỤ VÀ VẬT TƯ (BẰNG BẠC -> NHÂN 64)
+        // ==============================================
+        inv.setItem(37, createCoinItem(im.buildItem("tool_harvest_hoe", 1), "FARM_TOOL_HOE", data, 5, 200 * 64, jobLevel >= 1, 1)); // 200 Bạc
 
         ItemStack waterBucket = new ItemStack(Material.WATER_BUCKET);
         ItemMeta wbMeta = waterBucket.getItemMeta(); wbMeta.setDisplayName("§bXô Nước"); waterBucket.setItemMeta(wbMeta);
-        inv.setItem(40, createCoinItem(waterBucket, "FARM_MAT_WATER", data, 20, 50, jobLevel >= 1, 1));
+        inv.setItem(40, createCoinItem(waterBucket, "FARM_MAT_WATER", data, 20, 50 * 64, jobLevel >= 1, 1)); // 50 Bạc
 
         ItemStack oakLog = new ItemStack(Material.OAK_LOG, 64);
         ItemMeta olMeta = oakLog.getItemMeta(); olMeta.setDisplayName("§6Khúc Gỗ Sồi (x64)"); oakLog.setItemMeta(olMeta);
-        inv.setItem(43, createCoinItem(oakLog, "FARM_MAT_WOOD", data, 10, 300, jobLevel >= 1, 1));
+        inv.setItem(43, createCoinItem(oakLog, "FARM_MAT_WOOD", data, 10, 5 * 64, jobLevel >= 1, 1)); // 5 Bạc
 
-        // Góc phải dưới: Nút thoát
         ItemStack back = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta bMeta = back.getItemMeta(); bMeta.setDisplayName("§c§l[!] QUAY LẠI HỒ SƠ"); back.setItemMeta(bMeta);
         inv.setItem(53, back);

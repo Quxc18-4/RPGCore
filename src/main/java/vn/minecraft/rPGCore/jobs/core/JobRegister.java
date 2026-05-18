@@ -9,6 +9,7 @@ public class JobRegister {
     public static void registerAllJobs() {
         JobManager.registerJob(new BlacksmithJob());
         JobManager.registerJob(new ChefJob()); // ĐÃ KÍCH HOẠT
+        JobManager.registerJob(new FarmerJob());
         // JobManager.registerJob(new MerchantJob());
     }
 }

@@ -24,7 +24,6 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
@@ -47,7 +46,7 @@ public class CropManager implements Listener {
         public long plantTime;
         public int harvestsLeft;
         public int maxHarvests;
-        public long requiredTime; // Thêm biến này để hỗ trợ Ult Thúc Sinh (3 Tiếng)
+        public long requiredTime;
 
         public CropData(UUID owner, String seedId, long plantTime, int harvestsLeft, int maxHarvests, long requiredTime) {
             this.owner = owner;
@@ -172,7 +171,6 @@ public class CropManager implements Listener {
 
                 event.setCancelled(true);
 
-                // Check Level & Ultimate của Nông dân
                 vn.minecraft.rPGCore.jobs.core.PlayerJobData jobData = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(player);
                 boolean isFarmer = jobData != null && jobData.getJobId().equals("FARMER");
 
@@ -191,14 +189,11 @@ public class CropManager implements Listener {
                     if (itemId.contains("cucumber") && blockData instanceof SeaPickle) ((SeaPickle) blockData).setPickles(1);
                     targetBlock.setBlockData(blockData);
 
-                    // Xử lý Ultimate
                     int harvests = getMaxHarvests(itemId);
                     long reqTime = BASE_GROW_TIME_MS;
 
                     if (isFarmer) {
-                        // Kỹ năng 1: Phép màu vụ mùa (x2 Max Harvest)
                         if (hasUltimate(player, "farmer_ult_1") && harvests > 1) harvests *= 2;
-                        // Kỹ năng 2: Thúc sinh (-25% Time = 3h)
                         if (hasUltimate(player, "farmer_ult_2")) reqTime = 10800000L;
                     }
 
@@ -208,15 +203,27 @@ public class CropManager implements Listener {
                     if (player.getGameMode() != org.bukkit.GameMode.CREATIVE) handItem.setAmount(handItem.getAmount() - 1);
                     player.playSound(player.getLocation(), Sound.ITEM_CROP_PLANT, 1f, 1f);
                     player.sendMessage("§aĐã gieo hạt! Thời gian chín: " + (reqTime / 3600000) + " Tiếng.");
+
+                    // [HOOK QUEST]: Gieo Mầm Sự Sống
+                    try {
+                        vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.PLANT_SEED);
+                    } catch (Exception ignored) {}
                 }
             }
         }
     }
 
     // ==========================================
-    // LOGIC PHÂN BÓN & TƯỚI NƯỚC
+    // LOGIC PHÂN BÓN & TƯỚI NƯỚC (CÓ ĐỘ BỀN)
     // ==========================================
     private void handleFertilizer(Player player, Block rootBlock, String itemId, ItemStack handItem) {
+        org.bukkit.inventory.meta.ItemMeta meta = handItem.getItemMeta();
+        org.bukkit.NamespacedKey duraKey = new org.bukkit.NamespacedKey(plugin, "farming_tool_durability");
+
+        // Cài đặt số lần dùng tối đa
+        int maxDura = itemId.equals("misc_watering_can") ? 20 : 10;
+        int currentDura = meta.getPersistentDataContainer().getOrDefault(duraKey, org.bukkit.persistence.PersistentDataType.INTEGER, maxDura);
+
         if (itemId.equals("misc_watering_can")) {
             CropData data = activeCrops.get(rootBlock.getLocation());
             data.plantTime -= 3600000L; // Giảm 1 tiếng
@@ -225,15 +232,14 @@ public class CropManager implements Listener {
             player.sendMessage("§bĐã tưới nước! Thời gian được rút ngắn 1 tiếng.");
         }
         else if (itemId.equals("misc_fertilizer")) {
-            // AoE 3x3
             for (int x = -1; x <= 1; x++) {
                 for (int y = -1; y <= 1; y++) {
                     for (int z = -1; z <= 1; z++) {
                         Location loc = rootBlock.getLocation().add(x, y, z);
                         if (activeCrops.containsKey(loc)) {
                             CropData data = activeCrops.get(loc);
-                            if (x == 0 && y == 0 && z == 0) data.plantTime -= 7200000L; // Giảm 2 tiếng cho cây trung tâm
-                            else data.plantTime -= 3600000L; // Giảm 1 tiếng cho cây xung quanh
+                            if (x == 0 && y == 0 && z == 0) data.plantTime -= 7200000L; // Giảm 2 tiếng
+                            else data.plantTime -= 3600000L; // Giảm 1 tiếng
                         }
                     }
                 }
@@ -241,14 +247,38 @@ public class CropManager implements Listener {
             player.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, rootBlock.getLocation().add(0.5, 1, 0.5), 50, 1.5, 1.5, 1.5);
             player.playSound(rootBlock.getLocation(), Sound.BLOCK_COMPOSTER_READY, 1f, 1f);
             player.sendMessage("§aĐã bón phân diện rộng! Cây trung tâm -2h, xung quanh -1h.");
-            if (player.getGameMode() != org.bukkit.GameMode.CREATIVE) handItem.setAmount(handItem.getAmount() - 1);
+
+            try {
+                vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.USE_FERTILIZER);
+            } catch (Exception ignored) {}
         }
         saveCropForPlayer(player.getUniqueId());
+
+        // --- TRỪ ĐỘ BỀN VÀ CẬP NHẬT LORE ---
+        if (player.getGameMode() != org.bukkit.GameMode.CREATIVE) {
+            currentDura--;
+            if (currentDura <= 0) {
+                player.playSound(player.getLocation(), Sound.ENTITY_ITEM_BREAK, 1f, 1f);
+                player.sendMessage("§c§l[!] §fVật phẩm nông nghiệp của bạn đã hết lần sử dụng!");
+                handItem.setAmount(handItem.getAmount() - 1);
+            } else {
+                meta.getPersistentDataContainer().set(duraKey, org.bukkit.persistence.PersistentDataType.INTEGER, currentDura);
+
+                List<String> lore = meta.getLore();
+                if (lore != null) {
+                    for (int i = 0; i < lore.size(); i++) {
+                        if (lore.get(i).contains("Độ bền:")) {
+                            lore.set(i, "§7Độ bền: " + currentDura + " lần sử dụng.");
+                            break;
+                        }
+                    }
+                    meta.setLore(lore);
+                }
+                handItem.setItemMeta(meta);
+            }
+        }
     }
 
-    // ==========================================
-    // LOGIC THU HOẠCH - TOÁN HỌC & XÁC SUẤT NÔNG DÂN
-    // ==========================================
     private void handleHarvest(Player player, Block rootBlock) {
         Location loc = rootBlock.getLocation();
         CropData data = activeCrops.get(loc);
@@ -264,88 +294,116 @@ public class CropManager implements Listener {
             return;
         }
 
-        // --- CÁC HỆ SỐ NGHỀ NÔNG DÂN ---
         vn.minecraft.rPGCore.jobs.core.PlayerJobData jobData = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(player);
         int jobLevel = (jobData != null && jobData.getJobId().equals("FARMER")) ? jobData.getLevel() : 0;
 
-        // Nón lá Buff (+10% mọi chỉ số)
         double hatBuff = 0.0;
         ItemStack offHand = player.getInventory().getItemInOffHand();
         ItemStack helmet = player.getInventory().getHelmet();
-        boolean hasHat = (itemManager.getItemId(offHand) != null && itemManager.getItemId(offHand).equals("armor_farmer_hat")) ||
-                (itemManager.getItemId(helmet) != null && itemManager.getItemId(helmet).equals("armor_farmer_hat"));
 
-        if (hasHat) {
+        ItemStack activeHat = null;
+        boolean isHelmet = false;
+
+        // Kiểm tra xem nón đang nằm ở đâu
+        if (itemManager.getItemId(helmet) != null && itemManager.getItemId(helmet).equals("armor_farmer_hat")) {
+            activeHat = helmet;
+            isHelmet = true;
+        } else if (itemManager.getItemId(offHand) != null && itemManager.getItemId(offHand).equals("armor_farmer_hat")) {
+            activeHat = offHand;
+        }
+
+        if (activeHat != null) {
             hatBuff = 0.10;
-            // TODO: Trừ độ bền Nón Lá (Cần lưu PersistentDataContainer) - Tạm thời báo hiệu ứng
             player.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, loc.clone().add(0.5, 1, 0.5), 10, 0.2, 0.2, 0.2);
+
+            // --- LOGIC TRỪ ĐỘ BỀN NÓN LÁ (300 LẦN) ---
+            org.bukkit.inventory.meta.ItemMeta hatMeta = activeHat.getItemMeta();
+            org.bukkit.NamespacedKey duraKey = new org.bukkit.NamespacedKey(plugin, "farmer_hat_durability");
+
+            // Lấy độ bền hiện tại (Nếu chưa có thì mặc định là 300)
+            int currentDura = hatMeta.getPersistentDataContainer().getOrDefault(duraKey, org.bukkit.persistence.PersistentDataType.INTEGER, 300);
+            currentDura--;
+
+            if (currentDura <= 0) {
+                // Nón đã hỏng hoàn toàn
+                player.playSound(player.getLocation(), Sound.ENTITY_ITEM_BREAK, 1f, 1f);
+                player.sendMessage("§c§l[!] §fNón Lá Chân Truyền của bạn đã bị hỏng rách!");
+                if (isHelmet) player.getInventory().setHelmet(null);
+                else player.getInventory().setItemInOffHand(null);
+            } else {
+                // Lưu lại độ bền mới vào Nón
+                hatMeta.getPersistentDataContainer().set(duraKey, org.bukkit.persistence.PersistentDataType.INTEGER, currentDura);
+
+                // Cập nhật lại dòng Lore hiển thị độ bền
+                List<String> lore = hatMeta.getLore();
+                if (lore != null) {
+                    for (int i = 0; i < lore.size(); i++) {
+                        if (lore.get(i).contains("Độ bền:")) {
+                            lore.set(i, "§7Độ bền: " + currentDura + " lần thu hoạch.");
+                            break;
+                        }
+                    }
+                    hatMeta.setLore(lore);
+                }
+                activeHat.setItemMeta(hatMeta);
+            }
         }
 
         Random rand = new Random();
         boolean hasUlt3 = hasUltimate(player, "farmer_ult_3");
         boolean isMultiHarvest = data.maxHarvests > 1;
 
-        // 1. TÍNH CHẤT LƯỢNG (Quality: Gốc, Uncommon, Rare)
-        double chanceRare = (jobLevel > 0) ? (0.15 + (0.15 * (jobLevel/50.0)) + hatBuff) : 0.0; // 15% -> 30%
-        double chanceUncommon = (jobLevel > 0) ? (0.40 + (0.30 * (jobLevel/50.0)) + hatBuff) : (0.10 + hatBuff); // 40% -> 70% (Thường: 10%)
+        double chanceRare = (jobLevel > 0) ? (0.15 + (0.15 * (jobLevel/50.0)) + hatBuff) : 0.0;
+        double chanceUncommon = (jobLevel > 0) ? (0.40 + (0.30 * (jobLevel/50.0)) + hatBuff) : (0.10 + hatBuff);
 
         if (hasUlt3) {
-            chanceRare += 0.15; // Tăng thêm tỉ lệ nổ Khổng Lồ
-            chanceUncommon = 1.0; // Khóa cứng 100% rớt Ít nhất là Đột Biến (1.5x)
+            chanceRare += 0.15;
+            chanceUncommon = 1.0;
         }
 
         String qualitySuffix = "";
         if (rand.nextDouble() < chanceRare) qualitySuffix = "_rare";
         else if (rand.nextDouble() < chanceUncommon) qualitySuffix = "_uncommon";
 
-        // 2. TÍNH SỐ LƯỢNG (Yield)
         int yield = 1;
         if (jobLevel > 0) {
             if (!isMultiHarvest) {
-                // 20% -> 40%
                 double chanceYield = 0.20 + (0.20 * (jobLevel/50.0)) + hatBuff;
                 if (hasUlt3) chanceYield += 0.20;
-                if (rand.nextDouble() < chanceYield) yield = 1 + rand.nextInt(3); // +1 đến 2 (Tối đa 3)
+                // [FIX BUG TOÁN HỌC]: Đảm bảo nổ 2 hoặc 3 quả, không nổ 1 quả.
+                if (rand.nextDouble() < chanceYield) yield = 2 + rand.nextInt(2);
             } else {
-                // 10% -> 20%
                 double chanceYield = 0.10 + (0.10 * (jobLevel/50.0)) + hatBuff;
                 if (hasUlt3) chanceYield += 0.10;
-                if (rand.nextDouble() < chanceYield) yield = 2; // Cố định 2
+                if (rand.nextDouble() < chanceYield) yield = 2;
             }
         }
 
-        // 3. TÍNH HẠT GIỐNG THU HỒI
-        double seedRecovery = (jobLevel > 0) ? (0.70 + (0.30 * (jobLevel/50.0)) + hatBuff) : (0.20 + rand.nextDouble() * 0.10 + hatBuff); // 70->100% vs 20-30%
+        double seedRecovery = (jobLevel > 0) ? (0.70 + (0.30 * (jobLevel/50.0)) + hatBuff) : (0.20 + rand.nextDouble() * 0.10 + hatBuff);
         int seedYield = 0;
         if (rand.nextDouble() < seedRecovery) seedYield = 1;
-        if (jobLevel > 0 && rand.nextDouble() < (0.05 + hatBuff)) seedYield = 2; // 5% nổ 2 hạt
+        if (jobLevel > 0 && rand.nextDouble() < (0.05 + hatBuff)) seedYield = 2;
 
         // --- TRẢ THƯỞNG ---
         String finalRewardId;
         String fallbackId;
 
-        // 1. Phân giải tự động ID cho Hạt giống Ma Thuật
         if (data.seedId.startsWith("seed_magic_")) {
-            finalRewardId = data.seedId.replace("seed_", ""); // Ví dụ: seed_magic_flame_beetroot -> magic_flame_beetroot
+            finalRewardId = data.seedId.replace("seed_", "");
             fallbackId = finalRewardId;
-        }
-        // 2. Phân giải ID cho Nông sản Cơ bản & Đột biến
-        else {
+        } else {
             String baseRewardId = data.seedId.replace("seed_", "");
             if (baseRewardId.equals("sweet_berry")) baseRewardId = "berries";
             if (baseRewardId.equals("glow_berry")) baseRewardId = "glow_berries";
             if (baseRewardId.equals("kelp")) baseRewardId = "kelp_fresh";
 
-            finalRewardId = "veg_" + baseRewardId + qualitySuffix; // VD: veg_carrot_rare
-            fallbackId = "veg_" + baseRewardId; // Fallback khi bị lỗi
+            finalRewardId = "veg_" + baseRewardId + qualitySuffix;
+            fallbackId = "veg_" + baseRewardId;
         }
 
-        // Tạo item và rớt ra đất
         ItemStack rewardItem = itemManager.buildItem(finalRewardId, yield);
-        if (rewardItem != null) {
-            loc.getWorld().dropItemNaturally(loc.clone().add(0.5, 0.5, 0.5), rewardItem);
-        } else {
-            // Backup an toàn: Nếu lỡ đánh sai tên Hạt, rớt loại thường
+        if (rewardItem != null) loc.getWorld().dropItemNaturally(loc.clone().add(0.5, 0.5, 0.5), rewardItem);
+        else {
             ItemStack backup = itemManager.buildItem(fallbackId, yield);
             if (backup != null) loc.getWorld().dropItemNaturally(loc.clone().add(0.5, 0.5, 0.5), backup);
         }
@@ -353,14 +411,47 @@ public class CropManager implements Listener {
         if (seedYield > 0) {
             ItemStack seedItem = itemManager.buildItem(data.seedId, seedYield);
             if (seedItem != null) loc.getWorld().dropItemNaturally(loc.clone().add(0.5, 0.5, 0.5), seedItem);
+
+            // [HOOK QUEST]: Bậc Thầy Thu Hồi
+            try {
+                for(int i=0; i<seedYield; i++) {
+                    vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.RECOVER_SEED);
+                }
+            } catch (Exception ignored) {}
         }
 
-        // Rớt Tinh Chất (Dựa theo độ hiếm)
         if (jobLevel > 0 && rand.nextDouble() < 0.3) {
             loc.getWorld().dropItemNaturally(loc.clone().add(0.5, 0.5, 0.5), itemManager.buildItem("misc_nature_essence", 1));
+            // [HOOK QUEST]: Thu Thập Tinh Chất
+            try {
+                vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.COLLECT_NATURE_ESSENCE);
+            } catch (Exception ignored) {}
         }
 
         player.playSound(loc, Sound.BLOCK_CROP_BREAK, 1f, 1f);
+
+        // =======================================================
+        // [ĐÃ BỔ SUNG]: CỘNG EXP NGHỀ KHI THU HOẠCH THÀNH CÔNG
+        // =======================================================
+        try {
+            double gainedExp = data.seedId.contains("magic_") ? 80.0 : 25.0;
+            if (qualitySuffix.equals("_uncommon")) gainedExp *= 1.5;
+            else if (qualitySuffix.equals("_rare")) gainedExp *= 2.0;
+
+            vn.minecraft.rPGCore.jobs.core.JobManager.addExp(player, gainedExp);
+        } catch (Exception ignored) {}
+        // =======================================================
+
+        // --- HOOK CÁC SỰ KIỆN QUEST CHÍNH ---
+        try {
+            vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.HARVEST_CROP);
+            if (data.seedId.contains("magic_")) {
+                vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.HARVEST_MAGIC_CROP);
+            }
+            if (qualitySuffix.equals("_uncommon") || qualitySuffix.equals("_rare")) {
+                vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.HARVEST_MUTATION);
+            }
+        } catch (Exception ignored) {}
 
         // --- XỬ LÝ KHÔNG GIAN ---
         Block fruitBlock = getFruitBlock(rootBlock, data.seedId);
@@ -643,10 +734,10 @@ public class CropManager implements Listener {
         }.runTaskTimer(plugin, 0L, 10L);
     }
 
-    // Placeholder cho Ultimate (Phục vụ cho Giai đoạn 3)
+    // [ĐÃ SỬA]: Hoàn thiện Logic kiểm tra Cây Kỹ Năng
     private boolean hasUltimate(Player player, String ultId) {
-        // TODO: Sẽ link với SkillTree của Nông dân ở phần sau
-        return false;
+        vn.minecraft.rPGCore.jobs.core.PlayerJobData data = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(player);
+        return data != null && data.hasUnlockedSkill("FARMER", ultId.toUpperCase());
     }
 
     private String formatTime(long seconds) {
