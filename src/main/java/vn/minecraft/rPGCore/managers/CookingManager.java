@@ -516,6 +516,7 @@ public class CookingManager implements Listener {
         }
     }
 
+    // [MỚI]: API Sinh Súp Ngẫu Nhiên cho Túi Cơm Hộp (Nâng cấp Premium)
     public ItemStack generateRandomSoup(Player cook) {
         List<ItemManager.ItemData> randomRecipe = new ArrayList<>();
         List<String> pool = itemManager.getAllIds();
@@ -523,27 +524,57 @@ public class CookingManager implements Listener {
 
         List<ItemManager.ItemData> cores = new ArrayList<>();
         List<ItemManager.ItemData> spices = new ArrayList<>();
+        List<ItemManager.ItemData> magics = new ArrayList<>();
 
         for(String id : pool) {
             ItemManager.ItemData data = itemManager.getItemData(id);
-            if(data == null) continue;
-            if(data.category == ItemManager.Category.MEAT || data.category == ItemManager.Category.FISH || data.category == ItemManager.Category.VEG || data.category == ItemManager.Category.STARCH) {
-                cores.add(data);
-            } else if(data.category == ItemManager.Category.SPICE || data.category == ItemManager.Category.FAT) {
-                spices.add(data);
+            // Lọc thông minh: Loại bỏ đồ không ăn được và Thịt Quái Vật
+            if(data == null || data.points <= 0.0 || data.category == ItemManager.Category.MONSTER) continue;
+
+            // Trọng số (Weight): Đồ càng xịn thì tỉ lệ xuất hiện càng cao
+            int weight = 1;
+            if (data.rarity == ItemManager.Rarity.UNCOMMON) weight = 3;
+            else if (data.rarity == ItemManager.Rarity.RARE || data.rarity == ItemManager.Rarity.EPIC) weight = 5;
+
+            for (int i = 0; i < weight; i++) {
+                if(data.category == ItemManager.Category.MEAT || data.category == ItemManager.Category.FISH || data.category == ItemManager.Category.VEG || data.category == ItemManager.Category.STARCH) {
+                    cores.add(data);
+                } else if(data.category == ItemManager.Category.SPICE || data.category == ItemManager.Category.FAT) {
+                    spices.add(data);
+                } else if(data.category == ItemManager.Category.MAGIC) {
+                    magics.add(data); // Đưa vào nhóm Ma thuật
+                }
             }
         }
 
+        // Bốc 5 nguyên liệu chính (Lõi)
         if(!cores.isEmpty()) {
-            randomRecipe.add(cores.get(rand.nextInt(cores.size())));
-            randomRecipe.add(cores.get(rand.nextInt(cores.size())));
+            for (int i = 0; i < 5; i++) randomRecipe.add(cores.get(rand.nextInt(cores.size())));
         }
+
+        // Bốc 2 gia vị / chất béo
         if(!spices.isEmpty()) {
-            randomRecipe.add(spices.get(rand.nextInt(spices.size())));
+            for (int i = 0; i < 2; i++) randomRecipe.add(spices.get(rand.nextInt(spices.size())));
+        }
+
+        // Bốc 2 vật phẩm Ma thuật
+        if(!magics.isEmpty()) {
+            for (int i = 0; i < 2; i++) randomRecipe.add(magics.get(rand.nextInt(magics.size())));
         }
 
         FoodItemData data = cookingEngine.evaluate(randomRecipe, cook);
         NutritionStats stats = new NutritionStats(randomRecipe);
+
+        // Safety check: Đảm bảo cơm hộp không bao giờ bị hỏng (Ruined)
+        if (data.isRuined) {
+            data.isRuined = false;
+            data.flavorTags.removeIf(t -> t.contains("Hỏng"));
+        }
+
+        // Cơm hộp xịn thì tên phải xịn và bảo quản lâu
+        data.freshnessMinutes = 120; // 2 Tiếng
+        data.name = "§d§lSúp Hầm Đặc Biệt";
+
         return buildFoodItem(data, stats);
     }
 }

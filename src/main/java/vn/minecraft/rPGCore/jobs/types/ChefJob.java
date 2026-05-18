@@ -117,35 +117,73 @@ public class ChefJob extends RPGJob {
         inv.setItem(14, createEssenceItem(im.buildItem("misc_lunch_bag", 1), "CHEF_LUNCH_BAG", data, 5, 20, jobLevel >= 15, 15));
         inv.setItem(15, createEssenceItem(im.buildItem("misc_preservative_powder", 1), "CHEF_PRESERVATIVE", data, 3, 50, jobLevel >= 40, 40));
 
-        // Hàng 3 & 4 (Slot 19-25, 28-34) - Nguyên liệu xoay tua
+        // ==============================================
+        // HÀNG 3 & 4: TỰ ĐỘNG XOAY TUA NGUYÊN LIỆU THÔNG MINH
+        // ==============================================
         Calendar cal = Calendar.getInstance();
         long currentSeed = cal.get(Calendar.YEAR) * 100L + cal.get(Calendar.MONTH);
         Random shopRand = new Random(currentSeed);
 
-        List<ItemManager.ItemData> normalItems = new ArrayList<>();
-        List<ItemManager.ItemData> magicItems = new ArrayList<>();
+        List<ItemManager.ItemData> magicAndRare = new ArrayList<>();
+        List<ItemManager.ItemData> basicMeats = new ArrayList<>();
+        List<ItemManager.ItemData> basicFishes = new ArrayList<>();
+        List<ItemManager.ItemData> basicVegs = new ArrayList<>();
+        List<ItemManager.ItemData> basicStarches = new ArrayList<>();
+
         for (String id : im.getAllIds()) {
             ItemManager.ItemData iData = im.getItemData(id);
-            if (iData.category == ItemManager.Category.MEAT || iData.category == ItemManager.Category.FISH || iData.category == ItemManager.Category.VEG || iData.category == ItemManager.Category.STARCH) normalItems.add(iData);
-            else if (iData.category == ItemManager.Category.MAGIC) magicItems.add(iData);
-        }
-        Collections.shuffle(normalItems, shopRand);
-        Collections.shuffle(magicItems, shopRand);
+            if (iData.points <= 0.0) continue; // Loại bỏ hạt giống, nông cụ (Chỉ lấy thức ăn)
 
-        int[] rotatingSlots = {19, 20, 21, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34};
-        for (int i = 0; i < 10; i++) {
-            if (i < normalItems.size()) {
-                ItemManager.ItemData iData = normalItems.get(i);
-                int sP = 1 + shopRand.nextInt(5);
-                inv.setItem(rotatingSlots[i], createCoinItem(im.buildItem(iData.id, 1), "CHEF_ROT_" + iData.id, data, 100, sP * 64, jobLevel >= 1, 1));
+            if (iData.category == ItemManager.Category.MAGIC || (iData.category == ItemManager.Category.VEG && iData.rarity == ItemManager.Rarity.RARE)) {
+                magicAndRare.add(iData);
+            } else if (iData.category == ItemManager.Category.MEAT) {
+                basicMeats.add(iData);
+            } else if (iData.category == ItemManager.Category.FISH) {
+                basicFishes.add(iData);
+            } else if (iData.category == ItemManager.Category.VEG) {
+                basicVegs.add(iData);
+            } else if (iData.category == ItemManager.Category.STARCH) {
+                basicStarches.add(iData);
             }
         }
-        for (int i = 0; i < 4; i++) {
-            if (i < magicItems.size()) {
-                ItemManager.ItemData iData = magicItems.get(i);
-                int sP = 32 + shopRand.nextInt(19);
-                inv.setItem(rotatingSlots[10 + i], createCoinItem(im.buildItem(iData.id, 1), "CHEF_ROT_" + iData.id, data, 10, sP * 64, jobLevel >= 25, 25));
+
+        Collections.shuffle(magicAndRare, shopRand);
+        Collections.shuffle(basicMeats, shopRand);
+        Collections.shuffle(basicFishes, shopRand);
+        Collections.shuffle(basicVegs, shopRand);
+        Collections.shuffle(basicStarches, shopRand);
+
+        // Hàng 3 (Slot 19-25) - Magic & Rare (Mua bằng Tinh Túy từ 1 - 5)
+        for (int i = 0; i < 7; i++) {
+            if (i < magicAndRare.size()) {
+                ItemManager.ItemData iData = magicAndRare.get(i);
+                int cost = 1 + shopRand.nextInt(5);
+                inv.setItem(19 + i, createEssenceItem(im.buildItem(iData.id, 1), "CHEF_ROT_" + iData.id, data, 10, cost, jobLevel >= 15, 15));
             }
+        }
+
+        // Hàng 4 (Slot 28-34) - Basic Items (Mỗi loại ít nhất 1 món, mua bằng Bạc từ 1 - 5)
+        List<ItemManager.ItemData> selectedBasics = new ArrayList<>();
+        if (!basicMeats.isEmpty()) selectedBasics.add(basicMeats.get(0));
+        if (!basicFishes.isEmpty()) selectedBasics.add(basicFishes.get(0));
+        if (!basicVegs.isEmpty()) selectedBasics.add(basicVegs.get(0));
+        if (!basicStarches.isEmpty()) selectedBasics.add(basicStarches.get(0));
+
+        List<ItemManager.ItemData> allBasicsPool = new ArrayList<>();
+        if (basicMeats.size() > 1) allBasicsPool.addAll(basicMeats.subList(1, basicMeats.size()));
+        if (basicFishes.size() > 1) allBasicsPool.addAll(basicFishes.subList(1, basicFishes.size()));
+        if (basicVegs.size() > 1) allBasicsPool.addAll(basicVegs.subList(1, basicVegs.size()));
+        if (basicStarches.size() > 1) allBasicsPool.addAll(basicStarches.subList(1, basicStarches.size()));
+        Collections.shuffle(allBasicsPool, shopRand);
+
+        while (selectedBasics.size() < 7 && !allBasicsPool.isEmpty()) {
+            selectedBasics.add(allBasicsPool.remove(0));
+        }
+
+        for (int i = 0; i < selectedBasics.size(); i++) {
+            ItemManager.ItemData iData = selectedBasics.get(i);
+            int cost = 1 + shopRand.nextInt(5);
+            inv.setItem(28 + i, createCoinItem(im.buildItem(iData.id, 1), "CHEF_ROT_" + iData.id, data, 64, cost * 64, jobLevel >= 1, 1));
         }
 
         // Hàng 5 (Slot 37-43) - Gia vị cơ bản

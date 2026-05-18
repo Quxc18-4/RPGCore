@@ -37,13 +37,21 @@ public class JobCommand implements CommandExecutor, TabCompleter {
             }
 
             if (args.length < 2) {
-                player.sendMessage("§cCú pháp Admin: /job admin <roll/level> [số]");
+                player.sendMessage("§cCú pháp Admin: /job admin <roll/level/resetshop> [số]");
                 return true;
             }
 
             if (args[1].equalsIgnoreCase("roll")) {
                 vn.minecraft.rPGCore.jobs.core.JobQuestManager.rollNewQuests(player, true, true);
                 player.sendMessage("§a§l[!] §fĐã làm mới lại toàn bộ Nhiệm vụ Ngày & Tuần của bạn!");
+                return true;
+            }
+
+            // [MỚI]: LỆNH RESET LƯỢT MUA HÀNG TRONG SHOP
+            if (args[1].equalsIgnoreCase("resetshop")) {
+                vn.minecraft.rPGCore.jobs.core.PlayerJobData data = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(player);
+                data.getShopMonthlyPurchases().clear(); // Xóa sạch lịch sử mua hàng
+                player.sendMessage("§a§l[!] §fĐã reset toàn bộ giới hạn mua hàng trong Cửa hàng của bạn!");
                 return true;
             }
 
@@ -98,6 +106,7 @@ public class JobCommand implements CommandExecutor, TabCompleter {
             List<String> adminCmds = new ArrayList<>();
             adminCmds.add("roll");
             adminCmds.add("level");
+            adminCmds.add("resetshop"); // Bổ sung Tab Complete cho resetshop
             String current = args[1].toLowerCase();
             return adminCmds.stream().filter(s -> s.startsWith(current)).collect(Collectors.toList());
         }
