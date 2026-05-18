@@ -126,7 +126,7 @@ public class CookingEngine {
             double magicMult = count * sugarMultiplier;
 
             switch (id) {
-                case "magic_golden_carrot": if (!isReversed) result.potionEffects.add("NIGHT_VISION:0"); else result.potionEffects.add("BLINDNESS:0"); break;
+                // --- NHÓM 1: ĐỒ RỚT TỪ QUÁI VẬT ---
                 case "magic_blaze_powder": if (!isReversed) result.potionEffects.add("FIRE_RESISTANCE:0"); else { result.flavorTags.add("§c[Bỏng Rát]"); result.potionEffects.add("HUNGER:1"); } break;
                 case "magic_fermented_eye": double regen = 10.0 * magicMult; if (!isReversed) result.regenRate += regen; else result.potionEffects.add("POISON:" + (int) Math.min(4, magicMult/2)); break;
                 case "magic_pufferfish": if (!isReversed) result.potionEffects.add("WATER_BREATHING:0"); else { result.potionEffects.add("BLINDNESS:0"); result.potionEffects.add("SLOWNESS:1"); result.potionEffects.add("POISON:1"); } break;
@@ -135,6 +135,42 @@ public class CookingEngine {
                 case "magic_bat_wing": result.lifeSteal += isReversed ? -(10.0 * magicMult) : (10.0 * magicMult); break;
                 case "magic_goblin_ear": double dropBonus = 10.0 * magicMult; if (!isReversed) result.dropRate += dropBonus; else { result.dropRate -= dropBonus; result.potionEffects.add("UNLUCK:0"); result.flavorTags.add("§c[Đen Đủi]"); } break;
                 case "magic_glowstone": double crit = 10.0 * magicMult; if (!isReversed) result.critRate += crit; else { result.critRate -= crit; result.potionEffects.add("GLOWING:0"); } break;
+
+                // --- NHÓM 2: NÔNG SẢN CỦA NÔNG DÂN ---
+                case "magic_golden_carrot":
+                    if (!isReversed) result.potionEffects.add("NIGHT_VISION:0"); else result.potionEffects.add("BLINDNESS:0");
+                    break;
+                case "magic_flame_beetroot":
+                    if (!isReversed) { result.potionEffects.add("FIRE_RESISTANCE:0"); result.moveSpeed += 15.0 * magicMult; }
+                    else { result.flavorTags.add("§c[Bỏng Rát]"); result.potionEffects.add("HUNGER:1"); result.moveSpeed -= 15.0 * magicMult; }
+                    break;
+                case "magic_golden_melon":
+                    if (!isReversed) result.maxHpBonus += 50.0 * magicMult; else result.maxHpBonus -= 50.0 * magicMult;
+                    break;
+                case "magic_glowing_mushroom":
+                    if (!isReversed) { result.critRate += 5.0 * magicMult; result.potionEffects.add("GLOWING:0"); }
+                    else { result.critRate -= 5.0 * magicMult; result.potionEffects.add("BLINDNESS:0"); }
+                    break;
+                case "magic_star_wheat":
+                    if (!isReversed) result.dropRate += 10.0 * magicMult;
+                    else { result.dropRate -= 10.0 * magicMult; result.potionEffects.add("UNLUCK:0"); }
+                    break;
+                case "magic_soul_sweet_berry":
+                    if (!isReversed) result.lifeSteal += 5.0 * magicMult; else result.lifeSteal -= 5.0 * magicMult;
+                    break;
+                case "magic_crystal_kelp":
+                    if (!isReversed) { result.armorPen += 10.0 * magicMult; result.potionEffects.add("WATER_BREATHING:0"); }
+                    else { result.armorPen -= 10.0 * magicMult; result.potionEffects.add("POISON:0"); }
+                    break;
+                case "magic_dragon_cocoa":
+                    if (!isReversed) result.bonusDmg += 10.0 * magicMult; else result.bonusDmg -= 10.0 * magicMult;
+                    break;
+                case "magic_mana_potato":
+                    if (!isReversed) result.cdr += 5.0 * magicMult; else result.cdr -= 5.0 * magicMult;
+                    break;
+                case "magic_chaos_glow_berry":
+                    if (!isReversed) result.atkSpeed += 10.0 * magicMult; else result.atkSpeed -= 10.0 * magicMult;
+                    break;
             }
         }
 

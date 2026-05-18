@@ -191,6 +191,18 @@ public class ItemManager {
         register(new ItemData("magic_goblin_ear", Rarity.RARE, Category.MAGIC, 0.75, Material.TURTLE_SCUTE, "Tai Goblin", "Cung cấp 10% Tỉ lệ rớt đồ", "Một chiếc tai còn rỏ máu của Goblin."));
         register(new ItemData("magic_toxic_blood", Rarity.UNCOMMON, Category.MAGIC, 0.75, Material.SLIME_BALL, "Máu Kịch Độc", "Dùng để hạ độc thức ăn.", "Thứ chất lỏng đặc sệt bốc mùi hôi thối."));
 
+        // --- 8.1. NÔNG SẢN MA THUẬT (FARMER EXCLUSIVE) ---
+        register(new ItemData("magic_golden_carrot", Rarity.EPIC, Category.MAGIC, 0.75, Material.GOLDEN_CARROT, "Cà Rốt Vàng Chói", "Nấu: Cấp Mắt Mèo", "Trồng bằng phép thuật."));
+        register(new ItemData("magic_flame_beetroot", Rarity.EPIC, Category.MAGIC, 0.75, Material.MAGMA_CREAM, "Củ Dền Hỏa Ngục", "Dùng ngay: Hồi 10% HP, Kháng lửa 1 phút | Nấu: Tăng Tốc chạy & Kháng Lửa", "Cầm trên tay cũng thấy bỏng rát."));
+        register(new ItemData("magic_golden_melon", Rarity.EPIC, Category.MAGIC, 0.75, Material.GLISTERING_MELON_SLICE, "Dưa Hấu Hoàng Kim", "Dùng ngay: Hồi 15% HP | Nấu: Tăng lượng Máu tối đa", "Lấp lánh ánh kim vô giá."));
+        register(new ItemData("magic_glowing_mushroom", Rarity.EPIC, Category.MAGIC, 0.75, Material.GLOW_INK_SAC, "Nấm Phát Quang", "Nấu: Tăng Tỉ Lệ Chí Mạng & Phát sáng", "Mọc lên từ vùng đất giàu ma lực."));
+        register(new ItemData("magic_star_wheat", Rarity.EPIC, Category.MAGIC, 0.75, Material.SUNFLOWER, "Lúa Mì Tinh Tú", "Dùng ngay: Xóa mọi Debuff | Nấu: Tăng Tỉ Lệ Rớt Đồ", "Hấp thụ ánh sáng của các vì sao."));
+        register(new ItemData("magic_soul_sweet_berry", Rarity.EPIC, Category.MAGIC, 0.75, Material.SWEET_BERRIES, "Quả Mọng Đoạt Hồn", "Nấu: Tăng khả năng Hút Máu", "Có màu đỏ thẫm đến rợn người."));
+        register(new ItemData("magic_crystal_kelp", Rarity.EPIC, Category.MAGIC, 0.75, Material.PRISMARINE_CRYSTALS, "Tảo Pha Lê", "Dùng ngay: Thở dưới nước 3 phút | Nấu: Tăng Xuyên Giáp & Thở Nước", "Sống ở vùng biển sâu ma thuật."));
+        register(new ItemData("magic_dragon_cocoa", Rarity.EPIC, Category.MAGIC, 0.75, Material.DRAGON_BREATH, "Cacao Thanh Long", "Nấu: Tăng Sát Thương Cầm Tay", "Hạt giống được ấp trong vảy rồng."));
+        register(new ItemData("magic_mana_potato", Rarity.EPIC, Category.MAGIC, 0.75, Material.POISONOUS_POTATO, "Khoai Tây Ma Năng", "Dùng ngay: Hồi 20% HP nhưng gây Mù | Nấu: Giảm Hồi Chiêu Kỹ Năng", "Chứa nguồn ma lực chưa tinh chế."));
+        register(new ItemData("magic_chaos_glow_berry", Rarity.EPIC, Category.MAGIC, 0.75, Material.CHORUS_FRUIT, "Dây Leo Hỗn Độn", "Dùng ngay: Hồi 10% HP, Tàng hình 30s | Nấu: Tăng Tốc Độ Đánh", "Thay đổi không gian xung quanh nó."));
+
         // --- 9. NHÓM KHÁC ---
         register(new ItemData("misc_leather", Rarity.COMMON, Category.MISC, 0.0, Material.LEATHER, "Da Thuộc", null, "Nguyên liệu may mặc cơ bản."));
         register(new ItemData("misc_feather", Rarity.COMMON, Category.MISC, 0.0, Material.FEATHER, "Lông Vũ Cơ Bản", null, "Nhẹ nhàng và mềm mại."));
@@ -254,7 +266,29 @@ public class ItemManager {
         register(new ItemData("seed_cucumber", Rarity.COMMON, Category.VEG, 0.0, Material.PUMPKIN_SEEDS, "Hạt Giống Dưa Chuột", null, "Trồng trên đất cày. Thời gian thu hoạch: 4 Giờ."));
 
         // Hạt giống Ma thuật đặc quyền
-        register(new ItemData("seed_magic_golden_carrot", Rarity.EPIC, Category.VEG, 0.0, Material.GOLD_NUGGET, "Hạt Giống Ma Thuật: Cà Rốt Vàng", "Yêu cầu: Nghề Nông Dân", "Tỏa ra ánh sáng ma thuật rực rỡ.", "Thời gian thu hoạch: 4 Giờ."));
+        register(new ItemData("seed_magic_golden_carrot", Rarity.EPIC, Category.VEG, 0.0, Material.GOLD_NUGGET, "Hạt Ma Thuật: Cà Rốt Vàng", "Yêu cầu: Nghề Nông Dân", "Trồng trên đất cày. Thời gian: 4 Giờ."));
+        register(new ItemData("seed_magic_flame_beetroot", Rarity.EPIC, Category.VEG, 0.0, Material.BEETROOT_SEEDS, "Hạt Ma Thuật: Hỏa Ngục", "Yêu cầu: Nghề Nông Dân", "Trồng trên đất cày. Thời gian: 4 Giờ."));
+        register(new ItemData("seed_magic_golden_melon", Rarity.EPIC, Category.VEG, 0.0, Material.MELON_SEEDS, "Hạt Ma Thuật: Dưa Hoàng Kim", "Yêu cầu: Nghề Nông Dân", "Trồng trên đất cày. Cây đa vụ mùa."));
+        register(new ItemData("seed_magic_glowing_mushroom", Rarity.EPIC, Category.VEG, 0.0, Material.RED_MUSHROOM, "Bào Tử Ma Thuật: Nấm Quang", "Yêu cầu: Nghề Nông Dân", "Trồng trên thân gỗ. Cây đa vụ mùa."));
+        register(new ItemData("seed_magic_star_wheat", Rarity.EPIC, Category.VEG, 0.0, Material.WHEAT_SEEDS, "Hạt Ma Thuật: Tinh Tú", "Yêu cầu: Nghề Nông Dân", "Trồng trên đất cày. Thời gian: 4 Giờ."));
+        register(new ItemData("seed_magic_soul_sweet_berry", Rarity.EPIC, Category.VEG, 0.0, Material.SWEET_BERRIES, "Mầm Ma Thuật: Đoạt Hồn", "Yêu cầu: Nghề Nông Dân", "Trồng trên Đất/Cỏ. Cây đa vụ mùa."));
+        register(new ItemData("seed_magic_crystal_kelp", Rarity.EPIC, Category.VEG, 0.0, Material.KELP, "Mầm Ma Thuật: Tảo Pha Lê", "Yêu cầu: Nghề Nông Dân", "Trồng dưới nước. Cây đa vụ mùa."));
+        register(new ItemData("seed_magic_dragon_cocoa", Rarity.EPIC, Category.VEG, 0.0, Material.COCOA_BEANS, "Hạt Ma Thuật: Thanh Long", "Yêu cầu: Nghề Nông Dân", "Trồng trên Gỗ Rừng. Cây đa vụ mùa."));
+        register(new ItemData("seed_magic_mana_potato", Rarity.EPIC, Category.VEG, 0.0, Material.POTATO, "Mầm Ma Thuật: Khoai Ma Năng", "Yêu cầu: Nghề Nông Dân", "Trồng trên đất cày. Thời gian: 4 Giờ."));
+        register(new ItemData("seed_magic_chaos_glow_berry", Rarity.EPIC, Category.VEG, 0.0, Material.GLOW_BERRIES, "Hạt Ma Thuật: Hỗn Độn", "Yêu cầu: Nghề Nông Dân", "Trồng dưới trần nhà. Cây đa vụ mùa."));
+
+        // --- 14. ĐẶC QUYỀN NGHỀ NÔNG DÂN (FARMER) ---
+        // Tinh chất & Túi hạt
+        register(new ItemData("misc_nature_essence", Rarity.EPIC, Category.MISC, 0.0, Material.SLIME_BALL, "Tinh Chất Tự Nhiên", null, "Kết tinh từ sự sống của cỏ cây.", "Đơn vị tiền tệ chính của Hiệp Hội Nông Dân."));
+        register(new ItemData("bag_seeds_common", Rarity.UNCOMMON, Category.MISC, 0.0, Material.BUNDLE, "Túi Hạt Giống Hỗn Hợp", "Dùng ngay: Nhận 64 hạt giống ngẫu nhiên", "Gói hạt giống bự chà bá dành cho người mới."));
+        register(new ItemData("bag_seeds_magic", Rarity.EPIC, Category.MISC, 0.0, Material.BUNDLE, "Túi Hạt Ma Thuật", "Dùng ngay: Nhận 5-8 hạt ma thuật ngẫu nhiên", "Tỏa ra một luồng ma lực dịu nhẹ."));
+
+        // Công cụ phụ trợ Nông nghiệp
+        register(new ItemData("misc_watering_can", Rarity.RARE, Category.MISC, 0.0, Material.IRON_NUGGET, "Bình Tưới Nước", "Click vào cây: Giảm 1 tiếng sinh trưởng", "Có thể sử dụng nhiều lần."));
+        register(new ItemData("misc_fertilizer", Rarity.EPIC, Category.MISC, 0.0, Material.BONE_MEAL, "Phân Bón Hảo Hạng", "Click vào cây: Thúc sinh diện rộng (3x3)", "Giảm 2 tiếng cho cây trung tâm,", "Giảm 1 tiếng cho 8 cây xung quanh."));
+
+        // Trang bị (Nón lá) - Dùng Nón da hoặc lúa mì
+        register(new ItemData("armor_farmer_hat", Rarity.EPIC, Category.MISC, 0.0, Material.DIAMOND_HELMET, "Nón Lá Chân Truyền", "Đội lên đầu khi thu hoạch:", "Tăng 10% tỉ lệ kích hoạt mọi Nội tại Nông dân.", "Độ bền: 300 lần thu hoạch."));
     }
 
     private void register(ItemData data) {

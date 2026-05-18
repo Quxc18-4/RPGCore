@@ -51,7 +51,7 @@ public class ConsumableListener implements Listener {
         // KHỐI LOGIC: CÁC VẬT PHẨM "ĂN LIỀN" CÓ ANTI-SPAM VÀ CHẶN VANILLA OFF-HAND
         // ==========================================
         // DANH SÁCH THỰC PHẨM ĂN LIỀN
-        List<String> instantFoods = Arrays.asList("fat_milk", "spice_honey", "veg_apple", "veg_melon", "veg_kelp_dried", "potion_digestion", "potion_anti_anorexia", "misc_lunch_bag", "starch_bread");
+        List<String> instantFoods = Arrays.asList("fat_milk", "spice_honey", "veg_apple", "veg_melon", "veg_kelp_dried", "potion_digestion", "potion_anti_anorexia", "misc_lunch_bag", "starch_bread", "magic_flame_beetroot", "magic_golden_melon", "magic_star_wheat", "magic_crystal_kelp", "magic_mana_potato", "magic_chaos_glow_berry");
 
         if (instantFoods.contains(itemId)) {
             // KHÓA HOÀN TOÀN TÍNH NĂNG ĂN CỦA VANILLA (Tay trái lẫn tay phải)
@@ -110,7 +110,7 @@ public class ConsumableListener implements Listener {
             }
             // 5. Ổ Bánh Mì (Hồi 5 Đói)
             else if (itemId.equals("starch_bread")) {
-                player.setFoodLevel(Math.min(20, player.getFoodLevel() + 5));
+                player.setFoodLevel(Math.min(20, player.getFoodLevel() + 8));
                 player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_GENERIC_EAT, 1f, 1f);
                 consumed = true;
             }
@@ -124,7 +124,7 @@ public class ConsumableListener implements Listener {
             // 7. Trái Cây
             else if (itemId.equals("veg_apple") || itemId.equals("veg_melon")) {
                 rpgPlayer.heal(rpgPlayer.getTotalMaxHealth() * 0.02);
-                player.setFoodLevel(Math.min(20, player.getFoodLevel() + 2));
+                player.setFoodLevel(Math.min(20, player.getFoodLevel() + 4));
                 player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_BURP, 1f, 1.2f);
                 consumed = true;
             }
@@ -132,6 +132,51 @@ public class ConsumableListener implements Listener {
             else if (itemId.equals("veg_kelp_dried")) {
                 vn.minecraft.rPGCore.managers.StatusEffectManager.applyEffect(player, PotionEffectType.SPEED, 100, 0);
                 player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_BURP, 1f, 1.5f);
+                consumed = true;
+            }
+
+            // --- BẮT ĐẦU 6 LOẠI MA THUẬT ĂN SỐNG ---
+            else if (itemId.equals("magic_flame_beetroot")) {
+                rpgPlayer.heal(rpgPlayer.getTotalMaxHealth() * 0.10);
+                vn.minecraft.rPGCore.managers.StatusEffectManager.applyEffect(player, PotionEffectType.FIRE_RESISTANCE, 1200, 0); // 60s
+                player.setFireTicks(40); // Bốc cháy 2s cho ngầu
+                player.playSound(player.getLocation(), org.bukkit.Sound.ITEM_FIRECHARGE_USE, 1f, 1f);
+                player.sendMessage("§c§l[!] §fCơ thể bạn nóng rực! Hồi 10% HP và nhận Kháng lửa.");
+                consumed = true;
+            }
+            else if (itemId.equals("magic_golden_melon")) {
+                rpgPlayer.heal(rpgPlayer.getTotalMaxHealth() * 0.15);
+                player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_BURP, 1f, 1.2f);
+                player.sendMessage("§e§l[!] §fVị ngọt ma thuật tuyệt hảo! Hồi 15% HP.");
+                consumed = true;
+            }
+            else if (itemId.equals("magic_star_wheat")) {
+                rpgPlayer.heal(rpgPlayer.getTotalMaxHealth() * 0.05);
+                for (PotionEffectType type : new PotionEffectType[]{ PotionEffectType.SLOWNESS, PotionEffectType.MINING_FATIGUE, PotionEffectType.NAUSEA, PotionEffectType.BLINDNESS, PotionEffectType.HUNGER, PotionEffectType.WEAKNESS, PotionEffectType.POISON, PotionEffectType.WITHER, PotionEffectType.DARKNESS }) {
+                    player.removePotionEffect(type);
+                }
+                player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 0.5f, 2f);
+                player.sendMessage("§a§l[!] §fÁnh sáng vì sao thanh tẩy cơ thể bạn!");
+                consumed = true;
+            }
+            else if (itemId.equals("magic_crystal_kelp")) {
+                vn.minecraft.rPGCore.managers.StatusEffectManager.applyEffect(player, PotionEffectType.WATER_BREATHING, 3600, 0); // 3 phút
+                player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_GUARDIAN_AMBIENT, 1f, 1f);
+                player.sendMessage("§b§l[!] §fMa lực nước bao bọc bạn! Có thể thở dưới nước 3 phút.");
+                consumed = true;
+            }
+            else if (itemId.equals("magic_mana_potato")) {
+                rpgPlayer.heal(rpgPlayer.getTotalMaxHealth() * 0.20);
+                vn.minecraft.rPGCore.managers.StatusEffectManager.applyEffect(player, PotionEffectType.BLINDNESS, 100, 0); // 5s
+                player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_ZOMBIE_VILLAGER_CURE, 1f, 1f);
+                player.sendMessage("§d§l[!] §fMa năng quá lớn làm bạn mù tạm thời, nhưng hồi 20% HP!");
+                consumed = true;
+            }
+            else if (itemId.equals("magic_chaos_glow_berry")) {
+                rpgPlayer.heal(rpgPlayer.getTotalMaxHealth() * 0.10);
+                vn.minecraft.rPGCore.managers.StatusEffectManager.applyEffect(player, PotionEffectType.INVISIBILITY, 600, 0); // 30s = 600 ticks
+                player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_ILLUSIONER_MIRROR_MOVE, 1f, 1f);
+                player.sendMessage("§5§l[!] §fCơ thể bạn hòa vào hư không! Nhận Tàng Hình trong 30 giây.");
                 consumed = true;
             }
 

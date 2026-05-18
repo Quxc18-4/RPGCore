@@ -19,5 +19,14 @@ public enum QuestAction {
     COOK_SINGLE,
     COOK_FULL,
     CONSUME_FOOD,     // Hành động ăn thức ăn
-    BOREDOM_GAIN      // Hành động bị tăng điểm ngấy
+    BOREDOM_GAIN,      // Hành động bị tăng điểm ngấy
+
+    // --- FARMER ACTIONS ---
+    PLANT_SEED,             // Trồng hạt giống
+    HARVEST_CROP,           // Thu hoạch nông sản thành công
+    COLLECT_NATURE_ESSENCE, // Nhặt được Tinh chất tự nhiên
+    HARVEST_MUTATION,       // Thu hoạch ra Nông sản 1.5x hoặc 2.0x
+    USE_FERTILIZER,         // Dùng phân bón AoE
+    RECOVER_SEED,           // Thu hồi lại được hạt giống sau khi hái
+    HARVEST_MAGIC_CROP      // Thu hoạch Nông sản Ma thuật
 }

@@ -39,6 +39,18 @@ public class PlayerListener implements Listener {
     // ==========================================
     public static boolean isValidWeaponForClass(ItemStack weapon, String classId) {
         if (weapon == null || weapon.getType() == Material.AIR) return false;
+
+        // [BỔ SUNG]: Bỏ qua Cuốc Thu Hoạch của Nông Dân, không tính là vũ khí
+        if (weapon.hasItemMeta()) {
+            org.bukkit.persistence.PersistentDataContainer pdc = weapon.getItemMeta().getPersistentDataContainer();
+            org.bukkit.NamespacedKey key = new org.bukkit.NamespacedKey(vn.minecraft.rPGCore.RPGCore.getInstance(), "rpg_item_id");
+            if (pdc.has(key, org.bukkit.persistence.PersistentDataType.STRING)) {
+                if ("tool_harvest_hoe".equals(pdc.get(key, org.bukkit.persistence.PersistentDataType.STRING))) {
+                    return false;
+                }
+            }
+        }
+
         Material mainType = weapon.getType();
         String cId = classId.toLowerCase();
 
