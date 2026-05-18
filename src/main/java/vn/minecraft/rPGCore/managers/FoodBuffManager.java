@@ -26,7 +26,7 @@ public class FoodBuffManager {
         }
     }
 
-    // [ĐÃ SỬA]: Map lồng List để lưu nhiều Buff cùng lúc thay vì ghi đè
+    // Map lồng List để lưu nhiều Buff cùng lúc thay vì ghi đè
     private final Map<UUID, Map<StatType, List<ActiveBuff>>> playerBuffs = new HashMap<>();
 
     public FoodBuffManager(JavaPlugin plugin) {
@@ -69,5 +69,14 @@ public class FoodBuffManager {
             }
         }
         return totalBonus;
+    }
+
+    // ===============================================
+    // [MỚI]: HÀM XÓA TOÀN BỘ BUFF ĐỂ TRÁNH CỘNG DỒN LỖI
+    // ===============================================
+    public void clearAllBuffs(UUID uuid) {
+        if (playerBuffs.containsKey(uuid)) {
+            playerBuffs.get(uuid).clear();
+        }
     }
 }

@@ -48,7 +48,7 @@ public class CookingManager implements Listener {
     public CookingManager(JavaPlugin plugin, ItemManager itemManager, CookingEngine cookingEngine) {
         this.plugin = plugin;
         this.itemManager = itemManager;
-        this.cookingEngine = cookingEngine; // Nhận engine từ RPGCore thay vì tạo mới
+        this.cookingEngine = cookingEngine;
 
         this.COOKED_TIME_KEY = new NamespacedKey(plugin, "food_cooked_time");
         this.MAX_FRESHNESS_KEY = new NamespacedKey(plugin, "food_max_freshness");
@@ -147,7 +147,6 @@ public class CookingManager implements Listener {
             final int MAX_TICKS = 400; // 20s
             final List<Item> ingredients = new ArrayList<>();
 
-            // KHÓA SỞ HỮU VẠC (POT OWNERSHIP)
             UUID potOwner = null;
             int maxIngredients = 9;
 
@@ -170,22 +169,21 @@ public class CookingManager implements Listener {
 
                     if ((iBlock.equals(cauldronBlock) || iBlockBelow.equals(cauldronBlock)) && !ingredients.contains(item)) {
 
-                        // XÁC ĐỊNH CHỦ SỞ HỮU VÀ GIỚI HẠN VẠC (Khi có món đồ đầu tiên rơi vào)
                         if (potOwner == null && item.getThrower() != null) {
                             potOwner = item.getThrower();
                             Player p = Bukkit.getPlayer(potOwner);
                             if (p != null) {
                                 vn.minecraft.rPGCore.jobs.core.PlayerJobData data = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(p);
-                                if (data != null && data.hasUnlockedSkill("CHEF", "CHEF_ASCENDED_TASTE")) {
-                                    maxIngredients = 12; // Mở rộng vạc lên 12 cho Master Chef
+                                // [ĐÃ SỬA]: Rào chắn kiểm tra đúng Nghề Đầu Bếp đang active
+                                if (data != null && "CHEF".equals(data.getJobId()) && data.hasUnlockedSkill("CHEF", "CHEF_ASCENDED_TASTE")) {
+                                    maxIngredients = 12;
                                 }
                             }
                         }
 
-                        // CHẶN KẺ LẠ NÉM ĐỒ VÀO VẠC
                         if (potOwner != null && item.getThrower() != null && !potOwner.equals(item.getThrower())) {
                             item.setVelocity(new org.bukkit.util.Vector((Math.random() - 0.5) * 0.5, 0.5, (Math.random() - 0.5) * 0.5));
-                            continue; // Bật đồ ra ngoài
+                            continue;
                         }
 
                         String ingredientId = itemManager.getItemId(item.getItemStack());
@@ -239,7 +237,7 @@ public class CookingManager implements Listener {
                 }
 
                 if (ticks >= MAX_TICKS) {
-                    finishCooking(cauldronBlock, ingredients, potOwner); // Truyền chủ sở hữu sang
+                    finishCooking(cauldronBlock, ingredients, potOwner);
                     hologram.remove();
                     this.cancel();
                 }
@@ -271,23 +269,40 @@ public class CookingManager implements Listener {
         FoodItemData resultData = cookingEngine.evaluate(recipeData, cook);
         NutritionStats stats = new NutritionStats(recipeData);
 
+        int finalScoops = 3;
+
         // ==========================================
-        // NỘI TẠI ĐẦU BẾP, TÍNH EXP & GỌI HOOK NHIỆM VỤ
+        // [ĐÃ FIX]: RÀO CHẮN NGHIÊM NGẶT QUYỀN LỢI ĐẦU BẾP
         // ==========================================
-        int finalScoops = 3; // Luôn luôn là 3 theo ý bạn
         if (cook != null) {
             vn.minecraft.rPGCore.jobs.core.PlayerJobData data = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(cook);
-            if (data != null && data.getJobId().equals("CHEF")) {
+            if (data != null && "CHEF".equals(data.getJobId())) {
                 int chefLv = data.getLevel("CHEF");
 
-                // Nội tại cơ bản: Rút thăm x2 Thời gian (Độc lập với Kỹ năng tối thượng)
                 if (Math.random() * 100 <= (chefLv / 50.0) * 25.0) resultData.durationMinutes *= 2;
                 if (Math.random() * 100 <= (chefLv / 50.0) * 50.0) resultData.freshnessMinutes *= 2;
 
-                // [ĐÃ XÓA LOGIC 6 MUỖNG TẠI ĐÂY]
+                // [MỚI]: Triển khai Kỹ Năng Tối Thượng
+                if (data.hasUnlockedSkill("CHEF", "CHEF_IRON_STOMACH")) {
+                    resultData.boredomPoints = Math.max(1, (int)(resultData.boredomPoints * 0.5));
+                    resultData.freshnessMinutes = (int)(resultData.freshnessMinutes * 1.5);
+                }
 
-                // THUẬT TOÁN TÍNH TOÁN EXP THEO ĐỘ HIẾM
-                double earnedExp = 15.0; // EXP Cơ bản
+                if (data.hasUnlockedSkill("CHEF", "CHEF_MAGIC_HANDS")) {
+                    resultData.durationMinutes *= 2;
+                    resultData.bonusDmg *= 1.2;
+                    resultData.cdr *= 1.2;
+                    resultData.moveSpeed *= 1.2;
+                    resultData.atkSpeed *= 1.2;
+                    resultData.armorPen *= 1.2;
+                    resultData.regenRate *= 1.2;
+                    resultData.maxHpBonus *= 1.2;
+                    resultData.lifeSteal *= 1.2;
+                    resultData.critRate *= 1.2;
+                    resultData.dropRate *= 1.2;
+                }
+
+                double earnedExp = 15.0;
                 if (!resultData.isRuined) {
                     for (ItemManager.ItemData itemData : recipeData) {
                         switch (itemData.rarity) {
@@ -300,33 +315,31 @@ public class CookingManager implements Listener {
                         }
                     }
                 } else {
-                    earnedExp = 10.0; // Phạt vì nấu hỏng
+                    earnedExp = 10.0;
                 }
 
-                // Cộng EXP cho người chơi
                 vn.minecraft.rPGCore.jobs.core.JobManager.addExp(cook, earnedExp);
 
-                // GỌI BÁO CÁO NHIỆM VỤ (Quest Hooks)
                 vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(cook, vn.minecraft.rPGCore.jobs.quests.QuestAction.COOK_ANY);
                 if (resultData.isRuined) vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(cook, vn.minecraft.rPGCore.jobs.quests.QuestAction.COOK_RUINED);
                 if (recipeData.size() == 1) vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(cook, vn.minecraft.rPGCore.jobs.quests.QuestAction.COOK_SINGLE);
                 if (recipeData.size() >= 9) vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(cook, vn.minecraft.rPGCore.jobs.quests.QuestAction.COOK_FULL);
-            }
-        }
 
-        // ==========================================
-        // RƠI TINH TÚY ẨM THỰC
-        // ==========================================
-        double score = stats.getCorePoints();
-        int essenceCount = 0;
-        if (!resultData.isRuined) {
-            if (score < 3 && Math.random() < 0.10) essenceCount = 1;
-            else if (score >= 3 && score < 6 && Math.random() < 0.40) essenceCount = 1;
-            else if (score >= 6 && score <= 10) essenceCount = (Math.random() < 0.20) ? 2 : 1;
-            else if (score > 10) essenceCount = 2;
-        }
-        if (essenceCount > 0) {
-            loc.getWorld().dropItemNaturally(loc.clone().add(0.5, 1.0, 0.5), itemManager.buildItem("misc_culinary_essence", essenceCount));
+                // ==========================================
+                // [ĐÃ FIX]: DỜI LOGIC RƠI TINH TÚY VÀO BÊN TRONG IF CHEF
+                // ==========================================
+                double score = stats.getCorePoints();
+                int essenceCount = 0;
+                if (!resultData.isRuined) {
+                    if (score < 3 && Math.random() < 0.10) essenceCount = 1;
+                    else if (score >= 3 && score < 6 && Math.random() < 0.40) essenceCount = 1;
+                    else if (score >= 6 && score <= 10) essenceCount = (Math.random() < 0.20) ? 2 : 1;
+                    else if (score > 10) essenceCount = 2;
+                }
+                if (essenceCount > 0) {
+                    loc.getWorld().dropItemNaturally(loc.clone().add(0.5, 1.0, 0.5), itemManager.buildItem("misc_culinary_essence", essenceCount));
+                }
+            }
         }
 
         ItemStack resultItem = buildFoodItem(resultData, stats);
@@ -355,7 +368,6 @@ public class CookingManager implements Listener {
         String timeStr = sdf.format(new java.util.Date(cookedTime));
 
         lore.add("§7Nấu lúc: §e" + timeStr);
-        // Nhận diện Bột bảo quản vĩnh viễn
         if (data.freshnessMinutes >= 999999) {
             lore.add("§7Thời gian bảo quản: §d§lVô hạn");
         } else {
@@ -419,7 +431,6 @@ public class CookingManager implements Listener {
             meta.getPersistentDataContainer().set(POTION_EFFECTS_KEY, PersistentDataType.STRING, joinedEffects);
         }
 
-        // LƯU CỜ GIẤU ĐỘC VÀO VẬT PHẨM
         meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "food_hidden_poison"), PersistentDataType.BYTE, (byte) (data.isHiddenPoison ? 1 : 0));
 
         meta.setLore(lore);
@@ -443,7 +454,6 @@ public class CookingManager implements Listener {
         if (activePots.containsKey(loc)) {
             event.setCancelled(true);
 
-            // [FIX BUG]: Kiểm tra túi đồ đầy
             if (player.getInventory().firstEmpty() == -1) {
                 player.sendMessage("§cTúi đồ của bạn đã đầy, không thể múc súp!");
                 player.playSound(loc, Sound.ENTITY_VILLAGER_NO, 1f, 1f);
@@ -464,15 +474,12 @@ public class CookingManager implements Listener {
                 player.sendMessage("§eNồi súp đã cạn sạch!");
             } else {
                 Levelled cauldronData = (Levelled) block.getBlockData();
-                // [FIX BUG]: Cập nhật mực nước của Vạc tương ứng trực tiếp với 3 lần múc (Level 1,2,3)
                 cauldronData.setLevel(pot.scoopsLeft);
                 block.setBlockData(cauldronData);
             }
         }
     }
-    // ==========================================
-    // CẬP NHẬT LORE KHI CẦM LÊN TAY (LAZY UPDATE)
-    // ==========================================
+
     @EventHandler
     public void onHoldFood(org.bukkit.event.player.PlayerItemHeldEvent event) {
         ItemStack item = event.getPlayer().getInventory().getItem(event.getNewSlot());
@@ -488,20 +495,15 @@ public class CookingManager implements Listener {
         List<String> lore = meta.getLore();
         if (lore == null || lore.isEmpty()) return;
 
-        // Bỏ qua update trạng thái nếu là đồ bảo quản vĩnh viễn (Bột bảo quản)
         if (maxFreshness >= 999999) return;
 
         String newStatus = "§7Tình trạng: §cThiu thối (Độc)";
-
-        // KIỂM TRA: MÓN NÀY CÓ BỊ SÁT THỦ ĐẦU BẾP GIẤU ĐỘC KHÔNG?
         boolean isHidden = meta.getPersistentDataContainer().getOrDefault(new NamespacedKey(plugin, "food_hidden_poison"), PersistentDataType.BYTE, (byte)0) == 1;
 
         if (ageInMinutes <= maxFreshness * 0.15) newStatus = "§7Tình trạng: §6Nóng hổi (Ngon nhất)";
         else if (ageInMinutes < maxFreshness * 0.75) newStatus = "§7Tình trạng: §aĐang ấm";
-            // Nếu bị giấu độc, khi quá hạn nó sẽ hiển thị "Đã nguội lạnh" thay vì "Thiu thối (Độc)" !!
         else if (ageInMinutes <= maxFreshness || isHidden) newStatus = "§7Tình trạng: §eĐã nguội lạnh";
 
-        // Ghi đè vào dòng đầu tiên có chữ "Tình trạng"
         for (int i = 0; i < lore.size(); i++) {
             if (lore.get(i).contains("Tình trạng:")) {
                 if (!lore.get(i).equals(newStatus)) {
@@ -513,7 +515,7 @@ public class CookingManager implements Listener {
             }
         }
     }
-    // [MỚI]: API Sinh Súp Ngẫu Nhiên cho Túi Cơm Hộp
+
     public ItemStack generateRandomSoup(Player cook) {
         List<ItemManager.ItemData> randomRecipe = new ArrayList<>();
         List<String> pool = itemManager.getAllIds();
@@ -532,7 +534,6 @@ public class CookingManager implements Listener {
             }
         }
 
-        // Bốc ngẫu nhiên 2 Nguyên liệu chính và 1 Gia vị
         if(!cores.isEmpty()) {
             randomRecipe.add(cores.get(rand.nextInt(cores.size())));
             randomRecipe.add(cores.get(rand.nextInt(cores.size())));

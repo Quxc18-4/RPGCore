@@ -156,6 +156,7 @@ public class CropManager implements Listener {
                     event.setCancelled(true);
                     handleHarvest(player, rootCropBlock);
                 } else {
+                    event.setCancelled(true); // Bắt buộc khóa Event lại để Vanilla không drop hạt bậy bạ
                     player.sendMessage("§cBạn phải dùng §eCuốc Thu Hoạch §cđể lấy nông sản mà không làm đứt rễ!");
                 }
                 return;
@@ -381,8 +382,12 @@ public class CropManager implements Listener {
 
         double seedRecovery = (jobLevel > 0) ? (0.70 + (0.30 * (jobLevel/50.0)) + hatBuff) : (0.20 + rand.nextDouble() * 0.10 + hatBuff);
         int seedYield = 0;
-        if (rand.nextDouble() < seedRecovery) seedYield = 1;
-        if (jobLevel > 0 && rand.nextDouble() < (0.05 + hatBuff)) seedYield = 2;
+
+        // [CÂN BẰNG]: Chỉ rớt hạt ở lần thu hoạch CUỐI CÙNG
+        if (data.harvestsLeft <= 1) {
+            if (rand.nextDouble() < seedRecovery) seedYield = 1;
+            if (jobLevel > 0 && rand.nextDouble() < (0.05 + hatBuff)) seedYield = 2;
+        }
 
         // --- TRẢ THƯỞNG ---
         String finalRewardId;
@@ -588,6 +593,23 @@ public class CropManager implements Listener {
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
+        Player player = event.getPlayer();
+
+        // [MỚI]: Cho phép Admin (OP) đập bỏ thoải mái và xóa Data rác
+        if (player.isOp() || player.hasPermission("rpgcore.admin")) {
+            Block root = getRootCropBlock(block);
+            if (root != null) {
+                activeCrops.remove(root.getLocation());
+            } else {
+                Block up = block.getRelative(BlockFace.UP);
+                if (activeCrops.containsKey(up.getLocation())) activeCrops.remove(up.getLocation());
+                Block down = block.getRelative(BlockFace.DOWN);
+                if (activeCrops.containsKey(down.getLocation())) activeCrops.remove(down.getLocation());
+            }
+            saveCropForPlayer(player.getUniqueId());
+            return; // Cho phép phá hủy, bỏ qua các bước check dưới
+        }
+
         if (getRootCropBlock(block) != null) {
             event.setCancelled(true);
             event.getPlayer().sendMessage("§cHãy dùng §eCuốc Thu Hoạch §cđể hái. Việc đập bỏ sẽ làm hỏng nông sản!");
@@ -734,10 +756,10 @@ public class CropManager implements Listener {
         }.runTaskTimer(plugin, 0L, 10L);
     }
 
-    // [ĐÃ SỬA]: Hoàn thiện Logic kiểm tra Cây Kỹ Năng
+    // [ĐÃ SỬA]: Kiểm tra chặt chẽ BẮT BUỘC NGƯỜI CHƠI PHẢI ĐANG CHỌN NGHỀ FARMER
     private boolean hasUltimate(Player player, String ultId) {
         vn.minecraft.rPGCore.jobs.core.PlayerJobData data = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(player);
-        return data != null && data.hasUnlockedSkill("FARMER", ultId.toUpperCase());
+        return data != null && "FARMER".equals(data.getJobId()) && data.hasUnlockedSkill("FARMER", ultId.toUpperCase());
     }
 
     private String formatTime(long seconds) {

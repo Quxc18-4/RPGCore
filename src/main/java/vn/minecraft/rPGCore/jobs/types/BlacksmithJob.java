@@ -261,9 +261,9 @@ public class BlacksmithJob extends RPGJob {
         inv.setItem(13, createSkillIcon("BS_INFO", Material.BOOK, "§d§lTHÔNG TIN ĐIỂM JP", 0, data, "§fSố JP hiện có: §d" + data.getJobPoints("BLACKSMITH")));
 
         // Hàng 4: 3 Kỹ năng tối thượng chia đều ở các ô 29, 31, 33
-        inv.setItem(29, createSkillIcon("BS_HAND_OF_GOD", Material.ENCHANTED_GOLDEN_APPLE, "§e§lBÀN TAY NGHỆ NHÂN", 2, data, "§fCó §a20% xác suất §fnhận lại", "§fMạt Thợ Rèn khi đập đồ thất bại."));
-        inv.setItem(31, createSkillIcon("BS_MASTER_SAVER", Material.GOLD_INGOT, "§6§lBẬC THẦY TIẾT KIỆM", 2, data, "§fGiảm §e20% §fchi phí Mạt Thợ Rèn", "§fkhi sử dụng nút Rèn Bậc Thầy."));
-        inv.setItem(33, createSkillIcon("BS_GUARDIAN_CHARM", Material.TOTEM_OF_UNDYING, "§d§lBÙA HỘ MỆNH", 2, data, "§fCó §a15% xác suất §fkhông tiêu hao", "§fBúa May Mắn và Bùa Bảo Vệ khi rèn."));
+        inv.setItem(29, createSkillIcon("BS_HAND_OF_GOD", Material.ENCHANTED_GOLDEN_APPLE, "§e§lBÀN TAY NGHỆ NHÂN", 3, data, "§fCó §a20% xác suất §fnhận lại", "§fMạt Thợ Rèn khi đập đồ thất bại."));
+        inv.setItem(31, createSkillIcon("BS_MASTER_SAVER", Material.GOLD_INGOT, "§6§lBẬC THẦY TIẾT KIỆM", 3, data, "§fGiảm §e20% §fchi phí Mạt Thợ Rèn", "§fkhi sử dụng nút Rèn Bậc Thầy."));
+        inv.setItem(33, createSkillIcon("BS_GUARDIAN_CHARM", Material.TOTEM_OF_UNDYING, "§d§lBÙA HỘ MỆNH", 3, data, "§fCó §a15% xác suất §fkhông tiêu hao", "§fBúa May Mắn và Bùa Bảo Vệ khi rèn."));
 
         // Hàng 5: Nút quay lại chuyển sang Góc phải dưới (Slot 44)
         ItemStack back = new ItemStack(Material.RED_STAINED_GLASS_PANE);

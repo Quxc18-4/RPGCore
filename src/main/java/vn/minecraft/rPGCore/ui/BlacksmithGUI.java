@@ -144,7 +144,8 @@ public class BlacksmithGUI implements Listener {
 
         // [KỸ NĂNG TỐI THƯỢNG]: Bậc Thầy Tiết Kiệm
         PlayerJobData data = JobManager.getPlayerData(player);
-        if (data.hasUnlockedSkill("BLACKSMITH", "BS_MASTER_SAVER")) {
+        // [ĐÃ SỬA]: Thêm check "BLACKSMITH".equals(data.getJobId())
+        if ("BLACKSMITH".equals(data.getJobId()) && data.hasUnlockedSkill("BLACKSMITH", "BS_MASTER_SAVER")) {
             cost = (int) (cost * 0.8);
         }
 

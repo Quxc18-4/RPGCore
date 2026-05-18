@@ -145,6 +145,10 @@ public class FoodListener implements Listener {
         // ==========================================
         // 4. BƠM STATS RPG VÀO NGƯỜI CHƠI
         // ==========================================
+
+        // [FIX BUG]: Ghi đè Buff - Xóa sạch các buff thức ăn trước đó để tránh cộng dồn vô hạn
+        foodBuffManager.clearAllBuffs(uuid);
+
         applyStat(uuid, meta, STAT_DMG, StatType.DMG, baseDuration, effectMultiplier);
         applyStat(uuid, meta, STAT_CDR, StatType.CDR, baseDuration, effectMultiplier);
         applyStat(uuid, meta, STAT_MS, StatType.MOVE_SPEED, baseDuration, effectMultiplier);

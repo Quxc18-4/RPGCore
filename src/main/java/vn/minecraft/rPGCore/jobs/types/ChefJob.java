@@ -304,9 +304,9 @@ public class ChefJob extends RPGJob {
 
         inv.setItem(13, createSkillIcon("CHEF_INFO", Material.BOOK, "§d§lTHÔNG TIN ĐIỂM JP", 0, data, "§fSố JP hiện có: §d" + data.getJobPoints("CHEF")));
 
-        inv.setItem(29, createSkillIcon("CHEF_IRON_STOMACH", Material.RABBIT_STEW, "§e§lDẠ DÀY THÉP", 2, data, "§fGiảm §a50% §ftỉ lệ nhận điểm ngấy.", "§fGiảm §a50% §fthời gian bị cấm ăn.", "§fĐồ ăn tăng thêm §a50% §fthời gian bảo quản."));
-        inv.setItem(31, createSkillIcon("CHEF_MAGIC_HANDS", Material.ENCHANTED_GOLDEN_APPLE, "§6§lBÀN TAY MA THUẬT", 2, data, "§fCộng thêm §e20% §ftất cả buff (như Đường).", "§fTăng §e100% §fthời gian độ no nê."));
-        inv.setItem(33, createSkillIcon("CHEF_ASCENDED_TASTE", Material.DRAGON_BREATH, "§d§lTHĂNG HOA VỊ GIÁC", 2, data, "§fSố lượng nguyên liệu tối đa trong vạc", "§ftăng từ 9 lên §d12 món§f."));
+        inv.setItem(29, createSkillIcon("CHEF_IRON_STOMACH", Material.RABBIT_STEW, "§e§lDẠ DÀY THÉP", 3, data, "§fGiảm §a50% §ftỉ lệ nhận điểm ngấy.", "§fGiảm §a50% §fthời gian bị cấm ăn.", "§fĐồ ăn tăng thêm §a50% §fthời gian bảo quản."));
+        inv.setItem(31, createSkillIcon("CHEF_MAGIC_HANDS", Material.ENCHANTED_GOLDEN_APPLE, "§6§lBÀN TAY MA THUẬT", 3, data, "§fCộng thêm §e20% §ftất cả buff (như Đường).", "§fTăng §e100% §fthời gian độ no nê."));
+        inv.setItem(33, createSkillIcon("CHEF_ASCENDED_TASTE", Material.DRAGON_BREATH, "§d§lTHĂNG HOA VỊ GIÁC", 3, data, "§fSố lượng nguyên liệu tối đa trong vạc", "§ftăng từ 9 lên §d12 món§f."));
 
         ItemStack back = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta bMeta = back.getItemMeta(); bMeta.setDisplayName("§c§l[!] QUAY LẠI HỒ SƠ"); back.setItemMeta(bMeta);

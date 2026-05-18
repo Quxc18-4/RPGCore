@@ -284,8 +284,8 @@ public class ItemManager {
         register(new ItemData("bag_seeds_magic", Rarity.EPIC, Category.MISC, 0.0, Material.BUNDLE, "Túi Hạt Ma Thuật", "Dùng ngay: Nhận 5-8 hạt ma thuật ngẫu nhiên", "Tỏa ra một luồng ma lực dịu nhẹ."));
 
         // [ĐÃ SỬA] - Bình Tưới Nước và Phân Bón hiện thông số giới hạn lần sử dụng
-        register(new ItemData("misc_watering_can", Rarity.RARE, Category.MISC, 0.0, Material.IRON_NUGGET, "Bình Tưới Nước", null, "Click vào cây: Giảm 1 tiếng sinh trưởng", "Độ bền: 20 lần sử dụng."));
-        register(new ItemData("misc_fertilizer", Rarity.EPIC, Category.MISC, 0.0, Material.BONE_MEAL, "Phân Bón Hảo Hạng", null, "Click vào cây: Thúc sinh diện rộng (3x3)", "Giảm 2 tiếng cho cây trung tâm,", "Giảm 1 tiếng cho 8 cây xung quanh.", "Độ bền: 10 lần sử dụng."));
+        register(new ItemData("misc_watering_can", Rarity.RARE, Category.MISC, 0.0, Material.IRON_NUGGET, "Bình Tưới Nước", "Click vào cây: Giảm 1 tiếng cho cây chỉ định | Độ bền: 20 lần sử dụng.", "Cây cần nước, bạn cũng vậy, nhớ uống đủ nước mỗi ngày!"));
+        register(new ItemData("misc_fertilizer", Rarity.EPIC, Category.MISC, 0.0, Material.BONE_MEAL, "Phân Bón Hảo Hạng", "Click vào cây: Giảm 1-2 tiếng cho cây xung quanh (3x3) | Độ bền: 10 lần sử dụng.", "Giải pháp đơn giản mà vô cùng hiệu quả giúp cây sinh trưởng"));
 
         // Trang bị (Nón lá) - Dùng Nón da hoặc lúa mì
         register(new ItemData("armor_farmer_hat", Rarity.EPIC, Category.MISC, 0.0, Material.GOLDEN_HELMET, "Nón Lá Chân Truyền", "Tăng 10% tỉ lệ kích hoạt mọi Nội tại Nông dân | Độ bền: 300 lần thu hoạch.", "Hiệu quả khi đội lên đầu trong lúc thu hoạch"));
@@ -331,7 +331,7 @@ public class ItemManager {
 
         meta.setLore(lore);
         meta.getPersistentDataContainer().set(ITEM_KEY, PersistentDataType.STRING, data.id);
-        meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES, ItemFlag.HIDE_ENCHANTS, ItemFlag.HIDE_PLACED_ON, ItemFlag.HIDE_UNBREAKABLE);
+        meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES, ItemFlag.HIDE_ENCHANTS, ItemFlag.HIDE_PLACED_ON, ItemFlag.HIDE_UNBREAKABLE, ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
         item.setItemMeta(meta);
         return item;
     }

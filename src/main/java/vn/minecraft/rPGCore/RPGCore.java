@@ -93,6 +93,7 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new JobSelectionGUI(), this);
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.jobs.gui.QuestBoardGUI(), this);
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.jobs.events.QuestListener(), this);
+        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.jobs.events.CropProtectionListener(), this);
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.jobs.gui.JobShopGUI(), this);
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.jobs.gui.JobSkillTreeGUI(), this);
         // Đăng ký Listener cho GUI Xếp hạng

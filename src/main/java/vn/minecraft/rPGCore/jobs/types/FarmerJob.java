@@ -309,9 +309,9 @@ public class FarmerJob extends RPGJob {
 
         inv.setItem(13, createSkillIcon("FARM_INFO", Material.BOOK, "§d§lTHÔNG TIN ĐIỂM JP", 0, data, "§fSố JP hiện có: §d" + data.getJobPoints("FARMER")));
 
-        inv.setItem(29, createSkillIcon("FARMER_ULT_1", Material.MELON, "§e§lPHÉP MÀU VỤ MÙA", 5, data, "§fTất cả cây Đa Vụ Mùa do bạn trồng", "§fsẽ được nhân đôi (x2) số lần hái quả."));
-        inv.setItem(31, createSkillIcon("FARMER_ULT_2", Material.CLOCK, "§6§lTHUẬT THÚC SINH", 5, data, "§fGiảm 25% thời gian sinh trưởng của cây.", "§fCây chỉ cần 3 Tiếng thay vì 4 Tiếng."));
-        inv.setItem(33, createSkillIcon("FARMER_ULT_3", Material.GOLDEN_CARROT, "§d§lVỤ MÙA BỘI THU", 5, data, "§fKhóa cứng 100% nổ Nông sản Đột Biến (1.5x).", "§fTăng cực mạnh tỉ lệ nổ Khổng Lồ (2.0x)", "§fvà sản lượng Cây trái sum xuê."));
+        inv.setItem(29, createSkillIcon("FARMER_ULT_1", Material.MELON, "§e§lPHÉP MÀU VỤ MÙA", 3, data, "§fTất cả cây Đa Vụ Mùa do bạn trồng", "§fsẽ được nhân đôi (x2) số lần hái quả."));
+        inv.setItem(31, createSkillIcon("FARMER_ULT_2", Material.CLOCK, "§6§lTHUẬT THÚC SINH", 3, data, "§fGiảm 25% thời gian sinh trưởng của cây.", "§fCây chỉ cần 3 Tiếng thay vì 4 Tiếng."));
+        inv.setItem(33, createSkillIcon("FARMER_ULT_3", Material.GOLDEN_CARROT, "§d§lVỤ MÙA BỘI THU", 3, data, "§fKhóa cứng 100% nổ Nông sản Đột Biến (1.5x).", "§fTăng cực mạnh tỉ lệ nổ Khổng Lồ (2.0x)", "§fvà sản lượng Cây trái sum xuê."));
 
         ItemStack back = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta bMeta = back.getItemMeta(); bMeta.setDisplayName("§c§l[!] QUAY LẠI HỒ SƠ"); back.setItemMeta(bMeta);

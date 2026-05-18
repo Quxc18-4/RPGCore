@@ -100,14 +100,14 @@ public class CookingEngine {
 
         // 3. STATS NỘI TẠI
         double buffMultiplier = fatMultiplier * sugarMultiplier;
-        if (stats.starch >= 1.0) result.maxHpBonus = 200 * buffMultiplier;
-        if (stats.fish >= 3.5) { result.bonusDmg = 30; result.cdr = 20; }
-        else if (stats.fish >= 2.0) { result.bonusDmg = 15; result.cdr = 10; }
+        if (stats.starch >= 1.0) result.maxHpBonus = 300 * buffMultiplier;
+        if (stats.fish >= 3.5) { result.bonusDmg = 30; result.cdr = 15; }
+        else if (stats.fish >= 2.0) { result.bonusDmg = 15; result.cdr = 5; }
         else if (stats.fish >= 1.0) { result.bonusDmg = 15; }
 
         if (stats.chili >= 1.0) result.moveSpeed += 10 * Math.floor(stats.chili);
-        if (stats.garlic >= 1.0) result.atkSpeed += 10 * Math.floor(stats.garlic);
-        if (stats.sour >= 0.5) result.armorPen += 15 * (stats.sour / 0.5);
+        if (stats.garlic >= 1.0) result.atkSpeed += 5 * Math.floor(stats.garlic);
+        if (stats.sour >= 0.5) result.armorPen += 5 * (stats.sour / 0.5);
 
         result.bonusDmg *= buffMultiplier; result.cdr *= buffMultiplier; result.moveSpeed *= buffMultiplier;
         result.atkSpeed *= buffMultiplier; result.armorPen *= buffMultiplier; result.regenRate *= buffMultiplier;
@@ -145,7 +145,7 @@ public class CookingEngine {
                     else { result.flavorTags.add("§c[Bỏng Rát]"); result.potionEffects.add("HUNGER:1"); result.moveSpeed -= 15.0 * magicMult; }
                     break;
                 case "magic_golden_melon":
-                    if (!isReversed) result.maxHpBonus += 2000.0 * magicMult; else result.maxHpBonus -= 2000.0 * magicMult;
+                    if (!isReversed) result.maxHpBonus += 1500.0 * magicMult; else result.maxHpBonus -= 2000.0 * magicMult;
                     break;
                 case "magic_glowing_mushroom":
                     if (!isReversed) { result.critRate += 5.0 * magicMult; result.potionEffects.add("GLOWING:0"); }
