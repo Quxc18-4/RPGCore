@@ -150,15 +150,15 @@ public class FarmerJob extends RPGJob {
         // ==============================================
         // HÀNG 5: NÔNG CỤ VÀ VẬT TƯ (BẰNG BẠC -> NHÂN 64)
         // ==============================================
-        inv.setItem(37, createCoinItem(im.buildItem("tool_harvest_hoe", 1), "FARM_TOOL_HOE", data, 5, 200 * 64, jobLevel >= 1, 1)); // 200 Bạc
+        inv.setItem(37, createCoinItem(im.buildItem("tool_harvest_hoe", 1), "FARM_TOOL_HOE", data, 10, 10 * 64, jobLevel >= 1, 1)); // 200 Bạc
 
         ItemStack waterBucket = new ItemStack(Material.WATER_BUCKET);
         ItemMeta wbMeta = waterBucket.getItemMeta(); wbMeta.setDisplayName("§bXô Nước"); waterBucket.setItemMeta(wbMeta);
-        inv.setItem(40, createCoinItem(waterBucket, "FARM_MAT_WATER", data, 20, 50 * 64, jobLevel >= 1, 1)); // 50 Bạc
+        inv.setItem(40, createCoinItem(waterBucket, "FARM_MAT_WATER", data, 20, 1 * 64, jobLevel >= 1, 1)); // 50 Bạc
 
         ItemStack oakLog = new ItemStack(Material.OAK_LOG, 64);
         ItemMeta olMeta = oakLog.getItemMeta(); olMeta.setDisplayName("§6Khúc Gỗ Sồi (x64)"); oakLog.setItemMeta(olMeta);
-        inv.setItem(43, createCoinItem(oakLog, "FARM_MAT_WOOD", data, 10, 5 * 64, jobLevel >= 1, 1)); // 5 Bạc
+        inv.setItem(43, createCoinItem(oakLog, "FARM_MAT_WOOD", data, 10, 3 * 64, jobLevel >= 1, 1)); // 5 Bạc
 
         ItemStack back = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta bMeta = back.getItemMeta(); bMeta.setDisplayName("§c§l[!] QUAY LẠI HỒ SƠ"); back.setItemMeta(bMeta);

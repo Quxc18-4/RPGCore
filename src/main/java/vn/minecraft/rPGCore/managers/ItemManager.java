@@ -87,54 +87,81 @@ public class ItemManager {
         register(new ItemData("fish_tropical", Rarity.UNCOMMON, Category.FISH, 0.5, Material.TROPICAL_FISH, "Cá Hề Biển Sâu", null, "Màu sắc sặc sỡ."));
 
         // --- 3. NHÓM RAU QUẢ & NÔNG SẢN ĐỘT BIẾN ---
+        // [CÀ RỐT] Gốc 0.5 -> 0.75 -> 1.0
         register(new ItemData("veg_carrot", Rarity.COMMON, Category.VEG, 0.5, Material.CARROT, "Cà Rốt Ngọt", null, "Tốt cho mắt."));
         register(new ItemData("veg_carrot_uncommon", Rarity.UNCOMMON, Category.VEG, 0.75, Material.CARROT, "Cà Rốt Đột Biến", null, "To hơn cà rốt bình thường một chút."));
         register(new ItemData("veg_carrot_rare", Rarity.RARE, Category.VEG, 1.0, Material.CARROT, "Cà Rốt Khổng Lồ", null, "Củ cà rốt khổng lồ, chứa đầy dinh dưỡng."));
+
+        // [CỦ DỀN] Gốc 0.5 -> 0.75 -> 1.0
         register(new ItemData("veg_beetroot", Rarity.COMMON, Category.VEG, 0.5, Material.BEETROOT, "Củ Dền Đỏ", null, "Dùng để nấu canh rất ngon."));
         register(new ItemData("veg_beetroot_uncommon", Rarity.UNCOMMON, Category.VEG, 0.75, Material.BEETROOT, "Củ Dền Đột Biến", null, "Màu sắc đậm đà hơn bình thường."));
         register(new ItemData("veg_beetroot_rare", Rarity.RARE, Category.VEG, 1.0, Material.BEETROOT, "Củ Dền Khổng Lồ", null, "Cực kỳ mọng nước và giàu dưỡng chất."));
+
+        // [BÍ NGÔ] Gốc 1.0 -> 1.5 -> 2.0
         register(new ItemData("veg_pumpkin", Rarity.COMMON, Category.VEG, 1.0, Material.PUMPKIN, "Bí Ngô Nguyên Quả", null, "Trái bí ngô to tròn."));
         register(new ItemData("veg_pumpkin_uncommon", Rarity.UNCOMMON, Category.VEG, 1.5, Material.PUMPKIN, "Bí Ngô Đột Biến", null, "Lớp vỏ rất cứng."));
         register(new ItemData("veg_pumpkin_rare", Rarity.RARE, Category.VEG, 2.0, Material.PUMPKIN, "Bí Ngô Khổng Lồ", null, "Nặng đến mức một người ôm không xuể."));
+
+        // [DƯA HẤU] Gốc 0.5 -> 0.75 -> 1.0
         register(new ItemData("veg_melon", Rarity.COMMON, Category.VEG, 0.5, Material.MELON_SLICE, "Dưa Hấu Mọng Nước", "Dùng ngay: Hồi 2% HP và 1 Điểm đói", "Ngọt ngào và giải khát."));
         register(new ItemData("veg_melon_uncommon", Rarity.UNCOMMON, Category.VEG, 0.75, Material.MELON_SLICE, "Dưa Hấu Đột Biến", "Dùng ngay: Hồi 3% HP và 2 Điểm đói", "Miếng dưa rất ngọt và ít hạt."));
         register(new ItemData("veg_melon_rare", Rarity.RARE, Category.VEG, 1.0, Material.MELON_SLICE, "Dưa Hấu Khổng Lồ", "Dùng ngay: Hồi 5% HP và 3 Điểm đói", "Đỏ au và mọng nước tột độ."));
+
+        // [KHOAI TÂY] Gốc 0.5 -> 0.75 -> 1.0
         register(new ItemData("veg_potato", Rarity.COMMON, Category.VEG, 0.5, Material.POTATO, "Khoai Tây Vàng", "Cung cấp thêm 0.5 Điểm Tinh bột", "Củ khoai tây bùi béo."));
         register(new ItemData("veg_potato_uncommon", Rarity.UNCOMMON, Category.VEG, 0.75, Material.POTATO, "Khoai Tây Đột Biến", "Cung cấp thêm 0.75 Điểm Tinh bột", "Củ khoai tây khá bự."));
         register(new ItemData("veg_potato_rare", Rarity.RARE, Category.VEG, 1.0, Material.POTATO, "Khoai Tây Khổng Lồ", "Cung cấp thêm 1.0 Điểm Tinh bột", "Ăn một củ là no cả ngày."));
+
+        // [LÚA MÌ] Gốc 0.25 -> 0.5 -> 0.75
         register(new ItemData("veg_wheat", Rarity.COMMON, Category.VEG, 0.25, Material.WHEAT, "Bó Lúa Mì", "Cung cấp thêm 0.5 Điểm Tinh bột", "Nguyên liệu để xay bột."));
         register(new ItemData("veg_wheat_uncommon", Rarity.UNCOMMON, Category.VEG, 0.5, Material.WHEAT, "Bó Lúa Mì Đột Biến", "Cung cấp thêm 0.75 Điểm Tinh bột", "Hạt lúa rất mẩy."));
         register(new ItemData("veg_wheat_rare", Rarity.RARE, Category.VEG, 0.75, Material.WHEAT, "Bó Lúa Mì Vàng", "Cung cấp thêm 1.0 Điểm Tinh bột", "Tỏa ra hương thơm tự nhiên ngào ngạt."));
+
+        // [NẤM HƯƠNG] Gốc 0.25 -> 0.5 -> 0.75
         register(new ItemData("veg_mushroom", Rarity.COMMON, Category.VEG, 0.25, Material.BROWN_MUSHROOM, "Nấm Hương", null, "Thơm lừng khi xào."));
         register(new ItemData("veg_mushroom_uncommon", Rarity.UNCOMMON, Category.VEG, 0.5, Material.BROWN_MUSHROOM, "Nấm Hương Đột Biến", null, "Mũ nấm rất to."));
         register(new ItemData("veg_mushroom_rare", Rarity.RARE, Category.VEG, 0.75, Material.BROWN_MUSHROOM, "Nấm Hương Khổng Lồ", null, "Chứa hàm lượng dinh dưỡng cao."));
+
+        // [NẤM ĐỎ] Gốc 0.25 -> 0.5 -> 0.75
         register(new ItemData("veg_red_mushroom", Rarity.COMMON, Category.VEG, 0.25, Material.RED_MUSHROOM, "Nấm Đỏ Tươi", null, "Màu sắc sặc sỡ nhưng an toàn."));
         register(new ItemData("veg_red_mushroom_uncommon", Rarity.UNCOMMON, Category.VEG, 0.5, Material.RED_MUSHROOM, "Nấm Đỏ Đột Biến", null, "Cánh nấm lốm đốm phát sáng."));
         register(new ItemData("veg_red_mushroom_rare", Rarity.RARE, Category.VEG, 0.75, Material.RED_MUSHROOM, "Nấm Đỏ Khổng Lồ", null, "Một cây nấm khổng lồ đầy dưỡng chất."));
+
+        // [QUẢ MỌNG / SWEET BERRIES] Gốc 0.25 -> 0.5 -> 0.75
         register(new ItemData("veg_berries", Rarity.COMMON, Category.VEG, 0.25, Material.SWEET_BERRIES, "Quả Mọng Rừng", null, "Vị chua chua ngọt ngọt."));
         register(new ItemData("veg_berries_uncommon", Rarity.UNCOMMON, Category.VEG, 0.5, Material.SWEET_BERRIES, "Quả Mọng Đột Biến", null, "Lớn hơn và ngọt hơn bình thường."));
         register(new ItemData("veg_berries_rare", Rarity.RARE, Category.VEG, 0.75, Material.SWEET_BERRIES, "Quả Mọng Khổng Lồ", null, "Căng mọng và chứa rất nhiều nước."));
+
+        // [QUẢ MỌNG SÁNG / GLOW BERRIES] Gốc 0.25 -> 0.5 -> 0.75
         register(new ItemData("veg_glow_berries", Rarity.COMMON, Category.VEG, 0.25, Material.GLOW_BERRIES, "Quả Mọng Sáng", null, "Trái cây mọc trong hang động tối."));
         register(new ItemData("veg_glow_berries_uncommon", Rarity.UNCOMMON, Category.VEG, 0.5, Material.GLOW_BERRIES, "Quả Mọng Sáng Đột Biến", null, "Phát ra ánh sáng ấm áp."));
         register(new ItemData("veg_glow_berries_rare", Rarity.RARE, Category.VEG, 0.75, Material.GLOW_BERRIES, "Quả Mọng Sáng Khổng Lồ", null, "Tỏa sáng rực rỡ như một chiếc đèn lồng."));
+
+        // [RONG BIỂN] Gốc 0.25 -> 0.5 -> 0.75
         register(new ItemData("veg_kelp_fresh", Rarity.COMMON, Category.VEG, 0.25, Material.KELP, "Rong Biển Tươi", null, "Vớt từ dưới đáy biển lên."));
         register(new ItemData("veg_kelp_fresh_uncommon", Rarity.UNCOMMON, Category.VEG, 0.5, Material.KELP, "Rong Biển Dày", null, "Bản lá rất to và giòn."));
         register(new ItemData("veg_kelp_fresh_rare", Rarity.RARE, Category.VEG, 0.75, Material.KELP, "Rong Biển Khổng Lồ", null, "Rong biển thượng hạng từ biển sâu."));
         register(new ItemData("veg_kelp_dried", Rarity.COMMON, Category.VEG, 0.25, Material.DRIED_KELP, "Rong Biển Khô", "Dùng ngay: Tăng 15% Tốc chạy trong 5 giây", "Đã được sấy khô để bảo quản."));
+
+        // [DƯA CHUỘT / CUCUMBER] Gốc 0.5 -> 0.75 -> 1.0
         register(new ItemData("veg_cucumber", Rarity.COMMON, Category.VEG, 0.5, Material.SEA_PICKLE, "Dưa Chuột Giòn", null, "Thanh mát và rất giòn."));
         register(new ItemData("veg_cucumber_uncommon", Rarity.UNCOMMON, Category.VEG, 0.75, Material.SEA_PICKLE, "Dưa Chuột Đột Biến", null, "Quả dưa dài và đặc ruột."));
         register(new ItemData("veg_cucumber_rare", Rarity.RARE, Category.VEG, 1.0, Material.SEA_PICKLE, "Dưa Chuột Khổng Lồ", null, "To như một quả bí! Giải khát cực tốt."));
         register(new ItemData("veg_pickled_cucumber", Rarity.UNCOMMON, Category.VEG, 0.75, Material.SEA_PICKLE, "Dưa Chuột Muối", "Có thể giúp đánh lừa vị giác", "Chua chua giòn giòn, ăn rất cuốn."));
+
+        // [CACAO] Gốc 0.5 -> 0.75 -> 1.0 (Xếp vào nhóm Củ Quả/Rau)
         register(new ItemData("veg_cocoa", Rarity.COMMON, Category.VEG, 0.5, Material.COCOA_BEANS, "Hạt Cacao", null, "Nguyên liệu tuyệt vời để tạo độ béo và ngọt."));
         register(new ItemData("veg_cocoa_uncommon", Rarity.UNCOMMON, Category.VEG, 0.75, Material.COCOA_BEANS, "Hạt Cacao Đột Biến", null, "Hạt to, thơm nức mùi chocolate."));
         register(new ItemData("veg_cocoa_rare", Rarity.RARE, Category.VEG, 1.0, Material.COCOA_BEANS, "Hạt Cacao Khổng Lồ", null, "Chứa hàm lượng bơ cacao cực cao."));
+
+        // [TÁO] Không có hạt giống, nên táo giữ nguyên 1 loại
         register(new ItemData("veg_apple", Rarity.COMMON, Category.VEG, 0.5, Material.APPLE, "Táo Đỏ", "Dùng ngay: Hồi 2% HP và 1 Điểm đói", "Táo rừng chín mọng."));
 
         // --- 4. NHÓM TINH BỘT ---
         register(new ItemData("starch_bread", Rarity.COMMON, Category.STARCH, 1.0, Material.BREAD, "Ổ Bánh Mì Nướng", "Dùng ngay: Hồi 5 Điểm đói", "Thơm mùi lúa mạch."));
         register(new ItemData("starch_flour", Rarity.COMMON, Category.STARCH, 0.25, Material.SUGAR, "Bột Mì Thượng Hạng", null, "Xay nhuyễn từ lúa mì ngon nhất."));
 
-        // --- 5. NHÓM GIA VỊ ---
+        // --- 5. NHÓM GIA VỊ (XÓA CÁC EFFECT ẢO) ---
         register(new ItemData("spice_salt", Rarity.COMMON, Category.SPICE, 0.5, Material.WHITE_DYE, "Muối Biển", null, "Gia vị không thể thiếu."));
         register(new ItemData("spice_pepper", Rarity.COMMON, Category.SPICE, 0.5, Material.GUNPOWDER, "Tiêu Đen", null, "Cay nồng."));
         register(new ItemData("spice_chili", Rarity.COMMON, Category.SPICE, 0.5, Material.NETHER_WART, "Bột Ớt Hiểm", null, "Cực kỳ cay."));
@@ -144,7 +171,7 @@ public class ItemManager {
         register(new ItemData("spice_sour", Rarity.COMMON, Category.SPICE, 0.5, Material.POTION, "Giấm Chua", null, "Tạo vị chua thanh."));
         register(new ItemData("spice_all_in_one", Rarity.EPIC, Category.SPICE, 0.5, Material.BROWN_DYE, "Gia Vị Tổng Hợp", "Cung cấp 0.5 điểm cho toàn bộ gia vị", "Sự kết hợp hoàn hảo của mặn, ngọt, chua, cay."));
 
-        // --- 6. NHÓM CHẤT BÉO ---
+        // --- 6. NHÓM CHẤT BÉO (XÓA CÁC EFFECT ẢO) ---
         register(new ItemData("fat_egg", Rarity.COMMON, Category.FAT, 0.5, Material.EGG, "Trứng Gà Tươi", null, "Một quả trứng vừa mới đẻ."));
         register(new ItemData("fat_sniffer", Rarity.RARE, Category.FAT, 0.75, Material.SNIFFER_EGG, "Trứng Cổ Đại", null, "Toát ra một thứ hào quang cổ đại."));
         register(new ItemData("fat_milk", Rarity.UNCOMMON, Category.FAT, 1.0, Material.MILK_BUCKET, "Sữa Bò Béo Ngậy", "Dùng ngay: Xóa bỏ 1 Trạng thái xấu ngẫu nhiên", "Sữa vắt từ bò hoang dã, rất thơm."));
@@ -153,31 +180,28 @@ public class ItemManager {
         // --- 7. NHÓM QUÁI VẬT ---
         register(new ItemData("monster_flesh", Rarity.COMMON, Category.MONSTER, 1.0, Material.ROTTEN_FLESH, "Thịt Thối Rữa", "Nguy cơ làm hỏng món ăn rất cao!", "Thịt của quái vật đột biến, không thể ăn được."));
 
-        // --- 8. NHÓM MA THUẬT (QUÁI VẬT RỚT) ---
-        // (Đã thay đổi hiển thị Description để chuẩn form RPG)
-        register(new ItemData("magic_blaze_powder", Rarity.RARE, Category.MAGIC, 0.75, Material.BLAZE_POWDER, "Mảnh Quỷ Lửa", null, "§eKhi nấu súp: §fCung cấp hiệu ứng Kháng Lửa", "Nóng rực trên tay."));
-        register(new ItemData("magic_fermented_eye", Rarity.RARE, Category.MAGIC, 0.75, Material.FERMENTED_SPIDER_EYE, "Mắt Nhện Lên Men", null, "§eKhi nấu súp: §fTăng 10 Điểm Tốc độ Hồi Phục", "Mùi vị cực kỳ kinh tởm."));
-        register(new ItemData("magic_pufferfish", Rarity.RARE, Category.MAGIC, 0.75, Material.PUFFERFISH, "Cá Nóc Kịch Độc", null, "§eKhi nấu súp: §fCung cấp hiệu ứng Thở Dưới Nước", "Phải biết cách sơ chế mới dùng được."));
-        register(new ItemData("magic_spider_eye", Rarity.UNCOMMON, Category.MAGIC, 0.75, Material.SPIDER_EYE, "Mắt Nhện Tinh Anh", null, "§eKhi nấu súp: §fGây hiệu ứng Trúng Độc", "Trông khá tởm, nhưng chứa đầy chất độc."));
-        register(new ItemData("magic_bat_wing", Rarity.RARE, Category.MAGIC, 0.75, Material.POTION, "Huyết Tinh", null, "§eKhi nấu súp: §fTăng 10% Tỉ lệ Hút Máu", "Máu của sinh vật bóng tối."));
-        register(new ItemData("magic_glowstone", Rarity.RARE, Category.MAGIC, 0.75, Material.GLOWSTONE_DUST, "Bột Tiên", null, "§eKhi nấu súp: §fTăng 10% Tỉ lệ Chí Mạng", "Bột phát sáng lấp lánh."));
-        register(new ItemData("magic_goblin_ear", Rarity.RARE, Category.MAGIC, 0.75, Material.TURTLE_SCUTE, "Tai Goblin", null, "§eKhi nấu súp: §fTăng 10% Tỉ lệ Rớt Đồ", "Một chiếc tai còn rỏ máu của Goblin."));
-        register(new ItemData("magic_toxic_blood", Rarity.UNCOMMON, Category.MAGIC, 0.75, Material.SLIME_BALL, "Máu Kịch Độc", null, "§eKhi nấu súp: §fGây hiệu ứng Kịch Độc", "Thứ chất lỏng đặc sệt bốc mùi hôi thối."));
+        // --- 8. NHÓM MA THUẬT (GIỮ LẠI EFFECT VÌ CÓ CODE XỬ LÝ) ---
+        register(new ItemData("magic_golden_carrot", Rarity.RARE, Category.MAGIC, 0.75, Material.GOLDEN_CARROT, "Cà Rốt Ma Thuật", "Cung cấp hiệu ứng Mắt Mèo", "Trồng bằng phép thuật."));
+        register(new ItemData("magic_blaze_powder", Rarity.RARE, Category.MAGIC, 0.75, Material.BLAZE_POWDER, "Mảnh Quỷ Lửa", "Cung cấp hiệu ứng Kháng Lửa", "Nóng rực trên tay."));
+        register(new ItemData("magic_fermented_eye", Rarity.RARE, Category.MAGIC, 0.75, Material.FERMENTED_SPIDER_EYE, "Mắt Nhện Lên Men", "Cung cấp hiệu ứng Hồi Phục Cao", "Mùi vị cực kỳ kinh tởm."));
+        register(new ItemData("magic_pufferfish", Rarity.RARE, Category.MAGIC, 0.75, Material.PUFFERFISH, "Cá Nóc Kịch Độc", "Cung cấp hiệu ứng Thở Dưới Nước", "Phải biết cách sơ chế mới dùng được."));
+        register(new ItemData("magic_spider_eye", Rarity.UNCOMMON, Category.MAGIC, 0.75, Material.SPIDER_EYE, "Mắt Nhện Tinh Anh", "Dùng để hạ độc thức ăn.", "Trông khá tởm, nhưng chứa đầy chất độc."));
+        register(new ItemData("magic_bat_wing", Rarity.RARE, Category.MAGIC, 0.75, Material.POTION, "Huyết Tinh", "Cung cấp thêm 10% tỉ lệ Hút Máu", "Máu của sinh vật bóng tối."));
+        register(new ItemData("magic_glowstone", Rarity.RARE, Category.MAGIC, 0.75, Material.GLOWSTONE_DUST, "Bột Tiên", "Cung cấp 10% tỉ lệ Chí Mạng", "Bột phát sáng lấp lánh."));
+        register(new ItemData("magic_goblin_ear", Rarity.RARE, Category.MAGIC, 0.75, Material.TURTLE_SCUTE, "Tai Goblin", "Cung cấp 10% Tỉ lệ rớt đồ", "Một chiếc tai còn rỏ máu của Goblin."));
+        register(new ItemData("magic_toxic_blood", Rarity.UNCOMMON, Category.MAGIC, 0.75, Material.SLIME_BALL, "Máu Kịch Độc", "Dùng để hạ độc thức ăn.", "Thứ chất lỏng đặc sệt bốc mùi hôi thối."));
 
         // --- 8.1. NÔNG SẢN MA THUẬT (FARMER EXCLUSIVE) ---
-        register(new ItemData("magic_golden_carrot", Rarity.EPIC, Category.MAGIC, 0.75, Material.GOLDEN_CARROT, "Cà Rốt Vàng Chói", null, "§eKhi nấu súp: §fCung cấp hiệu ứng Mắt Mèo", "Trồng bằng phép thuật."));
-        register(new ItemData("magic_flame_beetroot", Rarity.EPIC, Category.MAGIC, 0.75, Material.MAGMA_CREAM, "Củ Dền Hỏa Ngục", null, "§aDùng ngay: §fHồi 10% HP, Kháng Lửa (1 phút)", "§eKhi nấu súp: §fTăng 15 Tốc độ chạy & Kháng Lửa", "Cầm trên tay cũng thấy bỏng rát."));
-        register(new ItemData("magic_golden_melon", Rarity.EPIC, Category.MAGIC, 0.75, Material.GLISTERING_MELON_SLICE, "Dưa Hấu Hoàng Kim", null, "§aDùng ngay: §fHồi 15% HP", "§eKhi nấu súp: §fTăng 50 Máu Tối Đa", "Lấp lánh ánh kim vô giá."));
-        register(new ItemData("magic_glowing_mushroom", Rarity.EPIC, Category.MAGIC, 0.75, Material.GLOW_INK_SAC, "Nấm Phát Quang", null, "§eKhi nấu súp: §fTăng 5% Tỉ lệ Chí Mạng & Phát sáng", "Mọc lên từ vùng đất giàu ma lực."));
-
-        // [ĐÃ SỬA]: Lúa mì đã bị xóa khả năng Xóa Debuff khi ăn sống
-        register(new ItemData("magic_star_wheat", Rarity.EPIC, Category.MAGIC, 0.75, Material.SUNFLOWER, "Lúa Mì Tinh Tú", null, "§eKhi nấu súp: §fTăng 10% Tỉ lệ Rớt Đồ", "Hấp thụ ánh sáng của các vì sao."));
-
-        register(new ItemData("magic_soul_sweet_berry", Rarity.EPIC, Category.MAGIC, 0.75, Material.SWEET_BERRIES, "Quả Mọng Đoạt Hồn", null, "§eKhi nấu súp: §fTăng 5% Tỉ lệ Hút Máu", "Có màu đỏ thẫm đến rợn người."));
-        register(new ItemData("magic_crystal_kelp", Rarity.EPIC, Category.MAGIC, 0.75, Material.PRISMARINE_CRYSTALS, "Tảo Pha Lê", null, "§aDùng ngay: §fThở dưới nước (3 phút)", "§eKhi nấu súp: §fTăng 10% Xuyên Giáp & Thở Nước", "Sống ở vùng biển sâu ma thuật."));
-        register(new ItemData("magic_dragon_cocoa", Rarity.EPIC, Category.MAGIC, 0.75, Material.DRAGON_BREATH, "Cacao Thanh Long", null, "§eKhi nấu súp: §fTăng 10% Sát Thương Vũ Khí", "Hạt giống được ấp trong vảy rồng."));
-        register(new ItemData("magic_mana_potato", Rarity.EPIC, Category.MAGIC, 0.75, Material.POISONOUS_POTATO, "Khoai Tây Ma Năng", null, "§aDùng ngay: §fHồi 20% HP nhưng gây Mù (5s)", "§eKhi nấu súp: §fGiảm 5% Hồi Chiêu Kỹ Năng", "Chứa nguồn ma lực chưa tinh chế."));
-        register(new ItemData("magic_chaos_glow_berry", Rarity.EPIC, Category.MAGIC, 0.75, Material.CHORUS_FRUIT, "Dây Leo Hỗn Độn", null, "§aDùng ngay: §fHồi 10% HP, Tàng Hình (30s)", "§eKhi nấu súp: §fTăng 10% Tốc Độ Đánh", "Thay đổi không gian xung quanh nó."));
+        register(new ItemData("magic_golden_carrot", Rarity.EPIC, Category.MAGIC, 0.75, Material.GOLDEN_CARROT, "Cà Rốt Vàng Chói", "Nấu: Hiệu ứng Nhìn Trong Đêm", "Trồng bằng phép thuật."));
+        register(new ItemData("magic_flame_beetroot", Rarity.EPIC, Category.MAGIC, 0.75, Material.MAGMA_CREAM, "Củ Dền Hỏa Ngục", "Dùng ngay: Hồi 10% HP, Kháng lửa 1 phút | Nấu: Tăng 15% Tốc chạy & Kháng Lửa", "Cầm trên tay cũng thấy bỏng rát."));
+        register(new ItemData("magic_golden_melon", Rarity.EPIC, Category.MAGIC, 0.75, Material.GLISTERING_MELON_SLICE, "Dưa Hấu Hoàng Kim", "Dùng ngay: Hồi 15% HP | Nấu: Tăng 2000 Máu tối đa", "Lấp lánh ánh kim vô giá."));
+        register(new ItemData("magic_glowing_mushroom", Rarity.EPIC, Category.MAGIC, 0.75, Material.GLOW_INK_SAC, "Nấm Phát Quang", "Nấu: Tăng 5% Tỉ Lệ Chí Mạng & Phát sáng", "Mọc lên từ vùng đất giàu ma lực."));
+        register(new ItemData("magic_star_wheat", Rarity.EPIC, Category.MAGIC, 0.75, Material.SUNFLOWER, "Lúa Mì Tinh Tú", "Nấu: Tăng 10% Tỉ Lệ Rớt Đồ", "Hấp thụ ánh sáng của các vì sao."));
+        register(new ItemData("magic_soul_sweet_berry", Rarity.EPIC, Category.MAGIC, 0.75, Material.SWEET_BERRIES, "Quả Mọng Đoạt Hồn", "Nấu: Tăng 5% Tỉ Lệ Hút Máu", "Có màu đỏ thẫm đến rợn người."));
+        register(new ItemData("magic_crystal_kelp", Rarity.EPIC, Category.MAGIC, 0.75, Material.PRISMARINE_CRYSTALS, "Tảo Pha Lê", "Dùng ngay: Thở dưới nước 3 phút | Nấu: Tăng 10% Xuyên Giáp & Thở Dưới Nước", "Sống ở vùng biển sâu ma thuật."));
+        register(new ItemData("magic_dragon_cocoa", Rarity.EPIC, Category.MAGIC, 0.75, Material.DRAGON_BREATH, "Cacao Thanh Long", "Nấu: Tăng 10% Sát Thương", "Hạt giống được ấp trong vảy rồng."));
+        register(new ItemData("magic_mana_potato", Rarity.EPIC, Category.MAGIC, 0.75, Material.POISONOUS_POTATO, "Khoai Tây Ma Năng", "Dùng ngay: Hồi 20% HP nhưng gây Mù | Nấu: Giảm 5% Hồi Chiêu Kỹ Năng", "Chứa nguồn ma lực chưa tinh chế."));
+        register(new ItemData("magic_chaos_glow_berry", Rarity.EPIC, Category.MAGIC, 0.75, Material.CHORUS_FRUIT, "Dây Leo Hỗn Độn", "Dùng ngay: Hồi 10% HP, Tàng hình 30s | Nấu: Tăng 10% Tốc Độ Đánh", "Thay đổi không gian xung quanh nó."));
 
         // --- 9. NHÓM KHÁC ---
         register(new ItemData("misc_leather", Rarity.COMMON, Category.MISC, 0.0, Material.LEATHER, "Da Thuộc", null, "Nguyên liệu may mặc cơ bản."));
@@ -219,26 +243,27 @@ public class ItemManager {
         register(new ItemData("misc_culinary_essence", Rarity.EPIC, Category.MISC, 0.0, Material.GLOWSTONE_DUST, "Tinh Túy Ẩm Thực", null, "Kết tinh từ những món ăn tuyệt hảo.", "Được giới sành ăn săn lùng gắt gao."));
         register(new ItemData("potion_digestion", Rarity.RARE, Category.MISC, 0.0, Material.POTION, "Thuốc Giải Ngấy", "Dùng ngay: Giảm 50% lượng điểm Tuyệt thực", "Công thức bí truyền của Hội Đầu Bếp."));
         register(new ItemData("potion_anti_anorexia", Rarity.EPIC, Category.MISC, 0.0, Material.DRAGON_BREATH, "Thuốc Trị Tuyệt Thực", "Dùng ngay: Chữa khỏi hoàn toàn chứng biếng ăn", "Uống vào là thèm ăn ngay!"));
+        //register(new ItemData("spice_all_in_one", Rarity.EPIC, Category.SPICE, 0.5, Material.SUGAR, "Gia Vị Tổng Hợp", "Cung cấp 0.5 điểm cho TẤT CẢ gia vị", "Sự kết hợp hoàn hảo của mặn, ngọt, chua, cay.")); Đã thêm ở trên
         register(new ItemData("misc_lunch_bag", Rarity.RARE, Category.MISC, 0.0, Material.PIGLIN_BANNER_PATTERN, "Túi Đồ Ăn Dự Phòng", "Dùng ngay: Mở ra 3 bát súp ngẫu nhiên", "Chuẩn bị sẵn cho những chuyến đi dài."));
         register(new ItemData("misc_preservative_powder", Rarity.MYTHIC, Category.MISC, 0.0, Material.GUNPOWDER, "Bột Bảo Quản Thần Kỳ", "Chặn 100% nguy cơ hỏng của món ăn", "Một loại bột sáng lấp lánh..."));
-
         // --- 13. NÔNG CỤ & HẠT GIỐNG (FARMING SYSTEM) ---
+        // Nông cụ chuyên dụng
         register(new ItemData("tool_harvest_hoe", Rarity.UNCOMMON, Category.MISC, 0.0, Material.IRON_HOE, "Cuốc Thu Hoạch", "Click phải để thu hoạch nông sản", "Nông cụ chuyên dụng giúp thu hồi nông sản", "và hạt giống mà không làm hỏng rễ cây."));
 
         // Hạt giống các loại
-        register(new ItemData("seed_carrot", Rarity.COMMON, Category.VEG, 0.0, Material.CARROT, "Hạt Giống Cà Rốt", null, "Trồng trên đất cày. Thời gian thu hoạch: 4 Giờ."));
-        register(new ItemData("seed_potato", Rarity.COMMON, Category.VEG, 0.0, Material.POTATO, "Mầm Khoai Tây", null, "Trồng trên đất cày. Thời gian thu hoạch: 4 Giờ."));
-        register(new ItemData("seed_beetroot", Rarity.COMMON, Category.VEG, 0.0, Material.BEETROOT_SEEDS, "Hạt Giống Củ Dền", null, "Trồng trên đất cày. Thời gian thu hoạch: 4 Giờ."));
-        register(new ItemData("seed_pumpkin", Rarity.COMMON, Category.VEG, 0.0, Material.PUMPKIN_SEEDS, "Hạt Giống Bí Ngô", null, "Trồng trên đất cày. Thời gian thu hoạch: 4 Giờ."));
-        register(new ItemData("seed_melon", Rarity.COMMON, Category.VEG, 0.0, Material.MELON_SEEDS, "Hạt Giống Dưa Hấu", null, "Trồng trên đất cày. Thời gian thu hoạch: 4 Giờ."));
-        register(new ItemData("seed_wheat", Rarity.COMMON, Category.VEG, 0.0, Material.WHEAT_SEEDS, "Hạt Giống Lúa Mì", null, "Trồng trên đất cày. Thời gian thu hoạch: 4 Giờ."));
-        register(new ItemData("seed_sweet_berry", Rarity.COMMON, Category.VEG, 0.0, Material.SWEET_BERRIES, "Mầm Quả Mọng", null, "Trồng trên đất cày. Thời gian thu hoạch: 4 Giờ."));
-        register(new ItemData("seed_glow_berry", Rarity.COMMON, Category.VEG, 0.0, Material.GLOW_BERRIES, "Mầm Quả Mọng Sáng", null, "Trồng trên đất cày. Thời gian thu hoạch: 4 Giờ."));
-        register(new ItemData("seed_mushroom", Rarity.COMMON, Category.VEG, 0.0, Material.BROWN_MUSHROOM, "Bào Tử Nấm Hương", null, "Trồng trên đất cày. Thời gian thu hoạch: 4 Giờ."));
-        register(new ItemData("seed_red_mushroom", Rarity.COMMON, Category.VEG, 0.0, Material.RED_MUSHROOM, "Bào Tử Nấm Đỏ", null, "Trồng trên đất cày. Thời gian thu hoạch: 4 Giờ."));
-        register(new ItemData("seed_kelp", Rarity.COMMON, Category.VEG, 0.0, Material.KELP, "Mầm Rong Biển", null, "Trồng ven nguồn nước. Thời gian thu hoạch: 4 Giờ."));
-        register(new ItemData("seed_cocoa", Rarity.COMMON, Category.VEG, 0.0, Material.COCOA_BEANS, "Hạt Cacao Thô", null, "Trồng trên đất cày. Thời gian thu hoạch: 4 Giờ."));
-        register(new ItemData("seed_cucumber", Rarity.COMMON, Category.VEG, 0.0, Material.PUMPKIN_SEEDS, "Hạt Giống Dưa Chuột", null, "Trồng trên đất cày. Thời gian thu hoạch: 4 Giờ."));
+        register(new ItemData("seed_carrot", Rarity.COMMON, Category.VEG, 0.0, Material.CARROT, "Hạt Giống Cà Rốt", null, "Trồng trên đất cày. Thời gian: 4 Giờ."));
+        register(new ItemData("seed_potato", Rarity.COMMON, Category.VEG, 0.0, Material.POTATO, "Mầm Khoai Tây", null, "Trồng trên đất cày. Thời gian: 4 Giờ."));
+        register(new ItemData("seed_beetroot", Rarity.COMMON, Category.VEG, 0.0, Material.BEETROOT_SEEDS, "Hạt Giống Củ Dền", null, "Trồng trên đất cày. Thời gian: 4 Giờ."));
+        register(new ItemData("seed_wheat", Rarity.COMMON, Category.VEG, 0.0, Material.WHEAT_SEEDS, "Hạt Giống Lúa Mì", null, "Trồng trên đất cày. Thời gian: 4 Giờ."));
+        register(new ItemData("seed_pumpkin", Rarity.COMMON, Category.VEG, 0.0, Material.PUMPKIN_SEEDS, "Hạt Giống Bí Ngô", null, "Trồng trên đất cày. Cây đa vụ mùa."));
+        register(new ItemData("seed_melon", Rarity.COMMON, Category.VEG, 0.0, Material.MELON_SEEDS, "Hạt Giống Dưa Hấu", null, "Trồng trên đất cày. Cây đa vụ mùa."));
+        register(new ItemData("seed_sweet_berry", Rarity.COMMON, Category.VEG, 0.0, Material.SWEET_BERRIES, "Mầm Quả Mọng", null, "Trồng trên khối Đất/Cỏ. Cây đa vụ mùa."));
+        register(new ItemData("seed_glow_berry", Rarity.COMMON, Category.VEG, 0.0, Material.GLOW_BERRIES, "Mầm Quả Mọng Sáng", null, "Trồng dưới trần nhà. Cây đa vụ mùa."));
+        register(new ItemData("seed_mushroom", Rarity.COMMON, Category.VEG, 0.0, Material.BROWN_MUSHROOM, "Bào Tử Nấm Hương", null, "Trồng trên thân gỗ. Thời gian: 4 Giờ."));
+        register(new ItemData("seed_red_mushroom", Rarity.COMMON, Category.VEG, 0.0, Material.RED_MUSHROOM, "Bào Tử Nấm Đỏ", null, "Trồng trên thân gỗ. Thời gian: 4 Giờ."));
+        register(new ItemData("seed_kelp", Rarity.COMMON, Category.VEG, 0.0, Material.KELP, "Mầm Rong Biển", null, "Trồng dưới nước. Cây đa vụ mùa."));
+        register(new ItemData("seed_cocoa", Rarity.COMMON, Category.VEG, 0.0, Material.COCOA_BEANS, "Hạt Cacao Thô", null, "Trồng trên thân Gỗ Rừng. Cây đa vụ mùa."));
+        register(new ItemData("seed_cucumber", Rarity.COMMON, Category.VEG, 0.0, Material.PUMPKIN_SEEDS, "Hạt Giống Dưa Chuột", null, "Trồng dưới nước. Cây đa vụ mùa."));
 
         // Hạt giống Ma thuật đặc quyền
         register(new ItemData("seed_magic_golden_carrot", Rarity.EPIC, Category.VEG, 0.0, Material.GOLD_NUGGET, "Hạt Ma Thuật: Cà Rốt Vàng", "Yêu cầu: Nghề Nông Dân", "Trồng trên đất cày. Thời gian: 4 Giờ."));
@@ -253,6 +278,7 @@ public class ItemManager {
         register(new ItemData("seed_magic_chaos_glow_berry", Rarity.EPIC, Category.VEG, 0.0, Material.GLOW_BERRIES, "Hạt Ma Thuật: Hỗn Độn", "Yêu cầu: Nghề Nông Dân", "Trồng dưới trần nhà. Cây đa vụ mùa."));
 
         // --- 14. ĐẶC QUYỀN NGHỀ NÔNG DÂN (FARMER) ---
+        // Tinh chất & Túi hạt
         register(new ItemData("misc_nature_essence", Rarity.EPIC, Category.MISC, 0.0, Material.SLIME_BALL, "Tinh Chất Tự Nhiên", null, "Kết tinh từ sự sống của cỏ cây.", "Đơn vị tiền tệ chính của Hiệp Hội Nông Dân."));
         register(new ItemData("bag_seeds_common", Rarity.UNCOMMON, Category.MISC, 0.0, Material.BUNDLE, "Túi Hạt Giống Hỗn Hợp", "Dùng ngay: Nhận 16 hạt giống ngẫu nhiên", "Gói hạt giống bự dành cho người mới làm nông."));
         register(new ItemData("bag_seeds_magic", Rarity.EPIC, Category.MISC, 0.0, Material.BUNDLE, "Túi Hạt Ma Thuật", "Dùng ngay: Nhận 5-8 hạt ma thuật ngẫu nhiên", "Tỏa ra một luồng ma lực dịu nhẹ."));
@@ -261,11 +287,14 @@ public class ItemManager {
         register(new ItemData("misc_watering_can", Rarity.RARE, Category.MISC, 0.0, Material.IRON_NUGGET, "Bình Tưới Nước", null, "Click vào cây: Giảm 1 tiếng sinh trưởng", "Độ bền: 20 lần sử dụng."));
         register(new ItemData("misc_fertilizer", Rarity.EPIC, Category.MISC, 0.0, Material.BONE_MEAL, "Phân Bón Hảo Hạng", null, "Click vào cây: Thúc sinh diện rộng (3x3)", "Giảm 2 tiếng cho cây trung tâm,", "Giảm 1 tiếng cho 8 cây xung quanh.", "Độ bền: 10 lần sử dụng."));
 
-        register(new ItemData("armor_farmer_hat", Rarity.EPIC, Category.MISC, 0.0, Material.DIAMOND_HELMET, "Nón Lá Chân Truyền", null, "Đội lên đầu khi thu hoạch:", "Tăng 10% tỉ lệ kích hoạt mọi Nội tại Nông dân.", "Độ bền: 300 lần thu hoạch."));
-        register(new ItemData("misc_seed_pouch", Rarity.EPIC, Category.MISC, 0.0, Material.BUNDLE, "Túi Trữ Hạt", "Chuột phải: Mở kho chứa hạt giống (3x9)", "Vật phẩm bảo mật tuyệt đối chống chiếm slot.", "Chỉ có thể bỏ hạt giống vào bên trong."));
+        // Trang bị (Nón lá) - Dùng Nón da hoặc lúa mì
+        register(new ItemData("armor_farmer_hat", Rarity.EPIC, Category.MISC, 0.0, Material.GOLDEN_HELMET, "Nón Lá Chân Truyền", "Tăng 10% tỉ lệ kích hoạt mọi Nội tại Nông dân | Độ bền: 300 lần thu hoạch.", "Hiệu quả khi đội lên đầu trong lúc thu hoạch"));
+        register(new ItemData("misc_seed_pouch", Rarity.EPIC, Category.MISC, 0.0, Material.BUNDLE, "Túi Trữ Hạt", "Chuột phải: Mở túi ma thuật chứa hạt giống", "Vật phẩm tối ưu cho việc trữ hạt giống.", "Chỉ có thể bỏ hạt giống vào bên trong."));
     }
 
-    private void register(ItemData data) { registry.put(data.id.toLowerCase(), data); }
+    private void register(ItemData data) {
+        registry.put(data.id.toLowerCase(), data);
+    }
 
     public ItemStack buildItem(String id, int amount) {
         ItemData data = registry.get(id.toLowerCase());
@@ -281,6 +310,7 @@ public class ItemManager {
         boolean hasAttributes = (data.points > 0) || (data.effect != null && !data.effect.isEmpty());
         if (hasAttributes) lore.add("");
 
+        // [TỐI GIẢN GIAO DIỆN LORE]
         if (hasAttributes) {
             if (data.points > 0) {
                 lore.add("§fThuộc tính Nguyên liệu:");
@@ -289,18 +319,14 @@ public class ItemManager {
             if (data.points > 0 && data.effect != null && !data.effect.isEmpty()) lore.add("");
             if (data.effect != null && !data.effect.isEmpty()) {
                 lore.add("§fHiệu quả Đặc biệt:");
-                lore.add("§f  ➥ §a" + data.effect);
+                lore.add("§f  ➥ §a" + data.effect); // Chỉ dùng mũi tên cho hiệu quả đặc biệt
             }
         }
 
         lore.add("§8§m                                ");
 
         if (data.description != null && !data.description.isEmpty()) {
-            for (String line : data.description) {
-                // Xử lý giữ nguyên màu sắc nếu có
-                if (line.startsWith("§")) lore.add(line);
-                else lore.add("§7" + line);
-            }
+            for (String line : data.description) lore.add("§7" + line);
         }
 
         meta.setLore(lore);

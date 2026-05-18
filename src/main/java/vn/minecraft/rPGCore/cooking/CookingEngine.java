@@ -145,7 +145,7 @@ public class CookingEngine {
                     else { result.flavorTags.add("§c[Bỏng Rát]"); result.potionEffects.add("HUNGER:1"); result.moveSpeed -= 15.0 * magicMult; }
                     break;
                 case "magic_golden_melon":
-                    if (!isReversed) result.maxHpBonus += 50.0 * magicMult; else result.maxHpBonus -= 50.0 * magicMult;
+                    if (!isReversed) result.maxHpBonus += 2000.0 * magicMult; else result.maxHpBonus -= 2000.0 * magicMult;
                     break;
                 case "magic_glowing_mushroom":
                     if (!isReversed) { result.critRate += 5.0 * magicMult; result.potionEffects.add("GLOWING:0"); }
