@@ -8,6 +8,7 @@ import vn.minecraft.rPGCore.cooking.CookingEngine;
 import vn.minecraft.rPGCore.jobs.core.JobLeaderboard;
 import vn.minecraft.rPGCore.jobs.core.JobManager;
 import vn.minecraft.rPGCore.jobs.core.JobRegister;
+import vn.minecraft.rPGCore.jobs.events.FishingListener;
 import vn.minecraft.rPGCore.jobs.gui.JobSelectionGUI;
 import vn.minecraft.rPGCore.listeners.*;
 import vn.minecraft.rPGCore.managers.*;
@@ -26,6 +27,8 @@ public final class RPGCore extends JavaPlugin {
     private FoodBuffManager foodBuffManager;
     private SkillManager skillManager; // [THÊM DÒNG NÀY VÀO ĐÂY]
     private ItemManager itemManager; // [THÊM DÒNG NÀY]
+    private FishingManager fishingManager;
+    private BaitManager baitManager;
 
     @Override
     public void onEnable() {
@@ -64,6 +67,10 @@ public final class RPGCore extends JavaPlugin {
         ElementRotationGUI elementRotationGUI = new ElementRotationGUI();
         vn.minecraft.rPGCore.managers.CropManager cropManager = new vn.minecraft.rPGCore.managers.CropManager(this, this.itemManager);
 
+        this.fishingManager = new FishingManager(this, this.itemManager);
+        // [MỚI]: Khởi tạo BaitManager
+        this.baitManager = new BaitManager(this, this.itemManager);
+
         JobRegister.registerAllJobs();
         JobLeaderboard.updateLeaderboards();
 
@@ -99,6 +106,8 @@ public final class RPGCore extends JavaPlugin {
         // Đăng ký Listener cho GUI Xếp hạng
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.jobs.gui.JobLeaderboardGUI(), this);
         getServer().getPluginManager().registerEvents(cropManager, this);
+        getServer().getPluginManager().registerEvents(new FishingListener(this.fishingManager, this.itemManager), this);
+        getServer().getPluginManager().registerEvents(new BaitCrafterGUI(this.itemManager, this.baitManager), this);
 
         new RegenTask(playerManager, bossBarManager).runTaskTimer(this, 0L, 20L);
 
@@ -196,5 +205,14 @@ public final class RPGCore extends JavaPlugin {
 
     public vn.minecraft.rPGCore.managers.ItemManager getItemManager() {
         return this.itemManager;
+    }
+
+    // 4. THÊM HÀM GETTER NÀY NỮA
+    public FishingManager getFishingManager() {
+        return fishingManager;
+    }
+    // [MỚI]: Thêm Getter cho BaitManager
+    public BaitManager getBaitManager() {
+        return baitManager;
     }
 }

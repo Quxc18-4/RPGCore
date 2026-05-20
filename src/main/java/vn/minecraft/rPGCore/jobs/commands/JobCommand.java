@@ -28,16 +28,15 @@ public class JobCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        // [MỚI]: CỤM LỆNH ẨN DÀNH RIÊNG CHO ADMIN
+        // CỤM LỆNH ẨN DÀNH RIÊNG CHO ADMIN
         if (args[0].equalsIgnoreCase("admin")) {
-            // Nếu không có OP, giả vờ như lệnh không tồn tại
             if (!player.isOp()) {
                 player.sendMessage("§c§l(!) §cThao tác không hợp lệ. Dùng /job hoặc /job menu.");
                 return true;
             }
 
             if (args.length < 2) {
-                player.sendMessage("§cCú pháp Admin: /job admin <roll/level/resetshop> [số]");
+                player.sendMessage("§cCú pháp Admin: /job admin <roll/level/resetshop/baits> [số]");
                 return true;
             }
 
@@ -47,11 +46,40 @@ public class JobCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
 
-            // [MỚI]: LỆNH RESET LƯỢT MUA HÀNG TRONG SHOP
             if (args[1].equalsIgnoreCase("resetshop")) {
                 vn.minecraft.rPGCore.jobs.core.PlayerJobData data = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(player);
-                data.getShopMonthlyPurchases().clear(); // Xóa sạch lịch sử mua hàng
+                data.getShopMonthlyPurchases().clear();
                 player.sendMessage("§a§l[!] §fĐã reset toàn bộ giới hạn mua hàng trong Cửa hàng của bạn!");
+                return true;
+            }
+
+            // [CẬP NHẬT 2]: LỆNH LẤY TOÀN BỘ MỒI CÂU - CÓ SẮP XẾP
+            if (args[1].equalsIgnoreCase("baits")) {
+                org.bukkit.inventory.Inventory inv = org.bukkit.Bukkit.createInventory(null, 54, "§8Kho Mồi Câu Admin");
+                vn.minecraft.rPGCore.managers.ItemManager im = vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager();
+
+                List<String> baseBaits = new ArrayList<>();
+                List<String> buffBaits = new ArrayList<>();
+                List<String> otherBaits = new ArrayList<>();
+
+                // Phân loại mồi
+                for (String id : im.getAllIds()) {
+                    if (id.startsWith("bait_base_")) baseBaits.add(id);
+                    else if (id.startsWith("bait_buff_")) buffBaits.add(id);
+                    else if (id.startsWith("bait_")) otherBaits.add(id);
+                }
+
+                // Sắp xếp Alphabet
+                baseBaits.sort(String::compareTo);
+                buffBaits.sort(String::compareTo);
+                otherBaits.sort(String::compareTo);
+
+                // Thêm vào Rương theo thứ tự: Nền -> Buff -> Khác
+                for (String id : baseBaits) inv.addItem(im.buildItem(id, 64));
+                for (String id : buffBaits) inv.addItem(im.buildItem(id, 64));
+                for (String id : otherBaits) inv.addItem(im.buildItem(id, 64));
+
+                player.openInventory(inv);
                 return true;
             }
 
@@ -98,7 +126,7 @@ public class JobCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             List<String> subCommands = new ArrayList<>();
             subCommands.add("menu");
-            if (sender.isOp()) subCommands.add("admin"); // Ẩn hoàn toàn chữ "admin" với mem thường
+            if (sender.isOp()) subCommands.add("admin");
 
             String current = args[0].toLowerCase();
             return subCommands.stream().filter(s -> s.startsWith(current)).collect(Collectors.toList());
@@ -106,7 +134,8 @@ public class JobCommand implements CommandExecutor, TabCompleter {
             List<String> adminCmds = new ArrayList<>();
             adminCmds.add("roll");
             adminCmds.add("level");
-            adminCmds.add("resetshop"); // Bổ sung Tab Complete cho resetshop
+            adminCmds.add("resetshop");
+            adminCmds.add("baits"); // Tab Complete cho baits
             String current = args[1].toLowerCase();
             return adminCmds.stream().filter(s -> s.startsWith(current)).collect(Collectors.toList());
         }
