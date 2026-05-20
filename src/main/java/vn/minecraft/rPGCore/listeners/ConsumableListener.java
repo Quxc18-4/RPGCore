@@ -54,7 +54,7 @@ public class ConsumableListener implements Listener {
         boolean consumed = false;
 
         // [ĐÃ SỬA] - Xóa Lúa Mì Tinh Tú khỏi danh sách ăn ngay
-        List<String> instantFoods = Arrays.asList("fat_milk", "spice_honey", "veg_apple", "veg_melon", "veg_kelp_dried", "potion_digestion", "potion_anti_anorexia", "misc_lunch_bag", "starch_bread", "magic_flame_beetroot", "magic_golden_melon", "magic_crystal_kelp", "magic_mana_potato", "magic_chaos_glow_berry", "bag_seeds_common", "bag_seeds_magic", "misc_seed_pouch");
+        List<String> instantFoods = Arrays.asList("fat_milk", "spice_honey", "veg_apple", "veg_melon", "veg_melon_uncommon", "veg_melon_rare", "veg_kelp_dried", "potion_digestion", "potion_anti_anorexia", "misc_lunch_bag", "starch_bread", "magic_flame_beetroot", "magic_golden_melon", "magic_crystal_kelp", "magic_mana_potato", "magic_chaos_glow_berry", "bag_seeds_common", "bag_seeds_magic", "misc_seed_pouch");
 
         if (instantFoods.contains(itemId)) {
             event.setCancelled(true);
@@ -112,9 +112,20 @@ public class ConsumableListener implements Listener {
                 player.playSound(player.getLocation(), org.bukkit.Sound.ITEM_HONEY_BOTTLE_DRINK, 1f, 1f);
                 consumed = true;
             }
-            else if (itemId.equals("veg_apple") || itemId.equals("veg_melon")) {
-                rpgPlayer.heal(rpgPlayer.getTotalMaxHealth() * 0.02);
-                player.setFoodLevel(Math.min(20, player.getFoodLevel() + 4));
+            else if (itemId.startsWith("veg_melon") || itemId.equals("veg_apple")) {
+                double healPercent = 0.02;
+                int foodAmount = 4;
+
+                if (itemId.equals("veg_melon_uncommon")) {
+                    healPercent = 0.03;
+                    foodAmount = 6;
+                } else if (itemId.equals("veg_melon_rare")) {
+                    healPercent = 0.05;
+                    foodAmount = 8;
+                }
+
+                rpgPlayer.heal(rpgPlayer.getTotalMaxHealth() * healPercent);
+                player.setFoodLevel(Math.min(20, player.getFoodLevel() + foodAmount));
                 player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_BURP, 1f, 1.2f);
                 consumed = true;
             }

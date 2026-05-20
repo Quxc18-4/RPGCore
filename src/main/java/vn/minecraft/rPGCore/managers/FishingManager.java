@@ -48,6 +48,71 @@ public class FishingManager {
         return "ALL";
     }
 
+    public int getWaterDepth(org.bukkit.Location loc) {
+        int depth = 0;
+        org.bukkit.Location check = loc.clone();
+        while (depth < 20) {
+            check.subtract(0, 1, 0);
+            if (check.getBlock().getType() == org.bukkit.Material.WATER) depth++;
+            else break;
+        }
+        return depth;
+    }
+
+    public int getWaterVolume(org.bukkit.Location loc) {
+        int volume = 0;
+        for (int x = -2; x <= 2; x++) {
+            for (int y = -2; y <= 2; y++) {
+                for (int z = -2; z <= 2; z++) {
+                    if (loc.clone().add(x, y, z).getBlock().getType() == org.bukkit.Material.WATER) volume++;
+                }
+            }
+        }
+        return volume;
+    }
+
+    // Hàm trừ độ bền (Có tính toán tỉ lệ Bất hoại)
+    public void consumeRodDurability(Player player) {
+        ItemStack mainHand = player.getInventory().getItemInMainHand();
+        if (mainHand == null || !mainHand.hasItemMeta()) return;
+        String rodId = itemManager.getItemId(mainHand);
+        if (rodId == null || rodId.equals("tool_fishing_rod_1")) return; // Cần tập sự vô hạn
+
+        org.bukkit.inventory.meta.ItemMeta meta = mainHand.getItemMeta();
+        NamespacedKey duraKey = new NamespacedKey(plugin, "rod_durability");
+        NamespacedKey unbreakingKey = new NamespacedKey(plugin, "rod_unbreaking");
+
+        if (meta.getPersistentDataContainer().has(unbreakingKey, PersistentDataType.DOUBLE)) {
+            double saveChance = meta.getPersistentDataContainer().get(unbreakingKey, PersistentDataType.DOUBLE);
+            if (rand.nextDouble() * 100.0 < saveChance) {
+                return; // Kích hoạt buff: Không tốn độ bền
+            }
+        }
+
+        if (meta.getPersistentDataContainer().has(duraKey, PersistentDataType.INTEGER)) {
+            int dura = meta.getPersistentDataContainer().get(duraKey, PersistentDataType.INTEGER);
+            dura--;
+            if (dura <= 0) {
+                player.getInventory().setItemInMainHand(null);
+                player.playSound(player.getLocation(), Sound.ENTITY_ITEM_BREAK, 1f, 1f);
+                player.sendMessage("§c§l[!] §fCần câu của bạn đã gãy nát vì hết độ bền!");
+            } else {
+                meta.getPersistentDataContainer().set(duraKey, PersistentDataType.INTEGER, dura);
+                List<String> lore = meta.getLore();
+                if (lore != null) {
+                    for (int i = 0; i < lore.size(); i++) {
+                        if (lore.get(i).contains("Độ bền:")) {
+                            lore.set(i, "§7Độ bền: §f" + dura + " §8lần câu");
+                            break;
+                        }
+                    }
+                }
+                meta.setLore(lore);
+                mainHand.setItemMeta(meta);
+            }
+        }
+    }
+
     public boolean isInMinigame(Player player) { return activeMinigames.containsKey(player.getUniqueId()); }
     public void handleInteract(Player player, boolean isLeftClick) { if (isInMinigame(player)) activeMinigames.get(player.getUniqueId()).playerClick(isLeftClick); }
     public void cancelMinigame(Player player) { if (isInMinigame(player)) { activeMinigames.get(player.getUniqueId()).stop(); activeMinigames.remove(player.getUniqueId()); } }
@@ -72,6 +137,9 @@ public class FishingManager {
     private class Note {
         boolean isLeftClick;
         boolean isHidden = false;
+        boolean isMutatedHidden = false;     // [MỚI] Đánh dấu phím bị ẩn do đột biến giữa chừng
+        boolean isDifferentFromPrev = false; // [MỚI] Đánh dấu phím này khác với phím ngay trước nó
+
         public Note(boolean isLeftClick) { this.isLeftClick = isLeftClick; }
     }
 
@@ -99,6 +167,18 @@ public class FishingManager {
             double bigFishChance = 0.05;
             String currentBiome = getCurrentBiomeType(hookLoc);
 
+            ItemStack mainHand = player.getInventory().getItemInMainHand();
+            if (mainHand.hasItemMeta()) {
+                org.bukkit.persistence.PersistentDataContainer rodPdc = mainHand.getItemMeta().getPersistentDataContainer();
+                bigFishChance += rodPdc.getOrDefault(new NamespacedKey(plugin, "rod_big_fish"), PersistentDataType.DOUBLE, 0.0) / 100.0;
+                trashMod -= rodPdc.getOrDefault(new NamespacedKey(plugin, "rod_trash"), PersistentDataType.DOUBLE, 0.0);
+                treasureMod += rodPdc.getOrDefault(new NamespacedKey(plugin, "rod_treasure"), PersistentDataType.DOUBLE, 0.0);
+                secondChance += rodPdc.getOrDefault(new NamespacedKey(plugin, "rod_second_chance"), PersistentDataType.DOUBLE, 0.0);
+
+                double rodAuto = rodPdc.getOrDefault(new NamespacedKey(plugin, "rod_auto_catch"), PersistentDataType.DOUBLE, 0.0);
+                if (rodAuto > 0 && rand.nextDouble() * 100.0 < rodAuto) isAutoCatch = true;
+            }
+
             if (baitItem != null && baitItem.hasItemMeta()) {
                 org.bukkit.persistence.PersistentDataContainer pdc = baitItem.getItemMeta().getPersistentDataContainer();
                 bigFishChance += getStat(pdc, "bait_big_fish", currentBiome) / 100.0;
@@ -114,10 +194,17 @@ public class FishingManager {
                 if (pdc.has(KEY_GUARANTEE_TREASURE, PersistentDataType.BYTE)) gTreasure = true;
             }
 
-            if (rodId.endsWith("_2")) bigFishChance += 0.05;
-            else if (rodId.endsWith("_3")) bigFishChance += 0.15;
-            if (hookLoc.getWorld().hasStorm()) bigFishChance += 0.15;
-            if (hookLoc.getY() < 50) bigFishChance += 0.10;
+            // [MỚI] 2. PHÂN TÍCH MÔI TRƯỜNG ĐỘNG
+            if (hookLoc.getWorld().hasStorm()) bigFishChance += 0.15; // Mưa
+            if (hookLoc.getWorld().getTime() >= 13000) bigFishChance += 0.10; // Đêm
+
+            int depth = getWaterDepth(hookLoc);
+            if (depth >= 10) treasureMod += 10.0;
+            else if (depth >= 5) treasureMod += 5.0;
+
+            int volume = getWaterVolume(hookLoc);
+            if (volume < 40) bigFishChance -= 0.20; // Ao tù (Né treo máy 1x1)
+            else if (volume > 100) bigFishChance += 0.10; // Đại dương/Hồ lớn
 
             this.isBigFish = gMonster || (rand.nextDouble() <= bigFishChance);
 
@@ -189,10 +276,18 @@ public class FishingManager {
                     comboMutated = true;
                     for (int i = currentNoteIdx; i < currentStage.size(); i++) {
                         Note mutatedNote = new Note(rand.nextBoolean());
-                        if (rand.nextDouble() < 0.35) mutatedNote.isHidden = true;
+
+                        if (rand.nextDouble() < 0.35) {
+                            mutatedNote.isHidden = true;
+                            mutatedNote.isMutatedHidden = true; // Đánh dấu là ẩn do đột biến
+
+                            // [FIX] So sánh với phím ngay trước đó (i - 1) để quyết định hiển thị [⇌] hay [=]
+                            boolean prevClick = currentStage.get(i - 1).isLeftClick;
+                            mutatedNote.isDifferentFromPrev = (mutatedNote.isLeftClick != prevClick);
+                        }
                         currentStage.set(i, mutatedNote);
                     }
-                    player.sendTitle("", "§c§l⚠️ ĐỔI PHÍM ĐỘT NGỘT! ⚠️", 0, 20, 5);
+                    player.sendTitle("", "§c§l⚠️ COMBO BIẾN ĐỔI! ⚠️", 0, 20, 5);
                     player.playSound(player.getLocation(), Sound.ENTITY_WITHER_BREAK_BLOCK, 0.7f, 1.2f);
                 }
 
@@ -290,6 +385,8 @@ public class FishingManager {
             activeMinigames.remove(player.getUniqueId());
             if (hook != null && !hook.isDead()) hook.remove();
 
+            consumeRodDurability(player);
+
             player.sendTitle("§a§lHOÀN HẢO!", "§fKéo cá thành công!", 5, 30, 10);
             player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
 
@@ -297,6 +394,7 @@ public class FishingManager {
             double roll = rand.nextDouble() * 100.0;
             double baseTrash = 30.0 + trashMod;
             double baseTreasure = 2.0 + treasureMod;
+            String currentBiome = getCurrentBiomeType(hookLoc);
 
             if (gTreasure || roll < baseTreasure) {
                 String[] treasurePool = {"bag_weapon_common", "bag_armor_common", "misc_job_change_card"};
@@ -307,8 +405,82 @@ public class FishingManager {
                 caughtItemId = trashPool[rand.nextInt(trashPool.length)];
                 player.sendMessage("§7[Mắc Cạn] Chỉ là một món đồ vụn vặt trôi dạt...");
             } else {
-                String[] normalPool = {"fish_cod_small", "fish_cod_med", "fish_salmon_small", "fish_tropical"};
-                String[] bigPool = {"fish_cod_large", "fish_salmon_med", "fish_salmon_large"};
+                // [MỚI] PHÂN BIỆT HỒ CHỨA CÁ THEO VÙNG (BIOME) VÀ ĐỘ LỚN
+                String[] normalPool;
+                String[] bigPool;
+
+                switch(currentBiome) {
+                    case "OCEAN":
+                        normalPool = new String[]{
+                                "fish_cod_small", "fish_cod_med",
+                                "fish_tuna_small", "fish_tuna_med",
+                                "fish_marlin_small", "fish_starfall_ray_small"
+                        };
+                        bigPool = new String[]{
+                                "fish_cod_large", "bfish_cod_mutant",
+                                "fish_tuna_large", "bfish_tuna_mutant",
+                                "fish_marlin_med", "fish_marlin_large", "bfish_marlin_mutant",
+                                "fish_shark_small", "fish_shark_med", "bfish_shark_large", "bfish_shark_mutant",
+                                "bfish_starfall_ray_med", "bfish_starfall_ray_large", "bfish_starfall_ray_mutant"
+                        };
+                        break;
+
+                    case "RIVER":
+                        normalPool = new String[]{
+                                "fish_salmon_small", "fish_salmon_med",
+                                "fish_carp_small", "fish_carp_med",
+                                "fish_catfish_small", "fish_sturgeon_small"
+                        };
+                        bigPool = new String[]{
+                                "fish_salmon_large", "bfish_salmon_mutant",
+                                "fish_carp_large", "bfish_carp_mutant",
+                                "fish_catfish_med", "fish_catfish_large", "bfish_catfish_mutant",
+                                "fish_sturgeon_med", "fish_sturgeon_large", "bfish_sturgeon_mutant",
+                                "fish_golden_koi_small", "bfish_golden_koi_med", "bfish_golden_koi_large", "bfish_golden_koi_mutant"
+                        };
+                        break;
+
+                    case "CAVE":
+                        normalPool = new String[]{
+                                "fish_tropical_small", "fish_tropical_med",
+                                "fish_blind_tetra_small", "fish_blind_tetra_med",
+                                "fish_glow_squid_small"
+                        };
+                        bigPool = new String[]{
+                                "fish_tropical_large", "bfish_tropical_mutant",
+                                "fish_blind_tetra_large", "bfish_blind_tetra_mutant",
+                                "fish_glow_squid_med", "fish_glow_squid_large", "bfish_glow_squid_mutant",
+                                "fish_abyss_angler_small", "fish_abyss_angler_med", "fish_abyss_angler_large", "bfish_abyss_angler_mutant",
+                                "fish_time_weaver_small", "bfish_time_weaver_med", "bfish_time_weaver_large", "bfish_time_weaver_mutant"
+                        };
+                        break;
+
+                    case "SWAMP":
+                        normalPool = new String[]{
+                                "fish_mud_loach_small", "fish_mud_loach_med",
+                                "fish_swamp_eel_small", "fish_swamp_eel_med",
+                                "fish_toxic_toad_small"
+                        };
+                        bigPool = new String[]{
+                                "fish_mud_loach_large", "bfish_mud_loach_mutant",
+                                "fish_swamp_eel_large", "bfish_swamp_eel_mutant",
+                                "fish_toxic_toad_med", "fish_toxic_toad_large", "bfish_toxic_toad_mutant"
+                        };
+                        break;
+
+                    default: // Môi trường mặc định nếu không xác định được (Hồ nhân tạo trên cạn...)
+                        normalPool = new String[]{
+                                "fish_cod_small", "fish_cod_med",
+                                "fish_salmon_small", "fish_salmon_med",
+                                "fish_tropical_small", "fish_tropical_med"
+                        };
+                        bigPool = new String[]{
+                                "fish_cod_large", "bfish_cod_mutant",
+                                "fish_salmon_large", "bfish_salmon_mutant",
+                                "fish_tropical_large", "bfish_tropical_mutant"
+                        };
+                }
+
                 caughtItemId = isBigReward ? bigPool[rand.nextInt(bigPool.length)] : normalPool[rand.nextInt(normalPool.length)];
                 player.sendMessage("§b[Câu Cá] Thành công!");
             }
@@ -375,6 +547,8 @@ public class FishingManager {
                 hook.remove();
             }
 
+            consumeRodDurability(player);
+
             player.sendTitle("§c§lTHẤT BẠI", reason, 5, 40, 10);
             player.playSound(player.getLocation(), Sound.ENTITY_ITEM_BREAK, 1f, 1f);
         }
@@ -387,14 +561,28 @@ public class FishingManager {
             for (int i = 0; i < currentStage.size(); i++) {
                 Note n = currentStage.get(i);
 
-                // [FIX]: Nếu đang ghi nhớ (isMemorize) thì show phím thật, nếu đang Play thì mới hiện [?]
-                String symbol = (!isMemorize && n.isHidden && i >= currentNoteIdx) ? "[?]" : (n.isLeftClick ? "[T]" : "[P]");
+                String symbol;
                 String color = n.isLeftClick ? "§b" : "§e";
+
+                // [FIX]: Logic hiển thị phím ẩn và phím đột biến
+                if (!isMemorize && n.isHidden && i >= currentNoteIdx) {
+                    if (n.isMutatedHidden) {
+                        // Nếu là phím ẩn do đột biến, hiển thị icon thay vì [?]
+                        symbol = n.isDifferentFromPrev ? "[⇌]" : "[=]";
+                        color = n.isDifferentFromPrev ? "§c" : "§a"; // Đỏ nếu đảo chiều, Xanh nếu giữ nguyên
+                    } else {
+                        symbol = "[?]";
+                        color = "§7"; // Xám cho dấu hỏi chấm bình thường (Cá hiếm Stage 1)
+                    }
+                } else {
+                    symbol = n.isLeftClick ? "[T]" : "[P]";
+                }
 
                 if (i < currentNoteIdx) sb.append("§a✔ ");
                 else if (i == currentNoteIdx) {
                     if (isMemorize) sb.append(color).append(symbol).append(" ");
-                    else sb.append("§f§n").append(symbol).append("§r ");
+                        // Gạch chân phím hiện tại, giữ nguyên màu sắc của icon cảnh báo
+                    else sb.append(color).append("§n").append(symbol).append("§r ");
                 }
                 else sb.append(color).append(symbol).append(" ");
             }

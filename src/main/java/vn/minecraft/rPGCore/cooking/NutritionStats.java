@@ -18,9 +18,21 @@ public class NutritionStats {
 
             itemCounts.put(id, itemCounts.getOrDefault(id, 0) + 1);
 
-            if (id.equals("veg_potato")) {
-                veg += 0.5;
-                starch += 0.5;
+            // [FIX]: Xử lý Tinh bột cho Khoai Tây
+            if (id.startsWith("veg_potato")) {
+                veg += data.points;
+                if (id.equals("veg_potato")) starch += 0.5;
+                else if (id.equals("veg_potato_uncommon")) starch += 0.75;
+                else if (id.equals("veg_potato_rare")) starch += 1.0;
+                continue;
+            }
+
+            // [FIX]: Xử lý Tinh bột cho Lúa Mì
+            if (id.startsWith("veg_wheat")) {
+                veg += data.points;
+                if (id.equals("veg_wheat")) starch += 0.5;
+                else if (id.equals("veg_wheat_uncommon")) starch += 0.75;
+                else if (id.equals("veg_wheat_rare")) starch += 1.0;
                 continue;
             }
 

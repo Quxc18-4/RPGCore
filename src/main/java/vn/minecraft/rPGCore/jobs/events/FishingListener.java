@@ -36,39 +36,60 @@ public class FishingListener implements Listener {
         String rodId = itemManager.getItemId(mainHand);
         if (rodId == null || !rodId.startsWith("tool_fishing_rod_")) return;
 
+        // [MỚI] KIỂM TRA ĐỘ BỀN TRƯỚC KHI QUĂNG
+        if (!rodId.equals("tool_fishing_rod_1") && mainHand.hasItemMeta()) {
+            org.bukkit.persistence.PersistentDataContainer pdc = mainHand.getItemMeta().getPersistentDataContainer();
+            org.bukkit.NamespacedKey duraKey = new org.bukkit.NamespacedKey(vn.minecraft.rPGCore.RPGCore.getInstance(), "rod_durability");
+            if (pdc.has(duraKey, org.bukkit.persistence.PersistentDataType.INTEGER)) {
+                int dura = pdc.get(duraKey, org.bukkit.persistence.PersistentDataType.INTEGER);
+                if (dura <= 0) {
+                    event.setCancelled(true);
+                    player.sendMessage("§cCần câu này đã gãy, không thể thả câu!");
+                    return;
+                }
+            }
+        }
+
         ItemStack offHand = player.getInventory().getItemInOffHand();
         String baitId = itemManager.getItemId(offHand);
 
-        // 1. ÉP THỜI GIAN CÁ CẮN CÂU (SIÊU NHANH)
+        // ÉP THỜI GIAN CÁ CẮN CÂU
         if (event.getState() == PlayerFishEvent.State.FISHING) {
             org.bukkit.entity.FishHook hook = event.getHook();
             hook.setApplyLure(false);
 
-            int minWait = 100;
-            int maxWait = 300;
+            int minWait = 100; // 5 giây
+            int maxWait = 300; // 15 giây
+            double reduction = 0.0;
+            String currentBiome = fishingManager.getCurrentBiomeType(hook.getLocation());
 
+            // 1. CỘNG DỒN BUFF GIẢM THỜI GIAN TỪ CẦN CÂU
+            if (mainHand.hasItemMeta()) {
+                org.bukkit.persistence.PersistentDataContainer rodPdc = mainHand.getItemMeta().getPersistentDataContainer();
+                reduction += rodPdc.getOrDefault(new org.bukkit.NamespacedKey(vn.minecraft.rPGCore.RPGCore.getInstance(), "rod_bite_time"), org.bukkit.persistence.PersistentDataType.DOUBLE, 0.0);
+            }
+
+            // 2. CỘNG DỒN BUFF GIẢM THỜI GIAN TỪ MỒI
             if (baitId != null && offHand.hasItemMeta()) {
-                org.bukkit.persistence.PersistentDataContainer pdc = offHand.getItemMeta().getPersistentDataContainer();
+                org.bukkit.persistence.PersistentDataContainer baitPdc = offHand.getItemMeta().getPersistentDataContainer();
 
-                if (pdc.has(fishingManager.KEY_INSTANT, org.bukkit.persistence.PersistentDataType.BYTE)) {
+                if (baitPdc.has(fishingManager.KEY_INSTANT, org.bukkit.persistence.PersistentDataType.BYTE)) {
                     hook.setMinWaitTime(1);
                     hook.setMaxWaitTime(2);
                     player.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, player.getLocation(), 5);
                     return;
                 }
-
-                double reduction = 0.0;
-                String currentBiome = fishingManager.getCurrentBiomeType(hook.getLocation());
-
-                reduction += pdc.getOrDefault(fishingManager.getKey("bait_bite_time", "ALL"), org.bukkit.persistence.PersistentDataType.DOUBLE, 0.0);
-                reduction += pdc.getOrDefault(fishingManager.getKey("bait_bite_time", currentBiome), org.bukkit.persistence.PersistentDataType.DOUBLE, 0.0);
-
-                if (reduction > 0) {
-                    double multi = Math.max(0.1, 1.0 - (reduction / 100.0));
-                    minWait = (int) (minWait * multi);
-                    maxWait = (int) (maxWait * multi);
-                }
+                reduction += baitPdc.getOrDefault(fishingManager.getKey("bait_bite_time", "ALL"), org.bukkit.persistence.PersistentDataType.DOUBLE, 0.0);
+                reduction += baitPdc.getOrDefault(fishingManager.getKey("bait_bite_time", currentBiome), org.bukkit.persistence.PersistentDataType.DOUBLE, 0.0);
             }
+
+            // ÁP DỤNG
+            if (reduction > 0) {
+                double multi = Math.max(0.1, 1.0 - (reduction / 100.0));
+                minWait = (int) (minWait * multi);
+                maxWait = (int) (maxWait * multi);
+            }
+
             hook.setMinWaitTime(minWait);
             hook.setMaxWaitTime(maxWait);
             return;
