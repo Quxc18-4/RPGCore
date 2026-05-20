@@ -15,6 +15,8 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import vn.minecraft.rPGCore.jobs.core.JobManager;
+import vn.minecraft.rPGCore.jobs.core.PlayerJobData;
 import vn.minecraft.rPGCore.managers.BaitManager;
 import vn.minecraft.rPGCore.managers.ItemManager;
 
@@ -30,8 +32,10 @@ public class BaitCrafterGUI implements Listener {
     private final List<Integer> BASE_SLOTS = Arrays.asList(10, 11, 12, 19, 20, 21, 28, 29, 30);
     private final List<Integer> BUFF_SLOTS = Arrays.asList(14, 15, 16);
     private final List<Integer> ULT_SLOTS = Arrays.asList(23, 24, 25);
+
     private final int PROCESS_SLOT = 41;
     private final int OUTPUT_SLOT = 43;
+    private final int HINT_SLOT = 49; // Ô hiển thị hướng dẫn
 
     private final ItemManager itemManager;
     private final BaitManager baitManager;
@@ -57,27 +61,57 @@ public class BaitCrafterGUI implements Listener {
     public void openGUI(Player player) {
         Inventory inv = Bukkit.createInventory(null, 54, GUI_NAME);
 
-        // Tạo các loại kính để làm Hướng dẫn (Hint)
         ItemStack bg = createGuiItem(Material.GRAY_STAINED_GLASS_PANE, " ");
-        ItemStack hintBase = createGuiItem(Material.WHITE_STAINED_GLASS_PANE, "§f§l[ Đặt Mồi Nền Ở Đây ]");
-        ItemStack hintBuff = createGuiItem(Material.LIGHT_BLUE_STAINED_GLASS_PANE, "§b§l[ Đặt Mồi Buff Ở Đây ]");
-        ItemStack hintUlt = createGuiItem(Material.RED_STAINED_GLASS_PANE, "§c§l[ Đặt Buff Tối Thượng Ở Đây ]");
+
+        // KIỂM TRA ĐIỀU KIỆN NGƯ DÂN CẤP 50
+        boolean hasUltAccess = false;
+        PlayerJobData jobData = JobManager.getPlayerData(player);
+        if (jobData != null && "fisherman".equalsIgnoreCase(jobData.getJobId()) && jobData.getLevel("fisherman") >= 50) {
+            hasUltAccess = true;
+        }
+
+        ItemStack barrier = createGuiItem(Material.BARRIER, "§cÔ bị khóa");
+        ItemMeta bMeta = barrier.getItemMeta();
+        bMeta.setLore(Arrays.asList("§7Yêu cầu:", "§7- Nghề: Ngư Dân", "§7- Cấp độ: 50+"));
+        barrier.setItemMeta(bMeta);
+
+        // Nút Hướng Dẫn (Hint)
+        ItemStack hintBtn = createGuiItem(Material.YELLOW_STAINED_GLASS_PANE, "§e§lThông tin Hướng dẫn");
+        ItemMeta hMeta = hintBtn.getItemMeta();
+        hMeta.setLore(Arrays.asList(
+                "§7Khu vực 3x3 bên trái:",
+                "§7- Đặt tối thiểu 3 Mồi Nền để ủ.",
+                "§7- Tối đa 9 Mồi Nền để nhận nhiều thành phẩm.",
+                "",
+                "§7Khu vực 6 ô bên phải:",
+                "§7- Cho phép đặt BẤT KỲ loại Mồi Buff/Tối thượng nào.",
+                "§7- Mặc định có 3 ô mở sẵn để sử dụng.",
+                "§7- Đạt Ngư Dân Cấp 50 sẽ mở khóa thêm 3 ô bên dưới",
+                "§7  (cho phép nhồi tới 6 Buff vào một mẻ mồi!)."
+        ));
+        hintBtn.setItemMeta(hMeta);
+
+        // Nút Nấu (Process)
+        ItemStack processBtn = createGuiItem(Material.LIME_STAINED_GLASS_PANE, "§a§l[ NẤU MỒI CÂU ]");
+        ItemMeta pMeta = processBtn.getItemMeta();
+        pMeta.setLore(Arrays.asList("§7Click vào đây để bắt đầu ủ mồi."));
+        processBtn.setItemMeta(pMeta);
 
         // Vẽ GUI
         for (int i = 0; i < 54; i++) {
-            if (BASE_SLOTS.contains(i)) inv.setItem(i, hintBase.clone());
-            else if (BUFF_SLOTS.contains(i)) inv.setItem(i, hintBuff.clone());
-            else if (ULT_SLOTS.contains(i)) inv.setItem(i, hintUlt.clone());
-            else if (i != PROCESS_SLOT && i != OUTPUT_SLOT) inv.setItem(i, bg);
+            if (BASE_SLOTS.contains(i) || BUFF_SLOTS.contains(i) || i == OUTPUT_SLOT) {
+                // Để trống hoàn toàn
+                continue;
+            } else if (ULT_SLOTS.contains(i)) {
+                if (!hasUltAccess) inv.setItem(i, barrier);
+            } else if (i == PROCESS_SLOT) {
+                inv.setItem(i, processBtn);
+            } else if (i == HINT_SLOT) {
+                inv.setItem(i, hintBtn);
+            } else {
+                inv.setItem(i, bg);
+            }
         }
-
-        // Nút Process (Màu Xanh lá)
-        ItemStack processBtn = new ItemStack(Material.LIME_STAINED_GLASS_PANE);
-        ItemMeta pMeta = processBtn.getItemMeta();
-        pMeta.setDisplayName("§a§l[ NẤU MỒI CÂU ]");
-        pMeta.setLore(Arrays.asList("§7Click để bắt đầu ủ mồi.", "§7Yêu cầu tối thiểu 3 Mồi Nền."));
-        processBtn.setItemMeta(pMeta);
-        inv.setItem(PROCESS_SLOT, processBtn);
 
         player.openInventory(inv);
         player.playSound(player.getLocation(), Sound.BLOCK_COMPOSTER_FILL, 1f, 1f);
@@ -91,16 +125,24 @@ public class BaitCrafterGUI implements Listener {
         return item;
     }
 
-    // Chặn kéo thả đồ (Drag) vào nền để tránh lỗi item ảo
+    // Chặn kéo đồ vào nền xám
     @EventHandler
     public void onInventoryDrag(InventoryDragEvent event) {
         if (!event.getView().getTitle().equals(GUI_NAME)) return;
 
         for (int slot : event.getRawSlots()) {
-            if (slot < 54) { // Nếu kéo vào khu vực của GUI
+            if (slot < 54) {
                 if (!BASE_SLOTS.contains(slot) && !BUFF_SLOTS.contains(slot) && !ULT_SLOTS.contains(slot)) {
                     event.setCancelled(true);
                     return;
+                }
+                // Nếu kéo vào ô Barrier
+                if (ULT_SLOTS.contains(slot)) {
+                    ItemStack targetItem = event.getInventory().getItem(slot);
+                    if (targetItem != null && targetItem.getType() == Material.BARRIER) {
+                        event.setCancelled(true);
+                        return;
+                    }
                 }
             }
         }
@@ -113,97 +155,85 @@ public class BaitCrafterGUI implements Listener {
         int slot = event.getRawSlot();
         Player player = (Player) event.getWhoClicked();
 
-        // 1. Chặn Shift-Click từ kho đồ người chơi vào GUI (gây lỗi item ảo)
-        if (event.isShiftClick() && slot >= 54) {
+        // 1. Chặn click vào nền xám
+        if (slot < 54 && !BASE_SLOTS.contains(slot) && !BUFF_SLOTS.contains(slot) && !ULT_SLOTS.contains(slot)
+                && slot != PROCESS_SLOT && slot != OUTPUT_SLOT && slot != HINT_SLOT) {
             event.setCancelled(true);
-            player.sendMessage("§cVui lòng kéo thả vật phẩm vào đúng ô thay vì dùng Shift-Click.");
             return;
         }
 
-        // Click trong túi người chơi thì bỏ qua
-        if (slot >= 54) return;
-
-        // Nếu click vào một ô rỗng mà ô đó có kính màu (hint) -> Xóa kính đi trước khi đặt đồ vào
-        ItemStack clickedItem = event.getCurrentItem();
-        boolean isHintGlass = clickedItem != null && clickedItem.getType().toString().contains("STAINED_GLASS_PANE");
-
-        if (BASE_SLOTS.contains(slot) || BUFF_SLOTS.contains(slot) || ULT_SLOTS.contains(slot)) {
-            // Cho phép thao tác, nhưng nếu là kính hint thì đừng cản
-            if (isHintGlass && event.getCursor() != null && event.getCursor().getType() != Material.AIR) {
-                event.setCurrentItem(null); // Xóa kính
-                // Spigot sẽ tự động đặt event.getCursor() vào ô trống này
-            }
-            return; // Đã nằm trong vùng hợp lệ
-        }
-
-
-        // 2. Xử lý Output
-        if (slot == OUTPUT_SLOT) {
-            if (event.getCursor() != null && event.getCursor().getType() != Material.AIR) {
-                event.setCancelled(true); // Không cho đặt đồ vào output
-            }
+        // 2. Chặn shift-click để tránh lỗi sync
+        if (event.isShiftClick()) {
+            event.setCancelled(true);
             return;
         }
 
         // 3. Xử lý nút Nấu (PROCESS_SLOT)
         if (slot == PROCESS_SLOT) {
             event.setCancelled(true);
-
-            if (event.getInventory().getItem(OUTPUT_SLOT) != null && event.getInventory().getItem(OUTPUT_SLOT).getType() != Material.AIR) {
-                player.sendMessage("§cHãy lấy thành phẩm ra trước khi ủ mẻ mới!");
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
-                return;
-            }
-
-            List<String> baseIds = new ArrayList<>();
-            List<String> buffIds = new ArrayList<>();
-
-            for (int s : BASE_SLOTS) {
-                ItemStack item = event.getInventory().getItem(s);
-                // Bỏ qua nếu là kính trắng
-                if (item != null && item.getType() != Material.AIR && item.getType() != Material.WHITE_STAINED_GLASS_PANE) {
-                    String id = itemManager.getItemId(item);
-                    if (id != null && id.startsWith("bait_base_")) baseIds.add(id);
-                }
-            }
-
-            List<Integer> combinedBuffSlots = new ArrayList<>(BUFF_SLOTS);
-            combinedBuffSlots.addAll(ULT_SLOTS);
-
-            for (int s : combinedBuffSlots) {
-                ItemStack item = event.getInventory().getItem(s);
-                // Bỏ qua nếu là kính màu
-                if (item != null && item.getType() != Material.AIR && !item.getType().toString().contains("GLASS_PANE")) {
-                    String id = itemManager.getItemId(item);
-                    if (id != null && id.startsWith("bait_buff_")) {
-                        buffIds.add(id);
-                    }
-                }
-            }
-
-            ItemStack result = baitManager.craftCustomBait(baseIds, buffIds);
-
-            if (result == null) {
-                player.sendMessage("§cỦ mồi thất bại! Cần tối thiểu 3 Mồi Nền.");
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
-                return;
-            }
-
-            // Dọn sạch nguyên liệu đã nấu
-            for (int s : BASE_SLOTS) event.getInventory().setItem(s, null);
-            for (int s : combinedBuffSlots) event.getInventory().setItem(s, null);
-
-            // Xuất thành phẩm
-            event.getInventory().setItem(OUTPUT_SLOT, result);
-            player.playSound(player.getLocation(), Sound.BLOCK_BREWING_STAND_BREW, 1f, 1f);
-            player.sendMessage("§a§l[!] §aThùng ủ đã cho ra Mồi Câu Đặc Chế!");
+            processCrafting(event.getInventory(), player);
+            // Ép Client làm mới lại giao diện ngay lập tức
+            Bukkit.getScheduler().runTaskLater(vn.minecraft.rPGCore.RPGCore.getInstance(), player::updateInventory, 1L);
             return;
         }
 
-        // Khóa các ô còn lại (nền xám)
-        event.setCancelled(true);
+        // 4. Chặn Output Slot không cho đặt đồ vào
+        if (slot == OUTPUT_SLOT && event.getCursor() != null && event.getCursor().getType() != Material.AIR) {
+            event.setCancelled(true);
+        }
     }
 
+    private void processCrafting(Inventory inv, Player player) {
+        List<String> baseIds = new ArrayList<>();
+        List<String> buffIds = new ArrayList<>();
+
+        // Kiểm tra nguyên liệu nền
+        for (int s : BASE_SLOTS) {
+            ItemStack item = inv.getItem(s);
+            if (item != null && item.getType() != Material.AIR) {
+                String id = itemManager.getItemId(item);
+                if (id != null && id.startsWith("bait_base_")) baseIds.add(id);
+            }
+        }
+
+        // Kiểm tra nguyên liệu buff
+        List<Integer> combinedBuffSlots = new ArrayList<>(BUFF_SLOTS);
+        combinedBuffSlots.addAll(ULT_SLOTS);
+        for (int s : combinedBuffSlots) {
+            ItemStack item = inv.getItem(s);
+            if (item != null && item.getType() != Material.AIR && item.getType() != Material.BARRIER) {
+                String id = itemManager.getItemId(item);
+                if (id != null && id.startsWith("bait_buff_")) buffIds.add(id);
+            }
+        }
+
+        // VALIDATE: Kiểm tra công thức trước khi trừ
+        ItemStack result = baitManager.craftCustomBait(baseIds, buffIds);
+        if (result == null) {
+            player.sendMessage("§cCông thức không hợp lệ! Cần tối thiểu 3 Mồi Nền.");
+            return;
+        }
+
+        // THỰC HIỆN TRỪ NGUYÊN LIỆU (Đảm bảo ID khớp mới trừ)
+        for (int s : BASE_SLOTS) {
+            ItemStack item = inv.getItem(s);
+            if (item != null && item.getType() != Material.AIR) {
+                item.setAmount(item.getAmount() - 1); // Trừ 1
+            }
+        }
+        for (int s : combinedBuffSlots) {
+            ItemStack item = inv.getItem(s);
+            if (item != null && item.getType() != Material.AIR && item.getType() != Material.BARRIER) {
+                item.setAmount(item.getAmount() - 1); // Trừ 1
+            }
+        }
+
+        inv.setItem(OUTPUT_SLOT, result);
+        player.playSound(player.getLocation(), Sound.BLOCK_BREWING_STAND_BREW, 1f, 1f);
+        player.updateInventory(); // FIX GHOST ITEM
+    }
+
+    // Nhả lại nguyên liệu thừa khi đóng GUI
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
         if (event.getView().getTitle().equals(GUI_NAME)) {
@@ -217,8 +247,7 @@ public class BaitCrafterGUI implements Listener {
 
             for (int slot : allReturnSlots) {
                 ItemStack item = inv.getItem(slot);
-                // Trả lại nếu nó không phải là đồ trống và không phải kính màu
-                if (item != null && item.getType() != Material.AIR && !item.getType().toString().contains("GLASS_PANE")) {
+                if (item != null && item.getType() != Material.AIR && item.getType() != Material.BARRIER) {
                     player.getInventory().addItem(item);
                 }
             }

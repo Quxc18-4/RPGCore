@@ -439,11 +439,14 @@ public class CropManager implements Listener {
         // [ĐÃ BỔ SUNG]: CỘNG EXP NGHỀ KHI THU HOẠCH THÀNH CÔNG
         // =======================================================
         try {
-            double gainedExp = data.seedId.contains("magic_") ? 80.0 : 25.0;
-            if (qualitySuffix.equals("_uncommon")) gainedExp *= 1.5;
-            else if (qualitySuffix.equals("_rare")) gainedExp *= 2.0;
+            // [FIX BUG GẤP]: Chỉ cộng EXP nếu nghề đang kích hoạt là FARMER
+            if (jobData != null && "FARMER".equals(jobData.getJobId())) {
+                double gainedExp = data.seedId.contains("magic_") ? 80.0 : 25.0;
+                if (qualitySuffix.equals("_uncommon")) gainedExp *= 1.5;
+                else if (qualitySuffix.equals("_rare")) gainedExp *= 2.0;
 
-            vn.minecraft.rPGCore.jobs.core.JobManager.addExp(player, gainedExp);
+                vn.minecraft.rPGCore.jobs.core.JobManager.addExp(player, gainedExp);
+            }
         } catch (Exception ignored) {}
         // =======================================================
 

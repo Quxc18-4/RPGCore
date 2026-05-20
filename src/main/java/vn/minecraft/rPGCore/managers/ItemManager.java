@@ -42,7 +42,7 @@ public class ItemManager {
         MEAT(ItemType.COOKING, "Thịt"), VEG(ItemType.COOKING, "Rau quả"),
         FISH(ItemType.COOKING, "Hải sản"), FAT(ItemType.COOKING, "Chất béo"),
         STARCH(ItemType.COOKING, "Tinh bột"), SPICE(ItemType.COOKING, "Gia vị"),
-        MONSTER(ItemType.MATERIAL, "Rớt từ quái"), MAGIC(ItemType.MATERIAL, "Ma thuật"),
+        MONSTER(ItemType.COOKING, "Quái vật"), MAGIC(ItemType.MATERIAL, "Ma thuật"),
         MISC(ItemType.MATERIAL, "Khác"), COIN(ItemType.CURRENCY, "Tiền kim loại");
 
         public final ItemType type;
@@ -276,7 +276,7 @@ public class ItemManager {
         // ==========================================
         // 14. NGƯ DÂN CÂU CÁ
         // ==========================================
-        register(new ItemData("tool_fishing_rod_1", Rarity.UNCOMMON, Category.MISC, 0.0, Material.FISHING_ROD, "Cần Câu Gỗ Tập Sự", "Kích hoạt Minigame Câu Cá", "Cần câu được thiết kế đặc biệt."));
+        register(new ItemData("tool_fishing_rod_1", Rarity.UNCOMMON, Category.MISC, 0.0, Material.FISHING_ROD, "Cần Câu Gỗ Tập Sự", "Kích hoạt Minigame Câu Cá", "Cần câu được thiết kế đặc biệt để bình thường."));
 
         // ==========================================
         // 14.1 MỒI NỀN (BASE BAITS) - Có giảm hiệu suất nếu > 3
@@ -290,26 +290,26 @@ public class ItemManager {
         register(new ItemData("bait_base_sticky_sap", Rarity.UNCOMMON, Category.MISC, 0.0, Material.SLIME_BALL, "Nhựa Cây Dính", "Tăng 50ms dung sai nhịp", "Tác dụng: Mọi môi trường."));
 
         // Biển (OCEAN)
-        register(new ItemData("bait_base_sandworm", Rarity.UNCOMMON, Category.MISC, 0.0, Material.BONE_MEAL, "Giun Cát", "Giảm 10% thời gian chờ", "Tác dụng: CHỈ Ở BIỂN."));
-        register(new ItemData("bait_base_squid_meat", Rarity.UNCOMMON, Category.MISC, 0.0, Material.GLOW_INK_SAC, "Thịt Mực", "Tăng 10% tỉ lệ cá khổng lồ", "Tác dụng: CHỈ Ở BIỂN."));
-        register(new ItemData("bait_base_broken_shell", Rarity.RARE, Category.MISC, 0.0, Material.NAUTILUS_SHELL, "Vỏ Sò Vỡ", "Tăng 5% tỉ lệ Kho Báu", "Tác dụng: CHỈ Ở BIỂN."));
-        register(new ItemData("bait_base_dead_kelp", Rarity.COMMON, Category.MISC, 0.0, Material.DRIED_KELP, "Rong Biển Chết", "Tăng 20% tỉ lệ câu Rác", "Tác dụng: CHỈ Ở BIỂN."));
+        register(new ItemData("bait_base_sandworm", Rarity.UNCOMMON, Category.MISC, 0.0, Material.BONE_MEAL, "Giun Cát", "Giảm 10% thời gian chờ", "Tác dụng: Môi trường biển."));
+        register(new ItemData("bait_base_squid_meat", Rarity.UNCOMMON, Category.MISC, 0.0, Material.GLOW_INK_SAC, "Thịt Mực", "Tăng 10% tỉ lệ cá khổng lồ", "Tác dụng: Môi trường biển."));
+        register(new ItemData("bait_base_broken_shell", Rarity.RARE, Category.MISC, 0.0, Material.NAUTILUS_SHELL, "Vỏ Sò Vỡ", "Tăng 5% tỉ lệ Kho Báu", "Tác dụng: Môi trường biển."));
+        register(new ItemData("bait_base_dead_kelp", Rarity.COMMON, Category.MISC, 0.0, Material.DRIED_KELP, "Rong Biển Chết", "Tăng 20% tỉ lệ câu Rác", "Tác dụng: Môi trường biển."));
 
         // Sông/Hồ (RIVER)
-        register(new ItemData("bait_base_leech", Rarity.UNCOMMON, Category.MISC, 0.0, Material.INK_SAC, "Đỉa Sông", "Giảm 10% thời gian chờ", "Tác dụng: CHỈ Ở SÔNG/HỒ."));
-        register(new ItemData("bait_base_loach", Rarity.UNCOMMON, Category.MISC, 0.0, Material.COD, "Cá Lòng Tong", "Tăng 10% tỉ lệ cá khổng lồ", "Tác dụng: CHỈ Ở SÔNG/HỒ."));
-        register(new ItemData("bait_base_rusty_coin", Rarity.RARE, Category.MISC, 0.0, Material.IRON_NUGGET, "Đồng Xu Gỉ", "Tăng 5% tỉ lệ Kho Báu", "Tác dụng: CHỈ Ở SÔNG/HỒ."));
-        register(new ItemData("bait_base_moss", Rarity.COMMON, Category.MISC, 0.0, Material.MOSS_BLOCK, "Rêu Ẩm Ướt", "Tăng 20% tỉ lệ câu Rác", "Tác dụng: CHỈ Ở SÔNG/HỒ."));
+        register(new ItemData("bait_base_leech", Rarity.UNCOMMON, Category.MISC, 0.0, Material.INK_SAC, "Đỉa Sông", "Giảm 10% thời gian chờ", "Tác dụng: Môi trường sông hoặc hồ."));
+        register(new ItemData("bait_base_loach", Rarity.UNCOMMON, Category.MISC, 0.0, Material.COD, "Cá Lòng Tong", "Tăng 10% tỉ lệ cá khổng lồ", "Tác dụng: Môi trường sông hoặc hồ."));
+        register(new ItemData("bait_base_rusty_coin", Rarity.RARE, Category.MISC, 0.0, Material.IRON_NUGGET, "Đồng Xu Gỉ", "Tăng 5% tỉ lệ Kho Báu", "Tác dụng: Môi trường sông hoặc hồ."));
+        register(new ItemData("bait_base_moss", Rarity.COMMON, Category.MISC, 0.0, Material.MOSS_BLOCK, "Rêu Ẩm Ướt", "Tăng 20% tỉ lệ câu Rác", "Tác dụng: Môi trường sông hoặc hồ."));
 
         // Hang động ngầm (CAVE)
-        register(new ItemData("bait_base_blindworm", Rarity.UNCOMMON, Category.MISC, 0.0, Material.STRING, "Giun Mù", "Giảm 10% thời gian chờ", "Tác dụng: CHỈ Ở HANG ĐỘNG."));
-        register(new ItemData("bait_base_blind_crab", Rarity.UNCOMMON, Category.MISC, 0.0, Material.SPIDER_EYE, "Cua Mù", "Tăng 10% tỉ lệ cá khổng lồ", "Tác dụng: CHỈ Ở HANG ĐỘNG."));
-        register(new ItemData("bait_base_stalactite", Rarity.RARE, Category.MISC, 0.0, Material.POINTED_DRIPSTONE, "Mảnh Thạch Nhũ", "Tăng 5% tỉ lệ Kho Báu", "Tác dụng: CHỈ Ở HANG ĐỘNG."));
-        register(new ItemData("bait_base_mold", Rarity.UNCOMMON, Category.MISC, 0.0, Material.BROWN_MUSHROOM, "Nấm Mốc Độc", "Giảm 10% tỉ lệ câu Rác", "Tác dụng: CHỈ Ở HANG ĐỘNG."));
+        register(new ItemData("bait_base_blindworm", Rarity.UNCOMMON, Category.MISC, 0.0, Material.STRING, "Giun Mù", "Giảm 10% thời gian chờ", "Tác dụng: Môi trường hang động."));
+        register(new ItemData("bait_base_blind_crab", Rarity.UNCOMMON, Category.MISC, 0.0, Material.SPIDER_EYE, "Cua Mù", "Tăng 10% tỉ lệ cá khổng lồ", "Tác dụng: Môi trường hang động."));
+        register(new ItemData("bait_base_stalactite", Rarity.RARE, Category.MISC, 0.0, Material.POINTED_DRIPSTONE, "Mảnh Thạch Nhũ", "Tăng 5% tỉ lệ Kho Báu", "Tác dụng: Môi trường hang động."));
+        register(new ItemData("bait_base_mold", Rarity.UNCOMMON, Category.MISC, 0.0, Material.BROWN_MUSHROOM, "Nấm Mốc Độc", "Giảm 10% tỉ lệ câu Rác", "Tác dụng: Môi trường hang động."));
 
         // Đầm lầy (SWAMP)
-        register(new ItemData("bait_base_swamp_snail", Rarity.UNCOMMON, Category.MISC, 0.0, Material.NAUTILUS_SHELL, "Ốc Sên Lầy", "Giảm 10% thời gian chờ", "Tác dụng: CHỈ Ở ĐẦM LẦY."));
-        register(new ItemData("bait_base_small_frog", Rarity.UNCOMMON, Category.MISC, 0.0, Material.SLIME_BALL, "Ếch Nhỏ", "Tăng 10% tỉ lệ cá khổng lồ", "Tác dụng: CHỈ Ở ĐẦM LẦY."));
+        register(new ItemData("bait_base_swamp_snail", Rarity.UNCOMMON, Category.MISC, 0.0, Material.NAUTILUS_SHELL, "Ốc Sên Lầy", "Giảm 10% thời gian chờ", "Tác dụng: Môi trường đầm lầy."));
+        register(new ItemData("bait_base_small_frog", Rarity.UNCOMMON, Category.MISC, 0.0, Material.SLIME_BALL, "Ếch Nhỏ", "Tăng 10% tỉ lệ cá khổng lồ", "Tác dụng: Môi trường đầm lầy."));
 
         // ==========================================
         // 14.2. MỒI BUFF (MODIFIERS) - Không bị giảm hiệu suất
@@ -325,20 +325,20 @@ public class ItemManager {
         register(new ItemData("bait_buff_ancient_bone", Rarity.EPIC, Category.MISC, 0.0, Material.BONE, "Xương Cổ Đại", "Tăng 300ms dung sai nhịp", "Phụ gia mồi câu."));
 
         // Buff Tối Thượng (Ultimate - Mọi nơi)
-        register(new ItemData("bait_buff_monster_blood", Rarity.MYTHIC, Category.MISC, 0.0, Material.REDSTONE, "Máu Vực Thẳm", "Chắc chắn gặp Thủy Quái", "Đòi hỏi Kỹ năng Tối Thượng."));
-        register(new ItemData("bait_buff_golden_lure", Rarity.LEGENDARY, Category.MISC, 0.0, Material.RAW_GOLD, "Lưỡi Câu Vàng", "Chắc chắn x3 sản lượng", "Đòi hỏi Kỹ năng Tối Thượng."));
-        register(new ItemData("bait_buff_pirate_coin", Rarity.MYTHIC, Category.MISC, 0.0, Material.SUNFLOWER, "Đồng Xu Hải Tặc", "Chắc chắn câu được Rương", "Đòi hỏi Kỹ năng Tối Thượng."));
-        register(new ItemData("bait_buff_lightning", Rarity.MYTHIC, Category.MISC, 0.0, Material.GLOWSTONE_DUST, "Tinh Hoa Sấm Sét", "Cá cắn câu ngay lập tức", "Đòi hỏi Kỹ năng Tối Thượng."));
+        register(new ItemData("bait_buff_monster_blood", Rarity.MYTHIC, Category.MISC, 0.0, Material.REDSTONE, "Máu Vực Thẳm", "Chắc chắn gặp Thủy Quái", "Phụ gia mồi câu."));
+        register(new ItemData("bait_buff_golden_lure", Rarity.LEGENDARY, Category.MISC, 0.0, Material.RAW_GOLD, "Lưỡi Câu Vàng", "Chắc chắn x3 sản lượng", "Phụ gia mồi câu."));
+        register(new ItemData("bait_buff_pirate_coin", Rarity.MYTHIC, Category.MISC, 0.0, Material.SUNFLOWER, "Đồng Xu Hải Tặc", "Chắc chắn câu được Rương", "Phụ gia mồi câu."));
+        register(new ItemData("bait_buff_lightning", Rarity.MYTHIC, Category.MISC, 0.0, Material.GLOWSTONE_DUST, "Tinh Hoa Sấm Sét", "Cá cắn câu ngay lập tức", "Phụ gia mồi câu."));
 
         // Buff Đặc quyền Môi trường (Cực mạnh)
-        register(new ItemData("bait_buff_glowing_oil", Rarity.EPIC, Category.MISC, 0.0, Material.GLOW_INK_SAC, "Dầu Cá Phát Quang", "Tăng 30% cá khổng lồ", "Tác dụng: CHỈ Ở HANG ĐỘNG."));
-        register(new ItemData("bait_buff_coral_powder", Rarity.EPIC, Category.MISC, 0.0, Material.BONE_MEAL, "Bột San Hô", "Tăng 20% Kho Báu", "Tác dụng: CHỈ Ở BIỂN."));
-        register(new ItemData("bait_buff_freshwater_crystal", Rarity.EPIC, Category.MISC, 0.0, Material.PRISMARINE_CRYSTALS, "Tinh Thể Nước Ngọt", "Giảm 40% thời gian chờ", "Tác dụng: CHỈ Ở SÔNG/HỒ."));
-        register(new ItemData("bait_buff_spider_venom", Rarity.EPIC, Category.MISC, 0.0, Material.SPIDER_EYE, "Nọc Nhện Hang", "Giảm 40% thời gian chờ", "Tác dụng: CHỈ Ở HANG ĐỘNG."));
-        register(new ItemData("bait_buff_mutant_lilypad", Rarity.EPIC, Category.MISC, 0.0, Material.LILY_PAD, "Hoa Súng Đột Biến", "Tăng 30% cá khổng lồ", "Tác dụng: CHỈ Ở ĐẦM LẦY."));
-        register(new ItemData("bait_buff_mermaid_tear", Rarity.LEGENDARY, Category.MISC, 0.0, Material.GHAST_TEAR, "Nước Mắt Nhân Ngư", "Tăng 100% cơ hội câu lại", "Tác dụng: CHỈ Ở BIỂN."));
-        register(new ItemData("bait_buff_river_demon_eye", Rarity.MYTHIC, Category.MISC, 0.0, Material.ENDER_EYE, "Mắt Quỷ Sông", "Chắc chắn gặp Thủy Quái", "Tác dụng: CHỈ Ở SÔNG/HỒ."));
-        register(new ItemData("bait_buff_swamp_gas", Rarity.EPIC, Category.MISC, 0.0, Material.DRAGON_BREATH, "Khí Đầm Lầy", "50% Bỏ qua Minigame", "Tác dụng: CHỈ Ở ĐẦM LẦY."));
+        register(new ItemData("bait_buff_glowing_oil", Rarity.EPIC, Category.MISC, 0.0, Material.GLOW_INK_SAC, "Dầu Cá Phát Quang", "Tăng 30% cá khổng lồ", "Tác dụng: Môi trường hang động."));
+        register(new ItemData("bait_buff_coral_powder", Rarity.EPIC, Category.MISC, 0.0, Material.BONE_MEAL, "Bột San Hô", "Tăng 20% Kho Báu", "Tác dụng: Môi trường biển."));
+        register(new ItemData("bait_buff_freshwater_crystal", Rarity.EPIC, Category.MISC, 0.0, Material.PRISMARINE_CRYSTALS, "Tinh Thể Nước Ngọt", "Giảm 40% thời gian chờ", "Tác dụng: Môi trường sông hoặc hồ."));
+        register(new ItemData("bait_buff_spider_venom", Rarity.EPIC, Category.MISC, 0.0, Material.SPIDER_EYE, "Nọc Nhện Hang", "Giảm 40% thời gian chờ", "Tác dụng: Môi trường hang động."));
+        register(new ItemData("bait_buff_mutant_lilypad", Rarity.EPIC, Category.MISC, 0.0, Material.LILY_PAD, "Hoa Súng Đột Biến", "Tăng 30% cá khổng lồ", "Tác dụng: Môi trường đầm lầy."));
+        register(new ItemData("bait_buff_mermaid_tear", Rarity.LEGENDARY, Category.MISC, 0.0, Material.GHAST_TEAR, "Nước Mắt Nhân Ngư", "Tăng 100% cơ hội câu lại", "Tác dụng: Môi trường biển."));
+        register(new ItemData("bait_buff_river_demon_eye", Rarity.MYTHIC, Category.MISC, 0.0, Material.ENDER_EYE, "Mắt Quỷ Sông", "Chắc chắn gặp Thủy Quái", "Tác dụng: Môi trường sông hoặc hồ."));
+        register(new ItemData("bait_buff_swamp_gas", Rarity.EPIC, Category.MISC, 0.0, Material.DRAGON_BREATH, "Khí Đầm Lầy", "50% Bỏ qua Minigame", "Tác dụng: Môi trường đầm lầy."));
 
         // ==========================================
         // 14.3. THÀNH PHẨM (CUSTOM BAIT)
@@ -362,9 +362,9 @@ public class ItemManager {
 
         // [CẬP NHẬT 1]: Phân loại MỒI NỀN và MỒI BUFF rõ ràng trong Lore
         if (id.startsWith("bait_base_")) {
-            lore.add("§8[ §fPhân loại: §eMỒI NỀN §8]");
+            lore.add("§8[ Phân loại: Vật phẩm - Mồi nền §8]");
         } else if (id.startsWith("bait_buff_")) {
-            lore.add("§8[ §fPhân loại: §dMỒI BUFF §8]");
+            lore.add("§8[ Phân loại: Vật phẩm - Mồi đặc biệt §8]");
         } else if (id.equals("bait_custom")) {
             // Không set phân loại ở đây cho bait_custom, vì BaitManager sẽ set sau
         } else {

@@ -312,7 +312,11 @@ public class BlacksmithGUI implements Listener {
                 vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.FORGE_STREAK, data.getCurrentForgeStreak());
 
                 currentLevel++;
-                JobManager.addExp(player, 30.0 + (currentLevel * 5.0));
+
+                // [FIX BUG GẤP]: Chỉ cộng EXP khi nghề hiện tại là BLACKSMITH
+                if (currentJob instanceof vn.minecraft.rPGCore.jobs.types.BlacksmithJob) {
+                    JobManager.addExp(player, 30.0 + (currentLevel * 5.0));
+                }
 
                 if (SAFE_LEVELS.contains(currentLevel)) applyMilestoneBonus(player, item);
                 if (currentLevel == targetLevel) break;
@@ -338,7 +342,10 @@ public class BlacksmithGUI implements Listener {
                 }
 
                 if (!SAFE_LEVELS.contains(currentLevel) && !savedByCharm) currentLevel--;
-                JobManager.addExp(player, 15.0);
+                // [FIX BUG GẤP]: Chỉ cộng EXP khi nghề hiện tại là BLACKSMITH
+                if (currentJob instanceof vn.minecraft.rPGCore.jobs.types.BlacksmithJob) {
+                    JobManager.addExp(player, 15.0);
+                }
 
                 // LOGIC TRẢ MẠT VÀ KỸ NĂNG BÀN TAY CỦA CHÚA
                 if (currentJob instanceof vn.minecraft.rPGCore.jobs.types.BlacksmithJob) {
