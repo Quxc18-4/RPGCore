@@ -404,9 +404,17 @@ public class RPGPlayer {
     }
 
     public void updateMaxStats() {
-        double totalMaxHp = getTotalMaxHealth();
-        AttributeInstance maxHpAttr = this.bukkitPlayer.getAttribute(Attribute.MAX_HEALTH);
-        if (maxHpAttr != null) maxHpAttr.setBaseValue(totalMaxHp);
+        // Hàm get bây giờ đã an toàn tuyệt đối
+        double safeMaxHealth = getTotalMaxHealth();
+
+        org.bukkit.attribute.AttributeInstance maxHpAttr = this.bukkitPlayer.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+        if (maxHpAttr != null) maxHpAttr.setBaseValue(safeMaxHealth);
+
+        // Vẫn phải ép máu hiện tại xuống để tránh lỗi vượt trần HP
+        if (this.bukkitPlayer.getHealth() > safeMaxHealth) {
+            this.bukkitPlayer.setHealth(safeMaxHealth);
+        }
+
         this.bukkitPlayer.setHealthScale(20.0);
         this.bukkitPlayer.setHealthScaled(true);
     }
@@ -425,8 +433,13 @@ public class RPGPlayer {
         double vitBonus = this.attributeData.getAttribute("VIT") * 25.0;
 
         double equipHp = currentStats != null ? (currentStats.maxHealth * currentStats.hpMultiplier) : 0.0;
-        double foodMaxHp = vn.minecraft.rPGCore.RPGCore.getInstance().getFoodBuffManager().getBonus(this.bukkitPlayer.getUniqueId(), FoodBuffManager.StatType.MAX_HP);
-        return baseHp + levelBonus + vitBonus + equipHp + foodMaxHp;
+        double foodMaxHp = vn.minecraft.rPGCore.RPGCore.getInstance().getFoodBuffManager().getBonus(this.bukkitPlayer.getUniqueId(), vn.minecraft.rPGCore.managers.FoodBuffManager.StatType.MAX_HP);
+
+        double totalMaxHp = baseHp + levelBonus + vitBonus + equipHp + foodMaxHp;
+
+        // [FIX TẬN GỐC]: Ép mức máu trả về luôn luôn >= 1.0 (Nửa tim)
+        // Việc này sẽ sửa lỗi hiển thị UI và lỗi sát thương môi trường bị âm!
+        return Math.max(1.0, totalMaxHp);
     }
 
     public double getRequiredExp() {

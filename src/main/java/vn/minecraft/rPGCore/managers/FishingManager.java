@@ -396,92 +396,42 @@ public class FishingManager {
             double baseTreasure = 2.0 + treasureMod;
             String currentBiome = getCurrentBiomeType(hookLoc);
 
+            // [FIX]: GỌI HÀM RANDOM CÓ TRỌNG SỐ
             if (gTreasure || roll < baseTreasure) {
-                String[] treasurePool = {"bag_weapon_common", "bag_armor_common", "misc_job_change_card"};
-                caughtItemId = treasurePool[rand.nextInt(treasurePool.length)];
+                caughtItemId = getWeightedTreasure();
                 player.sendMessage("§6[Kho Báu] Bạn vừa kéo lên một vật phẩm giá trị!");
             } else if (!gMonster && roll < baseTrash) {
-                String[] trashPool = {"monster_flesh", "misc_soft_string", "misc_leather", "misc_pollen"};
-                caughtItemId = trashPool[rand.nextInt(trashPool.length)];
+                caughtItemId = getWeightedTrash();
                 player.sendMessage("§7[Mắc Cạn] Chỉ là một món đồ vụn vặt trôi dạt...");
             } else {
-                // [MỚI] PHÂN BIỆT HỒ CHỨA CÁ THEO VÙNG (BIOME) VÀ ĐỘ LỚN
                 String[] normalPool;
                 String[] bigPool;
 
                 switch(currentBiome) {
                     case "OCEAN":
-                        normalPool = new String[]{
-                                "fish_cod_small", "fish_cod_med",
-                                "fish_tuna_small", "fish_tuna_med",
-                                "fish_marlin_small", "fish_starfall_ray_small"
-                        };
-                        bigPool = new String[]{
-                                "fish_cod_large", "bfish_cod_mutant",
-                                "fish_tuna_large", "bfish_tuna_mutant",
-                                "fish_marlin_med", "fish_marlin_large", "bfish_marlin_mutant",
-                                "fish_shark_small", "fish_shark_med", "bfish_shark_large", "bfish_shark_mutant",
-                                "bfish_starfall_ray_med", "bfish_starfall_ray_large", "bfish_starfall_ray_mutant"
-                        };
+                        normalPool = new String[]{ "fish_cod_small", "fish_cod_med", "fish_tuna_small", "fish_tuna_med", "fish_marlin_small", "fish_starfall_ray_small" };
+                        bigPool = new String[]{ "fish_cod_large", "bfish_cod_mutant", "fish_tuna_large", "bfish_tuna_mutant", "fish_marlin_med", "fish_marlin_large", "bfish_marlin_mutant", "fish_shark_small", "fish_shark_med", "bfish_shark_large", "bfish_shark_mutant", "bfish_starfall_ray_med", "bfish_starfall_ray_large", "bfish_starfall_ray_mutant" };
                         break;
-
                     case "RIVER":
-                        normalPool = new String[]{
-                                "fish_salmon_small", "fish_salmon_med",
-                                "fish_carp_small", "fish_carp_med",
-                                "fish_catfish_small", "fish_sturgeon_small"
-                        };
-                        bigPool = new String[]{
-                                "fish_salmon_large", "bfish_salmon_mutant",
-                                "fish_carp_large", "bfish_carp_mutant",
-                                "fish_catfish_med", "fish_catfish_large", "bfish_catfish_mutant",
-                                "fish_sturgeon_med", "fish_sturgeon_large", "bfish_sturgeon_mutant",
-                                "fish_golden_koi_small", "bfish_golden_koi_med", "bfish_golden_koi_large", "bfish_golden_koi_mutant"
-                        };
+                        normalPool = new String[]{ "fish_salmon_small", "fish_salmon_med", "fish_carp_small", "fish_carp_med", "fish_catfish_small", "fish_sturgeon_small" };
+                        bigPool = new String[]{ "fish_salmon_large", "bfish_salmon_mutant", "fish_carp_large", "bfish_carp_mutant", "fish_catfish_med", "fish_catfish_large", "bfish_catfish_mutant", "fish_sturgeon_med", "fish_sturgeon_large", "bfish_sturgeon_mutant", "fish_golden_koi_small", "bfish_golden_koi_med", "bfish_golden_koi_large", "bfish_golden_koi_mutant" };
                         break;
-
                     case "CAVE":
-                        normalPool = new String[]{
-                                "fish_tropical_small", "fish_tropical_med",
-                                "fish_blind_tetra_small", "fish_blind_tetra_med",
-                                "fish_glow_squid_small"
-                        };
-                        bigPool = new String[]{
-                                "fish_tropical_large", "bfish_tropical_mutant",
-                                "fish_blind_tetra_large", "bfish_blind_tetra_mutant",
-                                "fish_glow_squid_med", "fish_glow_squid_large", "bfish_glow_squid_mutant",
-                                "fish_abyss_angler_small", "fish_abyss_angler_med", "fish_abyss_angler_large", "bfish_abyss_angler_mutant",
-                                "fish_time_weaver_small", "bfish_time_weaver_med", "bfish_time_weaver_large", "bfish_time_weaver_mutant"
-                        };
+                        normalPool = new String[]{ "fish_tropical_small", "fish_tropical_med", "fish_blind_tetra_small", "fish_blind_tetra_med", "fish_glow_squid_small" };
+                        bigPool = new String[]{ "fish_tropical_large", "bfish_tropical_mutant", "fish_blind_tetra_large", "bfish_blind_tetra_mutant", "fish_glow_squid_med", "fish_glow_squid_large", "bfish_glow_squid_mutant", "fish_abyss_angler_small", "fish_abyss_angler_med", "fish_abyss_angler_large", "bfish_abyss_angler_mutant", "fish_time_weaver_small", "bfish_time_weaver_med", "bfish_time_weaver_large", "bfish_time_weaver_mutant" };
                         break;
-
                     case "SWAMP":
-                        normalPool = new String[]{
-                                "fish_mud_loach_small", "fish_mud_loach_med",
-                                "fish_swamp_eel_small", "fish_swamp_eel_med",
-                                "fish_toxic_toad_small"
-                        };
-                        bigPool = new String[]{
-                                "fish_mud_loach_large", "bfish_mud_loach_mutant",
-                                "fish_swamp_eel_large", "bfish_swamp_eel_mutant",
-                                "fish_toxic_toad_med", "fish_toxic_toad_large", "bfish_toxic_toad_mutant"
-                        };
+                        normalPool = new String[]{ "fish_mud_loach_small", "fish_mud_loach_med", "fish_swamp_eel_small", "fish_swamp_eel_med", "fish_toxic_toad_small" };
+                        bigPool = new String[]{ "fish_mud_loach_large", "bfish_mud_loach_mutant", "fish_swamp_eel_large", "bfish_swamp_eel_mutant", "fish_toxic_toad_med", "fish_toxic_toad_large", "bfish_toxic_toad_mutant" };
                         break;
-
-                    default: // Môi trường mặc định nếu không xác định được (Hồ nhân tạo trên cạn...)
-                        normalPool = new String[]{
-                                "fish_cod_small", "fish_cod_med",
-                                "fish_salmon_small", "fish_salmon_med",
-                                "fish_tropical_small", "fish_tropical_med"
-                        };
-                        bigPool = new String[]{
-                                "fish_cod_large", "bfish_cod_mutant",
-                                "fish_salmon_large", "bfish_salmon_mutant",
-                                "fish_tropical_large", "bfish_tropical_mutant"
-                        };
+                    default:
+                        normalPool = new String[]{ "fish_cod_small", "fish_cod_med", "fish_salmon_small", "fish_salmon_med", "fish_tropical_small", "fish_tropical_med" };
+                        bigPool = new String[]{ "fish_cod_large", "bfish_cod_mutant", "fish_salmon_large", "bfish_salmon_mutant", "fish_tropical_large", "bfish_tropical_mutant" };
                 }
 
-                caughtItemId = isBigReward ? bigPool[rand.nextInt(bigPool.length)] : normalPool[rand.nextInt(normalPool.length)];
+                // GỌI HÀM LỌC TỈ LỆ CÁ
+                String[] poolToUse = isBigReward ? bigPool : normalPool;
+                caughtItemId = pickWeightedFish(poolToUse);
                 player.sendMessage("§b[Câu Cá] Thành công!");
             }
 
@@ -517,6 +467,99 @@ public class FishingManager {
             }
         }
 
+        // ===============================================
+        // BỘ CÔNG CỤ XÚC XẮC TRỌNG SỐ (WEIGHTED DROPS)
+        // ===============================================
+
+        // [MỚI]: Hàm Helper dùng chung để bốc thăm theo trọng số
+        private String pickFromWeights(Map<String, Double> weights) {
+            double totalWeight = 0;
+            for (double w : weights.values()) totalWeight += w; // Tự động tính tổng trọng số
+
+            double roll = rand.nextDouble() * totalWeight;
+            for (Map.Entry<String, Double> entry : weights.entrySet()) {
+                roll -= entry.getValue();
+                if (roll <= 0) return entry.getKey();
+            }
+            // Fallback an toàn (Mặc định lấy món đầu tiên nếu có lỗi toán học nhỏ)
+            return weights.keySet().iterator().next();
+        }
+
+        private String getWeightedTreasure() {
+            Map<String, Double> weights = new HashMap<>();
+
+            // Bạn chỉ cần khai báo "Tỉ lệ % mong muốn" ở đây.
+            // Không cần quan tâm tổng có bằng 100 hay không, hệ thống tự động chia lại tỉ lệ chuẩn!
+            weights.put("misc_job_change_card", 1.0);       // Epic
+            weights.put("misc_protection_charm", 1.0);      // Epic
+            weights.put("bag_weapon_epic", 1.0);            // Epic
+            weights.put("bag_armor_epic",1.0);              // Epic
+            weights.put("bag_weapon_rare", 2.0);            // Rare
+            weights.put("bag_armor_rare", 2.0);             // Rare
+            weights.put("misc_lucky_hammer", 6.0);          // Rare
+            weights.put("bag_weapon_uncommon", 8.0);        // Uncommon
+            weights.put("bag_armor_uncommon", 8.0);         // Uncommon
+            weights.put("misc_blacksmith_scrap", 12.0);     // Uncommon
+            weights.put("bag_weapon_common", 30.0);         // Common
+            weights.put("bag_armor_common", 30.0);          // Common
+
+            // VD: Sau này muốn thêm Sách Cường Hóa, chỉ cần thêm 1 dòng:
+            // weights.put("enchant_book_rare", 5.0);
+
+            return pickFromWeights(weights);
+        }
+
+        private String getWeightedTrash() {
+            Map<String, Double> weights = new HashMap<>();
+
+            weights.put("misc_steel_string", 2.0);          // Uncommon
+            weights.put("misc_weird_leather", 5.0);         // Uncommon
+            weights.put("misc_armor_shard", 8.0);           // Uncommon
+            weights.put("misc_pollen", 15.0);               // Common
+            weights.put("monster_flesh", 25.0);             // Common
+            weights.put("misc_leather", 20.0);              // Common
+            weights.put("misc_soft_string", 25.0);          // Common
+
+            return pickFromWeights(weights);
+        }
+
+        private String pickWeightedFish(String[] pool) {
+            double totalWeight = 0;
+            Map<String, Double> weights = new HashMap<>();
+
+            for (String id : pool) {
+                double w = 100.0; // Mặc định rất dễ rơi
+
+                // Trọng số theo kích cỡ
+                if (id.contains("mutant")) w = 5.0;         // Đột biến (Khó)
+                else if (id.contains("large")) w = 20.0;    // Lớn (Khá)
+                else if (id.contains("med")) w = 50.0;      // Vừa (Bình thường)
+                else if (id.contains("small")) w = 80.0;    // Nhỏ (Dễ)
+
+                // Phạt thêm nếu là loài cá hiếm
+                if (id.contains("golden_koi") || id.contains("shark") || id.contains("time_weaver") ||
+                        id.contains("abyss_angler") || id.contains("starfall_ray") || id.contains("toxic_toad")) {
+                    w *= 0.1; // Hệ số Cực Hiếm (Giảm 10 lần tỉ lệ)
+                } else if (id.contains("marlin") || id.contains("sturgeon") || id.contains("glow_squid")) {
+                    w *= 0.3; // Hệ số Hiếm (Giảm 3.3 lần tỉ lệ)
+                }
+
+                weights.put(id, w);
+                totalWeight += w;
+            }
+
+            double roll = rand.nextDouble() * totalWeight;
+            for (Map.Entry<String, Double> entry : weights.entrySet()) {
+                roll -= entry.getValue();
+                if (roll <= 0) return entry.getKey();
+            }
+            return pool[pool.length - 1]; // Fallback phòng hờ
+        }
+
+        // ===============================================
+        // CÁC HÀM XỬ LÝ KẾT THÚC VÀ RENDER GIỮ NGUYÊN
+        // ===============================================
+
         private void loseMinigame(String reason) {
             if (secondChance > 0 && rand.nextDouble() * 100.0 < secondChance) {
                 player.sendMessage("§a♻ [Lông Phượng Hoàng] Dây cước đã được phục hồi kỳ diệu! Thử lại ngay!");
@@ -527,7 +570,6 @@ public class FishingManager {
                 lives = (baitItem != null && baitItem.hasItemMeta()) ? 2 : 1;
                 comboMutated = false;
 
-                // [FIX]: Trở về Ghi nhớ Stage 1
                 state = GameState.STAGE_1_MEMORIZE;
                 renderActionBar(true);
 
@@ -560,19 +602,16 @@ public class FishingManager {
 
             for (int i = 0; i < currentStage.size(); i++) {
                 Note n = currentStage.get(i);
-
                 String symbol;
                 String color = n.isLeftClick ? "§b" : "§e";
 
-                // [FIX]: Logic hiển thị phím ẩn và phím đột biến
                 if (!isMemorize && n.isHidden && i >= currentNoteIdx) {
                     if (n.isMutatedHidden) {
-                        // Nếu là phím ẩn do đột biến, hiển thị icon thay vì [?]
                         symbol = n.isDifferentFromPrev ? "[⇌]" : "[=]";
-                        color = n.isDifferentFromPrev ? "§c" : "§a"; // Đỏ nếu đảo chiều, Xanh nếu giữ nguyên
+                        color = n.isDifferentFromPrev ? "§c" : "§a";
                     } else {
                         symbol = "[?]";
-                        color = "§7"; // Xám cho dấu hỏi chấm bình thường (Cá hiếm Stage 1)
+                        color = "§7";
                     }
                 } else {
                     symbol = n.isLeftClick ? "[T]" : "[P]";
@@ -581,7 +620,6 @@ public class FishingManager {
                 if (i < currentNoteIdx) sb.append("§a✔ ");
                 else if (i == currentNoteIdx) {
                     if (isMemorize) sb.append(color).append(symbol).append(" ");
-                        // Gạch chân phím hiện tại, giữ nguyên màu sắc của icon cảnh báo
                     else sb.append(color).append("§n").append(symbol).append("§r ");
                 }
                 else sb.append(color).append(symbol).append(" ");

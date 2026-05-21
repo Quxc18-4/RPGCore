@@ -54,7 +54,13 @@ public class ConsumableListener implements Listener {
         boolean consumed = false;
 
         // [ĐÃ SỬA] - Xóa Lúa Mì Tinh Tú khỏi danh sách ăn ngay
-        List<String> instantFoods = Arrays.asList("fat_milk", "spice_honey", "veg_apple", "veg_melon", "veg_melon_uncommon", "veg_melon_rare", "veg_kelp_dried", "potion_digestion", "potion_anti_anorexia", "misc_lunch_bag", "starch_bread", "magic_flame_beetroot", "magic_golden_melon", "magic_crystal_kelp", "magic_mana_potato", "magic_chaos_glow_berry", "bag_seeds_common", "bag_seeds_magic", "misc_seed_pouch");
+        List<String> instantFoods = Arrays.asList("fat_milk", "spice_honey", "veg_apple", "veg_melon",
+                "veg_melon_uncommon", "veg_melon_rare", "veg_kelp_dried", "potion_digestion",
+                "potion_anti_anorexia", "misc_lunch_bag", "starch_bread", "magic_flame_beetroot",
+                "magic_golden_melon", "magic_crystal_kelp", "magic_mana_potato", "magic_chaos_glow_berry",
+                "bag_seeds_common", "bag_seeds_magic", "misc_seed_pouch", "bag_fishing_rod_common",
+                "bag_fishing_rod_uncommon", "bag_fishing_rod_rare",
+                "bag_fishing_rod_epic", "bag_fishing_rod_mythic", "bag_fishing_rod_legendary");
 
         if (instantFoods.contains(itemId)) {
             event.setCancelled(true);
@@ -189,6 +195,32 @@ public class ConsumableListener implements Listener {
                 player.sendMessage("§5§l[!] §fMa thuật bùng nổ! Nhận được " + amt + " hạt ma thuật ngẫu nhiên.");
                 player.playSound(player.getLocation(), Sound.ITEM_BUNDLE_DROP_CONTENTS, 1f, 1.3f);
                 consumed = true;
+            }
+
+            // ==========================================
+            // [MỚI BỔ SUNG]: LOGIC MỞ TÚI GACHA CẦN CÂU
+            // ==========================================
+            else if (itemId.startsWith("bag_fishing_rod_")) {
+                if (player.getInventory().firstEmpty() == -1) {
+                    player.sendMessage("§cTúi đồ của bạn đã đầy, không thể mở thêm!");
+                    return;
+                }
+
+                // Mẹo nhỏ: Đổi chữ "bag_" thành "tool_" để ra đúng ID của Cần câu tương ứng
+                String targetRodId = itemId.replace("bag_", "tool_");
+
+                // Khi gọi buildItem, ItemManager sẽ TỰ ĐỘNG đổ xúc xắc dòng Buff và Độ bền
+                ItemStack dynamicRod = itemManager.buildItem(targetRodId, 1);
+
+                if (dynamicRod != null) {
+                    player.getInventory().addItem(dynamicRod);
+                    player.sendMessage("§b§l[!] §fBạn đã mở túi và nhận được: " + dynamicRod.getItemMeta().getDisplayName());
+                    player.playSound(player.getLocation(), Sound.ITEM_BUNDLE_DROP_CONTENTS, 1f, 1.2f);
+                    player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.5f, 1.5f);
+                    consumed = true;
+                } else {
+                    player.sendMessage("§cLỗi hệ thống: Không thể khởi tạo Cần câu!");
+                }
             }
 
             else if (itemId.equals("misc_seed_pouch")) {
