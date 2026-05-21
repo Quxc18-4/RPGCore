@@ -214,6 +214,44 @@ public class BaitCrafterGUI implements Listener {
             return;
         }
 
+        // =====================================
+        // [FIX CHÍNH]: BUFF NGHỀ NGƯ DÂN LÊN MỒI
+        // =====================================
+        PlayerJobData jobData = JobManager.getPlayerData(player);
+        if (jobData != null && "FISHERMAN".equals(jobData.getJobId())) {
+            int level = jobData.getLevel("FISHERMAN");
+            double ultMult = jobData.hasUnlockedSkill("FISHERMAN", "FISH_ULT_1") ? 1.2 : 1.0;
+
+            // 1. Tăng sản lượng
+            int extraYield = level >= 50 ? 2 : (level >= 25 ? 1 : 0);
+            result.setAmount(result.getAmount() + extraYield);
+
+            // 2. Buff % chỉ số bằng cách nhân Lore NBT (Code này khá nâng cao, có thể bỏ qua nếu khó,
+            // nhưng giải pháp đơn giản nhất là set 1 cờ buff_multiplier vào NBT của Item để lúc FishingManager đọc nó tự nhân).
+            ItemMeta meta = result.getItemMeta();
+            double multi = 1.0 + ((level * 0.6 * ultMult) / 100.0);
+            meta.getPersistentDataContainer().set(new org.bukkit.NamespacedKey(vn.minecraft.rPGCore.RPGCore.getInstance(), "bait_fisher_multi"), org.bukkit.persistence.PersistentDataType.DOUBLE, multi);
+
+            List<String> lore = meta.getLore();
+            lore.add(0, "§b✦ Pha chế bởi Ngư Dân Bậc Thầy (+" + String.format("%.0f", (multi-1)*100) + "%)");
+            meta.setLore(lore);
+            result.setItemMeta(meta);
+
+            // 3. Rớt Nước Mắt Đại Dương (Công thức từ bạn)
+            int bases = baseIds.size();
+            int buffs = buffIds.size();
+            double tearChance = 8.0 - ((9 - bases) * (4.0 / 3.0)) + (buffs * 3.0);
+
+            if (Math.random() * 100.0 <= tearChance) {
+                player.getInventory().addItem(itemManager.buildItem("misc_ocean_tear", 1));
+                player.sendMessage("§b[Rơi Đồ] Bạn nhận được 1 Nước Mắt Đại Dương từ quá trình ủ mồi!");
+                vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.COLLECT_OCEAN_TEAR);
+            }
+        }
+
+        // Báo cáo Job Quest (Craft có 9 Base)
+        vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.CRAFT_BAIT, baseIds.size());
+
         // THỰC HIỆN TRỪ NGUYÊN LIỆU (Đảm bảo ID khớp mới trừ)
         for (int s : BASE_SLOTS) {
             ItemStack item = inv.getItem(s);

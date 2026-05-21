@@ -381,6 +381,7 @@ public class ItemManager {
         // ==========================================
         // [MỚI] TÚI CẦN CÂU & PHÔI CẦN CÂU
         // ==========================================
+        register(new ItemData("misc_ocean_tear", Rarity.EPIC, Category.MISC, 0.0, Material.GHAST_TEAR, "Nước Mắt Đại Dương", null, "Kết tinh pha lê lấp lánh từ đại dương sâu thẳm", "Đơn vị trao đổi chính của Những Người Ngư Dân."));
         register(new ItemData("tool_fishing_rod_1", Rarity.COMMON, Category.TOOL, 0.0, Material.FISHING_ROD, "Cần Câu Tập Sự", null, "Độ bền vô hạn. Không có hiệu ứng."));
         register(new ItemData("tool_fishing_rod_common", Rarity.COMMON, Category.TOOL, 0.0, Material.FISHING_ROD, "Cần Câu Gỗ Sồi", "Sở hữu 1 Dòng thuộc tính", "Bền bỉ, mộc mạc."));
         register(new ItemData("tool_fishing_rod_uncommon", Rarity.UNCOMMON, Category.TOOL, 0.0, Material.FISHING_ROD, "Cần Câu Trúc Xanh", "Sở hữu 1 Dòng thuộc tính mạnh", "Nhẹ nhàng, dẻo dai."));

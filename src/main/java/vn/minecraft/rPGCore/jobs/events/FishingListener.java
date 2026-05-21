@@ -97,26 +97,33 @@ public class FishingListener implements Listener {
 
         // 2. KHI CÁ CẮN CÂU -> BẬT MINIGAME (VÀ GIỮ PHAO)
         if (event.getState() == PlayerFishEvent.State.CAUGHT_FISH) {
-            // Hủy sự kiện mặc định để không kéo cá Vanilla lên
             event.setCancelled(true);
-
-            // Xóa điểm kinh nghiệm rơi ra từ Vanilla
             event.setExpToDrop(0);
-
-            // LƯU Ý QUAN TRỌNG: Chúng ta KHÔNG remove event.getHook() ở đây nữa.
-            // Điều này sẽ giữ cái phao câu nổi lềnh bềnh trên mặt nước.
 
             ItemStack baitToUse = null;
             if (baitId != null && baitId.startsWith("bait_")) {
-                if (player.getGameMode() != org.bukkit.GameMode.CREATIVE) {
+
+                // [FIX LỚN]: HỆ THỐNG GIỮ MỒI CỦA NGƯ DÂN
+                boolean saveBait = false;
+                vn.minecraft.rPGCore.jobs.core.PlayerJobData jobData = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(player);
+                if (jobData != null && "FISHERMAN".equals(jobData.getJobId())) {
+                    int level = jobData.getLevel("FISHERMAN");
+                    double saveChance = level * 0.5;
+                    if (jobData.hasUnlockedSkill("FISHERMAN", "FISH_ULT_1")) saveChance *= 1.2;
+
+                    if (Math.random() * 100.0 <= saveChance) {
+                        saveBait = true;
+                        player.sendMessage("§a[Nội Tại] Tiết kiệm được Mồi câu!");
+                    }
+                }
+
+                if (player.getGameMode() != org.bukkit.GameMode.CREATIVE && !saveBait) {
                     offHand.setAmount(offHand.getAmount() - 1);
                 }
                 baitToUse = offHand.clone();
             }
 
             org.bukkit.Location hookLoc = event.getHook().getLocation();
-
-            // Truyền event.getHook() vào FishingManager để quản lý việc gỡ phao sau này
             fishingManager.startMinigame(player, rodId, baitToUse, hookLoc, event.getHook());
         }
     }

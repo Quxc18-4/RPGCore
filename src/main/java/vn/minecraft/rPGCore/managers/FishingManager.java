@@ -167,6 +167,19 @@ public class FishingManager {
             double bigFishChance = 0.05;
             String currentBiome = getCurrentBiomeType(hookLoc);
 
+            // [MỚI]: HOOK HƯỞNG BUFF NGƯ DÂN TỪ HỆ THỐNG NGHỀ
+            vn.minecraft.rPGCore.jobs.core.PlayerJobData jobData = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(player);
+            if (jobData != null && "FISHERMAN".equals(jobData.getJobId())) {
+                int level = jobData.getLevel("FISHERMAN");
+                double ultMult = jobData.hasUnlockedSkill("FISHERMAN", "FISH_ULT_1") ? 1.2 : 1.0;
+
+                bigFishChance += (level * 0.5 * ultMult) / 100.0;
+                treasureMod += (level * 0.3 * ultMult);
+
+                double autoChance = (level * 0.5 * ultMult);
+                if (rand.nextDouble() * 100.0 < autoChance) isAutoCatch = true;
+            }
+
             ItemStack mainHand = player.getInventory().getItemInMainHand();
             if (mainHand.hasItemMeta()) {
                 org.bukkit.persistence.PersistentDataContainer rodPdc = mainHand.getItemMeta().getPersistentDataContainer();
@@ -230,7 +243,10 @@ public class FishingManager {
         private double getStat(org.bukkit.persistence.PersistentDataContainer pdc, String baseKey, String biome) {
             double total = pdc.getOrDefault(getKey(baseKey, "ALL"), PersistentDataType.DOUBLE, 0.0);
             total += pdc.getOrDefault(getKey(baseKey, biome), PersistentDataType.DOUBLE, 0.0);
-            return total;
+
+            // Xử lý hệ số pha chế của Ngư Dân
+            double multi = pdc.getOrDefault(new NamespacedKey(plugin, "bait_fisher_multi"), PersistentDataType.DOUBLE, 1.0);
+            return total * multi;
         }
 
         public void start() {
@@ -302,7 +318,14 @@ public class FishingManager {
         }
 
         private void deductLife(String reason) {
-            lives--;
+            // [FIX]: VÔ HẠN MẠNG NẾU CÓ ULTIMATE 3
+            vn.minecraft.rPGCore.jobs.core.PlayerJobData jobData = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(player);
+            if (jobData != null && "FISHERMAN".equals(jobData.getJobId()) && jobData.hasUnlockedSkill("FISHERMAN", "FISH_ULT_3")) {
+                player.sendMessage("§d[Ý Chí Kiên Cường] Lỗi sai đã bị bỏ qua!");
+                // Không trừ lives
+            } else {
+                lives--;
+            }
             player.playSound(player.getLocation(), Sound.ENTITY_ITEM_BREAK, 1f, 1f);
 
             if (lives <= 0) {
@@ -400,9 +423,11 @@ public class FishingManager {
             if (gTreasure || roll < baseTreasure) {
                 caughtItemId = getWeightedTreasure();
                 player.sendMessage("§6[Kho Báu] Bạn vừa kéo lên một vật phẩm giá trị!");
+                vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.FISH_TREASURE);
             } else if (!gMonster && roll < baseTrash) {
                 caughtItemId = getWeightedTrash();
                 player.sendMessage("§7[Mắc Cạn] Chỉ là một món đồ vụn vặt trôi dạt...");
+                vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.FISH_TRASH);
             } else {
                 String[] normalPool;
                 String[] bigPool;
@@ -432,6 +457,25 @@ public class FishingManager {
                 // GỌI HÀM LỌC TỈ LỆ CÁ
                 String[] poolToUse = isBigReward ? bigPool : normalPool;
                 caughtItemId = pickWeightedFish(poolToUse);
+
+                // [MỚI]: BÁO CÁO CÂU CÁ THÀNH CÔNG VÀ KÍCH CỠ CÁ
+                boolean isLargeOrMutant = caughtItemId.contains("large") || caughtItemId.contains("mutant");
+                vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.FISH_CATCH, currentBiome, isLargeOrMutant);
+
+                // [MỚI]: RỚT NƯỚC MẮT ĐẠI DƯƠNG THEO SIZE CÁ
+                double dropChance = 0;
+                if (caughtItemId.contains("mutant")) dropChance = 100.0;
+                else if (caughtItemId.contains("large")) dropChance = 70.0;
+                else if (caughtItemId.contains("med")) dropChance = 25.0;
+                else if (caughtItemId.contains("small")) dropChance = 10.0;
+
+                if (rand.nextDouble() * 100.0 <= dropChance) {
+                    int tearAmt = 1 + rand.nextInt(2);
+                    player.getInventory().addItem(itemManager.buildItem("misc_ocean_tear", tearAmt));
+                    player.sendMessage("§b[Rơi Đồ] Bạn nhận được " + tearAmt + " Nước Mắt Đại Dương!");
+                    vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.COLLECT_OCEAN_TEAR);
+                }
+
                 player.sendMessage("§b[Câu Cá] Thành công!");
             }
 
@@ -590,6 +634,8 @@ public class FishingManager {
             }
 
             consumeRodDurability(player);
+            // [MỚI]: BÁO CÁO NHIỆM VỤ CÂU THẤT BẠI
+            vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.FISH_FAIL);
 
             player.sendTitle("§c§lTHẤT BẠI", reason, 5, 40, 10);
             player.playSound(player.getLocation(), Sound.ENTITY_ITEM_BREAK, 1f, 1f);

@@ -28,5 +28,12 @@ public enum QuestAction {
     HARVEST_MUTATION,       // Thu hoạch ra Nông sản 1.5x hoặc 2.0x
     USE_FERTILIZER,         // Dùng phân bón AoE
     RECOVER_SEED,           // Thu hồi lại được hạt giống sau khi hái
-    HARVEST_MAGIC_CROP      // Thu hoạch Nông sản Ma thuật
+    HARVEST_MAGIC_CROP,      // Thu hoạch Nông sản Ma thuật
+
+    // --- NGƯ DÂN ACTIONS ---
+    FISH_FAIL,             // Câu trượt / Đứt dây
+    FISH_TRASH,            // Câu dính rác
+    FISH_TREASURE,         // Câu được rương kho báu
+    CRAFT_BAIT,            // Chế tạo mồi câu thành công
+    COLLECT_OCEAN_TEAR     // Nhặt được Nước Mắt Đại Dương
 }
