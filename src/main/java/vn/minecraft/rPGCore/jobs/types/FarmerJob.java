@@ -379,8 +379,8 @@ public class FarmerJob extends RPGJob {
     @Override
     public List<String> getDailyRewardLore(int milestone) {
         if (milestone == 1) return Arrays.asList("§a+1 Tinh Chất Tự Nhiên");
-        if (milestone == 2) return Arrays.asList("§a+2 Tinh Chất Tự Nhiên");
-        return Arrays.asList("§a+3 Tinh Chất Tự Nhiên", "§d+1 Túi Hạt Giống Thường");
+        if (milestone == 2) return Arrays.asList("§a+1 Tinh Chất Tự Nhiên");
+        return Arrays.asList("§a+2 Tinh Chất Tự Nhiên", "§d+1 Túi Hạt Giống Thường");
     }
 
     @Override
@@ -396,10 +396,10 @@ public class FarmerJob extends RPGJob {
             player.getInventory().addItem(im.buildItem("misc_nature_essence", 1));
         }
         else if (milestone == 2) {
-            player.getInventory().addItem(im.buildItem("misc_nature_essence", 2));
+            player.getInventory().addItem(im.buildItem("misc_nature_essence", 1));
         }
         else if (milestone == 3) {
-            player.getInventory().addItem(im.buildItem("misc_nature_essence", 3));
+            player.getInventory().addItem(im.buildItem("misc_nature_essence", 2));
             player.getInventory().addItem(im.buildItem("bag_seeds_common", 1));
         }
     }

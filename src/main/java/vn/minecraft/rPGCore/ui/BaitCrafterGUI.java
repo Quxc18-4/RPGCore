@@ -130,16 +130,44 @@ public class BaitCrafterGUI implements Listener {
     public void onInventoryDrag(InventoryDragEvent event) {
         if (!event.getView().getTitle().equals(GUI_NAME)) return;
 
+        ItemStack draggedItem = event.getOldCursor(); // Vật phẩm đang được nhấn giữ để kéo
+        if (draggedItem == null || draggedItem.getType() == Material.AIR) return;
+        String id = itemManager.getItemId(draggedItem);
+
         for (int slot : event.getRawSlots()) {
             if (slot < 54) {
+                // 1. Chặn kéo vật phẩm đè lên ô kính nền xám trang trí
                 if (!BASE_SLOTS.contains(slot) && !BUFF_SLOTS.contains(slot) && !ULT_SLOTS.contains(slot)) {
                     event.setCancelled(true);
                     return;
                 }
-                // Nếu kéo vào ô Barrier
+
+                // 2. Chốt chặn: Kéo mồi lạ đè vào khu vực Mồi Nền
+                if (BASE_SLOTS.contains(slot)) {
+                    if (id == null || !id.startsWith("bait_base_")) {
+                        event.setCancelled(true);
+                        return;
+                    }
+                }
+
+                // 3. Chốt chặn: Kéo mồi lạ đè vào khu vực Phụ Gia Cơ Bản
+                if (BUFF_SLOTS.contains(slot)) {
+                    if (id == null || !id.startsWith("bait_buff_")) {
+                        event.setCancelled(true);
+                        return;
+                    }
+                }
+
+                // 4. Chốt chặn: Kéo đè vào ô Tối thượng
                 if (ULT_SLOTS.contains(slot)) {
                     ItemStack targetItem = event.getInventory().getItem(slot);
+                    // Chặn nếu ô đang bị khóa bằng Barrier
                     if (targetItem != null && targetItem.getType() == Material.BARRIER) {
+                        event.setCancelled(true);
+                        return;
+                    }
+                    // Chặn nếu vật phẩm kéo không phải mồi buff
+                    if (id == null || !id.startsWith("bait_buff_")) {
                         event.setCancelled(true);
                         return;
                     }
@@ -156,9 +184,33 @@ public class BaitCrafterGUI implements Listener {
         Player player = (Player) event.getWhoClicked();
         ItemStack cursor = event.getCursor();
         ItemStack current = event.getCurrentItem();
+        Inventory inv = event.getInventory();
+
+        // [CHỐT CHẶN PHÍM TẮT]: Chặn hoàn toàn phím số 1-9 (Hotbar Swap)
+        // Việc này ngăn người chơi lách luật bypass bộ lọc vật phẩm trên chuột
+        if (event.getClick() == org.bukkit.event.inventory.ClickType.NUMBER_KEY) {
+            event.setCancelled(true);
+            return;
+        }
 
         // 1. CLICK VÀO CÁC Ô BÊN TRONG CỦA THỦNG Ủ MỒI (NỬA TRÊN)
-        if (slot < event.getInventory().getSize()) {
+        if (slot < inv.getSize()) {
+
+            // [NÚT Ủ MỒI CÂU]: Ô Kính màu xanh lá (PROCESS_SLOT = 41)
+            if (slot == PROCESS_SLOT) {
+                event.setCancelled(true); // Khóa không cho lấy kính xanh ra túi đồ
+                processCrafting(inv, player); // Chỉ kích hoạt nấu khi bấm nút này!
+                return;
+            }
+
+            // [Ô KẾT QUẢ ĐẦU RA]: (OUTPUT_SLOT = 43)
+            if (slot == OUTPUT_SLOT) {
+                // Cho phép lấy mồi đã nấu ra, cấm đặt ngược vật phẩm lạ từ ngoài vào
+                if (cursor != null && cursor.getType() != Material.AIR) {
+                    event.setCancelled(true);
+                }
+                return;
+            }
 
             // [CHỐT CHẶN Ô TỐI THƯỢNG]: Nếu bấm vào ô đặc biệt (ULT_SLOTS)
             if (ULT_SLOTS.contains(slot)) {
@@ -166,48 +218,63 @@ public class BaitCrafterGUI implements Listener {
                 if (jobData == null || !"FISHERMAN".equals(jobData.getJobId()) || !jobData.hasUnlockedSkill("FISHERMAN", "FISH_ULT_2")) {
                     event.setCancelled(true);
                     player.sendMessage("§c§l[!] §cBạn cần học kỹ năng CÔNG THỨC CỔ ĐẠI để dùng ô ủ mồi này!");
-                    return; // Khóa cứng ngay tại đây, không cho đặt hay hoán đổi item
+                    return;
                 }
 
                 if (cursor != null && cursor.getType() != Material.AIR) {
-                    String id = vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager().getItemId(cursor);
+                    String id = itemManager.getItemId(cursor);
                     if (id == null || !id.startsWith("bait_buff_")) {
                         event.setCancelled(true);
                         player.sendMessage("§cChỉ có thể đặt Phụ Gia vào ô này!");
                         return;
                     }
                 }
+                event.setCancelled(false); // Đủ điều kiện -> Cho thả mồi vào
+                return;
             }
 
-            // Ô kết quả đầu ra (OUTPUT_SLOT)
-            else if (slot == OUTPUT_SLOT) {
-                if (current != null && current.getType() != Material.AIR) {
-                    processCrafting(event.getInventory(), player);
+            // [MỚI - CHỐT CHẶN Ô MỒI BUFF CƠ BẢN]: Khóa cứng nếu cố tình đặt mồi nền vào ô phụ gia
+            if (BUFF_SLOTS.contains(slot)) {
+                if (cursor != null && cursor.getType() != Material.AIR) {
+                    String id = itemManager.getItemId(cursor);
+                    if (id == null || !id.startsWith("bait_buff_")) {
+                        event.setCancelled(true);
+                        player.sendMessage("§cChỉ có thể đặt Phụ Gia vào ô này!");
+                        return;
+                    }
                 }
+                event.setCancelled(false);
+                return;
             }
 
-            // [FIX LỖI DECOR_SLOTS]: Dùng phương pháp loại trừ!
-            // Nếu KHÔNG PHẢI là Base, Buff, Ult hay Output thì chắc chắn là ô viền/kính -> KHÓA LẠI
-            else if (!BASE_SLOTS.contains(slot) && !BUFF_SLOTS.contains(slot)) {
-                event.setCancelled(true);
+            // [MỚI - CHỐT CHẶN Ô MỒI NỀN CƠ BẢN]: Khóa cứng nếu cố tình đặt mồi buff vào ô nền
+            if (BASE_SLOTS.contains(slot)) {
+                if (cursor != null && cursor.getType() != Material.AIR) {
+                    String id = itemManager.getItemId(cursor);
+                    if (id == null || !id.startsWith("bait_base_")) {
+                        event.setCancelled(true);
+                        player.sendMessage("§cChỉ có thể đặt Mồi Nền vào ô này!");
+                        return;
+                    }
+                }
+                event.setCancelled(false);
+                return;
             }
+
+            // Các ô trang trí nền xám, thông tin hướng dẫn -> Khóa cứng không cho lấy ra
+            event.setCancelled(true);
         }
 
         // 2. CLICK VÀO KHU VỰC TÚI ĐỒ CỦA NGƯỜI CHƠI (NỬA DƯỚI)
         else {
-            // [CHỐT CHẶN SHIFT-CLICK]
-            if (event.getClick().isShiftClick() && current != null && current.getType() != Material.AIR) {
-                String id = vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager().getItemId(current);
-
-                if (id != null && id.startsWith("bait_buff_")) {
-                    vn.minecraft.rPGCore.jobs.core.PlayerJobData jobData = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(player);
-                    if (jobData == null || !jobData.hasUnlockedSkill("FISHERMAN", "FISH_ULT_2")) {
-                        event.setCancelled(true);
-                        player.sendMessage("§eHãy tự kéo thả phụ gia vào các ô Phụ gia cơ bản (Không hỗ trợ Shift-click nếu chưa mở khóa ô đặc biệt)!");
-                        return;
-                    }
-                }
+            // [CHỐT CHẶN SHIFT-CLICK]: Khóa hoàn toàn Shift-click từ túi dưới đi lên
+            // Điều này ép người chơi phải kéo thả thủ công, ngăn Minecraft tự động đẩy mồi nền vào ô phụ gia đại bừa
+            if (event.getClick().isShiftClick()) {
+                event.setCancelled(true);
+                player.sendMessage("§e[Thùng Ủ] Vui lòng nhấc vật phẩm và kéo thả thủ công vào đúng vị trí ô mong muốn!");
+                return;
             }
+            event.setCancelled(false); // Cho phép sắp xếp túi đồ của mình bình thường
         }
     }
 
@@ -254,8 +321,7 @@ public class BaitCrafterGUI implements Listener {
             int extraYield = level >= 50 ? 2 : (level >= 25 ? 1 : 0);
             result.setAmount(result.getAmount() + extraYield);
 
-            // 2. Buff % chỉ số bằng cách nhân Lore NBT (Code này khá nâng cao, có thể bỏ qua nếu khó,
-            // nhưng giải pháp đơn giản nhất là set 1 cờ buff_multiplier vào NBT của Item để lúc FishingManager đọc nó tự nhân).
+            // 2. Buff % chỉ số bằng cách nhân Lore NBT
             ItemMeta meta = result.getItemMeta();
             double multi = 1.0 + ((level * 0.6 * ultMult) / 100.0);
             meta.getPersistentDataContainer().set(new org.bukkit.NamespacedKey(vn.minecraft.rPGCore.RPGCore.getInstance(), "bait_fisher_multi"), org.bukkit.persistence.PersistentDataType.DOUBLE, multi);
@@ -265,7 +331,7 @@ public class BaitCrafterGUI implements Listener {
             meta.setLore(lore);
             result.setItemMeta(meta);
 
-            // 3. Rớt Nước Mắt Đại Dương (Công thức từ bạn)
+            // 3. Rớt Nước Mắt Đại Dương
             int bases = baseIds.size();
             int buffs = buffIds.size();
             double tearChance = 8.0 - ((9 - bases) * (4.0 / 3.0)) + (buffs * 3.0);
@@ -284,19 +350,31 @@ public class BaitCrafterGUI implements Listener {
         for (int s : BASE_SLOTS) {
             ItemStack item = inv.getItem(s);
             if (item != null && item.getType() != Material.AIR) {
-                item.setAmount(item.getAmount() - 1); // Trừ 1
+                item.setAmount(item.getAmount() - 1);
             }
         }
         for (int s : combinedBuffSlots) {
             ItemStack item = inv.getItem(s);
             if (item != null && item.getType() != Material.AIR && item.getType() != Material.BARRIER) {
-                item.setAmount(item.getAmount() - 1); // Trừ 1
+                item.setAmount(item.getAmount() - 1);
             }
+        }
+
+        // [MỚI]: THU HỒI MỒI CŨ TRONG Ô ĐẦU RA (OUTPUT) CHỐNG BỊ GHI ĐÈ KHI BẤM LẦN NỮA
+        ItemStack existingBait = inv.getItem(OUTPUT_SLOT);
+        if (existingBait != null && existingBait.getType() != Material.AIR) {
+            java.util.HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(existingBait);
+            if (!leftover.isEmpty()) {
+                for (ItemStack left : leftover.values()) {
+                    player.getWorld().dropItemNaturally(player.getLocation(), left);
+                }
+            }
+            player.sendMessage("§e[Thùng Ủ] Mồi câu cũ ở ô đầu ra đã được tự động cất vào túi đồ.");
         }
 
         inv.setItem(OUTPUT_SLOT, result);
         player.playSound(player.getLocation(), Sound.BLOCK_BREWING_STAND_BREW, 1f, 1f);
-        player.updateInventory(); // FIX GHOST ITEM
+        player.updateInventory();
     }
 
     // Nhả lại nguyên liệu thừa khi đóng GUI

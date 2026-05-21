@@ -113,10 +113,12 @@ public class FishermanJob extends RPGJob {
         ItemMeta boMeta = border.getItemMeta(); boMeta.setDisplayName(" "); border.setItemMeta(boMeta);
 
         // Fill Hàng 1 và 6
-        for (int i = 0; i < 9; i++) inv.setItem(i, border);
-        for (int i = 45; i < 54; i++) inv.setItem(i, border);
-
-        inv.setItem(9, border); inv.setItem(17, border);
+        // Đổ kính viền (Sửa lỗi thiếu bọc viền ở các hàng 3, 4, 5)
+        for (int i = 0; i < 54; i++) {
+            if (i < 9 || i >= 45 || i % 9 == 0 || i % 9 == 8) {
+                inv.setItem(i, border);
+            }
+        }
 
         // Hàng 2: Túi cần câu & Mồi Buff Premium
         inv.setItem(10, createTearItem(im.buildItem("bag_fishing_rod_uncommon", 1), "FISH_ROD_UNC", data, 2, 20, jobLevel >= 10, 10));
@@ -145,7 +147,8 @@ public class FishermanJob extends RPGJob {
 
         for (int i = 0; i < 7; i++) {
             int cost = 10 + shopRand.nextInt(15);
-            inv.setItem(28 + i, createCoinItem(im.buildItem(allBases.get(i), 1), "FISH_ROT_BASE_" + i, data, 100, cost * 64, jobLevel >= 1, 1));
+            // [FIX]: Đổi cost * 64 thành cost để bán giá của 1 mồi nền lẻ đơn vị
+            inv.setItem(28 + i, createCoinItem(im.buildItem(allBases.get(i), 1), "FISH_ROT_BASE_" + i, data, 100, cost, jobLevel >= 1, 1));
         }
 
         // Hàng 5: Item Vanilla bằng tiền
@@ -223,8 +226,8 @@ public class FishermanJob extends RPGJob {
 
         ItemManager im = vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager();
         ItemStack cleanReward = clicked.clone();
-        if (buyId.startsWith("FISH_ROT_BASE_")) cleanReward.setAmount(64); // Nền mua 1 ra 64
-        else cleanReward.setAmount(1);
+        // [FIX BẤM 1 MUA 1]: Loại bỏ dòng ép số lượng 64 cũ, luôn mua lẻ 1 cái một click
+        cleanReward.setAmount(1);
 
         ItemMeta cleanMeta = cleanReward.getItemMeta();
         List<String> cleanLore = cleanMeta.getLore();
@@ -310,9 +313,9 @@ public class FishermanJob extends RPGJob {
 
     @Override
     public List<String> getDailyRewardLore(int milestone) {
-        if (milestone == 1) return Arrays.asList("§b+1 Nước Mắt Đại Dương");
-        if (milestone == 2) return Arrays.asList("§b+2 Nước Mắt Đại Dương");
-        return Arrays.asList("§b+3 Nước Mắt Đại Dương", "§d+1 Túi Cần Câu Tốt (Uncommon)");
+        if (milestone == 1) return java.util.Arrays.asList("§b+1 Nước Mắt Đại Dương"); // Tinh Chất Tự Nhiên (Bên Farmer)
+        if (milestone == 2) return java.util.Arrays.asList("§b+1 Nước Mắt Đại Dương");
+        return java.util.Arrays.asList("§b+2 Nước Mắt Đại Dương", "§d+1 Túi Cần Câu Tốt (Uncommon)"); // (Bên Farmer là Túi hạt)
     }
 
     @Override
@@ -323,11 +326,11 @@ public class FishermanJob extends RPGJob {
     @Override
     public void giveDailyMilestoneReward(org.bukkit.entity.Player player, int milestone) {
         ItemManager im = vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager();
-        if (milestone == 1) player.getInventory().addItem(im.buildItem("misc_ocean_tear", 1));
-        else if (milestone == 2) player.getInventory().addItem(im.buildItem("misc_ocean_tear", 2));
+        if (milestone == 1) player.getInventory().addItem(im.buildItem("misc_ocean_tear", 1)); // (Farmer: misc_nature_essence)
+        else if (milestone == 2) player.getInventory().addItem(im.buildItem("misc_ocean_tear", 1)); // Sửa từ 2 thành 1
         else if (milestone == 3) {
-            player.getInventory().addItem(im.buildItem("misc_ocean_tear", 3));
-            player.getInventory().addItem(im.buildItem("bag_fishing_rod_uncommon", 1));
+            player.getInventory().addItem(im.buildItem("misc_ocean_tear", 2)); // Sửa từ 3 thành 2
+            player.getInventory().addItem(im.buildItem("bag_fishing_rod_uncommon", 1)); // (Farmer: bag_seeds_common)
         }
     }
 

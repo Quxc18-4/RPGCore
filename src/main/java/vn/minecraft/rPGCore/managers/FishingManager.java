@@ -118,14 +118,6 @@ public class FishingManager {
     public void cancelMinigame(Player player) { if (isInMinigame(player)) { activeMinigames.get(player.getUniqueId()).stop(); activeMinigames.remove(player.getUniqueId()); } }
 
     public void startMinigame(Player player, String rodId, ItemStack baitItem, org.bukkit.Location hookLoc, org.bukkit.entity.FishHook hook) {
-        // [ĐÃ SỬA]: Trừ mồi 1 lần duy nhất và chính xác khi game bắt đầu
-        if (baitItem != null && player.getGameMode() != org.bukkit.GameMode.CREATIVE) {
-            ItemStack offHand = player.getInventory().getItemInOffHand();
-            if (offHand.isSimilar(baitItem)) {
-                offHand.setAmount(offHand.getAmount() - 1);
-            }
-        }
-
         MuseDashMinigame minigame = new MuseDashMinigame(player, rodId, baitItem, hookLoc, hook);
         activeMinigames.put(player.getUniqueId(), minigame);
         minigame.start();
@@ -272,7 +264,6 @@ public class FishingManager {
         }
 
         public void playerClick(boolean isLeftClick) {
-            // [FIX]: Chặn đứng mọi click lỡ tay trong 3 giây ghi nhớ
             if (state != GameState.STAGE_1_PLAY && state != GameState.STAGE_2_PLAY) return;
 
             long now = System.currentTimeMillis();
@@ -281,33 +272,35 @@ public class FishingManager {
 
             Note targetNote = currentStage.get(currentNoteIdx);
 
+            // [FIX TẬN GỐC]: Phím gốc được bảo toàn trọn vẹn từ chuỗi ghi nhớ ban đầu.
+            // Chỉ cần so sánh trực tiếp, logic phím của bạn sẽ chuẩn xác 100% với ký hiệu hiển thị.
             if (targetNote.isLeftClick == isLeftClick) {
                 if (isLeftClick) player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BELL, 1.2f, 1.5f);
                 else player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASEDRUM, 1.5f, 0.5f);
 
                 currentNoteIdx++;
 
-                // Cơ chế Phá đám: Đang spam thì đổi phím
+                // Cơ chế Phá đám: Đang chơi nửa chuỗi thì kích hoạt đột biến ẩn phím
                 if (isBigFish && !comboMutated && currentNoteIdx == (currentStage.size() / 2)) {
                     comboMutated = true;
                     for (int i = currentNoteIdx; i < currentStage.size(); i++) {
-                        Note mutatedNote = new Note(rand.nextBoolean());
+                        // [FIX]: Lấy trực tiếp nốt hiện tại đang có trong chuỗi thay vì khởi tạo phím mới ngẫu nhiên!
+                        Note mutatedNote = currentStage.get(i);
 
                         if (rand.nextDouble() < 0.35) {
                             mutatedNote.isHidden = true;
-                            mutatedNote.isMutatedHidden = true; // Đánh dấu là ẩn do đột biến
+                            mutatedNote.isMutatedHidden = true; // Đánh dấu ẩn do đột biến
 
-                            // [FIX] So sánh với phím ngay trước đó (i - 1) để quyết định hiển thị [⇌] hay [=]
+                            // Đối chiếu chuẩn xác giữa phím gốc của nốt này với phím gốc của nốt ngay trước nó (i - 1)
                             boolean prevClick = currentStage.get(i - 1).isLeftClick;
                             mutatedNote.isDifferentFromPrev = (mutatedNote.isLeftClick != prevClick);
                         }
-                        currentStage.set(i, mutatedNote);
                     }
                     player.sendTitle("", "§c§l⚠️ COMBO BIẾN ĐỔI! ⚠️", 0, 20, 5);
                     player.playSound(player.getLocation(), Sound.ENTITY_WITHER_BREAK_BLOCK, 0.7f, 1.2f);
                 }
 
-                renderActionBar(false); // Đang Play nên giấu phím
+                renderActionBar(false); // Cập nhật thanh hiển thị tiến trình
 
                 if (currentNoteIdx >= currentStage.size()) {
                     handleStageComplete();
@@ -419,15 +412,35 @@ public class FishingManager {
             double baseTreasure = 2.0 + treasureMod;
             String currentBiome = getCurrentBiomeType(hookLoc);
 
-            // [FIX]: GỌI HÀM RANDOM CÓ TRỌNG SỐ
+            // [FIX]: GỌI HÀM RANDOM CÓ TRỌNG SỐ VÀ TÍNH EXP
             if (gTreasure || roll < baseTreasure) {
                 caughtItemId = getWeightedTreasure();
                 player.sendMessage("§6[Kho Báu] Bạn vừa kéo lên một vật phẩm giá trị!");
                 vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.FISH_TREASURE);
+
+                // [TÍNH EXP RƯƠNG]: Cố định 50 * hệ số hiếm
+                vn.minecraft.rPGCore.jobs.core.PlayerJobData jobData = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(player);
+                if (jobData != null && "FISHERMAN".equalsIgnoreCase(jobData.getJobId())) {
+                    double treasureExp = 50;
+                    if (caughtItemId.contains("common")) treasureExp *= 1.25;
+                    else if (caughtItemId.contains("uncommon") || caughtItemId.contains("scrap")) treasureExp *= 1.5;
+                    else if (caughtItemId.contains("rare") || caughtItemId.contains("hammer")) treasureExp *= 2.0;
+                    else if (caughtItemId.contains("card") || caughtItemId.contains("charm")) treasureExp *= 2.5;
+                    else treasureExp *= 1.25;
+                    vn.minecraft.rPGCore.jobs.core.JobManager.addExp(player, treasureExp);
+                }
+
             } else if (!gMonster && roll < baseTrash) {
                 caughtItemId = getWeightedTrash();
                 player.sendMessage("§7[Mắc Cạn] Chỉ là một món đồ vụn vặt trôi dạt...");
                 vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.FISH_TRASH);
+
+                // [TÍNH EXP RÁC]: Mặc định 15 EXP
+                vn.minecraft.rPGCore.jobs.core.PlayerJobData jobData = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(player);
+                if (jobData != null && "FISHERMAN".equalsIgnoreCase(jobData.getJobId())) {
+                    vn.minecraft.rPGCore.jobs.core.JobManager.addExp(player, 15.0);
+                }
+
             } else {
                 String[] normalPool;
                 String[] bigPool;
@@ -458,7 +471,10 @@ public class FishingManager {
                 String[] poolToUse = isBigReward ? bigPool : normalPool;
                 caughtItemId = pickWeightedFish(poolToUse);
 
-                // [MỚI]: BÁO CÁO CÂU CÁ THÀNH CÔNG VÀ KÍCH CỠ CÁ
+                // [FIX QUEST]: Gọi hành động FISH_CATCH không chứa biến phụ để quest 15 lần đếm nhảy số chuẩn xác
+                vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.FISH_CATCH);
+
+                // Báo cáo quest nâng cao (Cá vùng miền / Thủy quái lớn)
                 boolean isLargeOrMutant = caughtItemId.contains("large") || caughtItemId.contains("mutant");
                 vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.FISH_CATCH, currentBiome, isLargeOrMutant);
 
@@ -474,6 +490,17 @@ public class FishingManager {
                     player.getInventory().addItem(itemManager.buildItem("misc_ocean_tear", tearAmt));
                     player.sendMessage("§b[Rơi Đồ] Bạn nhận được " + tearAmt + " Nước Mắt Đại Dương!");
                     vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.COLLECT_OCEAN_TEAR);
+                }
+
+                // [TÍNH EXP CÁ]: Cố định 30 * hệ số kích cỡ
+                vn.minecraft.rPGCore.jobs.core.PlayerJobData jobData = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(player);
+                if (jobData != null && "FISHERMAN".equalsIgnoreCase(jobData.getJobId())) {
+                    double fishExp = 30;
+                    if (caughtItemId.contains("small")) fishExp *= 1.25;
+                    else if (caughtItemId.contains("med")) fishExp *= 1.75;
+                    else if (caughtItemId.contains("large")) fishExp *= 2.5;
+                    else if (caughtItemId.contains("mutant")) fishExp *= 4.0;
+                    vn.minecraft.rPGCore.jobs.core.JobManager.addExp(player, fishExp);
                 }
 
                 player.sendMessage("§b[Câu Cá] Thành công!");
