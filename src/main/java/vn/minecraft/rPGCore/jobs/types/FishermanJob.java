@@ -152,11 +152,11 @@ public class FishermanJob extends RPGJob {
         }
 
         // Hàng 5: Item Vanilla bằng tiền
-        inv.setItem(37, createCoinItem(new ItemStack(Material.FISHING_ROD), "FISH_VANILLA_ROD", data, 999, 10 * 64, jobLevel >= 1, 1));
-        inv.setItem(38, createCoinItem(new ItemStack(Material.COMPOSTER), "FISH_COMPOSTER", data, 5, 50 * 64, jobLevel >= 1, 1));
-        inv.setItem(39, createCoinItem(new ItemStack(Material.OAK_CHEST_BOAT), "FISH_BOAT", data, 10, 25 * 64, jobLevel >= 1, 1));
-        inv.setItem(40, createCoinItem(new ItemStack(Material.SPYGLASS), "FISH_SPYGLASS", data, 1, 100 * 64, jobLevel >= 10, 10));
-        inv.setItem(41, createCoinItem(new ItemStack(Material.COMPASS), "FISH_COMPASS", data, 1, 30 * 64, jobLevel >= 1, 1));
+        inv.setItem(37, createCoinItem(new ItemStack(Material.FISHING_ROD), "tool_fishing_rod_1", data, 999, 15 * 64, jobLevel >= 1, 1));
+        inv.setItem(38, createCoinItem(new ItemStack(Material.COMPOSTER), "FISH_COMPOSTER", data, 5, 10 * 64, jobLevel >= 1, 1));
+        inv.setItem(39, createCoinItem(new ItemStack(Material.OAK_CHEST_BOAT), "FISH_BOAT", data, 10, 64, jobLevel >= 1, 1));
+        inv.setItem(40, createCoinItem(new ItemStack(Material.SPYGLASS), "FISH_SPYGLASS", data, 1, 10 * 64, jobLevel >= 10, 10));
+        inv.setItem(41, createCoinItem(new ItemStack(Material.COMPASS), "FISH_COMPASS", data, 1, 5 * 64, jobLevel >= 1, 1));
 
         ItemStack back = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta bMeta = back.getItemMeta(); bMeta.setDisplayName("§c§l[!] QUAY LẠI HỒ SƠ"); back.setItemMeta(bMeta);

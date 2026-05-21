@@ -310,28 +310,67 @@ public class BaitCrafterGUI implements Listener {
         }
 
         // =====================================
-        // [FIX CHÍNH]: BUFF NGHỀ NGƯ DÂN LÊN MỒI
+        // [BUFF NGHỀ NGƯ DÂN LÊN MỒI CÂU]
         // =====================================
         PlayerJobData jobData = JobManager.getPlayerData(player);
         if (jobData != null && "FISHERMAN".equals(jobData.getJobId())) {
             int level = jobData.getLevel("FISHERMAN");
             double ultMult = jobData.hasUnlockedSkill("FISHERMAN", "FISH_ULT_1") ? 1.2 : 1.0;
 
-            // 1. Tăng sản lượng
+            // 1. Tăng sản lượng thành phẩm
             int extraYield = level >= 50 ? 2 : (level >= 25 ? 1 : 0);
             result.setAmount(result.getAmount() + extraYield);
 
-            // 2. Buff % chỉ số bằng cách nhân Lore NBT
+            // 2. Buff % chỉ số và xử lý hiển thị Lore động chuẩn RPG: Gốc (+Thưởng Nghề)
             ItemMeta meta = result.getItemMeta();
             double multi = 1.0 + ((level * 0.6 * ultMult) / 100.0);
             meta.getPersistentDataContainer().set(new org.bukkit.NamespacedKey(vn.minecraft.rPGCore.RPGCore.getInstance(), "bait_fisher_multi"), org.bukkit.persistence.PersistentDataType.DOUBLE, multi);
 
             List<String> lore = meta.getLore();
-            lore.add(0, "§b✦ Pha chế bởi Ngư Dân Bậc Thầy (+" + String.format("%.0f", (multi-1)*100) + "%)");
-            meta.setLore(lore);
+            if (lore != null) {
+                double bonusMultiplier = multi - 1.0; // Khoảng chênh lệch tăng thêm (VD: 0.30 tức +30%)
+
+                for (int i = 0; i < lore.size(); i++) {
+                    String line = lore.get(i);
+                    // Chỉ can thiệp vào các dòng hiển thị chỉ số có ký tự định dạng ➥
+                    if (line.contains("➥")) {
+                        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("([+-]?\\d+\\.?\\d*)").matcher(line);
+                        if (matcher.find()) {
+                            String numStr = matcher.group(1);
+                            try {
+                                double baseVal = Double.parseDouble(numStr);
+                                double bonusVal = baseVal * bonusMultiplier;
+                                String signStr = bonusVal >= 0 ? "+" : ""; // Tự động định dạng dấu tránh hiện +-
+
+                                // Trường hợp thuộc tính dạng Phần Trăm (%)
+                                if (line.contains("%")) {
+                                    String bonusText = " §a(" + signStr + String.format("%.1f", bonusVal) + "%)";
+                                    int pctIdx = line.indexOf("%");
+                                    if (pctIdx != -1) {
+                                        // Chèn cụm bonus màu xanh ngay kế bên ký tự % gốc
+                                        String newLine = line.substring(0, pctIdx + 1) + bonusText + line.substring(pctIdx + 1);
+                                        lore.set(i, newLine);
+                                    }
+                                }
+                                // Trường hợp thuộc tính dạng Mili-giây (ms) của Dung Sai Nhịp Điệu
+                                else if (line.contains("ms")) {
+                                    String bonusText = " §a(" + signStr + String.format("%.0f", bonusVal) + "ms)";
+                                    int msIdx = line.indexOf("ms");
+                                    if (msIdx != -1) {
+                                        // Chèn cụm bonus màu xanh ngay kế bên ký tự ms gốc
+                                        String newLine = line.substring(0, msIdx + 2) + bonusText + line.substring(msIdx + 2);
+                                        lore.set(i, newLine);
+                                    }
+                                }
+                            } catch (NumberFormatException ignored) {}
+                        }
+                    }
+                }
+                meta.setLore(lore);
+            }
             result.setItemMeta(meta);
 
-            // 3. Rớt Nước Mắt Đại Dương
+            // 3. Rớt Nước Mắt Đại Dương theo tỉ lệ
             int bases = baseIds.size();
             int buffs = buffIds.size();
             double tearChance = 8.0 - ((9 - bases) * (4.0 / 3.0)) + (buffs * 3.0);
@@ -360,7 +399,7 @@ public class BaitCrafterGUI implements Listener {
             }
         }
 
-        // [MỚI]: THU HỒI MỒI CŨ TRONG Ô ĐẦU RA (OUTPUT) CHỐNG BỊ GHI ĐÈ KHI BẤM LẦN NỮA
+        // THU HỒI MỒI CŨ TRONG Ô ĐẦU RA (OUTPUT) CHỐNG BỊ GHI ĐÈ KHI BẤM LẦN NỮA
         ItemStack existingBait = inv.getItem(OUTPUT_SLOT);
         if (existingBait != null && existingBait.getType() != Material.AIR) {
             java.util.HashMap<Integer, ItemStack> leftover = player.getInventory().addItem(existingBait);
