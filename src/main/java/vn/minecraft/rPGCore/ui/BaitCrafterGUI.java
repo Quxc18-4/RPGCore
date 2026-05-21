@@ -154,32 +154,60 @@ public class BaitCrafterGUI implements Listener {
 
         int slot = event.getRawSlot();
         Player player = (Player) event.getWhoClicked();
+        ItemStack cursor = event.getCursor();
+        ItemStack current = event.getCurrentItem();
 
-        // 1. Chặn click vào nền xám
-        if (slot < 54 && !BASE_SLOTS.contains(slot) && !BUFF_SLOTS.contains(slot) && !ULT_SLOTS.contains(slot)
-                && slot != PROCESS_SLOT && slot != OUTPUT_SLOT && slot != HINT_SLOT) {
-            event.setCancelled(true);
-            return;
+        // 1. CLICK VÀO CÁC Ô BÊN TRONG CỦA THỦNG Ủ MỒI (NỬA TRÊN)
+        if (slot < event.getInventory().getSize()) {
+
+            // [CHỐT CHẶN Ô TỐI THƯỢNG]: Nếu bấm vào ô đặc biệt (ULT_SLOTS)
+            if (ULT_SLOTS.contains(slot)) {
+                vn.minecraft.rPGCore.jobs.core.PlayerJobData jobData = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(player);
+                if (jobData == null || !"FISHERMAN".equals(jobData.getJobId()) || !jobData.hasUnlockedSkill("FISHERMAN", "FISH_ULT_2")) {
+                    event.setCancelled(true);
+                    player.sendMessage("§c§l[!] §cBạn cần học kỹ năng CÔNG THỨC CỔ ĐẠI để dùng ô ủ mồi này!");
+                    return; // Khóa cứng ngay tại đây, không cho đặt hay hoán đổi item
+                }
+
+                if (cursor != null && cursor.getType() != Material.AIR) {
+                    String id = vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager().getItemId(cursor);
+                    if (id == null || !id.startsWith("bait_buff_")) {
+                        event.setCancelled(true);
+                        player.sendMessage("§cChỉ có thể đặt Phụ Gia vào ô này!");
+                        return;
+                    }
+                }
+            }
+
+            // Ô kết quả đầu ra (OUTPUT_SLOT)
+            else if (slot == OUTPUT_SLOT) {
+                if (current != null && current.getType() != Material.AIR) {
+                    processCrafting(event.getInventory(), player);
+                }
+            }
+
+            // [FIX LỖI DECOR_SLOTS]: Dùng phương pháp loại trừ!
+            // Nếu KHÔNG PHẢI là Base, Buff, Ult hay Output thì chắc chắn là ô viền/kính -> KHÓA LẠI
+            else if (!BASE_SLOTS.contains(slot) && !BUFF_SLOTS.contains(slot)) {
+                event.setCancelled(true);
+            }
         }
 
-        // 2. Chặn shift-click để tránh lỗi sync
-        if (event.isShiftClick()) {
-            event.setCancelled(true);
-            return;
-        }
+        // 2. CLICK VÀO KHU VỰC TÚI ĐỒ CỦA NGƯỜI CHƠI (NỬA DƯỚI)
+        else {
+            // [CHỐT CHẶN SHIFT-CLICK]
+            if (event.getClick().isShiftClick() && current != null && current.getType() != Material.AIR) {
+                String id = vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager().getItemId(current);
 
-        // 3. Xử lý nút Nấu (PROCESS_SLOT)
-        if (slot == PROCESS_SLOT) {
-            event.setCancelled(true);
-            processCrafting(event.getInventory(), player);
-            // Ép Client làm mới lại giao diện ngay lập tức
-            Bukkit.getScheduler().runTaskLater(vn.minecraft.rPGCore.RPGCore.getInstance(), player::updateInventory, 1L);
-            return;
-        }
-
-        // 4. Chặn Output Slot không cho đặt đồ vào
-        if (slot == OUTPUT_SLOT && event.getCursor() != null && event.getCursor().getType() != Material.AIR) {
-            event.setCancelled(true);
+                if (id != null && id.startsWith("bait_buff_")) {
+                    vn.minecraft.rPGCore.jobs.core.PlayerJobData jobData = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(player);
+                    if (jobData == null || !jobData.hasUnlockedSkill("FISHERMAN", "FISH_ULT_2")) {
+                        event.setCancelled(true);
+                        player.sendMessage("§eHãy tự kéo thả phụ gia vào các ô Phụ gia cơ bản (Không hỗ trợ Shift-click nếu chưa mở khóa ô đặc biệt)!");
+                        return;
+                    }
+                }
+            }
         }
     }
 

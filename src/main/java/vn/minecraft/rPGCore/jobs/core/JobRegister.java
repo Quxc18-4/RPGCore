@@ -10,6 +10,7 @@ public class JobRegister {
         JobManager.registerJob(new BlacksmithJob());
         JobManager.registerJob(new ChefJob()); // ĐÃ KÍCH HOẠT
         JobManager.registerJob(new FarmerJob());
+        JobManager.registerJob(new FishermanJob());
         // JobManager.registerJob(new MerchantJob());
     }
 }
