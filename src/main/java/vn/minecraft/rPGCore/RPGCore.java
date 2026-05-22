@@ -12,6 +12,11 @@ import vn.minecraft.rPGCore.jobs.events.FishingListener;
 import vn.minecraft.rPGCore.jobs.gui.JobSelectionGUI;
 import vn.minecraft.rPGCore.listeners.*;
 import vn.minecraft.rPGCore.managers.*;
+import vn.minecraft.rPGCore.mounts.listeners.MountListener;
+import vn.minecraft.rPGCore.mounts.managers.MountDataManager;
+import vn.minecraft.rPGCore.mounts.managers.MountManager;
+import vn.minecraft.rPGCore.mounts.ui.MountStableGUI;
+import vn.minecraft.rPGCore.mounts.ui.MountStorageGUI;
 import vn.minecraft.rPGCore.player.PlayerManager;
 import vn.minecraft.rPGCore.skills.SkillManager;
 import vn.minecraft.rPGCore.ui.*;
@@ -29,6 +34,10 @@ public final class RPGCore extends JavaPlugin {
     private ItemManager itemManager; // [THÊM DÒNG NÀY]
     private FishingManager fishingManager;
     private BaitManager baitManager;
+
+    // [HỆ THỐNG THÚ CƯỠI]
+    private MountManager mountManager;
+    private MountDataManager mountDataManager;
 
     @Override
     public void onEnable() {
@@ -71,10 +80,16 @@ public final class RPGCore extends JavaPlugin {
         // [MỚI]: Khởi tạo BaitManager
         this.baitManager = new BaitManager(this, this.itemManager);
 
+        this.mountManager = new MountManager(this);
+        this.mountDataManager = new MountDataManager(this, this.mountManager);
+
         JobRegister.registerAllJobs();
         JobLeaderboard.updateLeaderboards();
 
         RepairGUI repairGUI = new RepairGUI();
+
+        MountStableGUI mountStableGUI = new MountStableGUI();
+        MountStorageGUI mountStorageGUI = new MountStorageGUI();
 
         getServer().getPluginManager().registerEvents(new PlayerListener(playerManager, bossBarManager), this);
         getServer().getPluginManager().registerEvents(new ClassGUIListener(playerManager, bossBarManager, classManager), this);
@@ -108,6 +123,12 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(cropManager, this);
         getServer().getPluginManager().registerEvents(new FishingListener(this.fishingManager, this.itemManager), this);
         getServer().getPluginManager().registerEvents(new BaitCrafterGUI(this.itemManager, this.baitManager), this);
+
+        // Đăng ký Listener
+        getServer().getPluginManager().registerEvents(this.mountDataManager, this); // Bắt sự kiện Join/Quit để load JSON
+        getServer().getPluginManager().registerEvents(mountStableGUI, this);
+        getServer().getPluginManager().registerEvents(mountStorageGUI, this);
+        getServer().getPluginManager().registerEvents(new MountListener(this.mountManager, mountStorageGUI), this);
 
         new RegenTask(playerManager, bossBarManager).runTaskTimer(this, 0L, 20L);
 
@@ -149,6 +170,13 @@ public final class RPGCore extends JavaPlugin {
             this.getCommand("dummy").setExecutor(new DummyCommand());
         }
 
+        // Đăng ký lệnh /h
+        if (this.getCommand("h") != null) {
+            this.getCommand("h").setExecutor(new vn.minecraft.rPGCore.mounts.commands.MountCommand(this.mountManager, mountStableGUI));
+        } else {
+            getLogger().warning("Khong the tim thay lenh /h trong plugin.yml!");
+        }
+
         getLogger().info("RPGCore đã được bật thành công!");
 
         for (org.bukkit.entity.Player player : org.bukkit.Bukkit.getOnlinePlayers()) {
@@ -176,6 +204,17 @@ public final class RPGCore extends JavaPlugin {
         }
         // [MỚI]: Lưu toàn bộ dữ liệu Nghề Phụ
         vn.minecraft.rPGCore.jobs.core.JobManager.saveAll();
+
+        // =========================================================
+        // [HỆ THỐNG THÚ CƯỠI]: LƯU JSON VÀ THU HỒI NGỰA KHI TẮT SERVER
+        // =========================================================
+        if (this.mountDataManager != null) {
+            this.mountDataManager.saveAll();
+        }
+        if (this.mountManager != null) {
+            this.mountManager.despawnAllActiveMounts();
+        }
+        // =========================================================
 
         getLogger().info("RPGCore da tat va luu du lieu an toan.");
     }
@@ -214,5 +253,14 @@ public final class RPGCore extends JavaPlugin {
     // [MỚI]: Thêm Getter cho BaitManager
     public BaitManager getBaitManager() {
         return baitManager;
+    }
+
+    // Thêm xuống cuối cùng của file RPGCore.java
+    public vn.minecraft.rPGCore.mounts.managers.MountManager getMountManager() {
+        return this.mountManager;
+    }
+
+    public vn.minecraft.rPGCore.mounts.managers.MountDataManager getMountDataManager() {
+        return this.mountDataManager;
     }
 }

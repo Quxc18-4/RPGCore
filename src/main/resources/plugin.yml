@@ -51,3 +51,6 @@ commands:
   job:
     description: Mo menu lua chon Nghe Nghiep
     usage: /job
+  h:
+    description: "Quan ly he thong thu cuoi cua ban"
+    usage: "/h [1/2/3/gui/admin]"

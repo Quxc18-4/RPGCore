@@ -462,6 +462,13 @@ public class ItemManager {
         // 14.3. THÀNH PHẨM (CUSTOM BAIT)
         // ==========================================
         register(new ItemData("bait_custom", Rarity.EPIC, Category.MISC, 0.0, Material.MAGMA_CREAM, "§d§lMồi Câu Đặc Chế", "Cầm ở tay phụ để sử dụng.", "Hỗn hợp pha trộn hoàn hảo."));
+
+        // ==========================================
+        // 15. HỆ THỐNG NUÔI THÚ CƯỠI & THƯƠNG NHÂN
+        // ==========================================
+        // Thêm dòng này vào phần NHÓM KHÁC trong ItemManager.java
+        register(new ItemData("misc_merchant_token", Rarity.EPIC, Category.MISC, 0.0, Material.PAPER, "Chứng Nhận Thương Nhân", null,"Vật phẩm đặc quyền của Thương Nhân.", "Dùng để mua các vật phẩm đặc biệt."));
+        register(new ItemData("misc_mount_upgrade", Rarity.RARE, Category.MISC, 0.0, Material.PAPER, "Giấy Nâng Cấp Thú Cươi", null,"Dùng để nâng cấp các chỉ số", "cho thú cưỡi tại Chuồng Ngựa."));
     }
 
     private void register(ItemData data) {
