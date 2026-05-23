@@ -35,6 +35,7 @@ public class ConsumableListener implements Listener {
     private final BoredomManager boredomManager;
     private final CookingManager cookingManager;
     private final Map<UUID, Long> consumeCooldowns = new HashMap<>();
+    private final Map<UUID, String> activeBags = new HashMap<>();
 
     public ConsumableListener(ItemManager itemManager, BoredomManager boredomManager, CookingManager cookingManager) {
         this.itemManager = itemManager;
@@ -113,7 +114,7 @@ public class ConsumableListener implements Listener {
             }
 
             // ==========================================
-            // LOGIC MỞ TÚI THƯƠNG NHÂN (DÙNG BASE64)
+            // LOGIC MỞ TÚI THƯƠNG NHÂN (FILE YML + UUID)
             // ==========================================
             else if (itemId.equals("bag_cloth") || itemId.equals("bag_leather") || itemId.equals("bag_dragon_scale")) {
                 int size = 18;
@@ -121,18 +122,27 @@ public class ConsumableListener implements Listener {
                 if (itemId.equals("bag_leather")) { size = 36; title = "§6Túi Da Cao Cấp"; }
                 else if (itemId.equals("bag_dragon_scale")) { size = 54; title = "§5Túi Vảy Rồng"; }
 
-                Inventory bagInv = Bukkit.createInventory(null, size, title);
                 ItemMeta meta = item.getItemMeta();
-                org.bukkit.NamespacedKey contentKey = new org.bukkit.NamespacedKey(RPGCore.getInstance(), "merchant_bag_content");
-                String base64Data = meta.getPersistentDataContainer().getOrDefault(contentKey, PersistentDataType.STRING, "");
+                org.bukkit.NamespacedKey uidKey = new org.bukkit.NamespacedKey(RPGCore.getInstance(), "bag_uuid");
+                String bagUuid = meta.getPersistentDataContainer().getOrDefault(uidKey, PersistentDataType.STRING, "");
 
-                if (!base64Data.isEmpty()) {
-                    base64ToInventory(base64Data, bagInv);
+                // NẾU TÚI CHƯA CÓ ID (Túi vừa mới tạo/mua) -> Random 1 cái ID và gắn vào túi
+                if (bagUuid.isEmpty()) {
+                    bagUuid = UUID.randomUUID().toString();
+                    meta.getPersistentDataContainer().set(uidKey, PersistentDataType.STRING, bagUuid);
+                    item.setItemMeta(meta);
                 }
+
+                // Ghi nhớ lại Player này đang mở túi có ID này
+                activeBags.put(player.getUniqueId(), bagUuid);
+
+                // Mở GUI và Load đồ từ File lên
+                Inventory bagInv = Bukkit.createInventory(null, size, title);
+                RPGCore.getInstance().getBackpackManager().loadBackpack(bagUuid, bagInv);
 
                 player.openInventory(bagInv);
                 player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_LEATHER, 1f, 0.8f);
-                return; // Trả về ngay để không bị xóa item
+                return;
             }
 
             // ==========================================
@@ -313,24 +323,47 @@ public class ConsumableListener implements Listener {
                 }
             }
 
+            // ==========================================
+            // LOGIC MỞ TÚI TRỮ HẠT (FILE YML + UUID + MIGRATION)
+            // ==========================================
             else if (itemId.equals("misc_seed_pouch")) {
                 Inventory pouchInv = Bukkit.createInventory(null, 27, "§2Túi Trữ Hạt");
                 ItemMeta meta = item.getItemMeta();
-                org.bukkit.NamespacedKey contentKey = new org.bukkit.NamespacedKey(RPGCore.getInstance(), "pouch_content");
-                String rawData = meta.getPersistentDataContainer().getOrDefault(contentKey, PersistentDataType.STRING, "");
+                org.bukkit.NamespacedKey uidKey = new org.bukkit.NamespacedKey(RPGCore.getInstance(), "bag_uuid");
+                String bagUuid = meta.getPersistentDataContainer().getOrDefault(uidKey, PersistentDataType.STRING, "");
 
-                if (!rawData.isEmpty()) {
-                    String[] parts = rawData.split("\\|");
-                    for (String part : parts) {
-                        if (part.isEmpty()) continue;
-                        String[] tokens = part.split(":");
-                        int slotIdx = Integer.parseInt(tokens[0]);
-                        String id = tokens[1];
-                        int amount = Integer.parseInt(tokens[2]);
-                        ItemStack seedItem = itemManager.buildItem(id, amount);
-                        if (seedItem != null) pouchInv.setItem(slotIdx, seedItem);
+                // NẾU TÚI CHƯA CÓ ID -> Cấp ID mới và kiểm tra xem có dữ liệu cũ cần chuyển đổi không
+                if (bagUuid.isEmpty()) {
+                    bagUuid = UUID.randomUUID().toString();
+                    meta.getPersistentDataContainer().set(uidKey, PersistentDataType.STRING, bagUuid);
+
+                    // --- MIGRATION: Cứu dữ liệu hạt giống cũ ---
+                    org.bukkit.NamespacedKey oldContentKey = new org.bukkit.NamespacedKey(RPGCore.getInstance(), "pouch_content");
+                    String oldRawData = meta.getPersistentDataContainer().getOrDefault(oldContentKey, PersistentDataType.STRING, "");
+
+                    if (!oldRawData.isEmpty()) {
+                        String[] parts = oldRawData.split("\\|");
+                        for (String part : parts) {
+                            if (part.isEmpty()) continue;
+                            String[] tokens = part.split(":");
+                            int slotIdx = Integer.parseInt(tokens[0]);
+                            String id = tokens[1];
+                            int amount = Integer.parseInt(tokens[2]);
+                            ItemStack seedItem = itemManager.buildItem(id, amount);
+                            if (seedItem != null) pouchInv.setItem(slotIdx, seedItem);
+                        }
+                        // Xóa data NBT cũ đi cho nhẹ túi
+                        meta.getPersistentDataContainer().remove(oldContentKey);
                     }
+                    item.setItemMeta(meta);
+                } else {
+                    // Nếu túi đã có ID chuẩn thì load từ File YML
+                    RPGCore.getInstance().getBackpackManager().loadBackpack(bagUuid, pouchInv);
                 }
+
+                // Ghi nhớ Player đang mở túi này
+                activeBags.put(player.getUniqueId(), bagUuid);
+
                 player.openInventory(pouchInv);
                 player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_LEATHER, 1f, 0.8f);
                 return;
@@ -433,7 +466,7 @@ public class ConsumableListener implements Listener {
     }
 
     // ==========================================
-    // LƯU DỮ LIỆU KHI ĐÓNG TÚI
+    // LƯU DỮ LIỆU KHI ĐÓNG TÚI (Dùng chung cho TẤT CẢ các túi)
     // ==========================================
     @EventHandler
     public void onPouchInventoryClose(InventoryCloseEvent event) {
@@ -441,84 +474,18 @@ public class ConsumableListener implements Listener {
         boolean isSeedPouch = title.equals("§2Túi Trữ Hạt");
         boolean isMerchantBag = title.equals("§eTúi Vải Thô") || title.equals("§6Túi Da Cao Cấp") || title.equals("§5Túi Vảy Rồng");
 
+        // Nếu không phải là túi của RPGCore thì bỏ qua
         if (!isSeedPouch && !isMerchantBag) return;
 
         Player player = (Player) event.getPlayer();
-        ItemStack mainHand = player.getInventory().getItemInMainHand();
-        String mId = itemManager.getItemId(mainHand);
 
-        ItemStack pouchItem = null;
+        // Lấy UUID của túi mà người chơi này đang mở ra
+        String bagUuid = activeBags.remove(player.getUniqueId());
 
-        // Xác định túi đang cầm trên tay
-        if (isSeedPouch && "misc_seed_pouch".equals(mId)) pouchItem = mainHand;
-        else if (isMerchantBag && ("bag_cloth".equals(mId) || "bag_leather".equals(mId) || "bag_dragon_scale".equals(mId))) pouchItem = mainHand;
-
-        if (pouchItem == null) {
-            ItemStack offHand = player.getInventory().getItemInOffHand();
-            String oId = itemManager.getItemId(offHand);
-            if (isSeedPouch && "misc_seed_pouch".equals(oId)) pouchItem = offHand;
-            else if (isMerchantBag && ("bag_cloth".equals(oId) || "bag_leather".equals(oId) || "bag_dragon_scale".equals(oId))) pouchItem = offHand;
-        }
-
-        if (pouchItem == null) return; // Nếu bị drop hoặc ném đi mất
-
-        Inventory inv = event.getInventory();
-        ItemMeta meta = pouchItem.getItemMeta();
-
-        if (isSeedPouch) {
-            // Lưu kiểu Chuỗi đơn giản cho Hạt giống
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < 27; i++) {
-                ItemStack item = inv.getItem(i);
-                if (item == null || item.getType() == Material.AIR) continue;
-                String id = itemManager.getItemId(item);
-                if (id != null) {
-                    sb.append(i).append(":").append(id).append(":").append(item.getAmount()).append("|");
-                }
-            }
-            org.bukkit.NamespacedKey contentKey = new org.bukkit.NamespacedKey(RPGCore.getInstance(), "pouch_content");
-            meta.getPersistentDataContainer().set(contentKey, PersistentDataType.STRING, sb.toString());
-        }
-        else if (isMerchantBag) {
-            // Lưu kiểu Base64 giữ nguyên NBT Data cho Túi Thương Nhân
-            org.bukkit.NamespacedKey contentKey = new org.bukkit.NamespacedKey(RPGCore.getInstance(), "merchant_bag_content");
-            meta.getPersistentDataContainer().set(contentKey, PersistentDataType.STRING, inventoryToBase64(inv));
-        }
-
-        pouchItem.setItemMeta(meta);
-        player.playSound(player.getLocation(), Sound.BLOCK_CHEST_CLOSE, 1f, 1f);
-    }
-
-    // ==========================================
-    // UTILS: MÃ HÓA/GIẢI MÁ BASE64 (Dành cho Merchant Bag)
-    // ==========================================
-    private String inventoryToBase64(Inventory inventory) {
-        try {
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            BukkitObjectOutputStream dataOutput = new BukkitObjectOutputStream(outputStream);
-            dataOutput.writeInt(inventory.getSize());
-            for (int i = 0; i < inventory.getSize(); i++) {
-                dataOutput.writeObject(inventory.getItem(i));
-            }
-            dataOutput.close();
-            return Base64.getEncoder().encodeToString(outputStream.toByteArray());
-        } catch (Exception e) {
-            return "";
-        }
-    }
-
-    private void base64ToInventory(String data, Inventory inv) {
-        if (data == null || data.isEmpty()) return;
-        try {
-            ByteArrayInputStream inputStream = new ByteArrayInputStream(Base64.getDecoder().decode(data));
-            BukkitObjectInputStream dataInput = new BukkitObjectInputStream(inputStream);
-            int size = dataInput.readInt();
-            for (int i = 0; i < size; i++) {
-                inv.setItem(i, (ItemStack) dataInput.readObject());
-            }
-            dataInput.close();
-        } catch (Exception e) {
-            e.printStackTrace();
+        // Nếu hợp lệ, lưu thẳng đồ trong GUI xuống file YML
+        if (bagUuid != null) {
+            RPGCore.getInstance().getBackpackManager().saveBackpack(bagUuid, event.getInventory());
+            player.playSound(player.getLocation(), Sound.BLOCK_CHEST_CLOSE, 1f, 1f);
         }
     }
 }

@@ -267,6 +267,13 @@ public class MountStableGUI implements Listener {
                         player.closeInventory();
                     }
                 }
+                // THÊM ĐOẠN NÀY VÀO ĐÂY:
+                else if (action.equals("OVERWRITE")) {
+                    // Lưu lại ô đang thao tác, chuyển sang shop để chọn thú mới
+                    // Thú cũ sẽ được xóa tại thời điểm mua thú mới thành công (đảm bảo an toàn)
+                    player.sendMessage("§e[Hệ thống] Bạn đã chọn ghi đè. Hãy chọn thú cưỡi mới!");
+                    openShopGUI(player, targetSlot);
+                }
             }
         }
 
@@ -380,7 +387,6 @@ public class MountStableGUI implements Listener {
                 }
 
                 plugin.getItemManager().takeItem(player, tokenTemplate, tokenCost);
-                plugin.getCurrencyManager().takePhysicalCurrency(player, copperCost);
 
                 vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.MERCHANT_SPEND, copperCost);
                 vn.minecraft.rPGCore.jobs.core.JobManager.processMerchantExp(player, copperCost);

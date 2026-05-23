@@ -11,6 +11,8 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import java.io.File;
 import java.util.*;
 
+import static java.lang.Math.round;
+
 public class JobManager {
     private static final Map<String, RPGJob> registeredJobs = new HashMap<>();
     private static final Map<UUID, PlayerJobData> playerData = new HashMap<>();
@@ -64,7 +66,7 @@ public class JobManager {
         // 1. Cộng EXP vào Data
         double currentExp = data.getExp() + amount;
         data.setExp(job.getId(), currentExp);
-        player.sendMessage("§a[Nghề Phụ] §fBạn vừa nhận được §e" + amount + " EXP §fnghề §b" + job.getName() + "§f!");
+        player.sendMessage("§a[Nghề Phụ] §fBạn vừa nhận được §e" + String.format("%.1f", amount) + " EXP §fnghề §b" + job.getName() + "§f!");
 
         // 2. Logic kiểm tra Level Up hoặc Đổi JP
         boolean leveledUp = false;
@@ -256,6 +258,6 @@ public class JobManager {
         addExp(player, totalExp);
 
         // Ghi log báo cho người chơi
-        player.sendMessage("§e§l[Thương Nhân] §fNhận được §d" + String.format("%.1f", totalExp) + " EXP §fnghề từ giao dịch này.");
+        //        player.sendMessage("§e§l[Thương Nhân] §fNhận được §d" + String.format("%.1f", totalExp) + " EXP §fnghề từ giao dịch này.");
     }
 }

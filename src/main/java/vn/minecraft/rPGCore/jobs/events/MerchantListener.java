@@ -71,7 +71,8 @@ public class MerchantListener implements Listener {
         long now = System.currentTimeMillis();
 
         for (ItemStack item : player.getInventory().getContents()) {
-            if (item != null && item.hasItemMeta() && plugin.getItemManager().getItemId(item).equals("misc_gold_scale")) {
+            // [ĐÃ SỬA DÒNG NÀY]: Đảo "misc_gold_scale" lên trước .equals() để chống Null
+            if (item != null && item.hasItemMeta() && "misc_gold_scale".equals(plugin.getItemManager().getItemId(item))) {
                 long expire = item.getItemMeta().getPersistentDataContainer().getOrDefault(scaleKey, PersistentDataType.LONG, 0L);
                 if (expire > now) {
                     hasScaleBuff = true;

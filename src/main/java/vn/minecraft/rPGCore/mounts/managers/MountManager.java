@@ -129,9 +129,9 @@ public class MountManager {
 
             case CAMEL:
             case CAMEL_HUSK:
-                speedBase = 0.18;
-                speedMulti = 0.008;
-                jumpBase = 0.35;
+                speedBase = 0.12;
+                speedMulti = 0.004;
+                jumpBase = 0.15;
                 jumpMulti = 0.003;
                 break;
 

@@ -36,6 +36,7 @@ public final class RPGCore extends JavaPlugin {
     private FishingManager fishingManager;
     private BaitManager baitManager;
     private CurrencyManager currencyManager;
+    private BackpackManager backpackManager;
 
     // [HỆ THỐNG THÚ CƯỠI]
     private MountManager mountManager;
@@ -85,6 +86,8 @@ public final class RPGCore extends JavaPlugin {
         this.mountManager = new MountManager(this);
         this.mountDataManager = new MountDataManager(this, this.mountManager);
 
+        this.backpackManager = new BackpackManager(this);
+
         JobRegister.registerAllJobs();
         JobLeaderboard.updateLeaderboards();
 
@@ -125,6 +128,7 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(cropManager, this);
         getServer().getPluginManager().registerEvents(new FishingListener(this.fishingManager, this.itemManager), this);
         getServer().getPluginManager().registerEvents(new BaitCrafterGUI(this.itemManager, this.baitManager), this);
+        getServer().getPluginManager().registerEvents(new MerchantListener(this), this);
 
         // Đăng ký Listener
         getServer().getPluginManager().registerEvents(this.mountDataManager, this); // Bắt sự kiện Join/Quit để load JSON
@@ -267,5 +271,9 @@ public final class RPGCore extends JavaPlugin {
     }
     public CurrencyManager getCurrencyManager() {
         return this.currencyManager;
+    }
+    // Thêm hàm Getter xuống dưới cùng:
+    public BackpackManager getBackpackManager() {
+        return backpackManager;
     }
 }
