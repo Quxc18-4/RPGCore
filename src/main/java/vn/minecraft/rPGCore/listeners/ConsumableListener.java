@@ -16,12 +16,17 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.entity.Player;
+import org.bukkit.util.io.BukkitObjectInputStream;
+import org.bukkit.util.io.BukkitObjectOutputStream;
 import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.managers.BoredomManager;
 import vn.minecraft.rPGCore.managers.CookingManager;
 import vn.minecraft.rPGCore.managers.ItemManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class ConsumableListener implements Listener {
@@ -60,7 +65,8 @@ public class ConsumableListener implements Listener {
                 "magic_golden_melon", "magic_crystal_kelp", "magic_mana_potato", "magic_chaos_glow_berry",
                 "bag_seeds_common", "bag_seeds_magic", "misc_seed_pouch", "bag_fishing_rod_common",
                 "bag_fishing_rod_uncommon", "bag_fishing_rod_rare",
-                "bag_fishing_rod_epic", "bag_fishing_rod_mythic", "bag_fishing_rod_legendary");
+                "bag_fishing_rod_epic", "bag_fishing_rod_mythic", "bag_fishing_rod_legendary",
+                "bag_cloth", "bag_leather", "bag_dragon_scale", "misc_gold_scale", "misc_stable_expansion");
 
         if (instantFoods.contains(itemId)) {
             event.setCancelled(true);
@@ -68,7 +74,91 @@ public class ConsumableListener implements Listener {
             long now = System.currentTimeMillis();
             if (consumeCooldowns.getOrDefault(player.getUniqueId(), 0L) > now) return;
 
-            if (itemId.equals("fat_milk")) {
+            // ==========================================
+            // LOGIC KÍCH HOẠT: CÂN TIỂU LY MẠ VÀNG
+            // ==========================================
+            if (itemId.equals("misc_gold_scale")) {
+                ItemMeta meta = item.getItemMeta();
+                org.bukkit.NamespacedKey expireKey = new org.bukkit.NamespacedKey(RPGCore.getInstance(), "scale_expire_time");
+                long expireTime = meta.getPersistentDataContainer().getOrDefault(expireKey, PersistentDataType.LONG, 0L);
+
+                if (expireTime > now) {
+                    player.sendMessage("§c§l[!] §cChiếc cân này đang trong thời gian hiệu lực!");
+                    return; // Không làm gì cả
+                }
+
+                if (item.getAmount() > 1) {
+                    player.sendMessage("§c§l[!] §cVui lòng tách Cân Tiểu Ly ra từng cái một để kích hoạt!");
+                    return;
+                }
+
+                // Cài đặt thời gian (Hiện tại + 24 Giờ)
+                long newExpire = now + (24 * 60 * 60 * 1000L);
+                meta.getPersistentDataContainer().set(expireKey, PersistentDataType.LONG, newExpire);
+
+                SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+                List<String> lore = meta.getLore();
+                if (lore != null) {
+                    lore.removeIf(line -> line.contains("Chưa kích hoạt")); // Xóa dòng cũ
+                    lore.add("");
+                    lore.add("§a§l✔ ĐANG HOẠT ĐỘNG");
+                    lore.add("§fHết hạn lúc: §e" + sdf.format(new Date(newExpire)));
+                    meta.setLore(lore);
+                }
+                item.setItemMeta(meta);
+
+                player.playSound(player.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, 1f, 1f);
+                player.sendMessage("§6§l[!] §aĐã kích hoạt Cân Tiểu Ly Mạ Vàng trong 24 giờ!");
+                return; // Trả về ngay để không bị xóa item
+            }
+
+            // ==========================================
+            // LOGIC MỞ TÚI THƯƠNG NHÂN (DÙNG BASE64)
+            // ==========================================
+            else if (itemId.equals("bag_cloth") || itemId.equals("bag_leather") || itemId.equals("bag_dragon_scale")) {
+                int size = 18;
+                String title = "§eTúi Vải Thô";
+                if (itemId.equals("bag_leather")) { size = 36; title = "§6Túi Da Cao Cấp"; }
+                else if (itemId.equals("bag_dragon_scale")) { size = 54; title = "§5Túi Vảy Rồng"; }
+
+                Inventory bagInv = Bukkit.createInventory(null, size, title);
+                ItemMeta meta = item.getItemMeta();
+                org.bukkit.NamespacedKey contentKey = new org.bukkit.NamespacedKey(RPGCore.getInstance(), "merchant_bag_content");
+                String base64Data = meta.getPersistentDataContainer().getOrDefault(contentKey, PersistentDataType.STRING, "");
+
+                if (!base64Data.isEmpty()) {
+                    base64ToInventory(base64Data, bagInv);
+                }
+
+                player.openInventory(bagInv);
+                player.playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_LEATHER, 1f, 0.8f);
+                return; // Trả về ngay để không bị xóa item
+            }
+
+            // ==========================================
+            // LOGIC KÍCH HOẠT: GIẤY PHÉP MỞ RỘNG CHUỒNG
+            // ==========================================
+            else if (itemId.equals("misc_stable_expansion")) {
+                vn.minecraft.rPGCore.mounts.data.PlayerMountProfile profile = RPGCore.getInstance().getMountManager().getLoadedProfilesMap().get(player.getUniqueId());
+                if (profile != null) {
+                    int currentSlots = profile.getUnlockedSlots();
+                    if (currentSlots >= 9) { // Giới hạn tối đa (Ví dụ 9 ô chuồng)
+                        player.sendMessage("§c§l[!] §cBạn đã mở khóa tối đa số lượng Chuồng Thú Cưỡi!");
+                        return; // Hủy, không tiêu hao item
+                    }
+
+                    profile.setUnlockedSlots(currentSlots + 1);
+                    RPGCore.getInstance().getMountDataManager().saveProfile(player.getUniqueId());
+
+                    player.sendMessage("§a§l[Chuồng Ngựa] §fBạn đã mở rộng thành công, hiện có thể chứa tối đa §e" + (currentSlots + 1) + " §fThú cưỡi!");
+                    player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
+                    consumed = true;
+                } else {
+                    player.sendMessage("§cKhông tìm thấy dữ liệu Chuồng ngựa của bạn!");
+                }
+            }
+
+            else if (itemId.equals("fat_milk")) {
                 PotionEffectType[] debuffs = { PotionEffectType.SLOWNESS, PotionEffectType.MINING_FATIGUE, PotionEffectType.NAUSEA, PotionEffectType.BLINDNESS, PotionEffectType.HUNGER, PotionEffectType.WEAKNESS, PotionEffectType.POISON, PotionEffectType.WITHER, PotionEffectType.DARKNESS, PotionEffectType.UNLUCK, PotionEffectType.BAD_OMEN };
                 List<PotionEffectType> activeDebuffs = new ArrayList<>();
                 for (PotionEffectType type : debuffs) if (player.hasPotionEffect(type)) activeDebuffs.add(type);
@@ -300,70 +390,135 @@ public class ConsumableListener implements Listener {
         }
     }
 
+    // ==========================================
+    // CHẶN BỎ TÚI VÀO TRONG TÚI
+    // ==========================================
     @EventHandler
     public void onPouchInventoryClick(InventoryClickEvent event) {
-        if (!event.getView().getTitle().equals("§2Túi Trữ Hạt")) return;
+        String title = event.getView().getTitle();
+        boolean isSeedPouch = title.equals("§2Túi Trữ Hạt");
+        boolean isMerchantBag = title.equals("§eTúi Vải Thô") || title.equals("§6Túi Da Cao Cấp") || title.equals("§5Túi Vảy Rồng");
+
+        if (!isSeedPouch && !isMerchantBag) return;
 
         ItemStack current = event.getCurrentItem();
         ItemStack cursor = event.getCursor();
 
-        if (current != null && "misc_seed_pouch".equals(itemManager.getItemId(current))) { event.setCancelled(true); return; }
-        if (cursor != null && "misc_seed_pouch".equals(itemManager.getItemId(cursor))) { event.setCancelled(true); return; }
+        // Danh sách các túi bị cấm nhét vào nhau (Chống Inception bug)
+        List<String> blockedBags = Arrays.asList("misc_seed_pouch", "bag_cloth", "bag_leather", "bag_dragon_scale");
 
-        if (event.getRawSlot() < 27) {
-            if (cursor != null && cursor.getType() != Material.AIR) {
-                String cId = itemManager.getItemId(cursor);
-                if (cId == null || !cId.startsWith("seed_")) {
-                    event.setCancelled(true);
-                    event.getWhoClicked().sendMessage("§cTúi Trữ Hạt chỉ chấp nhận lưu trữ các loại hạt giống nông nghiệp!");
-                    return;
+        if (current != null && blockedBags.contains(itemManager.getItemId(current))) { event.setCancelled(true); return; }
+        if (cursor != null && blockedBags.contains(itemManager.getItemId(cursor))) { event.setCancelled(true); return; }
+
+        // Logic cũ cho Túi Hạt Giống
+        if (isSeedPouch) {
+            if (event.getRawSlot() < 27) {
+                if (cursor != null && cursor.getType() != Material.AIR) {
+                    String cId = itemManager.getItemId(cursor);
+                    if (cId == null || !cId.startsWith("seed_")) {
+                        event.setCancelled(true);
+                        event.getWhoClicked().sendMessage("§cTúi Trữ Hạt chỉ chấp nhận lưu trữ các loại hạt giống nông nghiệp!");
+                    }
                 }
-            }
-        } else {
-            if (event.getClick().isShiftClick() && current != null && current.getType() != Material.AIR) {
-                String cId = itemManager.getItemId(current);
-                if (cId == null || !cId.startsWith("seed_")) {
-                    event.setCancelled(true);
-                    event.getWhoClicked().sendMessage("§cTúi Trữ Hạt chỉ chấp nhận lưu trữ các loại hạt giống nông nghiệp!");
-                    return;
+            } else {
+                if (event.getClick().isShiftClick() && current != null && current.getType() != Material.AIR) {
+                    String cId = itemManager.getItemId(current);
+                    if (cId == null || !cId.startsWith("seed_")) {
+                        event.setCancelled(true);
+                        event.getWhoClicked().sendMessage("§cTúi Trữ Hạt chỉ chấp nhận lưu trữ các loại hạt giống nông nghiệp!");
+                    }
                 }
             }
         }
     }
 
+    // ==========================================
+    // LƯU DỮ LIỆU KHI ĐÓNG TÚI
+    // ==========================================
     @EventHandler
     public void onPouchInventoryClose(InventoryCloseEvent event) {
-        if (!event.getView().getTitle().equals("§2Túi Trữ Hạt")) return;
+        String title = event.getView().getTitle();
+        boolean isSeedPouch = title.equals("§2Túi Trữ Hạt");
+        boolean isMerchantBag = title.equals("§eTúi Vải Thô") || title.equals("§6Túi Da Cao Cấp") || title.equals("§5Túi Vảy Rồng");
+
+        if (!isSeedPouch && !isMerchantBag) return;
 
         Player player = (Player) event.getPlayer();
         ItemStack mainHand = player.getInventory().getItemInMainHand();
         String mId = itemManager.getItemId(mainHand);
 
         ItemStack pouchItem = null;
-        if ("misc_seed_pouch".equals(mId)) pouchItem = mainHand;
-        else {
+
+        // Xác định túi đang cầm trên tay
+        if (isSeedPouch && "misc_seed_pouch".equals(mId)) pouchItem = mainHand;
+        else if (isMerchantBag && ("bag_cloth".equals(mId) || "bag_leather".equals(mId) || "bag_dragon_scale".equals(mId))) pouchItem = mainHand;
+
+        if (pouchItem == null) {
             ItemStack offHand = player.getInventory().getItemInOffHand();
-            if ("misc_seed_pouch".equals(itemManager.getItemId(offHand))) pouchItem = offHand;
+            String oId = itemManager.getItemId(offHand);
+            if (isSeedPouch && "misc_seed_pouch".equals(oId)) pouchItem = offHand;
+            else if (isMerchantBag && ("bag_cloth".equals(oId) || "bag_leather".equals(oId) || "bag_dragon_scale".equals(oId))) pouchItem = offHand;
         }
 
-        if (pouchItem == null) return;
+        if (pouchItem == null) return; // Nếu bị drop hoặc ném đi mất
 
-        StringBuilder sb = new StringBuilder();
         Inventory inv = event.getInventory();
-        for (int i = 0; i < 27; i++) {
-            ItemStack item = inv.getItem(i);
-            if (item == null || item.getType() == Material.AIR) continue;
-            String id = itemManager.getItemId(item);
-            if (id != null) {
-                sb.append(i).append(":").append(id).append(":").append(item.getAmount()).append("|");
+        ItemMeta meta = pouchItem.getItemMeta();
+
+        if (isSeedPouch) {
+            // Lưu kiểu Chuỗi đơn giản cho Hạt giống
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < 27; i++) {
+                ItemStack item = inv.getItem(i);
+                if (item == null || item.getType() == Material.AIR) continue;
+                String id = itemManager.getItemId(item);
+                if (id != null) {
+                    sb.append(i).append(":").append(id).append(":").append(item.getAmount()).append("|");
+                }
             }
+            org.bukkit.NamespacedKey contentKey = new org.bukkit.NamespacedKey(RPGCore.getInstance(), "pouch_content");
+            meta.getPersistentDataContainer().set(contentKey, PersistentDataType.STRING, sb.toString());
+        }
+        else if (isMerchantBag) {
+            // Lưu kiểu Base64 giữ nguyên NBT Data cho Túi Thương Nhân
+            org.bukkit.NamespacedKey contentKey = new org.bukkit.NamespacedKey(RPGCore.getInstance(), "merchant_bag_content");
+            meta.getPersistentDataContainer().set(contentKey, PersistentDataType.STRING, inventoryToBase64(inv));
         }
 
-        ItemMeta meta = pouchItem.getItemMeta();
-        org.bukkit.NamespacedKey contentKey = new org.bukkit.NamespacedKey(RPGCore.getInstance(), "pouch_content");
-        meta.getPersistentDataContainer().set(contentKey, PersistentDataType.STRING, sb.toString());
         pouchItem.setItemMeta(meta);
-
         player.playSound(player.getLocation(), Sound.BLOCK_CHEST_CLOSE, 1f, 1f);
+    }
+
+    // ==========================================
+    // UTILS: MÃ HÓA/GIẢI MÁ BASE64 (Dành cho Merchant Bag)
+    // ==========================================
+    private String inventoryToBase64(Inventory inventory) {
+        try {
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            BukkitObjectOutputStream dataOutput = new BukkitObjectOutputStream(outputStream);
+            dataOutput.writeInt(inventory.getSize());
+            for (int i = 0; i < inventory.getSize(); i++) {
+                dataOutput.writeObject(inventory.getItem(i));
+            }
+            dataOutput.close();
+            return Base64.getEncoder().encodeToString(outputStream.toByteArray());
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private void base64ToInventory(String data, Inventory inv) {
+        if (data == null || data.isEmpty()) return;
+        try {
+            ByteArrayInputStream inputStream = new ByteArrayInputStream(Base64.getDecoder().decode(data));
+            BukkitObjectInputStream dataInput = new BukkitObjectInputStream(inputStream);
+            int size = dataInput.readInt();
+            for (int i = 0; i < size; i++) {
+                inv.setItem(i, (ItemStack) dataInput.readObject());
+            }
+            dataInput.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

@@ -32,7 +32,7 @@ public class MountCommand implements CommandExecutor {
         if (args.length == 0 || args[0].equalsIgnoreCase("gui")) {
             // Mở Main Stable GUI
             PlayerMountProfile profile = mountManager.getProfile(player.getUniqueId());
-            gui.openMainStable(player, profile);
+            gui.openMainStable(player);
             return true;
         }
 

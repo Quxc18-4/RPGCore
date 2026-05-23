@@ -88,7 +88,8 @@ public class ShopListener implements Listener {
                     player.openInventory(shopManager.openAdminGUI(shopId, name, 1));
                     player.sendMessage("§aĐang mở Chế độ Quản lý Shop (Mã cửa hàng: " + shopId + ")");
                 } else {
-                    player.openInventory(shopManager.openPlayerGUI(shopId, name, 1));
+                    // THÊM CHỮ player VÀO ĐÂY
+                    player.openInventory(shopManager.openPlayerGUI(player, shopId, name, 1));
                 }
             }
         }
@@ -190,41 +191,70 @@ public class ShopListener implements Listener {
         // ==========================================
         if (!session.isAdmin && event.getRawSlot() >= 9 && event.getRawSlot() <= 16) {
             int index = event.getRawSlot() - 9;
-            ShopManager.ShopItem shopItem = shopManager.getShopItem(session.shopId, page, index);
+            vn.minecraft.rPGCore.managers.ShopManager.ShopItem shopItem = shopManager.getShopItem(session.shopId, page, index);
             if (shopItem == null) return;
 
-            // BÁN VẬT PHẨM CHO SHOP -> Nhận lại Tiền Mặt
-            if (event.isLeftClick()) {
-                if (shopItem.buyPrice <= 0) return;
+            // 1. Đọc giá mặc định trước
+            long finalSellPrice = shopItem.sellPrice;
+            long finalBuyPrice = shopItem.buyPrice;
 
-                // [MÃ MỚI] Gọi bộ lọc thông minh từ ItemManager để check và trừ đồ
-                vn.minecraft.rPGCore.managers.ItemManager itemManager = vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager();
+            // 2. Đọc giá đã Sale từ NBT (Nếu có Thương Nhân buff)
+            ItemStack clickedItem = event.getCurrentItem();
+            if (clickedItem != null && clickedItem.hasItemMeta()) {
+                org.bukkit.persistence.PersistentDataContainer pdc = clickedItem.getItemMeta().getPersistentDataContainer();
+                org.bukkit.NamespacedKey sellKey = new org.bukkit.NamespacedKey(vn.minecraft.rPGCore.RPGCore.getInstance(), "shop_final_sell");
+                org.bukkit.NamespacedKey buyKey = new org.bukkit.NamespacedKey(vn.minecraft.rPGCore.RPGCore.getInstance(), "shop_final_buy");
+
+                if (pdc.has(sellKey, org.bukkit.persistence.PersistentDataType.LONG)) {
+                    finalSellPrice = pdc.get(sellKey, org.bukkit.persistence.PersistentDataType.LONG);
+                }
+                if (pdc.has(buyKey, org.bukkit.persistence.PersistentDataType.LONG)) {
+                    finalBuyPrice = pdc.get(buyKey, org.bukkit.persistence.PersistentDataType.LONG);
+                }
+            }
+
+            // BÁN VẬT PHẨM CHO SHOP -> Nhận Tiền
+            if (event.isLeftClick()) {
+                if (finalBuyPrice <= 0) return;
 
                 if (player.getInventory().containsAtLeast(shopItem.item, shopItem.item.getAmount())) {
                     player.getInventory().removeItem(shopItem.item);
+                    currencyManager.givePhysicalCurrency(player, finalBuyPrice); // Trả bằng giá NBT
 
-                    // Gọi hàm trả tiền mặt vào túi đồ thay vì cộng vào Balance ảo
-                    currencyManager.givePhysicalCurrency(player, shopItem.buyPrice);
+                    player.sendMessage("§aĐã bán và nhận được " + currencyManager.formatCurrency(finalBuyPrice));
+                    player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f);
 
-                    player.sendMessage("§aĐã bán và nhận được " + currencyManager.formatCurrency(shopItem.buyPrice) + " tiền mặt");
-                    player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f);
+                    // THÊM: Cộng Nhiệm vụ và EXP
+                    vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.MERCHANT_SELL, 1);
+                    vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.MERCHANT_EARN, finalBuyPrice);
+                    vn.minecraft.rPGCore.jobs.core.JobManager.processMerchantExp(player, finalBuyPrice);
+
+                    // Cộng Nhiệm vụ
+                    vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.MERCHANT_SELL, 1);
+                    vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.MERCHANT_EARN, finalBuyPrice);
                 } else {
                     player.sendMessage("§cBạn không có đủ số lượng vật phẩm này để bán!");
                 }
             }
+            // MUA VẬT PHẨM TỪ SHOP -> Trừ Tiền
             // MUA VẬT PHẨM TỪ SHOP -> Trừ Tiền Mặt
             else if (event.isRightClick()) {
-                if (shopItem.sellPrice <= 0) return;
+                if (finalSellPrice <= 0) return;
 
                 // Kiểm tra và trừ tiền mặt trong túi (Hàm này đã tự động xử lý thối tiền)
-                if (currencyManager.takePhysicalCurrency(player, shopItem.sellPrice)) {
+                if (currencyManager.takePhysicalCurrency(player, finalSellPrice)) {
                     player.getInventory().addItem(shopItem.item.clone());
 
-                    player.sendMessage("§aĐã mua thành công với giá " + currencyManager.formatCurrency(shopItem.sellPrice));
-                    player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 1f, 1f);
+                    player.sendMessage("§aĐã mua thành công với giá " + currencyManager.formatCurrency(finalSellPrice));
+                    player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_CHIME, 1f, 1f);
+
+                    // THÊM: Cộng Nhiệm vụ và EXP (CHỈ GHI 1 LẦN)
+                    vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.MERCHANT_BUY, 1);
+                    vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.MERCHANT_SPEND, finalSellPrice);
+                    vn.minecraft.rPGCore.jobs.core.JobManager.processMerchantExp(player, finalSellPrice);
                 } else {
                     player.sendMessage("§cBạn không có đủ tiền mặt trong túi đồ!");
-                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
+                    player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_VILLAGER_NO, 1f, 1f);
                 }
             }
         }
@@ -237,7 +267,8 @@ public class ShopListener implements Listener {
                 player.openInventory(shopManager.openAdminGUI(session.shopId, session.shopName, newPage));
             }, 2L);
         } else {
-            player.openInventory(shopManager.openPlayerGUI(session.shopId, session.shopName, newPage));
+            // THÊM CHỮ player VÀO ĐÂY
+            player.openInventory(shopManager.openPlayerGUI(player, session.shopId, session.shopName, newPage));
         }
     }
 }

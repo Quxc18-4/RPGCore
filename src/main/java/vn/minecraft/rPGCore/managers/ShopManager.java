@@ -167,7 +167,7 @@ public class ShopManager {
     }
 
     // SỬA: TẠO UI CHO NGƯỜI CHƠI (Hiển thị đúng tên NPC)
-    public Inventory openPlayerGUI(String shopId, String shopName, int page) {
+    public Inventory openPlayerGUI(org.bukkit.entity.Player player, String shopId, String shopName, int page) {
         String safeName = shopName.length() > 20 ? shopName.substring(0, 20) : shopName;
         Inventory inv = Bukkit.createInventory(null, 27, "§0§l" + safeName + " | Tr " + page);
 
@@ -185,9 +185,34 @@ public class ShopManager {
                     ItemMeta meta = displayItem.getItemMeta();
                     List<String> lore = meta.hasLore() ? meta.getLore() : new ArrayList<>();
 
+                    // Lấy % Sale của Thương nhân
+                    double discount = vn.minecraft.rPGCore.jobs.types.MerchantJob.getBargainDiscount(player);
+
                     lore.add("");
-                    if (sItem.sellPrice > 0) lore.add("§e▶ Mua: " + currencyManager.formatCurrency(sItem.sellPrice) + " §7(Click Phải)");
-                    if (sItem.buyPrice > 0) lore.add("§a▶ Bán: " + currencyManager.formatCurrency(sItem.buyPrice) + " §7(Click Trái)");
+
+                    // SHOP BÁN -> THƯƠNG NHÂN MUA (Được giảm giá)
+                    if (sItem.sellPrice > 0) {
+                        long finalSellPrice = sItem.sellPrice - (long)(sItem.sellPrice * discount);
+                        if (discount > 0) {
+                            lore.add("§8▶ Giá gốc: §m" + currencyManager.formatCurrency(sItem.sellPrice));
+                            lore.add("§e▶ Bạn mua: " + currencyManager.formatCurrency(finalSellPrice) + " §a(-" + (int)(discount*100) + "%) §7(Click Phải)");
+                        } else {
+                            lore.add("§e▶ Mua: " + currencyManager.formatCurrency(sItem.sellPrice) + " §7(Click Phải)");
+                        }
+                        meta.getPersistentDataContainer().set(new org.bukkit.NamespacedKey(plugin, "shop_final_sell"), org.bukkit.persistence.PersistentDataType.LONG, finalSellPrice);
+                    }
+
+                    // SHOP MUA -> THƯƠNG NHÂN BÁN (Được tăng giá)
+                    if (sItem.buyPrice > 0) {
+                        long finalBuyPrice = sItem.buyPrice + (long)(sItem.buyPrice * discount);
+                        if (discount > 0) {
+                            lore.add("§8▶ Shop thu gốc: §m" + currencyManager.formatCurrency(sItem.buyPrice));
+                            lore.add("§a▶ Bạn bán được: " + currencyManager.formatCurrency(finalBuyPrice) + " §a(+" + (int)(discount*100) + "%) §7(Click Trái)");
+                        } else {
+                            lore.add("§a▶ Bán: " + currencyManager.formatCurrency(sItem.buyPrice) + " §7(Click Trái)");
+                        }
+                        meta.getPersistentDataContainer().set(new org.bukkit.NamespacedKey(plugin, "shop_final_buy"), org.bukkit.persistence.PersistentDataType.LONG, finalBuyPrice);
+                    }
 
                     meta.setLore(lore);
                     displayItem.setItemMeta(meta);

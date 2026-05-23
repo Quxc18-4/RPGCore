@@ -35,5 +35,14 @@ public enum QuestAction {
     FISH_TRASH,            // Câu dính rác
     FISH_TREASURE,         // Câu được rương kho báu
     CRAFT_BAIT,            // Chế tạo mồi câu thành công
-    COLLECT_OCEAN_TEAR     // Nhặt được Nước Mắt Đại Dương
+    COLLECT_OCEAN_TEAR,     // Nhặt được Nước Mắt Đại Dương
+
+    // --- THƯƠNG NHÂN ACTIONS ---
+    MERCHANT_MOVE,         // Di chuyển block
+    MERCHANT_SELL,         // Bán item
+    MERCHANT_BUY,          // Mua item
+    MERCHANT_SPEND,        // Tiêu hao tiền
+    MERCHANT_EARN,         // Nhận tiền
+    MERCHANT_INTEREST,     // Nhận lãi ngân hàng
+    MERCHANT_DELIVER       // Giao hàng vận tải
 }

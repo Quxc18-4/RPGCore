@@ -5,6 +5,7 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.Inventory;
@@ -29,7 +30,8 @@ public class MountStorageGUI implements Listener {
     private final Map<UUID, MountData> openStorages = new HashMap<>();
 
     public void openStorage(Player player, MountData data) {
-        int unlockedSlots = data.getTierStorage() * 3; // Ví dụ Bậc 1 có 3 ô
+
+        int unlockedSlots = getUnlockedSlots(player, data);
 
         // Làm tròn lên bội số của 9 (Ví dụ 3 ô -> Tạo rương 9 ô)
         int invSize = (int) Math.ceil(unlockedSlots / 9.0) * 9;
@@ -64,18 +66,63 @@ public class MountStorageGUI implements Listener {
     // ==========================================
     // CHẶN NGƯỜI CHƠI LẤY KÍNH ĐỎ RA NGOÀI
     // ==========================================
+    // ==========================================
+    // CHẶN NGƯỜI CHƠI TƯƠNG TÁC VỚI Ô KHÓA (Gồm mọi loại Click)
+    // ==========================================
     @EventHandler
     public void onClick(InventoryClickEvent event) {
-        if (event.getView().getTitle().equals(STORAGE_TITLE)) {
-            Player player = (Player) event.getWhoClicked();
-            MountData data = openStorages.get(player.getUniqueId());
-            if (data == null) return;
+        if (!event.getView().getTitle().equals(STORAGE_TITLE)) return;
 
-            int unlockedSlots = data.getTierStorage() * 3;
+        Player player = (Player) event.getWhoClicked();
+        MountData data = openStorages.get(player.getUniqueId());
+        if (data == null) return;
 
-            // Nếu họ click trực tiếp vào ô khóa
-            if (event.getRawSlot() >= unlockedSlots && event.getRawSlot() < event.getInventory().getSize()) {
+        int unlockedSlots = getUnlockedSlots(player, data);
+        int invSize = event.getInventory().getSize();
+
+        // 1. Chặn click vào ô khóa ở kho đồ (Top Inventory)
+        if (event.getClickedInventory() == event.getView().getTopInventory()) {
+            if (event.getRawSlot() >= unlockedSlots && event.getRawSlot() < invSize) {
                 event.setCancelled(true);
+                return;
+            }
+        }
+
+        // 2. Chặn Shift + Click chuyển đồ từ người vào ô khóa
+        if (event.isShiftClick() && event.getClickedInventory() != event.getView().getTopInventory()) {
+            // Kiểm tra xem liệu khi shift click, nó có bay vào ô khóa không
+            // Đây là logic an toàn nhất: Nếu bạn không muốn tính toán phức tạp,
+            // đơn giản là chặn Shift Click khi đang ở trong GUI này.
+            event.setCancelled(true);
+        }
+
+        // 3. Chặn dùng phím số (Hotbar) để swap đồ vào ô khóa
+        if (event.getAction() == org.bukkit.event.inventory.InventoryAction.HOTBAR_SWAP ) {
+            if (event.getRawSlot() >= unlockedSlots && event.getRawSlot() < invSize) {
+                event.setCancelled(true);
+            }
+        }
+    }
+
+    // ==========================================
+    // CHẶN KÉO RÊ CHUỘT (DRAG) VÀO Ô KHÓA
+    // ==========================================
+    @EventHandler
+    public void onDrag(org.bukkit.event.inventory.InventoryDragEvent event) {
+        if (!event.getView().getTitle().equals(STORAGE_TITLE)) return;
+
+        Player player = (Player) event.getWhoClicked();
+        MountData data = openStorages.get(player.getUniqueId());
+        if (data == null) return;
+
+        int unlockedSlots = getUnlockedSlots(player, data);
+        int invSize = event.getInventory().getSize();
+
+        // Nếu bất kỳ ô nào trong vùng kéo thuộc vùng bị khóa
+        for (int slot : event.getRawSlots()) {
+            if (slot >= unlockedSlots && slot < invSize) {
+                event.setCancelled(true);
+                break;
             }
         }
     }
@@ -85,21 +132,37 @@ public class MountStorageGUI implements Listener {
     // ==========================================
     @EventHandler
     public void onClose(InventoryCloseEvent event) {
-        if (event.getView().getTitle().equals(STORAGE_TITLE)) {
+        if (event.getView().getTitle().contains(STORAGE_TITLE)) {
             Player player = (Player) event.getPlayer();
             MountData data = openStorages.remove(player.getUniqueId());
 
             if (data != null) {
-                int unlockedSlots = data.getTierStorage() * 3;
+                int unlockedSlots = getUnlockedSlots(player, data);
                 ItemStack[] itemsToSave = new ItemStack[unlockedSlots];
+                boolean hasRealItem = false;
 
                 for (int i = 0; i < unlockedSlots; i++) {
-                    itemsToSave[i] = event.getInventory().getItem(i);
+                    ItemStack item = event.getInventory().getItem(i);
+                    // Lọc sạch kính đỏ, kính đen và ô trống
+                    if (item != null && item.getType() != Material.RED_STAINED_GLASS_PANE
+                            && item.getType() != Material.BLACK_STAINED_GLASS_PANE
+                            && item.getType() != Material.AIR) {
+
+                        itemsToSave[i] = item;
+                        hasRealItem = true; // Phát hiện có đồ thật
+                    } else {
+                        itemsToSave[i] = null;
+                    }
                 }
 
-                // Mã hóa mảng Item thành chuỗi Base64 và lưu vào RAM
-                data.setInventoryBase64(encodeItems(itemsToSave));
-                player.sendMessage("§a[Hệ thống] Đã lưu kho đồ thú cưỡi!");
+                // [FIX CHÍNH]: Nếu rương rỗng hoàn toàn, set Base64 thành chuỗi rỗng
+                if (hasRealItem) {
+                    data.setInventoryBase64(encodeItems(itemsToSave));
+                } else {
+                    data.setInventoryBase64("");
+                }
+
+                player.sendMessage("§a[Hệ thống] Đã lưu kho đồ!");
             }
         }
     }
@@ -139,5 +202,19 @@ public class MountStorageGUI implements Listener {
             e.printStackTrace();
             return new ItemStack[0];
         }
+    }
+
+    // ==========================================
+    // HÀM HỖ TRỢ LẤY SỐ Ô ĐƯỢC MỞ KHÓA
+    // ==========================================
+    private int getUnlockedSlots(Player player, MountData data) {
+        int unlockedSlots = data.getTierStorage() * 3;
+
+        if (vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerJob(player) != null &&
+                vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerJob(player).getId().equals("MERCHANT") &&
+                vn.minecraft.rPGCore.jobs.types.MerchantJob.hasUltimate(player, "MERCH_ULT_1")) {
+            unlockedSlots += 9;
+        }
+        return unlockedSlots;
     }
 }

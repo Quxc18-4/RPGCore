@@ -9,6 +9,7 @@ import vn.minecraft.rPGCore.jobs.core.JobLeaderboard;
 import vn.minecraft.rPGCore.jobs.core.JobManager;
 import vn.minecraft.rPGCore.jobs.core.JobRegister;
 import vn.minecraft.rPGCore.jobs.events.FishingListener;
+import vn.minecraft.rPGCore.jobs.events.MerchantListener;
 import vn.minecraft.rPGCore.jobs.gui.JobSelectionGUI;
 import vn.minecraft.rPGCore.listeners.*;
 import vn.minecraft.rPGCore.managers.*;
@@ -34,6 +35,7 @@ public final class RPGCore extends JavaPlugin {
     private ItemManager itemManager; // [THÊM DÒNG NÀY]
     private FishingManager fishingManager;
     private BaitManager baitManager;
+    private CurrencyManager currencyManager;
 
     // [HỆ THỐNG THÚ CƯỠI]
     private MountManager mountManager;
@@ -65,7 +67,7 @@ public final class RPGCore extends JavaPlugin {
         //SchemaManager.loadSchemas();
 
         // [MỚI]: KHỞI TẠO MANAGER CHO NGÂN HÀNG & CỬA HÀNG
-        CurrencyManager currencyManager = new CurrencyManager(this);
+        this.currencyManager = new CurrencyManager(this);
         ShopManager shopManager = new ShopManager(this, currencyManager);
         // [MỚI]: KHỞI TẠO BANK MANAGER
         BankManager bankManager = new BankManager(currencyManager);
@@ -88,7 +90,7 @@ public final class RPGCore extends JavaPlugin {
 
         RepairGUI repairGUI = new RepairGUI();
 
-        MountStableGUI mountStableGUI = new MountStableGUI();
+        MountStableGUI mountStableGUI = new MountStableGUI(this);
         MountStorageGUI mountStorageGUI = new MountStorageGUI();
 
         getServer().getPluginManager().registerEvents(new PlayerListener(playerManager, bossBarManager), this);
@@ -262,5 +264,8 @@ public final class RPGCore extends JavaPlugin {
 
     public vn.minecraft.rPGCore.mounts.managers.MountDataManager getMountDataManager() {
         return this.mountDataManager;
+    }
+    public CurrencyManager getCurrencyManager() {
+        return this.currencyManager;
     }
 }

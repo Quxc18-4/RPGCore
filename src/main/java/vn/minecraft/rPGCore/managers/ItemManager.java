@@ -468,7 +468,14 @@ public class ItemManager {
         // ==========================================
         // Thêm dòng này vào phần NHÓM KHÁC trong ItemManager.java
         register(new ItemData("misc_merchant_token", Rarity.EPIC, Category.MISC, 0.0, Material.PAPER, "Chứng Nhận Thương Nhân", null,"Vật phẩm đặc quyền của Thương Nhân.", "Dùng để mua các vật phẩm đặc biệt."));
-        register(new ItemData("misc_mount_upgrade", Rarity.RARE, Category.MISC, 0.0, Material.PAPER, "Giấy Nâng Cấp Thú Cươi", null,"Dùng để nâng cấp các chỉ số", "cho thú cưỡi tại Chuồng Ngựa."));
+        register(new ItemData("misc_mount_upgrade", Rarity.RARE, Category.MISC, 0.0, Material.PAPER, "Giấy Nâng Cấp Thú Cưỡi", null,"Dùng để nâng cấp các chỉ số", "cho thú cưỡi tại Chuồng Ngựa."));
+        // [CÁC ITEM CỦA SHOP THƯƠNG NHÂN]
+        register(new ItemData("misc_gold_scale", Rarity.EPIC, Category.MISC, 0.0, Material.FIELD_MASONED_BANNER_PATTERN, "Cân Tiểu Ly Mạ Vàng", "Tăng 50% tỉ lệ rớt tiền từ quái vật.", "Chưa kích hoạt. Click chuột phải để dùng (24h)."));
+        register(new ItemData("bag_cloth", Rarity.UNCOMMON, Category.MISC, 0.0, Material.BUNDLE, "Túi Vải Thô", "Lưu trữ tối đa 18 vật phẩm", "Trang bị sức chứa cơ bản."));
+        register(new ItemData("bag_leather", Rarity.RARE, Category.MISC, 0.0, Material.BUNDLE, "Túi Da Cao Cấp", "Lưu trữ tối đa 36 vật phẩm", "Trang bị sức chứa nâng cao."));
+        register(new ItemData("bag_dragon_scale", Rarity.EPIC, Category.MISC, 0.0, Material.BUNDLE, "Túi Vảy Rồng", "Lưu trữ tối đa 54 vật phẩm", "Sức chứa khổng lồ cho dân buôn."));
+        register(new ItemData("misc_stable_expansion", Rarity.MYTHIC, Category.MISC, 0.0, Material.PAPER, "Giấy Phép Mở Rộng Chuồng", "Sử dụng để +1 ô chứa thú cưỡi.", "Giấy phép mở rộng chuồng có giá trị tuương đương."));
+
     }
 
     private void register(ItemData data) {

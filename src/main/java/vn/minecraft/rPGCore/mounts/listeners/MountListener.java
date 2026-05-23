@@ -3,7 +3,6 @@ package vn.minecraft.rPGCore.mounts.listeners;
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
-import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -12,8 +11,8 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
-import org.bukkit.event.entity.EntityDismountEvent; // [ĐÃ SỬA]: Chuyển về package chuẩn của Bukkit
-import org.bukkit.event.entity.EntityMountEvent;    // [ĐÃ SỬA]: Chuyển về package chuẩn của Bukkit
+import org.bukkit.event.entity.EntityDismountEvent;
+import org.bukkit.event.entity.EntityMountEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.persistence.PersistentDataType;
@@ -42,12 +41,9 @@ public class MountListener implements Listener {
     public void onPlayerAttack(EntityDamageByEntityEvent event) {
         Player attacker = null;
 
-        // Nếu đánh cận chiến
         if (event.getDamager() instanceof Player) {
             attacker = (Player) event.getDamager();
-        }
-        // Nếu bắn cung, ném phi tiêu, ném thuốc...
-        else if (event.getDamager() instanceof Projectile) {
+        } else if (event.getDamager() instanceof Projectile) {
             Projectile proj = (Projectile) event.getDamager();
             if (proj.getShooter() instanceof Player) {
                 attacker = (Player) proj.getShooter();
@@ -64,22 +60,7 @@ public class MountListener implements Listener {
     }
 
     // ==========================================================
-    // 2. XỬ LÝ XUỐNG XE (Bật đếm ngược 30s)
-    // ==========================================================
-    @EventHandler
-    public void onDismount(EntityDismountEvent event) {
-        if (event.getEntity() instanceof Player) {
-            Player player = (Player) event.getEntity();
-            Entity vehicle = event.getDismounted();
-
-            if (vehicle == mountManager.getActiveMount(player)) {
-                mountManager.startDespawnTimer(player);
-            }
-        }
-    }
-
-    // ==========================================================
-    // 3. XỬ LÝ LÊN XE & CHỐNG TRỘM THÚ CƯỠI
+    // 2. NGĂN NGƯỜI KHÁC TRÈO LÊN & HỦY ĐẾM NGƯỢC KHI LÊN LẠI
     // ==========================================================
     @EventHandler
     public void onMount(EntityMountEvent event) {
@@ -100,6 +81,21 @@ public class MountListener implements Listener {
                     mountManager.cancelDespawnTask(player);
                     player.sendMessage("§aTiếp tục hành trình!");
                 }
+            }
+        }
+    }
+
+    // ==========================================================
+    // 3. ĐẾM NGƯỢC THU HỒI KHI XUỐNG XE
+    // ==========================================================
+    @EventHandler
+    public void onDismount(EntityDismountEvent event) {
+        if (event.getEntity() instanceof Player) {
+            Player player = (Player) event.getEntity();
+            Entity vehicle = event.getDismounted();
+
+            if (vehicle == mountManager.getActiveMount(player)) {
+                mountManager.startDespawnTimer(player);
             }
         }
     }
@@ -158,7 +154,7 @@ public class MountListener implements Listener {
 
             if (ownerUuidStr.equals(player.getUniqueId().toString())) {
                 if (player.isSneaking()) {
-                    event.setCancelled(true); // Chặn Vanilla UI (Lừa, Ngựa...)
+                    event.setCancelled(true); // Chặn Vanilla UI
 
                     if (entity.getPersistentDataContainer().has(slotKey, PersistentDataType.INTEGER)) {
                         int slot = entity.getPersistentDataContainer().get(slotKey, PersistentDataType.INTEGER);
@@ -170,52 +166,6 @@ public class MountListener implements Listener {
                     }
                 }
             }
-        }
-    }
-
-    // ==========================================================
-    // 7. [PAPER API 1.21] LÁI TỰ DO (WASD) CHO NHÓM CUSTOM
-    // ==========================================================
-    @EventHandler
-    public void onPlayerInput(org.bukkit.event.player.PlayerInputEvent event) {
-        Player player = event.getPlayer();
-        if (!player.isInsideVehicle()) return;
-
-        Entity vehicle = player.getVehicle();
-        if (vehicle != mountManager.getActiveMount(player)) return;
-
-        String typeName = vehicle.getType().name();
-        if (typeName.equals("PIG") || typeName.equals("STRIDER") || typeName.equals("LLAMA")
-                || typeName.contains("NAUTILUS") || typeName.contains("GHAST")) {
-
-            float forward = 0.0f;
-            float sideways = 0.0f;
-
-            if (event.getInput().isForward()) forward = 1.0f;
-            if (event.getInput().isBackward()) forward = -1.0f;
-            if (event.getInput().isLeft()) sideways = 1.0f;
-            if (event.getInput().isRight()) sideways = -1.0f;
-
-            if (forward == 0 && sideways == 0) return;
-
-            org.bukkit.util.Vector direction = player.getLocation().getDirection().setY(0).normalize();
-
-            double speedMod = 0.3;
-            if (vehicle instanceof LivingEntity) {
-                org.bukkit.attribute.AttributeInstance attr = ((LivingEntity) vehicle).getAttribute(Attribute.MOVEMENT_SPEED);
-                if (attr != null) speedMod = attr.getValue() * 1.5;
-            }
-
-            org.bukkit.util.Vector velocity = direction.multiply(forward * speedMod);
-
-            if (sideways != 0) {
-                org.bukkit.util.Vector strafe = direction.clone().crossProduct(new org.bukkit.util.Vector(0, 1, 0)).multiply(sideways * (speedMod * 0.5));
-                velocity.add(strafe);
-            }
-
-            velocity.setY(vehicle.getVelocity().getY());
-            vehicle.setVelocity(velocity);
-            vehicle.setRotation(player.getLocation().getYaw(), vehicle.getLocation().getPitch());
         }
     }
 }

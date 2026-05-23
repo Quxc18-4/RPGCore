@@ -239,4 +239,23 @@ public class JobManager {
         RPGJob job = getPlayerJob(player);
         return (job != null) ? job.getFreshnessMultiplier(getPlayerJobLevel(player)) : 1.0;
     }
+
+    // ==========================================
+    // HÀM TÍNH TOÁN EXP GIAO DỊCH CHO THƯƠNG NHÂN
+    // ==========================================
+    public static void processMerchantExp(Player player, long amount) {
+        PlayerJobData data = getPlayerData(player);
+        if (data == null || !data.getJobId().equalsIgnoreCase("MERCHANT")) return;
+
+        int level = data.getLevel("MERCHANT");
+        // Scale: Cấp 1 được 0.1 EXP/Xu -> Cấp 50 được 0.2 EXP/Xu
+        double expPerCoin = 0.1 + (level * 0.002);
+        double totalExp = amount * expPerCoin;
+
+        // Gọi hàm addExp để tự động cộng và check thăng cấp
+        addExp(player, totalExp);
+
+        // Ghi log báo cho người chơi
+        player.sendMessage("§e§l[Thương Nhân] §fNhận được §d" + String.format("%.1f", totalExp) + " EXP §fnghề từ giao dịch này.");
+    }
 }
