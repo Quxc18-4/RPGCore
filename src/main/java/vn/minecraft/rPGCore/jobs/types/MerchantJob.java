@@ -112,12 +112,20 @@ public class MerchantJob extends RPGJob {
         }
 
         // Hàng 2 (Slot 10-15): 6 Vật phẩm đặc quyền (Mua bằng Chứng Nhận Thương Nhân)
-        inv.setItem(10, createTokenItem(im.buildItem("misc_gold_scale", 1), "MERCH_SCALE", data, 1, 10, jobLevel >= 5, 5));
-        inv.setItem(11, createTokenItem(im.buildItem("bag_cloth", 1), "MERCH_BAG_1", data, 1, 15, jobLevel >= 10, 10));
-        inv.setItem(12, createTokenItem(im.buildItem("bag_leather", 1), "MERCH_BAG_2", data, 1, 30, jobLevel >= 20, 20));
-        inv.setItem(13, createTokenItem(im.buildItem("bag_dragon_scale", 1), "MERCH_BAG_3", data, 1, 60, jobLevel >= 35, 35));
-        inv.setItem(14, createTokenItem(im.buildItem("misc_stable_expansion", 1), "MERCH_STABLE", data, 2, 50, jobLevel >= 15, 15));
-        inv.setItem(15, createTokenItem(im.buildItem("misc_mount_upgrade", 1), "MERCH_UPGRADE", data, 5, 20, jobLevel >= 1, 1));
+        inv.setItem(10, createTokenItem(im.buildItem("misc_job_change_card", 1), "MERCH_JOB_CHANGE", data, 1, 150, true, 1));
+        inv.setItem(11, createTokenItem(im.buildItem("misc_gold_scale", 1), "MERCH_SCALE", data, 10, 20, jobLevel >= 5, 5));
+        inv.setItem(12, createTokenItem(im.buildItem("bag_cloth", 1), "MERCH_BAG_1", data, 3, 30, jobLevel >= 10, 10));
+        inv.setItem(13, createTokenItem(im.buildItem("bag_leather", 1), "MERCH_BAG_2", data, 2, 50, jobLevel >= 20, 20));
+        inv.setItem(14, createTokenItem(im.buildItem("bag_dragon_scale", 1), "MERCH_BAG_3", data, 1, 100, jobLevel >= 35, 35));
+        inv.setItem(15, createTokenItem(im.buildItem("misc_stable_expansion", 1), "MERCH_STABLE", data, 1, 100, jobLevel >= 15, 15));
+        inv.setItem(16, createTokenItem(im.buildItem("misc_mount_upgrade", 1), "MERCH_UPGRADE", data, 20, 30, jobLevel >= 1, 1));
+
+        inv.setItem(19, createTokenItem(im.buildItem("misc_mount_retrieval", 1), "MERCH_MOUNT_RETRIEVE", data, 1, 30, jobLevel >= 25, 25));
+        inv.setItem(20, createTokenItem(im.buildItem("misc_mount_upgrade_speed", 1), "MERCH_UPG_SPEED", data, 3, 20, jobLevel >= 20, 20));
+        inv.setItem(21, createTokenItem(im.buildItem("misc_mount_upgrade_jump", 1), "MERCH_UPG_JUMP", data, 3, 20, jobLevel >= 20, 20));
+        inv.setItem(22, createTokenItem(im.buildItem("misc_mount_upgrade_durability", 1), "MERCH_UPG_DURA", data, 3, 20, jobLevel >= 20, 20));
+        inv.setItem(23, createTokenItem(im.buildItem("misc_mount_upgrade_cooldown", 1), "MERCH_UPG_CD", data, 3, 20, jobLevel >= 20, 20));
+        inv.setItem(24, createTokenItem(im.buildItem("misc_mount_upgrade_storage", 1), "MERCH_UPG_STORAGE", data, 3, 20, jobLevel >= 20, 20));
 
         ItemStack back = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta bMeta = back.getItemMeta(); bMeta.setDisplayName("§c§l[!] QUAY LẠI HỒ SƠ"); back.setItemMeta(bMeta);

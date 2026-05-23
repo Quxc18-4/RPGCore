@@ -369,6 +369,50 @@ public class ConsumableListener implements Listener {
                 return;
             }
 
+            // ==========================================
+            // LOGIC MỞ GÓI THÚ CƯỠI VÀO CHUỒNG (GIẢI NÉN)
+            // ==========================================
+            else if (itemId.equals("misc_mount_packaged")) {
+                vn.minecraft.rPGCore.mounts.data.PlayerMountProfile profile = RPGCore.getInstance().getMountManager().getProfile(player.getUniqueId());
+
+                // Tìm slot trống ưu tiên từ 1 -> 2 -> 3
+                int emptySlot = -1;
+                for (int i = 1; i <= 3; i++) {
+                    if (profile.getUnlockedSlots() >= i && !profile.hasMountAt(i)) {
+                        emptySlot = i;
+                        break;
+                    }
+                }
+
+                if (emptySlot == -1) {
+                    player.sendMessage("§c§l[!] §cTất cả các ô chuồng ngựa của bạn đã đầy hoặc chưa được mở khóa!");
+                    return; // Hủy, không tiêu hao item
+                }
+
+                // Đọc dữ liệu từ NBT của thẻ bài
+                ItemMeta meta = item.getItemMeta();
+                org.bukkit.persistence.PersistentDataContainer data = meta.getPersistentDataContainer();
+
+                String archStr = data.getOrDefault(new org.bukkit.NamespacedKey(RPGCore.getInstance(), "mount_arch"), PersistentDataType.STRING, "HORSE");
+                vn.minecraft.rPGCore.mounts.type.MountArchetype arch = vn.minecraft.rPGCore.mounts.type.MountArchetype.valueOf(archStr);
+                vn.minecraft.rPGCore.mounts.data.MountData mountData = new vn.minecraft.rPGCore.mounts.data.MountData(arch);
+
+                mountData.setTierSpeed(data.getOrDefault(new org.bukkit.NamespacedKey(RPGCore.getInstance(), "mount_sp"), PersistentDataType.INTEGER, 1));
+                mountData.setTierJump(data.getOrDefault(new org.bukkit.NamespacedKey(RPGCore.getInstance(), "mount_jp"), PersistentDataType.INTEGER, 1));
+                mountData.setTierDurability(data.getOrDefault(new org.bukkit.NamespacedKey(RPGCore.getInstance(), "mount_hp"), PersistentDataType.INTEGER, 1));
+                mountData.setTierCooldown(data.getOrDefault(new org.bukkit.NamespacedKey(RPGCore.getInstance(), "mount_cd"), PersistentDataType.INTEGER, 1));
+                mountData.setTierStorage(data.getOrDefault(new org.bukkit.NamespacedKey(RPGCore.getInstance(), "mount_st"), PersistentDataType.INTEGER, 1));
+                mountData.setInventoryBase64(data.getOrDefault(new org.bukkit.NamespacedKey(RPGCore.getInstance(), "mount_inv"), PersistentDataType.STRING, ""));
+
+                // Lưu vào chuồng
+                profile.setMountAt(emptySlot, mountData);
+                RPGCore.getInstance().getMountDataManager().saveProfile(player.getUniqueId());
+
+                player.sendMessage("§a§l[Chuồng Ngựa] §fĐã thêm §e" + arch.getDisplayName() + " §fvào ô chuồng số §b" + emptySlot + "!");
+                player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_HORSE_ARMOR, 1f, 1f);
+                consumed = true;
+            }
+
             if (consumed) consumeCooldowns.put(player.getUniqueId(), now + 1500L);
         }
 
