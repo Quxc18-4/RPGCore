@@ -29,10 +29,15 @@ public class PlayerMountProfile {
     }
 
     public void setMountAt(int slot, MountData mountData) {
+        // Nếu null -> xóa mount khỏi slot
+        if (mountData == null) {
+            mounts.remove(slot);
+            return;
+        }
         mounts.put(slot, mountData);
     }
 
     public boolean hasMountAt(int slot) {
-        return mounts.containsKey(slot);
+        return mounts.get(slot) != null;
     }
 }

@@ -47,7 +47,7 @@ public class ItemManager {
         MONSTER(ItemType.COOKING, "Quái vật"), MAGIC(ItemType.MATERIAL, "Ma thuật"),
         MISC(ItemType.MATERIAL, "Khác"), COIN(ItemType.CURRENCY, "Tiền kim loại"),
         TOOL(ItemType.MATERIAL, "Công cụ"), BAIT_BASE(ItemType.MATERIAL, "Mồi nền"),
-        BAIT_BUFF(ItemType.MATERIAL, "Mồi đặc biệt");
+        BAIT_BUFF(ItemType.MATERIAL, "Mồi đặc biệt"), HERB(ItemType.MATERIAL, "Thảo dược");
 
         public final ItemType type;
         public final String displayName;
@@ -486,6 +486,68 @@ public class ItemManager {
 
         // Vật phẩm đặc biệt (Tạo ra khi đóng gói)
         register(new ItemData("misc_mount_packaged", Rarity.EPIC, Category.MISC, 0.0, Material.NAME_TAG, "Thẻ Bài Thú Cưỡi", "Sử dụng: Nhận ngay 1 thú cưỡi khi sử dụng", "Hợp đồng chuyển nhượng thú cưỡi, mua từ thương nhân."));
+
+        // ==========================================
+        // 16. HỆ THỐNG THẢO DƯỢC (DƯỢC SƯ - ALCHEMIST)
+        // ==========================================
+
+        // --- VÙNG 1: NGOẠI Ô YÊN BÌNH (COMMON) ---
+        register(new ItemData("herb_blood_grass", Rarity.COMMON, Category.HERB, 0.0, Material.FERN, "Cỏ Máu", "Vị Đắng | Pha chế: +10% Hồi máu tức thì", "Loài cỏ mang sắc đỏ như máu tươi.", "Mọc rải rác ở các vùng đồng bằng."));
+        register(new ItemData("herb_blue_fern", Rarity.COMMON, Category.HERB, 0.0, Material.BLUE_ORCHID, "Dương Xỉ Lam", "Vị Đắng | Pha chế: +10% Hồi năng lượng tức thì", "Lá cây có màu xanh biếc.", "Thường mọc cạnh các bờ suối."));
+        register(new ItemData("herb_vitality_shroom", Rarity.COMMON, Category.HERB, 0.0, Material.RED_MUSHROOM, "Nấm Sinh Khí", "Vị Ngọt | Pha chế: +10% Tỉ lệ hồi phục", "Hút lấy sinh khí từ những gốc cây mục nát.", "Mang lại sức sống dồi dào cho người sử dụng."));
+        register(new ItemData("herb_swift_maple", Rarity.COMMON, Category.HERB, 0.0, Material.MANGROVE_LEAVES, "Lá Phong Rừng", "Vị Chua | Pha chế: +15% Tốc độ di chuyển", "Nhẹ bẫng tựa như không có trọng lượng.", "Người ta đồn nó có thể nương theo chiều gió."));
+        register(new ItemData("herb_muscle_root", Rarity.COMMON, Category.HERB, 0.0, Material.HANGING_ROOTS, "Rễ Lực Sĩ", "Vị Đắng | Pha chế: +10% Sát thương", "Đâm rễ xuyên qua cả những tầng đá cứng nhất.", "Nhựa cây chứa đầy sự cuồng bạo."));
+        register(new ItemData("herb_spring_leaf", Rarity.COMMON, Category.HERB, 0.0, Material.BAMBOO, "Cỏ Lò Xo", "Vị Mặn | Pha chế: Hiệu ứng Nhảy cao", "Thân cây xoắn lại kỳ lạ.", "Chạm nhẹ cũng có thể khiến nó bật nảy lên."));
+        register(new ItemData("herb_wild_ember", Rarity.COMMON, Category.HERB, 0.0, Material.DEAD_BUSH, "Bụi Than Hoang", "Vị Cay | Pha chế: Hiệu ứng Kháng lửa", "Mọc trên lớp tro tàn của núi lửa.", "Lúc nào cũng tỏa ra nhiệt lượng âm ỉ."));
+        register(new ItemData("herb_toxic_toadstool", Rarity.COMMON, Category.HERB, 0.0, Material.BROWN_MUSHROOM, "Nấm Cóc Độc", "Vị Đắng | Pha chế: Hiệu ứng Độc", "Có những đốm xanh lá gớm ghiếc.", "Chỉ chạm nhẹ vào cũng thấy da tay tê rần."));
+        register(new ItemData("herb_wither_weed", Rarity.COMMON, Category.HERB, 0.0, Material.WITHER_ROSE, "Cỏ Héo Rũ", "Vị Chua | Pha chế: Thuốc Chậm chạp", "Rút cạn sinh khí của mọi sinh vật xung quanh.", "Cầm lâu trên tay sẽ có cảm giác rã rời."));
+        register(new ItemData("herb_dry_vine", Rarity.COMMON, Category.HERB, 0.0, Material.VINE, "Dây Cỏ Khô", "Vô vị | Pha chế: Chất kết dính", "Mộc mạc, khô quắt và cực kỳ dẻo dai.", "Tuy không có dược tính nhưng thiếu nó thì", "các loại thuốc khác sẽ phản ứng bùng nổ."));
+
+        // --- VÙNG 2: RỪNG SÂU NGUY HIỂM (UNCOMMON / RARE) ---
+        register(new ItemData("herb_ruby_petal", Rarity.UNCOMMON, Category.HERB, 0.0, Material.RED_TULIP, "Cánh Hoa Hồng Ngọc", "Vị Ngọt | Pha chế: +20% Hồi máu tức thì", "Đỏ thắm như một viên hồng ngọc tỏa sáng.", "Thấm đẫm sinh khí từ lòng đất mẹ."));
+        register(new ItemData("herb_sapphire_leaf", Rarity.UNCOMMON, Category.HERB, 0.0, Material.CORNFLOWER, "Lá Ngọc Bích", "Vị Ngọt | Pha chế: +20% Hồi năng lượng tức thì", "Mang sắc xanh của bầu trời huyền bí.", "Giúp khôi phục lại tinh thần một cách nhanh chóng."));
+        register(new ItemData("herb_glow_bloom", Rarity.UNCOMMON, Category.HERB, 0.0, Material.GLOW_LICHEN, "Hoa Dạ Quang", "Vị Ngọt | Pha chế: Hiệu ứng Nhìn trong đêm", "Chỉ nở rộ và phát sáng khi màn đêm buông xuống.", "Là nguồn sống của các bầy đom đóm rừng."));
+        register(new ItemData("herb_water_lung_moss", Rarity.UNCOMMON, Category.HERB, 0.0, Material.SEAGRASS, "Rêu Phổi Nước", "Vị Mặn | Pha chế: Hiệu ứng Thở dưới nước", "Lá rêu giữ lại hàng vạn bọng khí li ti.", "Giúp người ta trao đổi oxy ngay cả khi ngập nước."));
+        register(new ItemData("herb_mist_petal", Rarity.UNCOMMON, Category.HERB, 0.0, Material.ALLIUM, "Cánh Sương Mù", "Vô vị | Pha chế: Hiệu ứng Tàng hình", "Cánh hoa gần như trong suốt.", "Tan biến ngay lập tức nếu có ánh sáng gắt chiếu vào."));
+        register(new ItemData("herb_feather_leaf", Rarity.UNCOMMON, Category.HERB, 0.0, Material.TALL_GRASS, "Lông Chim Rơi", "Vô vị | Pha chế: Hiệu ứng Rơi chậm", "Lơ lửng giữa không trung rất lâu trước khi chạm đất.", "Hoàn toàn miễn nhiễm với trọng lực."));
+        register(new ItemData("herb_mana_shroom", Rarity.UNCOMMON, Category.HERB, 0.0, Material.WARPED_FUNGUS, "Nấm Lam", "Vị Ngọt | Pha chế: +15% Tỉ lệ hồi năng lượng", "Hấp thụ dòng chảy ma lực dưới lòng đất.", "Phát ra một luồng lam quang êm dịu."));
+        register(new ItemData("herb_stone_root", Rarity.UNCOMMON, Category.HERB, 0.0, Material.POINTED_DRIPSTONE, "Rễ Đá Cuội", "Vị Mặn | Pha chế: +15% Giáp", "Cứng như đá tảng, đập vào phát ra tiếng leng keng.", "Có thể mài ra để gia cố lớp biểu bì da."));
+        register(new ItemData("herb_thorn_daisy", Rarity.UNCOMMON, Category.HERB, 0.0, Material.CORNFLOWER, "Cúc Gai", "Vị Cay | Pha chế: +10% Tỉ lệ đỡ đòn", "Xung quanh đài hoa là hàng rào gai nhọn hoắt.", "Kẻ nào vô ý chạm vào chắc chắn sẽ đổ máu."));
+        register(new ItemData("herb_wild_licorice", Rarity.RARE, Category.HERB, 0.0, Material.SUGAR_CANE, "Rễ Cam Thảo Rừng", "Vị Ngọt | Pha chế: Khử Đắng / Khử Chua", "Vị ngọt gắt nhưng để lại hậu vị vô cùng êm ái.", "Chất điều vị không thể thiếu để tạo ra các Thần dược", "dễ uống, giúp tối đa hóa công dụng của thuốc."));
+        register(new ItemData("herb_frost_sprout", Rarity.RARE, Category.HERB, 0.0, Material.BLUE_ORCHID, "Mầm Hàn Băng", "Vị Cay | Pha chế: +20% Kháng hiệu ứng", "Vẫn vươn mình sống sót qua những mùa đông kỷ băng hà.", "Lá cây buốt giá như vừa lấy ra từ hầm băng."));
+        register(new ItemData("herb_crimson_lotus", Rarity.RARE, Category.HERB, 0.0, Material.ROSE_BUSH, "Huyết Liên Hoa", "Vị Đắng | Pha chế: +40% Hồi máu tức thì", "Bông sen đỏ thấm đẫm huyết khí chiến trường.", "Khả năng cầm máu thuộc hàng kỳ tích."));
+        register(new ItemData("herb_azure_bloom", Rarity.RARE, Category.HERB, 0.0, Material.LILY_OF_THE_VALLEY, "Hoa Lưu Ly Xanh", "Vị Đắng | Pha chế: +40% Hồi năng lượng tức thì", "Bông hoa mọc ở những giao điểm ma pháp.", "Mang một lượng mana thuần khiết có thể dùng ngay."));
+
+        // --- VÙNG 3: VÙNG ĐẤT KHẮC NGHIỆT (RARE / EPIC) ---
+        register(new ItemData("herb_sword_grass", Rarity.RARE, Category.HERB, 0.0, Material.SHORT_GRASS, "Cỏ Kiếm", "Vị Cay | Pha chế: +15% Tỉ lệ xuyên giáp", "Phiến lá mỏng dính nhưng cực kỳ sắc bén.", "Một cơn gió thổi qua cũng đủ cắt đứt gỗ mục."));
+        register(new ItemData("herb_prism_orchid", Rarity.EPIC, Category.HERB, 0.0, Material.LILY_OF_THE_VALLEY, "Phong Lan Lăng Kính", "Vị Ngọt | Pha chế: +20% Kháng phép", "Bông hoa trong suốt, bẻ cong mọi ánh sáng đi qua nó.", "Được cho là có thể làm lệch hướng cả ma pháp."));
+        register(new ItemData("herb_mirage_leaf", Rarity.EPIC, Category.HERB, 0.0, Material.LARGE_FERN, "Lá Ảo Ảnh", "Vị Đắng | Pha chế: +15% Tỉ lệ né tránh", "Nhìn chằm chằm vào nó sẽ sinh ra ảo giác.", "Dược tính gây ức chế hệ thần kinh thị giác."));
+        register(new ItemData("herb_wolf_sand_seed", Rarity.EPIC, Category.HERB, 0.0, Material.COCOA_BEANS, "Hạt Cát Sói", "Vị Cay | Pha chế: +20% Tỉ lệ chí mạng", "Chỉ chịu nảy mầm khi hấp thụ ánh trăng tròn.", "Kích phát bản năng hoang dã tiềm ẩn trong huyết quản."));
+        register(new ItemData("herb_venom_tongue", Rarity.EPIC, Category.HERB, 0.0, Material.SWEET_BERRIES, "Quả Lưỡi Độc", "Vị Chua | Pha chế: Sát thương phép thuật", "Sinh trưởng ở những bãi lầy độc hại nhất.", "Dịch quả khiến mọi vết thương không thể khép miệng."));
+        register(new ItemData("herb_carnivore_flower", Rarity.EPIC, Category.HERB, 0.0, Material.CRIMSON_FUNGUS, "Hoa Ăn Thịt", "Vị Đắng | Pha chế: +15% Tỉ lệ hút máu", "Đài hoa có màu đỏ sẫm và tanh nồng mùi máu.", "Nó được nuôi dưỡng bằng xác của những con ma thú."));
+        register(new ItemData("herb_ancient_water", Rarity.EPIC, Category.HERB, 0.0, Material.POTION, "Nước Tinh Khiết Cổ Đại", "Vô vị | Pha chế: Dung môi (Tăng 50% Tỉ lệ thành công)", "Lấy từ khe nứt sâu thẳm dưới lòng đất.", "Thứ chất lỏng thuần khiết duy nhất có thể kìm hãm", "sự phản ứng mãnh liệt của các loại Thần Dược."));
+        register(new ItemData("herb_phoenix_tear", Rarity.EPIC, Category.HERB, 0.0, Material.WEEPING_VINES, "Giọt Lệ Phượng Hoàng", "Vị Cay | Pha chế: +60% Hồi máu tức thì", "Rơi xuống từ bầu trời rực lửa.", "Mỗi giọt mang sức sống tái sinh của truyền thuyết."));
+        register(new ItemData("herb_astral_fruit", Rarity.EPIC, Category.HERB, 0.0, Material.CHORUS_FLOWER, "Quả Tinh Tú", "Vị Mặn | Pha chế: +60% Hồi năng lượng tức thì", "Ngưng tụ ánh sáng các vì sao.", "Ăn vào cảm giác như vũ trụ thu nhỏ trong dạ dày."));
+
+        // --- VÙNG 4: VỰC THẲM & TẬN CÙNG THẾ GIỚI (MYTHIC) ---
+        register(new ItemData("herb_ancient_blood_bud", Rarity.MYTHIC, Category.HERB, 0.0, Material.POPPY, "Nụ Hoa Máu Cổ Đại", "Vị Ngọt | Pha chế: +100% Hồi máu tức thì", "Nở ra từ lòng đất của những chiến trường thượng cổ.", "Mang trong mình sức sống mãnh liệt trào dâng."));
+        register(new ItemData("herb_mana_root", Rarity.MYTHIC, Category.HERB, 0.0, Material.WEEPING_VINES, "Rễ Ma Năng", "Vị Đắng | Pha chế: +100% Hồi năng lượng tức thì", "Rễ cây rung giật liên hồi vì chứa quá nhiều năng lượng.", "Hấp thu trực tiếp ma lực nguyên thủy của thế giới."));
+        register(new ItemData("herb_earth_heart", Rarity.MYTHIC, Category.HERB, 0.0, Material.POTATO, "Quả Tim Đất", "Vị Cay | Pha chế: +1000 Máu tối đa", "Đập từng nhịp thình thịch như một trái tim thật.", "Sự kết tinh hoàn hảo giữa mạch nước ngầm và đá Magma."));
+        register(new ItemData("herb_abyss_algae", Rarity.MYTHIC, Category.HERB, 0.0, Material.KELP, "Tảo Vực Thẳm", "Vị Mặn | Pha chế: +30% Tốc độ đánh", "Sống sót dưới áp lực nước hàng vạn tấn.", "Không một sức mạnh vật lý nào có thể cản bước."));
+        register(new ItemData("herb_magma_seed", Rarity.MYTHIC, Category.HERB, 0.0, Material.MAGMA_CREAM, "Hạt Dung Nham", "Vị Cay | Pha chế: +30% Tỉ lệ xuyên kháng phép", "Cầm trên tay vẫn còn rực cháy.", "Thiêu rụi mọi lớp giáp kháng ma thuật cứng cáp nhất."));
+        register(new ItemData("herb_fairy_tear", Rarity.MYTHIC, Category.HERB, 0.0, Material.GHAST_TEAR, "Nước Mắt Tinh Linh", "Vị Mặn | Pha chế: Thanh tẩy siêu cấp", "Lấp lánh rực rỡ như một viên kim cương.", "Thứ nước thánh thanh tẩy mọi sự ô uế trên đời."));
+
+        // --- VÙNG 5: DỊ BIẾN KHÔNG GIAN (LEGENDARY) ---
+        register(new ItemData("herb_immortal_bloom", Rarity.LEGENDARY, Category.HERB, 0.0, Material.DANDELION, "Hoa Kim Tiên", "Vị Ngọt | Pha chế: Bất Tử (HP không dưới 1 trong 10s)", "Những cánh hoa như được đúc từ vàng ròng nguyên khối.", "Thách thức lại cả quy luật sinh tử của luân hồi."));
+        register(new ItemData("herb_wisdom_fruit", Rarity.LEGENDARY, Category.HERB, 0.0, Material.CHORUS_FRUIT, "Quả Trí Tuệ", "Vị Chua | Pha chế: +100% Nhận Kinh nghiệm", "Trái cấm của thần linh rơi rớt xuống trần gian.", "Mở mang tri thức vượt khỏi tầm hiểu biết của phàm nhân."));
+        register(new ItemData("herb_dark_lotus", Rarity.LEGENDARY, Category.HERB, 0.0, Material.WITHER_ROSE, "Hắc Liên Hoa", "Vị Đắng | Pha chế: Độc Tử Thần", "Đóa sen đen ngòm thấm đẫm oán khí của vạn vật.", "Loài hoa biểu tượng của sát thủ bóng đêm."));
+        register(new ItemData("herb_yggdrasil_sprout", Rarity.LEGENDARY, Category.HERB, 0.0, Material.OAK_SAPLING, "Mầm Cây Thế Giới Yggdrasil", "Vị Ngọt | Pha chế: Hồi sinh tại chỗ", "Chứa đựng sinh khí của cả một cõi thế giới.", "Truyền thuyết nói rằng thân cây mẹ của nó", "là cột trụ chống đỡ cả bầu trời."));
+
+        // --- 16.5 CÁC LOẠI NƯỚC PHA CHẾ ---
+        register(new ItemData("water_sweet", Rarity.COMMON, Category.MISC, 0.0, Material.POTION, "Nước Sông Tinh Khiết", "Vị Ngọt | Dùng để pha chế", "Lấy từ những dòng sông chảy xiết."));
+        register(new ItemData("water_tasteless", Rarity.COMMON, Category.MISC, 0.0, Material.POTION, "Nước Hồ Tĩnh Lặng", "Vô vị | Dùng để pha chế", "Lấy từ những hồ nước ngọt yên ả."));
+        register(new ItemData("water_salty", Rarity.COMMON, Category.MISC, 0.0, Material.POTION, "Nước Biển Mặn", "Vị Mặn | Dùng để pha chế", "Lấy từ đại dương mênh mông."));
+        register(new ItemData("water_cave", Rarity.UNCOMMON, Category.MISC, 0.0, Material.POTION, "Nước Mạch Ngầm", "Vị Cay | Dùng để pha chế", "Chứa nhiều khoáng chất từ lòng đất sâu."));
     }
 
     private void register(ItemData data) {

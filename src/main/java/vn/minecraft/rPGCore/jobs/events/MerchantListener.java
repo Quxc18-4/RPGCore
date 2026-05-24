@@ -1,13 +1,16 @@
 package vn.minecraft.rPGCore.jobs.events;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -17,6 +20,11 @@ import vn.minecraft.rPGCore.jobs.types.MerchantJob;
 import vn.minecraft.rPGCore.jobs.core.JobManager;
 import vn.minecraft.rPGCore.jobs.core.PlayerJobData;
 import io.lumine.mythic.bukkit.MythicBukkit;
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Entity;
+import org.bukkit.event.EventPriority;
+import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.persistence.PersistentDataContainer;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -163,115 +171,229 @@ public class MerchantListener implements Listener {
         vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.MERCHANT_MOVE, 1);
     }
 
-    @EventHandler
-    public void onInteractMount(org.bukkit.event.player.PlayerInteractEntityEvent event) {
-        Player player = event.getPlayer();
-        ItemStack item = player.getInventory().getItemInMainHand();
-
-        if (item == null || item.getType() == Material.AIR || !item.hasItemMeta()) return;
-        String itemId = plugin.getItemManager().getItemId(item);
-        if (itemId == null) return;
-
-        // Chỉ xử lý nếu đang cầm Giấy thu hồi hoặc Bùa ép xung
-        if (!itemId.equals("misc_mount_retrieval") && !itemId.startsWith("misc_mount_upgrade_")) return;
-
-        // KIỂM TRA ĐÂY CÓ PHẢI LÀ THÚ CƯỠI CỦA NGƯỜI CHƠI HAY KHÔNG
-        // Chú ý: Bạn hãy thay đổi hàm "getActiveMountSlot" dưới đây theo đúng hàm check thú cưỡi của bạn!
-        int activeSlot = -1; // plugin.getMountManager().getActiveMountSlot(player, event.getRightClicked());
-
-        // (Giả sử bạn có hàm tìm xem con Entity bị click thuộc về Slot nào của người chơi)
-        // Ví dụ: activeSlot = plugin.getMountManager().getSlotOfSpawnedMount(player, event.getRightClicked());
-
-        if (activeSlot == -1) {
-            player.sendMessage("§c§l[!] §cĐây không phải là thú cưỡi bạn đang triệu hồi!");
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onInteractMount(PlayerInteractEntityEvent event) {
+        // =========================================================
+        // FIX DOUBLE EVENT OFFHAND (1.21+)
+        // =========================================================
+        if (event.getHand() != EquipmentSlot.HAND) {
             return;
         }
-
-        vn.minecraft.rPGCore.mounts.data.PlayerMountProfile profile = plugin.getMountManager().getProfile(player.getUniqueId());
-        vn.minecraft.rPGCore.mounts.data.MountData mount = profile.getMountAt(activeSlot);
-        if (mount == null) return;
-
-        event.setCancelled(true); // Hủy tương tác leo lên thú
-
-        // 1. LOGIC ĐÓNG GÓI
-        if (itemId.equals("misc_mount_retrieval")) {
-            // Tạo thẻ bài
-            ItemStack card = plugin.getItemManager().buildItem("misc_mount_packaged", 1);
-            ItemMeta meta = card.getItemMeta();
-            org.bukkit.persistence.PersistentDataContainer pda = meta.getPersistentDataContainer();
-
-            pda.set(new org.bukkit.NamespacedKey(plugin, "mount_arch"), PersistentDataType.STRING, mount.getType().name());
-            pda.set(new org.bukkit.NamespacedKey(plugin, "mount_sp"), PersistentDataType.INTEGER, mount.getTierSpeed());
-            pda.set(new org.bukkit.NamespacedKey(plugin, "mount_jp"), PersistentDataType.INTEGER, mount.getTierJump());
-            pda.set(new org.bukkit.NamespacedKey(plugin, "mount_hp"), PersistentDataType.INTEGER, mount.getTierDurability());
-            pda.set(new org.bukkit.NamespacedKey(plugin, "mount_cd"), PersistentDataType.INTEGER, mount.getTierCooldown());
-            pda.set(new org.bukkit.NamespacedKey(plugin, "mount_st"), PersistentDataType.INTEGER, mount.getTierStorage());
-            if (mount.getInventoryBase64() != null) {
-                pda.set(new org.bukkit.NamespacedKey(plugin, "mount_inv"), PersistentDataType.STRING, mount.getInventoryBase64());
+        Player player = event.getPlayer();
+        Entity clicked = event.getRightClicked();
+        ItemStack item = player.getInventory().getItemInMainHand();
+        // =========================================================
+        // VALIDATE ITEM
+        // =========================================================
+        if (item == null
+                || item.getType() == Material.AIR
+                || !item.hasItemMeta()) {
+            return;
+        }
+        String itemId = plugin.getItemManager().getItemId(item);
+        if (itemId == null) {
+            return;
+        }
+        // Chỉ xử lý item mount
+        if (!itemId.equals("misc_mount_retrieval")
+                && !itemId.startsWith("misc_mount_upgrade_")) {
+            return;
+        }
+        // =========================================================
+        // HỦY TƯƠNG TÁC NGAY LẬP TỨC
+        // FIX BUG NGỒI LÊN THÚ Ở 1.21.1
+        // =========================================================
+        event.setCancelled(true);
+        // Force dismount nếu Paper xử lý vehicle trước listener
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (player.isInsideVehicle()) {
+                player.leaveVehicle();
             }
-
-            // Gắn Lore hiển thị chỉ số lên Thẻ
+        });
+        // =========================================================
+        // CHECK ĐÂY CÓ PHẢI ACTIVE MOUNT CỦA PLAYER KHÔNG
+        // =========================================================
+        Entity activeMount = plugin.getMountManager().getActiveMount(player);
+        if (activeMount == null || !activeMount.getUniqueId().equals(clicked.getUniqueId())) {
+            player.sendMessage("§c§l[!] §cĐây không phải thú cưỡi đang được triệu hồi của bạn!");
+            return;
+        }
+        // =========================================================
+        // LẤY SLOT TỪ PDC
+        // =========================================================
+        NamespacedKey slotKey = new NamespacedKey(plugin, "mount_slot");
+        Integer activeSlot = clicked.getPersistentDataContainer()
+                .get(slotKey, PersistentDataType.INTEGER);
+        if (activeSlot == null) {
+            player.sendMessage("§c§l[!] §cKhông thể xác định dữ liệu thú cưỡi!");
+            return;
+        }
+        // =========================================================
+        // LOAD PROFILE + MOUNT DATA
+        // =========================================================
+        vn.minecraft.rPGCore.mounts.data.PlayerMountProfile profile =
+                plugin.getMountManager().getProfile(player.getUniqueId());
+        if (profile == null) {
+            return;
+        }
+        vn.minecraft.rPGCore.mounts.data.MountData mount =
+                profile.getMountAt(activeSlot);
+        if (mount == null) {
+            player.sendMessage("§c§l[!] §cDữ liệu thú cưỡi không tồn tại!");
+            return;
+        }
+        // =========================================================
+        // 1. LOGIC ĐÓNG GÓI
+        // =========================================================
+        if (itemId.equals("misc_mount_retrieval")) {
+            ItemStack card = plugin.getItemManager()
+                    .buildItem("misc_mount_packaged", 1);
+            if (card == null) {
+                player.sendMessage("§cKhông thể tạo thẻ đóng gói!");
+                return;
+            }
+            ItemMeta meta = card.getItemMeta();
+            if (meta == null) {
+                return;
+            }
+            PersistentDataContainer pda = meta.getPersistentDataContainer();
             // =========================================================
-            // GẮN LORE HIỂN THỊ CHI TIẾT ĐỂ NGƯỜI CHƠI DỄ COI / GIAO DỊCH
+            // SAVE DATA
+            // =========================================================
+            pda.set(new NamespacedKey(plugin, "mount_arch"),
+                    PersistentDataType.STRING,
+                    mount.getType().name());
+            pda.set(new NamespacedKey(plugin, "mount_sp"),
+                    PersistentDataType.INTEGER,
+                    mount.getTierSpeed());
+            pda.set(new NamespacedKey(plugin, "mount_jp"),
+                    PersistentDataType.INTEGER,
+                    mount.getTierJump());
+            pda.set(new NamespacedKey(plugin, "mount_hp"),
+                    PersistentDataType.INTEGER,
+                    mount.getTierDurability());
+            pda.set(new NamespacedKey(plugin, "mount_cd"),
+                    PersistentDataType.INTEGER,
+                    mount.getTierCooldown());
+            pda.set(new NamespacedKey(plugin, "mount_st"),
+                    PersistentDataType.INTEGER,
+                    mount.getTierStorage());
+            if (mount.getInventoryBase64() != null
+                    && !mount.getInventoryBase64().isEmpty()) {
+                pda.set(new NamespacedKey(plugin, "mount_inv"),
+                        PersistentDataType.STRING,
+                        mount.getInventoryBase64());
+            }
+            // =========================================================
+            // BUILD LORE
             // =========================================================
             List<String> lore = new ArrayList<>();
-            // Lấy lại các dòng mô tả gốc của vật phẩm (nếu có đăng ký trong ItemManager)
-            if (meta.hasLore()) lore.addAll(meta.getLore());
-
+            if (meta.hasLore()) {
+                lore.addAll(meta.getLore());
+            }
             lore.add("§8§m-------------------------");
             lore.add("§fGiống loài: §6§l" + mount.getType().getDisplayName());
             lore.add("");
             lore.add("§fThông số phôi đóng gói:");
-            lore.add(" §8- §fTốc độ: §b" + mount.getTierSpeed() + " §8/ " + mount.getType().getMaxSpeed());
-            lore.add(" §8- §fSức nhảy: §a" + mount.getTierJump() + " §8/ " + mount.getType().getMaxJump());
-            lore.add(" §8- §fSức bền: §c" + mount.getTierDurability() + " §8/ " + mount.getType().getMaxDurability());
-            lore.add(" §8- §fHồi chiêu: §e" + mount.getTierCooldown() + " §8/ " + mount.getType().getMaxCooldown());
-            lore.add(" §8- §fKho chứa: §6" + mount.getTierStorage() + " §8/ " + mount.getType().getMaxStorage());
+            lore.add(" §8- §fTốc độ: §b"
+                    + mount.getTierSpeed()
+                    + " §8/ "
+                    + mount.getType().getMaxSpeed());
+            lore.add(" §8- §fSức nhảy: §a"
+                    + mount.getTierJump()
+                    + " §8/ "
+                    + mount.getType().getMaxJump());
+            lore.add(" §8- §fSức bền: §c"
+                    + mount.getTierDurability()
+                    + " §8/ "
+                    + mount.getType().getMaxDurability());
+            lore.add(" §8- §fHồi chiêu: §e"
+                    + mount.getTierCooldown()
+                    + " §8/ "
+                    + mount.getType().getMaxCooldown());
+            lore.add(" §8- §fKho chứa: §6"
+                    + mount.getTierStorage()
+                    + " §8/ "
+                    + mount.getType().getMaxStorage());
             lore.add("");
+            if (mount.getInventoryBase64() != null
+                    && !mount.getInventoryBase64().isEmpty()) {
 
-            // Tính năng ẩn: Check hộ hành lý bên trong rương thú cưỡi luôn!
-            if (mount.getInventoryBase64() != null && !mount.getInventoryBase64().isEmpty()) {
                 lore.add("§d§l[!] Thú cưỡi này đang mang theo hành lý!");
             } else {
                 lore.add("§7§o(Túi đồ thú cưỡi trống không)");
             }
             lore.add("§8§m-------------------------");
             lore.add("§a► Click phải để giải nén vào Chuồng Ngựa!");
-
             meta.setLore(lore);
             card.setItemMeta(meta);
-
-            // Gửi Thẻ cho người chơi, Xóa Thú khỏi chuồng và Despawn thú hiện tại
+            // =========================================================
+            // GIVE ITEM
+            // =========================================================
             player.getInventory().addItem(card);
+            // XÓA MOUNT KHỎI PROFILE
             profile.setMountAt(activeSlot, null);
+            // SAVE DATA
             plugin.getMountDataManager().saveProfile(player.getUniqueId());
-
-            // Xóa thú cưỡi khỏi thế giới (Thay bằng hàm despawn thú của bạn)
-            event.getRightClicked().remove();
-
+            // DESPAWN ACTIVE MOUNT
+            plugin.getMountManager().despawnMount(player, false);
+            // TRỪ ITEM THU HỒI
             item.setAmount(item.getAmount() - 1);
             player.sendMessage("§a§l[!] §fĐã thu hồi và đóng gói thành công!");
-            player.playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_CAST_SPELL, 1f, 1f);
+            player.playSound(
+                    player.getLocation(),
+                    Sound.ENTITY_ILLUSIONER_CAST_SPELL,
+                    1f,
+                    1f
+            );
         }
-
-        // 2. LOGIC NÂNG CẤP TRỰC TIẾP
+        // =========================================================
+        // 2. LOGIC NÂNG CẤP
+        // =========================================================
         else if (itemId.startsWith("misc_mount_upgrade_")) {
             boolean success = false;
             String type = itemId.replace("misc_mount_upgrade_", "");
-
-            if (type.equals("speed") && mount.getTierSpeed() < mount.getType().getMaxSpeed()) { mount.setTierSpeed(mount.getTierSpeed() + 1); success = true; }
-            else if (type.equals("jump") && mount.getTierJump() < mount.getType().getMaxJump()) { mount.setTierJump(mount.getTierJump() + 1); success = true; }
-            else if (type.equals("durability") && mount.getTierDurability() < mount.getType().getMaxDurability()) { mount.setTierDurability(mount.getTierDurability() + 1); success = true; }
-            else if (type.equals("cooldown") && mount.getTierCooldown() < mount.getType().getMaxCooldown()) { mount.setTierCooldown(mount.getTierCooldown() + 1); success = true; }
-            else if (type.equals("storage") && mount.getTierStorage() < mount.getType().getMaxStorage()) { mount.setTierStorage(mount.getTierStorage() + 1); success = true; }
-
+            if (type.equals("speed")
+                    && mount.getTierSpeed() < mount.getType().getMaxSpeed()) {
+                mount.setTierSpeed(mount.getTierSpeed() + 1);
+                success = true;
+            }
+            else if (type.equals("jump")
+                    && mount.getTierJump() < mount.getType().getMaxJump()) {
+                mount.setTierJump(mount.getTierJump() + 1);
+                success = true;
+            }
+            else if (type.equals("durability")
+                    && mount.getTierDurability() < mount.getType().getMaxDurability()) {
+                mount.setTierDurability(mount.getTierDurability() + 1);
+                success = true;
+            }
+            else if (type.equals("cooldown")
+                    && mount.getTierCooldown() < mount.getType().getMaxCooldown()) {
+                mount.setTierCooldown(mount.getTierCooldown() + 1);
+                success = true;
+            }
+            else if (type.equals("storage")
+                    && mount.getTierStorage() < mount.getType().getMaxStorage()) {
+                mount.setTierStorage(mount.getTierStorage() + 1);
+                success = true;
+            }
             if (success) {
                 plugin.getMountDataManager().saveProfile(player.getUniqueId());
                 item.setAmount(item.getAmount() - 1);
-                player.sendMessage("§e§l[!] §fĐã dùng Bùa Ép Xung để tăng 1 Bậc chỉ số cho Thú Cưỡi!");
-                player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_USE, 1f, 1.5f);
+                player.sendMessage(
+                        "§e§l[!] §fĐã dùng Bùa Ép Xung để tăng 1 Bậc chỉ số cho Thú Cưỡi!"
+                );
+                player.playSound(
+                        player.getLocation(),
+                        Sound.BLOCK_ANVIL_USE,
+                        1f,
+                        1.5f
+                );
             } else {
-                player.sendMessage("§c§l[!] §cChỉ số này đã đạt cấp tối đa, không thể dùng bùa nữa!");
+                player.sendMessage(
+                        "§c§l[!] §cChỉ số này đã đạt cấp tối đa!"
+                );
             }
         }
     }

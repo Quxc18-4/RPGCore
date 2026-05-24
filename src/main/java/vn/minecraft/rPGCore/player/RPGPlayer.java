@@ -113,6 +113,10 @@ public class RPGPlayer {
         UUID uuid = bukkitPlayer.getUniqueId();
         FoodBuffManager foodManager = vn.minecraft.rPGCore.RPGCore.getInstance().getFoodBuffManager();
 
+        // [THÊM 2 MANAGER CỦA DƯỢC SƯ]
+        vn.minecraft.rPGCore.managers.AlchemistBuffManager potionManager = vn.minecraft.rPGCore.RPGCore.getInstance().getAlchemistBuffManager();
+        vn.minecraft.rPGCore.managers.ToxicityManager toxManager = vn.minecraft.rPGCore.RPGCore.getInstance().getToxicityManager();
+
         boolean isArcher = currentClass != null && currentClass.getId().equalsIgnoreCase("archer");
         boolean isMage = currentClass != null && currentClass.getId().equalsIgnoreCase("mage");
 
@@ -123,13 +127,15 @@ public class RPGPlayer {
         int luk = attributeData.getAttribute("LUK");
 
         // ==========================================
-        // 1. SÁT THƯƠNG [ĐÃ CHỈNH SỬA SCALE THEO %]
-        // Mỗi điểm STR = +0.5% Sát thương vật lý (Dmg Multiplier)
-        // Mỗi điểm INT = +0.5% Sát thương phép thuật (Dmg Multiplier)
+        // 1. SÁT THƯƠNG
         // ==========================================
         double strMultiplier = 1.0 + (str * 0.005);
         double intMultiplier = 1.0 + (intel * 0.005);
         double foodMultiplier = 1.0 + (foodManager.getBonus(uuid, FoodBuffManager.StatType.DMG) / 100.0);
+
+        // [THÊM MULTIPLIER TỪ THUỐC VÀ TRÚNG ĐỘC MANA]
+        double potionDmgMultiplier = 1.0 + (potionManager.getBonus(uuid, "Sát thương (%)") / 100.0);
+        double manaSicknessMult = Math.max(0.0, 1.0 - toxManager.getManaSicknessDebuff(uuid));
 
         boolean isMagicalWeapon = currentStats.maxMagicalDamage > 0;
         boolean isPhysicalWeapon = currentStats.maxPhysicalDamage > 0;
@@ -138,73 +144,71 @@ public class RPGPlayer {
             double minP = currentStats.minPhysicalDamage > 0 ? currentStats.minPhysicalDamage : 5.0;
             double maxP = currentStats.maxPhysicalDamage > 0 ? currentStats.maxPhysicalDamage : 10.0;
 
-            map.put("Sát thương vật lý (Nhỏ nhất)", minP * strMultiplier * foodMultiplier);
-            map.put("Sát thương vật lý (Lớn nhất)", maxP * strMultiplier * foodMultiplier);
+            map.put("Sát thương vật lý (Nhỏ nhất)", minP * strMultiplier * foodMultiplier * potionDmgMultiplier);
+            map.put("Sát thương vật lý (Lớn nhất)", maxP * strMultiplier * foodMultiplier * potionDmgMultiplier);
         }
 
         if (isMagicalWeapon) {
             double minM = currentStats.minMagicalDamage > 0 ? currentStats.minMagicalDamage : 5.0;
             double maxM = currentStats.maxMagicalDamage > 0 ? currentStats.maxMagicalDamage : 10.0;
 
-            map.put("Sát thương phép thuật (Nhỏ nhất)", minM * intMultiplier * foodMultiplier);
-            map.put("Sát thương phép thuật (Lớn nhất)", maxM * intMultiplier * foodMultiplier);
+            map.put("Sát thương phép thuật (Nhỏ nhất)", minM * intMultiplier * foodMultiplier * potionDmgMultiplier * manaSicknessMult);
+            map.put("Sát thương phép thuật (Lớn nhất)", maxM * intMultiplier * foodMultiplier * potionDmgMultiplier * manaSicknessMult);
         }
 
         // 2. PHÒNG THỦ & MÁU
         map.put("Máu tối đa", getTotalMaxHealth());
-        map.put("Giáp", currentStats.armor * currentStats.armorMultiplier);
-        map.put("Kháng phép", currentStats.magicResistance * currentStats.magicResistMultiplier);
+        map.put("Giáp", currentStats.armor * (currentStats.armorMultiplier + (potionManager.getBonus(uuid, "Tỉ lệ Giáp") / 100.0)));
+        map.put("Kháng phép", currentStats.magicResistance * (currentStats.magicResistMultiplier + (potionManager.getBonus(uuid, "Tỉ lệ Kháng phép") / 100.0)));
 
-        // 3. BẠO KÍCH (Không còn code Assassin ở đây)
-        double critRate = currentStats.critRate + (luk * 0.2) + foodManager.getBonus(uuid, FoodBuffManager.StatType.CRIT_RATE);
+        // 3. BẠO KÍCH
+        double critRate = currentStats.critRate + (luk * 0.2) + foodManager.getBonus(uuid, FoodBuffManager.StatType.CRIT_RATE) + potionManager.getBonus(uuid, "Tỉ lệ chí mạng");
         double critDamage = currentStats.critDamage;
         map.put("Tỉ lệ chí mạng", critRate);
         map.put("Sát thương chí mạng", critDamage);
 
-        // 4. XUYÊN GIÁP & XUYÊN PHÉP (Không còn code Archer/Mage ở đây)
-        double armorPen = currentStats.armorPen + foodManager.getBonus(uuid, FoodBuffManager.StatType.ARMOR_PEN);
+        // 4. XUYÊN GIÁP & XUYÊN PHÉP
+        double armorPen = currentStats.armorPen + foodManager.getBonus(uuid, FoodBuffManager.StatType.ARMOR_PEN) + potionManager.getBonus(uuid, "Tỉ lệ xuyên giáp");
         map.put("Tỉ lệ xuyên giáp", armorPen);
 
-        double magicArmorPen = currentStats.magicArmorPen;
+        double magicArmorPen = currentStats.magicArmorPen + potionManager.getBonus(uuid, "Tỉ lệ xuyên kháng phép");
         map.put("Tỉ lệ xuyên kháng phép", magicArmorPen);
 
         // 5. CHỈ SỐ SINH TỒN
-        double dodgeRate = currentStats.dodgeRate + (agi * 0.1);
-        map.put("Tỉ lệ né tránh", dodgeRate); // Truyền Raw
+        double dodgeRate = currentStats.dodgeRate + (agi * 0.1) + potionManager.getBonus(uuid, "Tỉ lệ né tránh");
+        map.put("Tỉ lệ né tránh", dodgeRate);
 
-        double lifeSteal = currentStats.lifeSteal + foodManager.getBonus(uuid, FoodBuffManager.StatType.LIFE_STEAL);
+        double lifeSteal = currentStats.lifeSteal + foodManager.getBonus(uuid, FoodBuffManager.StatType.LIFE_STEAL) + potionManager.getBonus(uuid, "Tỉ lệ hút máu");
         map.put("Tỉ lệ hút máu", lifeSteal);
         map.put("Tỉ lệ hút máu phép", currentStats.magicLifeSteal);
 
-        double blockRate = currentStats.blockRate + (str * 0.1);
+        double blockRate = currentStats.blockRate + (str * 0.1) + potionManager.getBonus(uuid, "Tỉ lệ đỡ đòn");
         map.put("Tỉ lệ đỡ đòn", blockRate);
 
-        double regenRate = currentStats.regenRate + (vit * 0.1) + foodManager.getBonus(uuid, FoodBuffManager.StatType.REGEN);
+        double regenRate = currentStats.regenRate + (vit * 0.1) + foodManager.getBonus(uuid, FoodBuffManager.StatType.REGEN) + potionManager.getBonus(uuid, "Tỉ lệ hồi phục");
         map.put("Tỉ lệ hồi phục", regenRate);
-        map.put("Kháng hiệu ứng", currentStats.effectResistance); // Truyền Raw
+        map.put("Kháng hiệu ứng", currentStats.effectResistance + potionManager.getBonus(uuid, "Kháng hiệu ứng"));
 
         // 6. TỐC ĐỘ VÀ PHỤ TRỢ
-        double atkSpeed = currentStats.attackSpeed + foodManager.getBonus(uuid, FoodBuffManager.StatType.ATK_SPEED);
+        double atkSpeed = currentStats.attackSpeed + foodManager.getBonus(uuid, FoodBuffManager.StatType.ATK_SPEED) + potionManager.getBonus(uuid, "Tốc độ đánh");
         map.put("Tốc độ đánh", atkSpeed);
 
-        double cdr = currentStats.cooldownReduction + (intel * 0.1) + foodManager.getBonus(uuid, FoodBuffManager.StatType.CDR);
-        map.put("Giảm hồi chiêu", cdr); // Truyền Raw
+        double cdr = currentStats.cooldownReduction + (intel * 0.1) + foodManager.getBonus(uuid, FoodBuffManager.StatType.CDR) + potionManager.getBonus(uuid, "Giảm hồi chiêu");
+        map.put("Giảm hồi chiêu", cdr);
 
-        double moveSpeed = currentStats.moveSpeed + (agi * 0.5) + foodManager.getBonus(uuid, FoodBuffManager.StatType.MOVE_SPEED);
+        double moveSpeed = currentStats.moveSpeed + (agi * 0.5) + foodManager.getBonus(uuid, FoodBuffManager.StatType.MOVE_SPEED) + potionManager.getBonus(uuid, "Tốc độ di chuyển");
         if (bukkitPlayer.hasMetadata("Skill_MoveSpeed_Bonus")) {
             moveSpeed += bukkitPlayer.getMetadata("Skill_MoveSpeed_Bonus").get(0).asDouble();
         }
-        map.put("Tốc độ di chuyển", moveSpeed); // Truyền Raw
+        map.put("Tốc độ di chuyển", moveSpeed);
 
-        map.put("Nhận Kinh nghiệm", currentStats.expBonus);
-        map.put("Hồi Năng lượng", currentStats.manaRegen);
+        map.put("Nhận Kinh nghiệm", currentStats.expBonus + potionManager.getBonus(uuid, "Nhận Kinh nghiệm"));
+        map.put("Hồi Năng lượng", currentStats.manaRegen + potionManager.getBonus(uuid, "Hồi Năng lượng"));
         map.put("Tỉ lệ rớt đồ", currentStats.dropRate + (luk * 0.1) + foodManager.getBonus(uuid, FoodBuffManager.StatType.DROP_RATE));
 
-        // [TRƯỚC KHI RETURN MAP]: GỌI CLASS ĐỂ CỘNG THÊM NỘI TẠI TĨNH
         if (currentClass != null) {
             currentClass.applyPassiveBonusStats(this, map);
         }
-
         return map;
     }
 
@@ -435,10 +439,10 @@ public class RPGPlayer {
         double equipHp = currentStats != null ? (currentStats.maxHealth * currentStats.hpMultiplier) : 0.0;
         double foodMaxHp = vn.minecraft.rPGCore.RPGCore.getInstance().getFoodBuffManager().getBonus(this.bukkitPlayer.getUniqueId(), vn.minecraft.rPGCore.managers.FoodBuffManager.StatType.MAX_HP);
 
-        double totalMaxHp = baseHp + levelBonus + vitBonus + equipHp + foodMaxHp;
+        // [LẤY THÊM MÁU TỪ BÌNH THUỐC]
+        double potionFlatHp = vn.minecraft.rPGCore.RPGCore.getInstance().getAlchemistBuffManager().getBonus(this.bukkitPlayer.getUniqueId(), "Máu tối đa");
 
-        // [FIX TẬN GỐC]: Ép mức máu trả về luôn luôn >= 1.0 (Nửa tim)
-        // Việc này sẽ sửa lỗi hiển thị UI và lỗi sát thương môi trường bị âm!
+        double totalMaxHp = baseHp + levelBonus + vitBonus + equipHp + foodMaxHp + potionFlatHp;
         return Math.max(1.0, totalMaxHp);
     }
 

@@ -42,6 +42,9 @@ public final class RPGCore extends JavaPlugin {
     private MountManager mountManager;
     private MountDataManager mountDataManager;
 
+    private ToxicityManager toxicityManager;
+    private AlchemistBuffManager alchemistBuffManager;
+
     @Override
     public void onEnable() {
         instance = this;
@@ -65,6 +68,11 @@ public final class RPGCore extends JavaPlugin {
         this.boredomManager = new BoredomManager(this);
         this.foodBuffManager = new FoodBuffManager(this);
 
+        // [MỚI]: KHỞI TẠO HỆ THỐNG DƯỢC SƯ
+        this.toxicityManager = new ToxicityManager(this);
+        this.alchemistBuffManager = new AlchemistBuffManager(this);
+        BrewingManager brewingManager = new BrewingManager(this, this.itemManager);
+
         //SchemaManager.loadSchemas();
 
         // [MỚI]: KHỞI TẠO MANAGER CHO NGÂN HÀNG & CỬA HÀNG
@@ -77,7 +85,7 @@ public final class RPGCore extends JavaPlugin {
         ArrowCraftingUI arrowCraftingUI = new ArrowCraftingUI(playerManager, arrowRecipeManager);
         AdminArrowCraftingUI adminArrowCraftingUI = new AdminArrowCraftingUI(arrowRecipeManager);
         ElementRotationGUI elementRotationGUI = new ElementRotationGUI();
-        vn.minecraft.rPGCore.managers.CropManager cropManager = new vn.minecraft.rPGCore.managers.CropManager(this, this.itemManager);
+        CropManager cropManager = new CropManager(this, this.itemManager);
 
         this.fishingManager = new FishingManager(this, this.itemManager);
         // [MỚI]: Khởi tạo BaitManager
@@ -109,6 +117,9 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(blacksmithGUI, this);
         getServer().getPluginManager().registerEvents(cookingManager, this);
         getServer().getPluginManager().registerEvents(new FoodListener(this, this.boredomManager, this.foodBuffManager), this);
+        // ĐĂNG KÝ LISTENER DƯỢC SƯ
+        getServer().getPluginManager().registerEvents(brewingManager, this);
+        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.PotionListener(this, brewingManager), this);
         // [MỚI]: ĐĂNG KÝ BANK LISTENER
         getServer().getPluginManager().registerEvents(new BankListener(this, bankManager, currencyManager, playerManager), this);
         // [MỚI]: ĐĂNG KÝ SỰ KIỆN CHO CỬA HÀNG (SHOP)
@@ -135,6 +146,7 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(mountStableGUI, this);
         getServer().getPluginManager().registerEvents(mountStorageGUI, this);
         getServer().getPluginManager().registerEvents(new MountListener(this.mountManager, mountStorageGUI), this);
+        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.WaterFetchListener(this.itemManager), this);
 
         new RegenTask(playerManager, bossBarManager).runTaskTimer(this, 0L, 20L);
 
@@ -248,7 +260,7 @@ public final class RPGCore extends JavaPlugin {
         return this.bossBarManager;
     }
 
-    public vn.minecraft.rPGCore.managers.ItemManager getItemManager() {
+    public ItemManager getItemManager() {
         return this.itemManager;
     }
 
@@ -275,5 +287,13 @@ public final class RPGCore extends JavaPlugin {
     // Thêm hàm Getter xuống dưới cùng:
     public BackpackManager getBackpackManager() {
         return backpackManager;
+    }
+
+    public vn.minecraft.rPGCore.managers.ToxicityManager getToxicityManager() {
+        return this.toxicityManager;
+    }
+
+    public vn.minecraft.rPGCore.managers.AlchemistBuffManager getAlchemistBuffManager() {
+        return this.alchemistBuffManager;
     }
 }

@@ -63,12 +63,13 @@ public class MountStableGUI implements Listener {
                     "§7Bạn chưa mở khóa ô chuồng này.", "", "§eChi phí: §l" + costGold + " Vàng", "§a► Click để mua mở rộng!");
         }
 
-        if (!profile.hasMountAt(slotIndex)) {
+        MountData mount = profile.getMountAt(slotIndex);
+
+        if (mount == null) {
             return createItem(Material.MINECART, "§a§lÔ CHUỒNG SỐ " + slotIndex + " [TRỐNG]",
                     "§7Ô chuồng này đã sẵn sàng.", "", "§a► Click để tới Cửa Hàng mua Thú cưỡi mới!");
         }
 
-        MountData mount = profile.getMountAt(slotIndex);
         return createItem(Material.SADDLE, "§6§l" + mount.getCustomName(),
                 "§8[ Chủng loại: " + mount.getType().getDisplayName() + " ]", "",
                 mount.isDead() ? "§c§l[!] Đang Hồi Sức" : "§a§l[!] Sẵn sàng", "",

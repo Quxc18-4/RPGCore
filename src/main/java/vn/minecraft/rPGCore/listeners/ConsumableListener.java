@@ -67,7 +67,7 @@ public class ConsumableListener implements Listener {
                 "bag_seeds_common", "bag_seeds_magic", "misc_seed_pouch", "bag_fishing_rod_common",
                 "bag_fishing_rod_uncommon", "bag_fishing_rod_rare",
                 "bag_fishing_rod_epic", "bag_fishing_rod_mythic", "bag_fishing_rod_legendary",
-                "bag_cloth", "bag_leather", "bag_dragon_scale", "misc_gold_scale", "misc_stable_expansion");
+                "bag_cloth", "bag_leather", "bag_dragon_scale", "misc_gold_scale", "misc_stable_expansion", "misc_mount_packaged");
 
         if (instantFoods.contains(itemId)) {
             event.setCancelled(true);
