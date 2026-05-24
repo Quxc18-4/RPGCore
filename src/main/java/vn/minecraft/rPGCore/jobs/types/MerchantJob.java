@@ -62,6 +62,7 @@ public class MerchantJob extends RPGJob {
         double mountSpeed = Math.min(level * 0.6, 30.0);
         double bankInterest = Math.min(0.1 + ((level - 1) * (0.4 / 49.0)), 0.5);
         double copperDrop = Math.min(5.0 + (level * 0.5), 30.0);
+        double tokenDropChance = Math.min(level * 0.5, 25.0);
 
         boolean hasUlt2 = data.hasUnlockedSkill("MERCHANT", "MERCH_ULT_2");
         if (hasUlt2) bargainDiscount = Math.min(bargainDiscount + 15.0, 40.0); // Cộng thêm 15% từ Ultimate
@@ -75,6 +76,7 @@ public class MerchantJob extends RPGJob {
         lore.add("§8▪ §fNghệ Thuật Đàm Phán: §aGiảm " + String.format("%.1f", bargainDiscount) + "% §fgiá mua và tăng giá bán.");
         lore.add("§8▪ §fThuần Thục Thồ Hàng: §b+" + String.format("%.1f", mountSpeed) + "% §fTốc độ Thú cưỡi.");
         lore.add("§8▪ §fLãi Suất Tín Dụng: Nhận §e" + String.format("%.2f", bankInterest) + "% §fTiền lãi mỗi ngày.");
+        lore.add("§8▪ §fUy Tín Thương Trường: Mỗi 1 Vàng giao dịch có §d" + String.format("%.1f", tokenDropChance) + "% §fcơ hội nhận 1 Chứng Nhận.");
         lore.add("§8▪ §fMùi Tiền: §6" + String.format("%.1f", copperDrop) + "% §fTỉ lệ rớt tiền khi giết quái.");
 
         boolean hasUlt1 = data.hasUnlockedSkill("MERCHANT", "MERCH_ULT_1");

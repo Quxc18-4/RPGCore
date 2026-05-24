@@ -478,11 +478,11 @@ public class ItemManager {
 
         // [CÁC ITEM NÂNG CẤP VÀ ĐÓNG GÓI THÚ CƯỠI]
         register(new ItemData("misc_mount_retrieval", Rarity.EPIC, Category.MISC, 0.0, Material.PAPER, "Giấy Thu Hồi Thú Cưỡi", "Hiệu quả: Bảo toàn mọi chỉ số và túi đồ.", "Click phải vào thú cưỡi đang triệu hồi", "để đóng gói và giao dịch thú cưỡi."));
-        register(new ItemData("misc_mount_upgrade_speed", Rarity.RARE, Category.MISC, 0.0, Material.SUGAR, "Bùa Ép Xung: Tốc Độ", "Sử dụng: Tăng lập tức 1 bậc Tốc Độ.", "Click phải vào thú cưỡi đang triệu hồi để sử dụng."));
-        register(new ItemData("misc_mount_upgrade_jump", Rarity.RARE, Category.MISC, 0.0, Material.RABBIT_FOOT, "Bùa Ép Xung: Sức Nhảy", "Sử dụng: Tăng lập tức 1 bậc Sức Nhảy.", "Click phải vào thú cưỡi đang triệu hồi để sử dụng."));
-        register(new ItemData("misc_mount_upgrade_durability", Rarity.RARE, Category.MISC, 0.0, Material.LEATHER, "Bùa Ép Xung: Sức Bền", "Sử dụng: Tăng lập tức 1 bậc Sức Bền.", "Click phải vào thú cưỡi đang triệu hồi để sử dụng."));
-        register(new ItemData("misc_mount_upgrade_cooldown", Rarity.RARE, Category.MISC, 0.0, Material.CLOCK, "Bùa Ép Xung: Hồi Chiêu", "Sử dụng: Tăng lập tức 1 bậc Hồi Chiêu.", "Click phải vào thú cưỡi đang triệu hồi để sử dụng."));
-        register(new ItemData("misc_mount_upgrade_storage", Rarity.RARE, Category.MISC, 0.0, Material.CHEST, "Bùa Ép Xung: Kho Chứa", "Sử dụng: Tăng lập tức 1 bậc Kho Chứa.", "Click phải vào thú cưỡi đang triệu hồi để sử dụng."));
+        register(new ItemData("misc_mount_upgrade_speed", Rarity.RARE, Category.MISC, 0.0, Material.SUGAR, "Bùa Nâng Cấp: Tốc Độ", "Sử dụng: Tăng lập tức 1 bậc Tốc Độ.", "Click phải vào thú cưỡi đang triệu hồi để sử dụng."));
+        register(new ItemData("misc_mount_upgrade_jump", Rarity.RARE, Category.MISC, 0.0, Material.RABBIT_FOOT, "Bùa Nâng Cấp: Sức Nhảy", "Sử dụng: Tăng lập tức 1 bậc Sức Nhảy.", "Click phải vào thú cưỡi đang triệu hồi để sử dụng."));
+        register(new ItemData("misc_mount_upgrade_durability", Rarity.RARE, Category.MISC, 0.0, Material.LEATHER, "Bùa Nâng Cấp: Sức Bền", "Sử dụng: Tăng lập tức 1 bậc Sức Bền.", "Click phải vào thú cưỡi đang triệu hồi để sử dụng."));
+        register(new ItemData("misc_mount_upgrade_cooldown", Rarity.RARE, Category.MISC, 0.0, Material.CLOCK, "Bùa Nâng Cấp: Hồi Chiêu", "Sử dụng: Tăng lập tức 1 bậc Hồi Chiêu.", "Click phải vào thú cưỡi đang triệu hồi để sử dụng."));
+        register(new ItemData("misc_mount_upgrade_storage", Rarity.RARE, Category.MISC, 0.0, Material.CHEST, "Bùa Nâng Cấp: Kho Chứa", "Sử dụng: Tăng lập tức 1 bậc Kho Chứa.", "Click phải vào thú cưỡi đang triệu hồi để sử dụng."));
 
         // Vật phẩm đặc biệt (Tạo ra khi đóng gói)
         register(new ItemData("misc_mount_packaged", Rarity.EPIC, Category.MISC, 0.0, Material.NAME_TAG, "Thẻ Bài Thú Cưỡi", "Sử dụng: Nhận ngay 1 thú cưỡi khi sử dụng", "Hợp đồng chuyển nhượng thú cưỡi, mua từ thương nhân."));

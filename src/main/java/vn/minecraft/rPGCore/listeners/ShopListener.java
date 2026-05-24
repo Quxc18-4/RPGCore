@@ -224,32 +224,27 @@ public class ShopListener implements Listener {
                     player.sendMessage("§aĐã bán và nhận được " + currencyManager.formatCurrency(finalBuyPrice));
                     player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f);
 
-                    // THÊM: Cộng Nhiệm vụ và EXP
-                    vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.MERCHANT_SELL, 1);
+                    // [ĐÃ SỬA]: Truyền chính xác Số lượng vật phẩm bán và Số tiền kiếm được vào thanh tiến độ Quest
+                    vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.MERCHANT_SELL, shopItem.item.getAmount());
                     vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.MERCHANT_EARN, finalBuyPrice);
                     vn.minecraft.rPGCore.jobs.core.JobManager.processMerchantExp(player, finalBuyPrice);
-
-                    // Cộng Nhiệm vụ
-                    vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.MERCHANT_SELL, 1);
-                    vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.MERCHANT_EARN, finalBuyPrice);
                 } else {
                     player.sendMessage("§cBạn không có đủ số lượng vật phẩm này để bán!");
                 }
             }
-            // MUA VẬT PHẨM TỪ SHOP -> Trừ Tiền
             // MUA VẬT PHẨM TỪ SHOP -> Trừ Tiền Mặt
             else if (event.isRightClick()) {
                 if (finalSellPrice <= 0) return;
 
-                // Kiểm tra và trừ tiền mặt trong túi (Hàm này đã tự động xử lý thối tiền)
+                // Kiểm tra và trừ tiền mặt trong túi
                 if (currencyManager.takePhysicalCurrency(player, finalSellPrice)) {
                     player.getInventory().addItem(shopItem.item.clone());
 
                     player.sendMessage("§aĐã mua thành công với giá " + currencyManager.formatCurrency(finalSellPrice));
                     player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_CHIME, 1f, 1f);
 
-                    // THÊM: Cộng Nhiệm vụ và EXP (CHỈ GHI 1 LẦN)
-                    vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.MERCHANT_BUY, 1);
+                    // [ĐÃ SỬA]: Truyền chính xác Số lượng vật phẩm mua và Số tiền tiêu tốn vào thanh tiến độ Quest
+                    vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.MERCHANT_BUY, shopItem.item.getAmount());
                     vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.MERCHANT_SPEND, finalSellPrice);
                     vn.minecraft.rPGCore.jobs.core.JobManager.processMerchantExp(player, finalSellPrice);
                 } else {

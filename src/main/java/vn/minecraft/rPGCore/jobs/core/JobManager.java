@@ -156,6 +156,9 @@ public class JobManager {
         data.setLastDailyReset(config.getLong("lastDailyReset", System.currentTimeMillis()));
         data.setLastWeeklyReset(config.getLong("lastWeeklyReset", System.currentTimeMillis()));
 
+        // LOAD DỮ LIỆU TÍCH LŨY TIỀN THƯƠNG NHÂN
+        data.setMerchantAccumulatedCoins(config.getLong("merchantAccumulatedCoins", 0L));
+
         playerData.put(uuid, data);
     }
 
@@ -193,6 +196,9 @@ public class JobManager {
 
         config.set("lastDailyReset", data.getLastDailyReset());
         config.set("lastWeeklyReset", data.getLastWeeklyReset());
+
+        // SAVE DỮ LIỆU TÍCH LŨY TIỀN THƯƠNG NHÂN
+        config.set("merchantAccumulatedCoins", data.getMerchantAccumulatedCoins());
 
         try { config.save(file); } catch (Exception e) { e.printStackTrace(); }
     }
@@ -242,22 +248,55 @@ public class JobManager {
         return (job != null) ? job.getFreshnessMultiplier(getPlayerJobLevel(player)) : 1.0;
     }
 
-    // ==========================================
-    // HÀM TÍNH TOÁN EXP GIAO DỊCH CHO THƯƠNG NHÂN
-    // ==========================================
+    // =========================================================================
+    // HÀM TÍNH TOÁN EXP & CHỨNG NHẬN GIAO DỊCH (TÍCH LŨY QUA PLAYERJOBDATA)
+    // =========================================================================
     public static void processMerchantExp(Player player, long amount) {
         PlayerJobData data = getPlayerData(player);
         if (data == null || !data.getJobId().equalsIgnoreCase("MERCHANT")) return;
 
         int level = data.getLevel("MERCHANT");
-        // Scale: Cấp 1 được 0.1 EXP/Xu -> Cấp 50 được 0.2 EXP/Xu
+
+        // 1. TÍNH TOÁN EXP NGHỀ NGHIỆP
         double expPerCoin = 0.1 + (level * 0.002);
         double totalExp = amount * expPerCoin;
-
-        // Gọi hàm addExp để tự động cộng và check thăng cấp
         addExp(player, totalExp);
 
-        // Ghi log báo cho người chơi
-        //        player.sendMessage("§e§l[Thương Nhân] §fNhận được §d" + String.format("%.1f", totalExp) + " EXP §fnghề từ giao dịch này.");
+        // 2. LOGIC RỚT CHỨNG NHẬN TÍCH LŨY DÒNG TIỀN
+        long currentAcc = data.getMerchantAccumulatedCoins();
+        long totalCoins = currentAcc + amount;
+
+        // Đổi ra số lượng đơn vị Vàng luân chuyển (1 Vàng = 4096 Đồng)
+        long goldUnits = totalCoins / 4096;
+        long leftoverCoins = totalCoins % 4096;
+
+        // Ghi lại số tiền lẻ chưa đủ 1 Vàng vào bộ nhớ data nghề nghiệp để tích lũy cho lần sau
+        data.setMerchantAccumulatedCoins(leftoverCoins);
+
+        // Nếu tổng số tiền tích lũy từ các giao dịch trước đạt đủ mốc từ 1 Vàng trở lên
+        if (goldUnits > 0) {
+            // Cân bằng lại tỉ lệ: Cấp * 0.5% cho mỗi 1 Vàng. Tối đa 25.0% ở Cấp 50.
+            double tokenDropChance = Math.min(level * 0.5, 25.0);
+            double totalExpected = goldUnits * (tokenDropChance / 100.0);
+
+            // Thuật toán xúc xắc an toàn (Ví dụ: 1.25 -> Chắc chắn 1, có 25% nhận thêm cái thứ 2)
+            int tokens = (int) totalExpected;
+            if (Math.random() < (totalExpected - tokens)) {
+                tokens++;
+            }
+
+            // Tiến hành cấp Chứng Nhận Thương Nhân nếu trúng thưởng
+            if (tokens > 0) {
+                org.bukkit.inventory.ItemStack tokenItem = vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager().buildItem("misc_merchant_token", tokens);
+                if (tokenItem != null) {
+                    java.util.HashMap<Integer, org.bukkit.inventory.ItemStack> leftOver = player.getInventory().addItem(tokenItem);
+                    for (org.bukkit.inventory.ItemStack drop : leftOver.values()) {
+                        player.getWorld().dropItemNaturally(player.getLocation(), drop);
+                    }
+                    player.sendMessage("§e§l[Uy Tín Thương Trường] §fDòng tiền giao dịch đạt §6" + goldUnits + " Vàng§f, bạn nhận được §a+" + tokens + " Chứng Nhận Thương Nhân§f!");
+                    player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f);
+                }
+            }
+        }
     }
 }

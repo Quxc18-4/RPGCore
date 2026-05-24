@@ -12,6 +12,9 @@ public class PlayerJobData {
     private Map<String, Integer> jobLevels;
     private Map<String, Double> jobExps;
 
+    // Thêm biến thuộc tính này vào đầu class PlayerJobData
+    private long merchantAccumulatedCoins = 0L;
+
     // HỆ THỐNG ĐIỂM JP VÀ CÂY KỸ NĂNG (END-GAME)
     private Map<String, Integer> jobPoints;
     private Map<String, List<String>> unlockedSkills;
@@ -128,4 +131,12 @@ public class PlayerJobData {
     public void addDailyMilestone(int amount) { this.dailyMilestone += amount; }
     public int getCurrentForgeStreak() { return currentForgeStreak; }
     public void setCurrentForgeStreak(int streak) { this.currentForgeStreak = streak; }
+    // Thêm hai hàm Getter và Setter này vào cuối class
+    public long getMerchantAccumulatedCoins() {
+        return this.merchantAccumulatedCoins;
+    }
+
+    public void setMerchantAccumulatedCoins(long coins) {
+        this.merchantAccumulatedCoins = coins;
+    }
 }

@@ -73,12 +73,18 @@ public class JobQuestManager {
 
             // Đưa qua màng lọc điều kiện của Quest
             if (quest.checkCondition(action, args)) {
-                int currentProgress = data.getQuestProgress(questId) + 1;
+
+                // [FIX BUG TIẾN ĐỘ]: Bóc tách tham số dạng Số (Số tiền/Số lượng vật phẩm) nếu có truyền vào
+                int increment = 1;
+                if (args != null && args.length > 0 && args[0] instanceof Number) {
+                    increment = ((Number) args[0]).intValue();
+                }
+
+                int currentProgress = data.getQuestProgress(questId) + increment;
                 data.setQuestProgress(questId, currentProgress);
 
                 // HOÀN THÀNH NHIỆM VỤ
                 if (currentProgress >= quest.getGoal()) {
-                    // Không phát thưởng luôn nữa, chỉ thông báo hoàn thành để người chơi tự vào Bảng Nhiệm Vụ nhận thưởng Mốc
                     player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f);
                     player.sendMessage("§e§l[!] §fBạn đã hoàn thành mục tiêu: §a" + quest.getName());
 
