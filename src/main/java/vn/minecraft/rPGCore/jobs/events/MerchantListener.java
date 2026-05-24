@@ -16,6 +16,7 @@ import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.jobs.types.MerchantJob;
 import vn.minecraft.rPGCore.jobs.core.JobManager;
 import vn.minecraft.rPGCore.jobs.core.PlayerJobData;
+import io.lumine.mythic.bukkit.MythicBukkit;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -45,11 +46,13 @@ public class MerchantListener implements Listener {
         if (event.getEntity().getKiller() == null) return;
         Player player = event.getEntity().getKiller();
 
-        // Kiểm tra xem có phải quái hình người không
-        if (!humanoids.contains(event.getEntityType())) return;
+        // [SỬA ĐỔI]: Chỉ áp dụng cho quái vật của MythicMobs (Bỏ qua quái Vanilla)
+        if (!io.lumine.mythic.bukkit.MythicBukkit.inst().getAPIHelper().isMythicMob(event.getEntity())) {
+            return;
+        }
 
         PlayerJobData data = JobManager.getPlayerData(player);
-        if (!data.getJobId().equalsIgnoreCase("MERCHANT")) return;
+        if (data == null || !data.getJobId().equalsIgnoreCase("MERCHANT")) return;
 
         int level = data.getLevel("MERCHANT");
         if (level <= 0) return;
@@ -67,18 +70,23 @@ public class MerchantListener implements Listener {
         double copperChance = MerchantJob.getCopperDropChance(level);
         double silverChance = MerchantJob.getSilverDropChance(level);
 
-        // 3. Kiểm tra Buff từ Cân Tiểu Ly Mạ Vàng trong túi đồ
+        // 3. Kiểm tra Buff từ Cân Tiểu Ly Mạ Vàng trong túi đồ (Có Lazy Cleanup)
         boolean hasScaleBuff = false;
         NamespacedKey scaleKey = new NamespacedKey(plugin, "scale_expire_time");
         long now = System.currentTimeMillis();
 
         for (ItemStack item : player.getInventory().getContents()) {
-            // [ĐÃ SỬA DÒNG NÀY]: Đảo "misc_gold_scale" lên trước .equals() để chống Null
             if (item != null && item.hasItemMeta() && "misc_gold_scale".equals(plugin.getItemManager().getItemId(item))) {
                 long expire = item.getItemMeta().getPersistentDataContainer().getOrDefault(scaleKey, PersistentDataType.LONG, 0L);
+
                 if (expire > now) {
-                    hasScaleBuff = true;
+                    hasScaleBuff = true; // Còn hạn -> Kích hoạt buff
                     break;
+                } else if (expire > 0 && expire <= now) {
+                    // Cân đã hết hạn -> Bẻ gãy Cân
+                    item.setAmount(0);
+                    player.sendMessage("§c§l[!] §cCân Tiểu Ly Mạ Vàng của bạn đã quá hạn 24 giờ và bị hỏng mất rồi!");
+                    player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_ITEM_BREAK, 1f, 1f);
                 }
             }
         }
