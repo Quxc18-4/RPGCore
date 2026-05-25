@@ -140,6 +140,8 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new FishingListener(this.fishingManager, this.itemManager), this);
         getServer().getPluginManager().registerEvents(new BaitCrafterGUI(this.itemManager, this.baitManager), this);
         getServer().getPluginManager().registerEvents(new MerchantListener(this), this);
+        // [MỚI CHÈN]: Đăng ký bộ thu hoạch thảo dược tự nhiên
+        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.jobs.events.HerbHarvestListener(this.itemManager), this);
 
         // Đăng ký Listener
         getServer().getPluginManager().registerEvents(this.mountDataManager, this); // Bắt sự kiện Join/Quit để load JSON
