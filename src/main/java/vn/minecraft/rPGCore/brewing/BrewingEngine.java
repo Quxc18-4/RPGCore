@@ -2,72 +2,93 @@ package vn.minecraft.rPGCore.brewing;
 
 import vn.minecraft.rPGCore.managers.ItemManager.ItemData;
 import org.bukkit.entity.Player;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 public class BrewingEngine {
 
-    public PotionData evaluate(List<ItemData> ingredients, Player alchemist) {
-        if (ingredients == null || ingredients.isEmpty()) {
-            PotionData fail = new PotionData(UUID.randomUUID().toString());
-            fail.isRuined = true;
-            return fail;
-        }
-
-        boolean isAlchemist = false;
+    // [MỚI]: Tính tỉ lệ thành công hiển thị lên giao diện
+    public double getSuccessRate(List<ItemData> ingredients, Player alchemist, boolean isEnhancing) {
+        if (ingredients.isEmpty()) return 0;
         int alchLevel = 0;
-
         if (alchemist != null) {
             vn.minecraft.rPGCore.jobs.core.PlayerJobData data = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(alchemist);
-            if (data != null && data.getJobId().equals("ALCHEMIST")) {
-                isAlchemist = true;
-                alchLevel = data.getLevel("ALCHEMIST");
-            }
+            if (data != null && data.getJobId().equals("ALCHEMIST")) alchLevel = data.getLevel("ALCHEMIST");
         }
 
         FlavorStats flavors = new FlavorStats(ingredients);
+        double harshPoints = flavors.getHarshFlavors();
+        double finalToxicity = Math.max(0, harshPoints - (flavors.sweet * 1.5));
+
+        double successRate = 40.0 + alchLevel + (flavors.tasteless * 20.0) - (finalToxicity * 15.0);
+        if (isEnhancing) successRate -= 20.0; // Cường hóa sẽ khó nổ vạc hơn
+
+        return Math.max(5.0, Math.min(100.0, successRate));
+    }
+
+    // [MỚI]: Nhận thêm BasePotion để cường hóa
+    public PotionData evaluate(List<ItemData> ingredients, Player alchemist, PotionData basePotion) {
         PotionData result = new PotionData(UUID.randomUUID().toString());
 
-        double efficiencyMultiplier = 1.0;
-
-        // [FIXED]: Chuyển hình phạt vào khâu Nấu Thuốc
-        if (!isAlchemist) {
-            efficiencyMultiplier *= 0.5;
-            result.flavorTags.add("§8[Hàng Nghiệp Dư] §c- Giảm 50% dược tính");
+        if (ingredients == null || ingredients.isEmpty()) {
+            result.isRuined = true; return result;
         }
 
-        // Phạt khi bỏ quá 3 nhánh thảo dược cùng loại
+        boolean isAlchemist = false;
+        if (alchemist != null) {
+            vn.minecraft.rPGCore.jobs.core.PlayerJobData data = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(alchemist);
+            if (data != null && data.getJobId().equals("ALCHEMIST")) isAlchemist = true;
+        }
+
+        // 1. KẾ THỪA CHỈ SỐ TỪ THUỐC CŨ (NẾU ĐANG CƯỜNG HÓA)
+        if (basePotion != null) {
+            result.isEnhanced = true;
+            result.name = "§d§lThần Dược Cường Hóa";
+            result.durationMinutes = basePotion.durationMinutes;
+            result.toxicityPoints = basePotion.toxicityPoints;
+            result.isManaPotion = basePotion.isManaPotion;
+            result.customStats.putAll(basePotion.customStats);
+            result.specialEffects.addAll(basePotion.specialEffects);
+            result.potionEffects.addAll(basePotion.potionEffects);
+            result.flavorTags.addAll(basePotion.flavorTags);
+        }
+
+        FlavorStats flavors = new FlavorStats(ingredients);
+        double efficiencyMultiplier = isAlchemist ? 1.0 : 0.5;
+
         for (int count : flavors.itemCounts.values()) {
-            if (count > 3) {
-                efficiencyMultiplier *= Math.pow(0.5, count - 3);
-            }
+            if (count > 3) efficiencyMultiplier *= Math.pow(0.5, count - 3);
         }
 
         double harshPoints = flavors.getHarshFlavors();
         double sweetPoints = flavors.sweet;
         double finalToxicity = Math.max(0, harshPoints - (sweetPoints * 1.5));
 
-        result.toxicityPoints = finalToxicity * 10.0;
+        result.toxicityPoints += (finalToxicity * 10.0);
 
-        if (result.toxicityPoints > 30) {
+        if (finalToxicity > 3.0) {
             efficiencyMultiplier *= 0.8;
-            result.flavorTags.add("§c[Quá Khó Uống] §7- Bị giảm dược tính");
+            if (!result.flavorTags.contains("§c[Quá Khó Uống]")) result.flavorTags.add("§c[Quá Khó Uống]");
         }
 
-        double successRate = 40.0 + alchLevel + (flavors.tasteless * 20.0) - (finalToxicity * 15.0);
-        successRate = Math.max(5.0, Math.min(100.0, successRate));
-
+        // Tính nổ vạc
+        double successRate = getSuccessRate(ingredients, alchemist, basePotion != null);
         if (Math.random() * 100.0 > successRate) {
             result.isRuined = true;
-            result.name = "§8Dược Phẩm Phế Phẩm";
+            result.name = "§8Dược Phẩm Phế Thải";
             result.flavorTags.add("§c[Kinh Tởm]");
             return result;
         }
 
-        java.util.regex.Pattern numberPattern = java.util.regex.Pattern.compile("\\d+(\\.\\d+)?");
+        // 2. PHA MÀU (Dựa trên vị áp đảo nhất)
+        if (flavors.spicy >= Math.max(flavors.sweet, flavors.bitter)) { result.colorR = 255; result.colorG = 50; result.colorB = 50; } // Đỏ
+        else if (flavors.sweet > flavors.bitter) { result.colorR = 255; result.colorG = 150; result.colorB = 200; } // Hồng
+        else if (flavors.bitter > flavors.salty) { result.colorR = 50; result.colorG = 200; result.colorB = 50; } // Xanh lá
+        else if (flavors.salty > flavors.sour) { result.colorR = 200; result.colorG = 255; result.colorB = 255; } // Trắng xanh
+        else { result.colorR = 255; result.colorG = 255; result.colorB = 50; } // Vàng chua
 
+        // 3. QUÉT THẢO DƯỢC
+        java.util.regex.Pattern numberPattern = java.util.regex.Pattern.compile("\\d+(\\.\\d+)?");
         for (ItemData item : ingredients) {
             String id = item.id.toLowerCase();
             String effect = item.effect != null ? item.effect.toLowerCase() : "";
@@ -94,33 +115,26 @@ public class BrewingEngine {
             else if (effect.contains("tốc độ đánh")) result.customStats.put("Tốc độ đánh", result.customStats.getOrDefault("Tốc độ đánh", 0.0) + finalVal);
             else if (effect.contains("xuyên kháng phép")) result.customStats.put("Tỉ lệ xuyên kháng phép", result.customStats.getOrDefault("Tỉ lệ xuyên kháng phép", 0.0) + finalVal);
 
-            else if (effect.contains("hồi máu tức thì")) result.customStats.put("Hồi máu tức thì (%)", result.customStats.getOrDefault("Hồi máu tức thì (%)", 0.0) + finalVal);
-            else if (effect.contains("hồi năng lượng tức thì")) result.customStats.put("Hồi năng lượng tức thì (%)", result.customStats.getOrDefault("Hồi năng lượng tức thì (%)", 0.0) + finalVal);
+            else if (effect.contains("hồi máu tức thì")) result.customStats.put("Hồi máu tức thì", result.customStats.getOrDefault("Hồi máu tức thì", 0.0) + finalVal);
+            else if (effect.contains("hồi năng lượng tức thì")) result.customStats.put("Hồi năng lượng tức thì", result.customStats.getOrDefault("Hồi năng lượng tức thì", 0.0) + finalVal);
 
-            if (effect.contains("bất tử")) result.specialEffects.add("BẤT_TỬ");
-            if (effect.contains("thanh tẩy siêu cấp")) result.specialEffects.add("THANH_TẨY");
-            if (effect.contains("độc tử thần")) result.specialEffects.add("EXECUTE_POISON");
-            if (effect.contains("hồi sinh tại chỗ")) result.specialEffects.add("RESURRECTION");
+            if (effect.contains("bất tử") && !result.specialEffects.contains("BẤT_TỬ")) result.specialEffects.add("BẤT_TỬ");
+            if (effect.contains("thanh tẩy siêu cấp") && !result.specialEffects.contains("THANH_TẨY")) result.specialEffects.add("THANH_TẨY");
+            if (effect.contains("độc tử thần") && !result.specialEffects.contains("EXECUTE_POISON")) result.specialEffects.add("EXECUTE_POISON");
+            if (effect.contains("hồi sinh tại chỗ") && !result.specialEffects.contains("RESURRECTION")) result.specialEffects.add("RESURRECTION");
 
-            if (effect.contains("nhảy cao")) result.potionEffects.add("JUMP");
-            if (effect.contains("kháng lửa")) result.potionEffects.add("FIRE_RESISTANCE");
-            if (effect.contains("tàng hình")) result.potionEffects.add("INVISIBILITY");
-            if (effect.contains("thở dưới nước")) result.potionEffects.add("WATER_BREATHING");
+            if (effect.contains("nhảy cao") && !result.potionEffects.contains("JUMP")) result.potionEffects.add("JUMP");
+            if (effect.contains("kháng lửa") && !result.potionEffects.contains("FIRE_RESISTANCE")) result.potionEffects.add("FIRE_RESISTANCE");
+            if (effect.contains("tàng hình") && !result.potionEffects.contains("INVISIBILITY")) result.potionEffects.add("INVISIBILITY");
+            if (effect.contains("thở dưới nước") && !result.potionEffects.contains("WATER_BREATHING")) result.potionEffects.add("WATER_BREATHING");
 
             if (id.contains("mana_shroom") || id.contains("mana_root")) result.isManaPotion = true;
         }
 
         result.durationMinutes += (int) (flavors.salty * 2);
-        if (efficiencyMultiplier < 1.0) result.durationMinutes = Math.max(1, (int)(result.durationMinutes * efficiencyMultiplier));
 
-        if (alchLevel > 0) {
-            result.name = "§6Thần Dược Cao Cấp";
-            if (finalToxicity == 0 && harshPoints > 0) {
-                result.flavorTags.add("§a[Cân Bằng Hoàn Hảo]");
-                result.durationMinutes += 2;
-            }
-        } else {
-            result.name = "§aThuốc Sắc Thảo Dược";
+        if (basePotion == null && isAlchemist && finalToxicity == 0 && harshPoints > 0) {
+            result.flavorTags.add("§a[Cân Bằng Hoàn Hảo]");
         }
 
         return result;
