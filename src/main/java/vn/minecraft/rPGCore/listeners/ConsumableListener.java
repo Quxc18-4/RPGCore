@@ -71,6 +71,7 @@ public class ConsumableListener implements Listener {
 
         if (instantFoods.contains(itemId)) {
             event.setCancelled(true);
+            player.updateInventory();
 
             long now = System.currentTimeMillis();
             if (consumeCooldowns.getOrDefault(player.getUniqueId(), 0L) > now) return;
@@ -456,6 +457,7 @@ public class ConsumableListener implements Listener {
 
         if (consumed) {
             event.setCancelled(true);
+            player.updateInventory();
             if (player.getGameMode() != org.bukkit.GameMode.CREATIVE) {
                 EquipmentSlot hand = event.getHand();
                 if (hand == EquipmentSlot.HAND) item.setAmount(item.getAmount() - 1);
@@ -484,8 +486,16 @@ public class ConsumableListener implements Listener {
         // Danh sách các túi bị cấm nhét vào nhau (Chống Inception bug)
         List<String> blockedBags = Arrays.asList("misc_seed_pouch", "bag_cloth", "bag_leather", "bag_dragon_scale");
 
-        if (current != null && blockedBags.contains(itemManager.getItemId(current))) { event.setCancelled(true); return; }
-        if (cursor != null && blockedBags.contains(itemManager.getItemId(cursor))) { event.setCancelled(true); return; }
+        if (current != null && blockedBags.contains(itemManager.getItemId(current))) {
+            event.setCancelled(true);
+            ((Player) event.getWhoClicked()).updateInventory();
+            return;
+        }
+        if (cursor != null && blockedBags.contains(itemManager.getItemId(cursor))) {
+            event.setCancelled(true);
+            ((Player) event.getWhoClicked()).updateInventory();
+            return;
+        }
 
         // Logic cũ cho Túi Hạt Giống
         if (isSeedPouch) {
@@ -494,6 +504,7 @@ public class ConsumableListener implements Listener {
                     String cId = itemManager.getItemId(cursor);
                     if (cId == null || !cId.startsWith("seed_")) {
                         event.setCancelled(true);
+                        ((Player) event.getWhoClicked()).updateInventory();
                         event.getWhoClicked().sendMessage("§cTúi Trữ Hạt chỉ chấp nhận lưu trữ các loại hạt giống nông nghiệp!");
                     }
                 }
@@ -502,6 +513,7 @@ public class ConsumableListener implements Listener {
                     String cId = itemManager.getItemId(current);
                     if (cId == null || !cId.startsWith("seed_")) {
                         event.setCancelled(true);
+                        ((Player) event.getWhoClicked()).updateInventory();
                         event.getWhoClicked().sendMessage("§cTúi Trữ Hạt chỉ chấp nhận lưu trữ các loại hạt giống nông nghiệp!");
                     }
                 }

@@ -6,9 +6,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
-import org.bukkit.event.inventory.InventoryAction;
-import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemFlag;
@@ -24,7 +22,10 @@ import vn.minecraft.rPGCore.managers.ItemManager.ItemData;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 public class BrewingManager implements Listener {
 
@@ -35,13 +36,15 @@ public class BrewingManager implements Listener {
 
     public static final String GUI_NAME = "§5§lVạc Pha Chế Thần Bí";
 
-    // [FIXED] Tọa độ lùi hàng 4 xuống hàng 5
     private final int[] HERB_SLOTS = {10, 11, 12, 19, 20, 21};
     private final int[] SPICE_SLOTS = {37, 38, 39};
     private final int WATER_SLOT = 23;
     private final int SOLVENT_SLOT = 25;
     private final int BUTTON_SLOT = 41;
     private final int OUTPUT_SLOT = 43;
+
+    // Bộ đếm chống Spam Click đúp mở 2 UI
+    private final Map<UUID, Long> clickCooldowns = new HashMap<>();
 
     public BrewingManager(JavaPlugin plugin, ItemManager itemManager) {
         this.plugin = plugin;
@@ -55,28 +58,28 @@ public class BrewingManager implements Listener {
 
     @EventHandler
     public void onBrewingStandClick(PlayerInteractEvent event) {
-        // Chặn sự kiện kích hoạt 2 lần do quét tay trái (Off-hand)
         if (event.getHand() != org.bukkit.inventory.EquipmentSlot.HAND) return;
 
         if (event.getAction().isRightClick() && event.hasBlock() && event.getClickedBlock().getType() == Material.BREWING_STAND) {
             event.setCancelled(true);
             Player player = event.getPlayer();
+
+            long now = System.currentTimeMillis();
+            if (clickCooldowns.getOrDefault(player.getUniqueId(), 0L) > now) return;
+            clickCooldowns.put(player.getUniqueId(), now + 200L);
+
             player.playSound(player.getLocation(), Sound.BLOCK_BREWING_STAND_BREW, 1f, 1f);
             openBrewingGUI(player);
         }
     }
 
-    // ==========================================
-    // CHỐNG KÉO THẢ CHUỘT (DRAG EVENT)
-    // ==========================================
     @EventHandler
-    public void onBrewingInventoryDrag(org.bukkit.event.inventory.InventoryDragEvent event) {
+    public void onBrewingInventoryDrag(InventoryDragEvent event) {
         if (!event.getView().getTitle().equals(GUI_NAME)) return;
-
-        // Nếu người chơi kéo lê (drag) vật phẩm dính vào bất kỳ ô nào thuộc GUI (từ 0 đến 53)
         for (int slot : event.getRawSlots()) {
             if (slot < 54) {
                 event.setCancelled(true);
+                ((Player) event.getWhoClicked()).updateInventory();
                 return;
             }
         }
@@ -94,14 +97,12 @@ public class BrewingManager implements Listener {
         inv.setItem(SOLVENT_SLOT, null);
         inv.setItem(OUTPUT_SLOT, null);
 
-        // Gợi ý chuẩn tọa độ mới
         inv.setItem(9, createPane(Material.YELLOW_STAINED_GLASS_PANE, "§e§lThảo Dược Chính", "§7Đặt tối đa 6 loại thảo dược vào các ô bên phải."));
         inv.setItem(36, createPane(Material.YELLOW_STAINED_GLASS_PANE, "§d§lChất Điều Vị", "§7Đặt tối đa 3 loại gia vị/thảo mộc khử vị."));
         inv.setItem(14, createPane(Material.YELLOW_STAINED_GLASS_PANE, "§b§lNước Nền", "§7Đặt Nước hoặc Thuốc muốn Cường hóa vào ô dưới."));
         inv.setItem(16, createPane(Material.YELLOW_STAINED_GLASS_PANE, "§c§lDung Môi Buff", "§7Bỏ chất xúc tác vào ô bên dưới để tăng tỉ lệ."));
 
         updateBrewButton(inv, player);
-
         player.openInventory(inv);
     }
 
@@ -118,9 +119,6 @@ public class BrewingManager implements Listener {
         return item;
     }
 
-    // ==========================================
-    // CẬP NHẬT TỈ LỆ THÀNH CÔNG VÀO NÚT NẤU (REAL-TIME)
-    // ==========================================
     private void updateBrewButton(Inventory inv, Player player) {
         List<ItemData> ingredients = new ArrayList<>();
         boolean isEnhancing = false;
@@ -129,7 +127,7 @@ public class BrewingManager implements Listener {
         if (waterItem != null && waterItem.getType() != Material.AIR) {
             String wId = itemManager.getItemId(waterItem);
             if (wId != null && wId.startsWith("water_")) ingredients.add(itemManager.getItemData(wId));
-            else isEnhancing = true; // Là Custom Potion
+            else isEnhancing = true;
         }
 
         int[] allMats = {10, 11, 12, 19, 20, 21, 37, 38, 39, 25};
@@ -144,14 +142,11 @@ public class BrewingManager implements Listener {
         double successRate = engine.getSuccessRate(ingredients, player, isEnhancing);
         String rateColor = successRate >= 80 ? "§a" : (successRate >= 40 ? "§e" : "§c");
 
-        ItemStack brewBtn = createPane(Material.PURPLE_STAINED_GLASS_PANE, "§d§l♨ NẤU THUỐC ♨",
+        ItemStack brewBtn = createPane(Material.PURPLE_STAINED_GLASS_PANE, "§d§l[ NẤU THUỐC ]",
                 "§fClick vào đây để luyện dược!", "", "§7Tỉ lệ thành công: " + rateColor + String.format("%.1f", successRate) + "%");
         inv.setItem(BUTTON_SLOT, brewBtn);
     }
 
-    // ==========================================
-    // CHỐNG NUỐT ĐỒ KHI ĐÓNG UI (INVENTORY CLOSE)
-    // ==========================================
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
         if (!event.getView().getTitle().equals(GUI_NAME)) return;
@@ -167,45 +162,52 @@ public class BrewingManager implements Listener {
                 } else {
                     player.getInventory().addItem(item);
                 }
+                inv.setItem(s, null);
             }
         }
     }
 
-    // ==========================================
-    // REAL-TIME VALIDATION & EVENT CLICK
-    // ==========================================
     @EventHandler
     public void onBrewingInventoryClick(InventoryClickEvent event) {
         if (!event.getView().getTitle().equals(GUI_NAME)) return;
 
-        // Chặn Shift-Click làm lọt khe validation
-        if (event.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY) {
+        Player player = (Player) event.getWhoClicked();
+
+        // Chặn mọi hành vi Shift-Click / Phím số / Double-click để không làm lọt đồ
+        if (event.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY ||
+                event.getClick().isKeyboardClick() ||
+                event.getClick() == ClickType.DOUBLE_CLICK) {
             event.setCancelled(true);
+            player.updateInventory(); // Ép refresh
             return;
         }
 
         int slot = event.getRawSlot();
-        if (slot >= 54) return; // Cho tương tác với túi đồ
+        if (slot >= 54) {
+            if (event.getClick() == org.bukkit.event.inventory.ClickType.DOUBLE_CLICK) {
+                event.setCancelled(true);
+                player.updateInventory();
+            }
+            return;
+        }
 
-        // [MỚI]: Chặn thủ thuật rê chuột vào ô kính rồi bấm phím số 1-9 để tráo đồ (Hotbar Swap)
-        if (event.getClick() == org.bukkit.event.inventory.ClickType.NUMBER_KEY) {
+        if (event.getClick() == org.bukkit.event.inventory.ClickType.NUMBER_KEY || event.getClick() == org.bukkit.event.inventory.ClickType.DOUBLE_CLICK) {
             event.setCancelled(true);
+            player.updateInventory();
             return;
         }
 
         ItemStack clicked = event.getCurrentItem();
-
-        // [MỚI]: Chặn click trực tiếp hoặc click đúp vào các ô Kính màu
         if (clicked != null && clicked.getType().name().endsWith("GLASS_PANE") && slot != BUTTON_SLOT) {
             event.setCancelled(true);
+            player.updateInventory();
             return;
         }
 
-        Player player = (Player) event.getWhoClicked();
         Inventory inv = event.getInventory();
         ItemStack cursor = event.getCursor();
 
-        // 1. NGĂN CHẶN RÁC BỎ VÀO CÁC Ô ĐẶC BIỆT
+        // VALIDATION ĐẦU VÀO TỪ CON TRỎ
         if (cursor != null && cursor.getType() != Material.AIR) {
             String cursorId = itemManager.getItemId(cursor);
             ItemData data = itemManager.getItemData(cursorId);
@@ -215,38 +217,46 @@ public class BrewingManager implements Listener {
                 boolean isCustomPotion = cursor.hasItemMeta() && cursor.getItemMeta().getPersistentDataContainer().has(new org.bukkit.NamespacedKey(plugin, "potion_uuid"), PersistentDataType.STRING);
 
                 if (!isWater && !isCustomPotion) {
-                    event.setCancelled(true); player.sendMessage("§cChỉ được đặt Nước hoặc Thuốc cần cường hóa vào ô này!"); return;
+                    event.setCancelled(true); player.sendMessage("§cChỉ được đặt Nước hoặc Thuốc cần cường hóa vào ô này!");
+                    player.updateInventory();
+                    return;
                 }
                 if (isCustomPotion) {
                     String uuid = cursor.getItemMeta().getPersistentDataContainer().get(new org.bukkit.NamespacedKey(plugin, "potion_uuid"), PersistentDataType.STRING);
                     PotionData old = loadPotionFromFile(uuid);
-                    if (old == null || old.isEnhanced) {
-                        event.setCancelled(true); player.sendMessage("§cThuốc này bị lỗi hoặc đã được Cường Hóa (Không thể Cường hóa 2 lần)!"); return;
+                    if (old == null || old.isEnhanced || old.isRuined) {
+                        event.setCancelled(true); player.sendMessage("§cThuốc này bị lỗi, đã hỏng hoặc đã được Cường Hóa!");
+                        player.updateInventory();
+                        return;
                     }
                 }
             } else if (slot == 10 || slot == 11 || slot == 12 || slot == 19 || slot == 20 || slot == 21) {
                 if (data == null || data.category != ItemManager.Category.HERB) {
-                    event.setCancelled(true); player.sendMessage("§cKhu vực này chỉ dành cho Thảo Dược!"); return;
+                    event.setCancelled(true); player.sendMessage("§cKhu vực này chỉ dành cho Thảo Dược!");
+                    player.updateInventory();
+                    return;
                 }
             } else if (slot == 37 || slot == 38 || slot == 39) {
                 if (data == null || (data.category != ItemManager.Category.SPICE && data.category != ItemManager.Category.HERB)) {
-                    event.setCancelled(true); player.sendMessage("§cKhu vực này chỉ dành cho Gia Vị và Điều Vị!"); return;
+                    event.setCancelled(true); player.sendMessage("§cKhu vực này chỉ dành cho Gia Vị và Điều Vị!");
+                    return;
                 }
             } else if (slot == SOLVENT_SLOT) {
                 if (data == null) { event.setCancelled(true); player.sendMessage("§cVật phẩm không hợp lệ!"); return; }
             } else if (slot != BUTTON_SLOT && slot != OUTPUT_SLOT) {
-                event.setCancelled(true); return; // Chặn click vào kính nền
+                event.setCancelled(true);
+                player.updateInventory();
+                return;
             }
         }
 
-        // Cập nhật Tỉ lệ thành công 1 Tick sau khi đặt đồ
-        Bukkit.getScheduler().runTask(plugin, () -> updateBrewButton(inv, player));
+        // Cập nhật GUI 1 Tick sau khi đặt đồ (ĐÃ XÓA PLAYER.UPDATEINVENTORY ĐỂ HẾT GHOST ITEM)
+        Bukkit.getScheduler().runTaskLater(plugin, () -> updateBrewButton(inv, player), 1L);
 
-        // 2. BẤM NÚT NẤU THUỐC
+        // BẤM NÚT NẤU THUỐC
         if (slot == BUTTON_SLOT) {
             event.setCancelled(true);
-
-            // Tự động đẩy Thuốc Output vào túi
+            player.updateInventory();
             if (inv.getItem(OUTPUT_SLOT) != null && inv.getItem(OUTPUT_SLOT).getType() != Material.AIR) {
                 if (player.getInventory().firstEmpty() == -1) {
                     player.sendMessage("§c§l[!] §cTúi đồ của bạn đã đầy! Không thể đẩy thuốc cũ ra, hãy dọn dẹp túi.");
@@ -269,12 +279,10 @@ public class BrewingManager implements Listener {
             PotionData basePotion = null;
             String oldUuidToDelete = null;
 
-            // Xử lý nước
             String waterId = itemManager.getItemId(waterItem);
             if (waterId != null && waterId.startsWith("water_")) {
                 ingredients.add(itemManager.getItemData(waterId));
             } else {
-                // Đọc thuốc cũ để cường hóa
                 oldUuidToDelete = waterItem.getItemMeta().getPersistentDataContainer().get(new org.bukkit.NamespacedKey(plugin, "potion_uuid"), PersistentDataType.STRING);
                 basePotion = loadPotionFromFile(oldUuidToDelete);
             }
@@ -294,14 +302,11 @@ public class BrewingManager implements Listener {
             for (int s : SPICE_SLOTS) if (inv.getItem(s) != null) ingredients.add(itemManager.getItemData(itemManager.getItemId(inv.getItem(s))));
             if (inv.getItem(SOLVENT_SLOT) != null) ingredients.add(itemManager.getItemData(itemManager.getItemId(inv.getItem(SOLVENT_SLOT))));
 
-            // Tiến hành Nấu
             PotionData resultData = engine.evaluate(ingredients, player, basePotion);
             savePotionToFile(resultData);
 
-            // Xóa file thuốc cũ nếu cường hóa thành công
             if (oldUuidToDelete != null) deletePotionFile(oldUuidToDelete);
 
-            // Trừ Item
             waterItem.setAmount(waterItem.getAmount() - 1);
             for (int s : HERB_SLOTS) if (inv.getItem(s) != null) inv.getItem(s).setAmount(inv.getItem(s).getAmount() - 1);
             for (int s : SPICE_SLOTS) if (inv.getItem(s) != null) inv.getItem(s).setAmount(inv.getItem(s).getAmount() - 1);
@@ -316,16 +321,14 @@ public class BrewingManager implements Listener {
             }
 
             inv.setItem(OUTPUT_SLOT, buildPotionItem(resultData));
-            Bukkit.getScheduler().runTask(plugin, () -> updateBrewButton(inv, player));
+            Bukkit.getScheduler().runTaskLater(plugin, () -> updateBrewButton(inv, player), 1L);
         }
     }
 
     private ItemStack buildPotionItem(PotionData data) {
         ItemStack item = new ItemStack(Material.POTION);
-        // [MỚI]: Set màu sắc RGB cho Potion
         PotionMeta meta = (PotionMeta) item.getItemMeta();
         meta.setColor(org.bukkit.Color.fromRGB(data.colorR, data.colorG, data.colorB));
-
         meta.setDisplayName(data.name);
 
         org.bukkit.NamespacedKey uuidKey = new org.bukkit.NamespacedKey(plugin, "potion_uuid");
@@ -340,7 +343,22 @@ public class BrewingManager implements Listener {
         } else {
             if (data.isEnhanced) lore.add("§d✧ Đã Cường Hóa ✧");
             lore.add("§f§lThông tin chung:");
-            lore.add("§7 - Hiệu lực: §a" + (data.durationMinutes > 0 ? data.durationMinutes + " Phút" : "§6Tức thì"));
+
+            // [SỬA]: Xử lý chuẩn logic hiển thị Tức thì & Thời gian hỗn hợp
+            boolean hasDuration = !data.potionEffects.isEmpty();
+            boolean hasInstant = !data.specialEffects.isEmpty();
+            for (String stat : data.customStats.keySet()) {
+                if (!stat.contains("tức thì")) hasDuration = true;
+                else hasInstant = true;
+            }
+
+            if (hasDuration && hasInstant) {
+                lore.add("§7 - Hiệu lực: §a" + data.durationMinutes + " Phút §8(& §6Tức thì§8)");
+            } else if (hasDuration) {
+                lore.add("§7 - Hiệu lực: §a" + data.durationMinutes + " Phút");
+            } else {
+                lore.add("§7 - Hiệu lực: §6Tức thì");
+            }
 
             if (data.toxicityPoints > 0) lore.add("§7 - Độc tính (Gây Sốc): §c" + String.format("%.1f", data.toxicityPoints) + " Điểm");
             lore.add("");
@@ -348,33 +366,39 @@ public class BrewingManager implements Listener {
             if (!data.customStats.isEmpty() || !data.specialEffects.isEmpty()) {
                 lore.add("§f§lThuộc Tính Dược Liệu:");
                 for (String spec : data.specialEffects) {
-                    if (spec.equals("BẤT_TỬ")) lore.add("§f ➥ §eMiễn nhiễm tử vong trong 10s");
-                    if (spec.equals("THANH_TẨY")) lore.add("§f ➥ §bXóa bỏ toàn bộ trạng thái xấu");
+                    if (spec.equals("IMMORTAL")) lore.add("§f ➥ §eMiễn nhiễm tử vong trong 10s");
+                    if (spec.equals("CLEANSE")) lore.add("§f ➥ §bXóa bỏ toàn bộ trạng thái xấu");
                     if (spec.equals("EXECUTE_POISON")) lore.add("§f ➥ §5Độc Kết Liễu < 5% HP");
                     if (spec.equals("RESURRECTION")) lore.add("§f ➥ §dHồi sinh tại chỗ khi chết");
                 }
 
                 for (String stat : data.customStats.keySet()) {
-                    lore.add("§f- §7" + stat + ": §a+" + String.format("%.1f", data.customStats.get(stat)) + (stat.contains("%") || stat.contains("Tỉ lệ") ? "%" : ""));
+                    String cleanStat = stat.replace(" (%)", "");
+                    boolean isPercent = stat.contains("%") || stat.contains("Tỉ lệ");
+                    lore.add("§f- §7" + cleanStat + ": §a+" + String.format("%.1f", data.customStats.get(stat)) + (isPercent ? "%" : ""));
                 }
             }
             if (!data.potionEffects.isEmpty()) {
                 lore.add("§f§lHiệu Ứng Thể Chất:");
-                for (String pe : data.potionEffects) lore.add("§f- §bNhận hiệu ứng " + pe);
+                Map<String, String> peNames = Map.of(
+                        "WATER_BREATHING", "Thở dưới nước",
+                        "JUMP",            "Nhảy cao",
+                        "FIRE_RESISTANCE", "Kháng lửa",
+                        "INVISIBILITY",    "Tàng Hình"
+                );
+                for (String pe : data.potionEffects) {
+                    String name = peNames.getOrDefault(pe, pe);
+                    lore.add("§f- §bNhận hiệu ứng " + name);
+                }
             }
         }
         if (!data.flavorTags.isEmpty()) { lore.add(""); lore.addAll(data.flavorTags); }
 
         meta.setLore(lore);
-        // ====================================================================
-        // [MỚI BỔ SUNG]: TỰ ĐỘNG PHÁT SÁNG (ENCHANT UNBREAKING) CHO THUỐC XỊN
-        // ====================================================================
-        if (!data.isRuined && (data.isEnhanced || !data.specialEffects.isEmpty() || data.name.contains("§6") || data.name.contains("§c"))) {
-            // Sử dụng Registry chuẩn 1.21+ để gọi Unbreaking an toàn
+
+        if (!data.isRuined && (data.isEnhanced || !data.specialEffects.isEmpty() || data.name.contains("§6") || data.name.contains("§c") || data.name.contains("§d"))) {
             org.bukkit.enchantments.Enchantment unbreaking = org.bukkit.Registry.ENCHANTMENT.get(org.bukkit.NamespacedKey.minecraft("unbreaking"));
-            if (unbreaking != null) {
-                meta.addEnchant(unbreaking, 1, true);
-            }
+            if (unbreaking != null) meta.addEnchant(unbreaking, 1, true);
         }
         meta.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP, ItemFlag.HIDE_ENCHANTS);
         item.setItemMeta(meta);

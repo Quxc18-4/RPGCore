@@ -118,8 +118,8 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(cookingManager, this);
         getServer().getPluginManager().registerEvents(new FoodListener(this, this.boredomManager, this.foodBuffManager), this);
         // ĐĂNG KÝ LISTENER DƯỢC SƯ
-        getServer().getPluginManager().registerEvents(brewingManager, this);
-        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.PotionListener(this, brewingManager), this);
+        //getServer().getPluginManager().registerEvents(brewingManager, this);
+        getServer().getPluginManager().registerEvents(new PotionListener(this, brewingManager), this);
         // [MỚI]: ĐĂNG KÝ BANK LISTENER
         getServer().getPluginManager().registerEvents(new BankListener(this, bankManager, currencyManager, playerManager), this);
         // [MỚI]: ĐĂNG KÝ SỰ KIỆN CHO CỬA HÀNG (SHOP)
