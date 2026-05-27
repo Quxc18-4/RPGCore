@@ -8,8 +8,7 @@ import vn.minecraft.rPGCore.cooking.CookingEngine;
 import vn.minecraft.rPGCore.jobs.core.JobLeaderboard;
 import vn.minecraft.rPGCore.jobs.core.JobManager;
 import vn.minecraft.rPGCore.jobs.core.JobRegister;
-import vn.minecraft.rPGCore.jobs.events.FishingListener;
-import vn.minecraft.rPGCore.jobs.events.MerchantListener;
+import vn.minecraft.rPGCore.jobs.events.*;
 import vn.minecraft.rPGCore.jobs.gui.JobSelectionGUI;
 import vn.minecraft.rPGCore.listeners.*;
 import vn.minecraft.rPGCore.managers.*;
@@ -130,8 +129,8 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new JobManager.JobDataListener(), this);
         getServer().getPluginManager().registerEvents(new JobSelectionGUI(), this);
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.jobs.gui.QuestBoardGUI(), this);
-        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.jobs.events.QuestListener(), this);
-        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.jobs.events.CropProtectionListener(), this);
+        getServer().getPluginManager().registerEvents(new QuestListener(), this);
+        getServer().getPluginManager().registerEvents(new CropProtectionListener(), this);
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.jobs.gui.JobShopGUI(), this);
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.jobs.gui.JobSkillTreeGUI(), this);
         // Đăng ký Listener cho GUI Xếp hạng
@@ -141,14 +140,15 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new BaitCrafterGUI(this.itemManager, this.baitManager), this);
         getServer().getPluginManager().registerEvents(new MerchantListener(this), this);
         // [MỚI CHÈN]: Đăng ký bộ thu hoạch thảo dược tự nhiên
-        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.jobs.events.HerbHarvestListener(this.itemManager), this);
-
+        getServer().getPluginManager().registerEvents(new HerbHarvestListener(this.itemManager), this);
+        getServer().getPluginManager().registerEvents(new AlchemistToolListener(this.itemManager), this);
+        getServer().getPluginManager().registerEvents(new LostRecipeListener(), this);
         // Đăng ký Listener
         getServer().getPluginManager().registerEvents(this.mountDataManager, this); // Bắt sự kiện Join/Quit để load JSON
         getServer().getPluginManager().registerEvents(mountStableGUI, this);
         getServer().getPluginManager().registerEvents(mountStorageGUI, this);
         getServer().getPluginManager().registerEvents(new MountListener(this.mountManager, mountStorageGUI), this);
-        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.listeners.WaterFetchListener(this.itemManager), this);
+        getServer().getPluginManager().registerEvents(new WaterFetchListener(this.itemManager), this);
 
         new RegenTask(playerManager, bossBarManager).runTaskTimer(this, 0L, 20L);
 

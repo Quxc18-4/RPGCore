@@ -44,5 +44,13 @@ public enum QuestAction {
     MERCHANT_SPEND,        // Tiêu hao tiền
     MERCHANT_EARN,         // Nhận tiền
     MERCHANT_INTEREST,     // Nhận lãi ngân hàng
-    MERCHANT_DELIVER       // Giao hàng vận tải
+    MERCHANT_DELIVER,       // Giao hàng vận tải
+
+    // --- DƯỢC SƯ ACTIONS (MỚI BỔ SUNG) ---
+    BREW_SUCCESS,          // Nấu thuốc thành công
+    BREW_FAIL,             // Nấu thuốc thất bại (Ra thuốc kinh tởm)
+    BREW_ANY,              // Tiến hành nấu thuốc (Bất kể thành bại)
+    ALCH_HARVEST_RARE,     // Thu hoạch thảo dược RARE trở lên
+    COLLECT_MANA_ESSENCE,  // Tích lũy Tinh Chất Ma Lực
+    BREW_PERFECT           // Chế tạo ra thuốc Hoàn Hảo / Cường Hóa
 }

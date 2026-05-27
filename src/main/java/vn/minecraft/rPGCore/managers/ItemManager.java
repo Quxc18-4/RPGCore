@@ -543,11 +543,31 @@ public class ItemManager {
         register(new ItemData("herb_dark_lotus", Rarity.LEGENDARY, Category.HERB, 0.0, Material.WITHER_ROSE, "Hắc Liên Hoa", "Vị Đắng | Pha chế: Độc Tử Thần", "Đóa sen đen ngòm thấm đẫm oán khí của vạn vật.", "Loài hoa biểu tượng của sát thủ bóng đêm."));
         register(new ItemData("herb_yggdrasil_sprout", Rarity.LEGENDARY, Category.HERB, 0.0, Material.OAK_SAPLING, "Mầm Cây Thế Giới Yggdrasil", "Vị Ngọt | Pha chế: Hồi sinh tại chỗ", "Chứa đựng sinh khí của cả một cõi thế giới.", "Truyền thuyết nói rằng thân cây mẹ của nó", "là cột trụ chống đỡ cả bầu trời."));
 
-        // --- 16.5 CÁC LOẠI NƯỚC PHA CHẾ ---
+        // --- 16.1 CÁC LOẠI NƯỚC PHA CHẾ ---
         register(new ItemData("water_sweet", Rarity.COMMON, Category.MISC, 0.0, Material.POTION, "Nước Sông Tinh Khiết", "Vị Ngọt | Dùng để pha chế", "Lấy từ những dòng sông chảy xiết."));
         register(new ItemData("water_tasteless", Rarity.COMMON, Category.MISC, 0.0, Material.POTION, "Nước Hồ Tĩnh Lặng", "Vô vị | Dùng để pha chế", "Lấy từ những hồ nước ngọt yên ả."));
         register(new ItemData("water_salty", Rarity.COMMON, Category.MISC, 0.0, Material.POTION, "Nước Biển Mặn", "Vị Mặn | Dùng để pha chế", "Lấy từ đại dương mênh mông."));
         register(new ItemData("water_cave", Rarity.UNCOMMON, Category.MISC, 0.0, Material.POTION, "Nước Mạch Ngầm", "Vị Cay | Dùng để pha chế", "Chứa nhiều khoáng chất từ lòng đất sâu."));
+
+        // --- ĐẠO CỤ DƯỢC SƯ ĐÃ ĐƯỢC CHỈNH SỬA ---
+        // Thêm hiệu ứng GLOW (Enchant ẩn) cho Thìa bạc và Kính lúp để nhìn xịn hơn
+        register(new ItemData("alch_silver_spoon", Rarity.RARE, Category.MISC, 0.0, Material.IRON_SHOVEL, "§fMuôi Trộn Bạc Cổ", "Tiêu hao: Giúp tăng 5% hiệu quả chế thuốc", "Được rèn từ bạc nguyên chất, dùng để khuấy vạc giúp tăng cường dược tính."));
+        register(new ItemData("alch_magnifying_glass", Rarity.RARE, Category.MISC, 0.0, Material.GHAST_TEAR, "§fKính Lúp Thảo Mộc", "Tiêu hao: Giúp tăng thêm 50% tầm nhìn thảo dược", "Dùng để soi tìm các dược tính ẩn. Tăng cường Giác Quan Dược Sư lên tối đa."));
+        register(new ItemData("alch_lost_recipe", Rarity.EPIC, Category.MISC, 0.0, Material.ENCHANTED_BOOK, "§d§lSách Công Thức Thất Truyền", "Sử dụng: Tiêu hao để mở khóa 1 công thức chế thuốc thất truyền.", "Ghi chép 1 trong 10 công thức luyện Thần Dược cổ đại."));
+
+        // --- HỆ THỐNG BÌNH SỨ CÁCH NHIỆT (TÁCH THÀNH 4 LOẠI NƯỚC ĐỂ GIỮ NGŨ VỊ) ---
+        register(new ItemData("alch_thermal_flask_empty", Rarity.UNCOMMON, Category.MISC, 0.0, Material.CLAY_BALL, "§fBình Sứ Cách Nhiệt Rỗng", "Vô vị | Đạo cụ pha chế", "Dùng để nạp nước tự nhiên. Giảm 20% Độc tính khi nấu thuốc."));
+        register(new ItemData("alch_thermal_flask_sweet", Rarity.UNCOMMON, Category.MISC, 0.0, Material.HONEY_BOTTLE, "§bBình Sứ: Nước Sông", "Vị Ngọt | Đạo cụ pha chế", "Giảm 20% Độc tính thành phẩm."));
+        register(new ItemData("alch_thermal_flask_tasteless", Rarity.UNCOMMON, Category.MISC, 0.0, Material.POTION, "§bBình Sứ: Nước Hồ", "Vô vị | Đạo cụ pha chế", "Giảm 20% Độc tính thành phẩm."));
+        register(new ItemData("alch_thermal_flask_salty", Rarity.UNCOMMON, Category.MISC, 0.0, Material.POTION, "§bBình Sứ: Nước Biển", "Vị Mặn | Đạo cụ pha chế", "Giảm 20% Độc tính thành phẩm."));
+        register(new ItemData("alch_thermal_flask_cave", Rarity.UNCOMMON, Category.MISC, 0.0, Material.POTION, "§bBình Sứ: Nước Mạch Ngầm", "Vị Cay | Đạo cụ pha chế", "Giảm 20% Độc tính thành phẩm."));
+
+        // --- DUNG MÔI XÚC TÁC MỚI (Dùng cho SLOT DUNG MÔI) ---
+        register(new ItemData("catalyst_purity", Rarity.RARE, Category.MISC, 0.0, Material.AMETHYST_SHARD, "§dDung Môi Tinh Khiết", "Vô vị | Chất Xúc Tác", "§a+15% Tỉ lệ nấu thành công.", "§c-10% Hiệu quả dược liệu (Stats)."));
+        register(new ItemData("catalyst_chaos", Rarity.EPIC, Category.MISC, 0.0, Material.ECHO_SHARD, "§5Dung Môi Hỗn Mang", "Vị Cay | Chất Xúc Tác", "§a+25% Hiệu quả dược liệu (Stats).", "§c-20% Tỉ lệ nấu thành công."));
+        // --- 16.3 NGUYÊN LIỆU ĐẶC BIỆT ---
+
+        register(new ItemData("essence_mana", Rarity.EPIC, Category.MISC, 0.0, Material.PRISMARINE_CRYSTALS, "§bTinh Chất Ma Lực", null, "Kết tinh từ sự giao thoa giữa thảo dược và ma lực vạc pha chế."));
     }
 
     private void register(ItemData data) {

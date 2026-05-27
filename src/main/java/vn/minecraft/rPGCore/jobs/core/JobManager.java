@@ -299,4 +299,99 @@ public class JobManager {
             }
         }
     }
+    // =========================================================================
+    // HÀM TÍNH TOÁN EXP & CƠ CHẾ RỚT ĐỒ CHO NGHỀ DƯỢC SƯ (ALCHEMIST)
+    // =========================================================================
+
+    public static void tryDropManaEssence(Player player, double baseChance) {
+        PlayerJobData data = getPlayerData(player);
+        if (data == null || !data.getJobId().equalsIgnoreCase("ALCHEMIST")) return;
+
+        int level = data.getLevel("ALCHEMIST");
+        double finalChance = baseChance + (level * 0.1);
+
+        if (Math.random() * 100.0 <= finalChance) {
+            vn.minecraft.rPGCore.managers.ItemManager im = vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager();
+            org.bukkit.inventory.ItemStack essenceItem = im.buildItem("essence_mana", 1);
+
+            if (essenceItem != null) {
+                java.util.HashMap<Integer, org.bukkit.inventory.ItemStack> leftOver = player.getInventory().addItem(essenceItem);
+                for (org.bukkit.inventory.ItemStack drop : leftOver.values()) {
+                    player.getWorld().dropItemNaturally(player.getLocation(), drop);
+                }
+                player.sendMessage("§b§l[Tinh Tế] §fTrong lúc làm việc, bạn đã tích tụ thành công §b+1 Tinh Chất Ma Lực§f!");
+                player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.2f);
+
+                // [SỬA LỖI]: Gọi đúng hàm handleAction để đẩy tiến độ Quest Tích lũy Tinh Chất (WEEKLY_ALCH_2)
+                vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.COLLECT_MANA_ESSENCE, 1);
+            }
+        }
+    }
+
+    public static void processAlchemistHarvestExp(Player player, String rarity) {
+        PlayerJobData data = getPlayerData(player);
+        if (data == null || !data.getJobId().equalsIgnoreCase("ALCHEMIST")) return;
+
+        double baseExp = 15.0; // Base hái thuốc
+        double multiplier = 1.0;
+
+        if (rarity != null) {
+            switch (rarity.toUpperCase()) {
+                case "COMMON": multiplier = 1.1; break;
+                case "UNCOMMON": multiplier = 1.25; break;
+                case "RARE": multiplier = 1.5; break;
+                case "EPIC": multiplier = 1.75; break;
+                case "MYTHIC": multiplier = 2.0; break;
+                case "LEGENDARY": multiplier = 2.5; break;
+                default: multiplier = 1.0; break;
+            }
+        }
+
+        // 1. Cấp EXP trực tiếp
+        addExp(player, baseExp * multiplier);
+
+        // 2. [MỚI]: Đẩy tiến độ Nhiệm vụ Hái thuốc Tổng Quát (DAILY_ALCH_1)
+        vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.GATHER_ITEM, 1);
+
+        // 3. [MỚI]: Đẩy tiến độ Nhiệm vụ Hái thuốc RARE trở lên (WEEKLY_ALCH_1)
+        if (rarity != null && (rarity.equalsIgnoreCase("RARE") || rarity.equalsIgnoreCase("EPIC") || rarity.equalsIgnoreCase("MYTHIC") || rarity.equalsIgnoreCase("LEGENDARY"))) {
+            vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.ALCH_HARVEST_RARE, 1);
+        }
+    }
+
+    public static void processAlchemistBrewExp(Player player, vn.minecraft.rPGCore.brewing.PotionData result) {
+        PlayerJobData data = getPlayerData(player);
+        if (data == null || !data.getJobId().equalsIgnoreCase("ALCHEMIST")) return;
+
+        double finalExp = 0.0;
+
+        if (result.isRuined) {
+            finalExp = 15.0; // EXP cơ bản khi nổ vạc (Học từ sai lầm)
+            // [SỬA LỖI]: Gọi Quest Nấu Thất Bại (DAILY_ALCH_2, WEEKLY_ALCH_6)
+            vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.BREW_FAIL, 1);
+        } else {
+            double baseExp = 35.0; // EXP cơ bản khi thành công
+            double statsMultiplier = result.customStats.size() * 0.15;
+            double specialMultiplier = result.specialEffects.size() * 0.3;
+            double toxPenalty = Math.min(result.toxicityPoints * 0.01, 0.4);
+            double flavorBonus = 0.0;
+            if (result.flavorTags.contains("§a[Cân Bằng Hoàn Hảo]")) flavorBonus += 0.4;
+            if (result.isEnhanced) flavorBonus += 0.5;
+
+            finalExp = baseExp * (1.0 + statsMultiplier + specialMultiplier + flavorBonus - toxPenalty);
+
+            // [SỬA LỖI]: Gọi Quest Nấu Thành Công (DAILY_ALCH_4, WEEKLY_ALCH_5)
+            vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.BREW_SUCCESS, 1);
+
+            // [SỬA LỖI]: Gọi Quest Nấu Thuốc Hoàn Hảo / Cường Hóa (WEEKLY_ALCH_3)
+            if (result.flavorTags.contains("§a[Cân Bằng Hoàn Hảo]") || result.isEnhanced) {
+                vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.BREW_PERFECT, 1);
+            }
+        }
+
+        // [SỬA LỖI]: Gọi Quest Nấu Tổng Quát (Bất kể thành bại - DAILY_ALCH_3, WEEKLY_ALCH_4)
+        vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.BREW_ANY, 1);
+
+        addExp(player, Math.max(5.0, finalExp));
+    }
 }

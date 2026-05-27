@@ -25,8 +25,14 @@ public class WaterFetchListener implements Listener {
         Player player = event.getPlayer();
         ItemStack item = player.getInventory().getItemInMainHand();
 
-        if (item.getType() == Material.GLASS_BOTTLE && event.getAction().isRightClick()) {
-            // [FIXED]: Bật chế độ va chạm với chất lỏng để có thể click trúng mặt nước
+        if (item == null || item.getType() == Material.AIR) return;
+
+        boolean isVanillaBottle = item.getType() == Material.GLASS_BOTTLE;
+        boolean isThermalFlask = "alch_thermal_flask_empty".equals(itemManager.getItemId(item));
+
+        // Chỉ xử lý nếu cầm Chai Thủy Tinh hoặc Bình Sứ Cách Nhiệt Rỗng
+        if ((isVanillaBottle || isThermalFlask) && event.getAction().isRightClick()) {
+
             Block targetBlock = player.getTargetBlockExact(5, org.bukkit.FluidCollisionMode.SOURCE_ONLY);
 
             if (targetBlock != null && targetBlock.getType() == Material.WATER) {
@@ -35,14 +41,15 @@ public class WaterFetchListener implements Listener {
                 Biome biome = targetBlock.getBiome();
                 String biomeName = biome.getKey().getKey().toUpperCase();
 
-                String waterId = "water_tasteless";
+                // Xác định ID nước dựa trên loại bình (Vanilla hoặc Bình Sứ)
+                String waterId = isThermalFlask ? "alch_thermal_flask_tasteless" : "water_tasteless";
 
                 if (biomeName.contains("OCEAN") || biomeName.contains("BEACH")) {
-                    waterId = "water_salty";
+                    waterId = isThermalFlask ? "alch_thermal_flask_salty" : "water_salty";
                 } else if (biomeName.contains("RIVER")) {
-                    waterId = "water_sweet";
+                    waterId = isThermalFlask ? "alch_thermal_flask_sweet" : "water_sweet";
                 } else if (biomeName.contains("CAVE") || biomeName.contains("DEEP") || biomeName.contains("DRIPSTONE")) {
-                    waterId = "water_cave";
+                    waterId = isThermalFlask ? "alch_thermal_flask_cave" : "water_cave";
                 }
 
                 item.setAmount(item.getAmount() - 1);
@@ -55,6 +62,9 @@ public class WaterFetchListener implements Listener {
                 }
 
                 player.playSound(player.getLocation(), Sound.ITEM_BOTTLE_FILL, 1f, 1f);
+                if (isThermalFlask) {
+                    player.sendMessage("§b§l[!] §fBạn đã nạp đầy Nước vào Bình Sứ Cách Nhiệt.");
+                }
             }
         }
     }
