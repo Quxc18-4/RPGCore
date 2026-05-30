@@ -2,6 +2,7 @@ package vn.minecraft.rPGCore.listeners;
 
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -51,7 +52,6 @@ public class PotionListener implements Listener {
         event.setCancelled(true);
         Player player = event.getPlayer();
         UUID playerUuid = player.getUniqueId();
-        RPGPlayer rpgPlayer = RPGCore.getInstance().getPlayerManager().getRPGPlayer(playerUuid);
 
         String potionUuid = meta.getPersistentDataContainer().get(UUID_KEY, PersistentDataType.STRING);
 
@@ -91,37 +91,94 @@ public class PotionListener implements Listener {
 
         player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_DRINK, 1f, 1f);
 
+        // ==========================================
+        // 1. ÁP DỤNG HÌNH PHẠT HUYẾT TẾ NẾU CÓ TAG
+        // ==========================================
+        if (data.flavorTags.contains("§4[Huyết Tế]")) {
+            double ripHp = player.getHealth() * 0.9;
+            vn.minecraft.rPGCore.managers.StatusEffectManager.applyTrueDamage(player, ripHp); //[cite: 6]
+            vn.minecraft.rPGCore.managers.StatusEffectManager.applyAntiHeal(player, 300); // 15s (300 ticks)[cite: 6]
+        }
+
+        // ==========================================
+        // 2. TRUYỀN DƯỢC LỰC CHO BẢN THÂN
+        // ==========================================
+        applyDose(player, data, effectMultiplier);
+        player.sendMessage("§a[+] Đã hấp thụ Dược lực thành công.");
+
+        // ==========================================
+        // 3. TRUYỀN DƯỢC LỰC CHO ĐỒNG MINH (LAN TỎA)
+        // ==========================================
+        if (data.flavorTags.contains("§a[Lan Tỏa Đồng Minh]")) {
+            double radius = 5.0; // 5 block
+            for (org.bukkit.entity.Entity entity : player.getNearbyEntities(radius, radius, radius)) {
+                if (entity instanceof Player) {
+                    Player ally = (Player) entity;
+
+                    // Nếu KHÔNG THỂ target -> Đó là Đồng Minh
+                    if (!vn.minecraft.rPGCore.managers.CombatManager.canTarget(player, ally)) {
+                        applyDose(ally, data, effectMultiplier);
+                        ally.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, ally.getLocation().add(0, 1, 0), 15, 0.5, 0.5, 0.5, 0);
+                        ally.sendMessage("§a§l[!] §fBạn nhận được dược tính chia sẻ từ §e" + player.getName());
+                    }
+                }
+            }
+        }
+
+        brewingManager.deletePotionFile(potionUuid);
+    }
+
+    // ==========================================
+    // HÀM HELPER: ÁP DỤNG CHỈ SỐ LÊN MỘT THỰC THỂ
+    // ==========================================
+    private void applyDose(Player target, PotionData data, double effectMultiplier) {
+        UUID targetUuid = target.getUniqueId();
+        RPGPlayer rpgTarget = RPGCore.getInstance().getPlayerManager().getRPGPlayer(targetUuid);
+        if (rpgTarget == null) return;
+
+        // Xử lý Máu tức thì
         if (data.customStats.containsKey("Hồi máu tức thì (%)")) {
             double healPercent = (data.customStats.get("Hồi máu tức thì (%)") * effectMultiplier) / 100.0;
-            rpgPlayer.heal(rpgPlayer.getTotalMaxHealth() * healPercent);
-            player.getWorld().spawnParticle(org.bukkit.Particle.HEART, player.getLocation().add(0, 2, 0), 5);
+            rpgTarget.heal(rpgTarget.getTotalMaxHealth() * healPercent);
+            target.getWorld().spawnParticle(org.bukkit.Particle.HEART, target.getLocation().add(0, 2, 0), 5);
         }
 
+        // Xử lý Mana tức thì
         if (data.customStats.containsKey("Hồi năng lượng tức thì (%)")) {
             double manaPercent = (data.customStats.get("Hồi năng lượng tức thì (%)") * effectMultiplier) / 100.0;
-            double manaAmount = rpgPlayer.getUsableMaxResource() * manaPercent;
-            rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() + manaAmount);
-            player.playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_CAST_SPELL, 1f, 1f);
+            double manaAmount = rpgTarget.getUsableMaxResource() * manaPercent;
+            rpgTarget.setCurrentResource(rpgTarget.getCurrentResource() + manaAmount);
+            target.playSound(target.getLocation(), Sound.ENTITY_ILLUSIONER_CAST_SPELL, 1f, 1f);
         }
 
+        // Buff chỉ số qua thời gian
         for (String statKey : data.customStats.keySet()) {
             if (statKey.contains("tức thì")) continue;
             double finalVal = data.customStats.get(statKey) * effectMultiplier;
-            buffManager.applyBuff(playerUuid, statKey, finalVal, data.durationMinutes);
+            buffManager.applyBuff(targetUuid, statKey, finalVal, data.durationMinutes);
         }
 
+        // Áp dụng Potion Vanilla (Sửa lỗi parse cấp độ)
         int durationTicks = data.durationMinutes * 60 * 20;
         for (String eff : data.potionEffects) {
-            PotionEffectType type = PotionEffectType.getByName(eff);
-            if (type != null) player.addPotionEffect(new PotionEffect(type, durationTicks, 0, false, false, true));
+            String[] parts = eff.split(":");
+            PotionEffectType type = PotionEffectType.getByName(parts[0]);
+            int amplifier = (parts.length > 1) ? Integer.parseInt(parts[1]) - 1 : 0;
+
+            if (type != null) {
+                target.addPotionEffect(new PotionEffect(type, durationTicks, Math.max(0, amplifier), false, false, true));
+            }
         }
 
+        // Xử lý Special Effects (Đồng bộ tag BẤT_TỬ và IMMORTAL)[cite: 7]
         for (String spec : data.specialEffects) {
-            if (spec.equals("BẤT_TỬ")) player.setMetadata("Alchemist_Immortal", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), System.currentTimeMillis() + 10000L));
-            else if (spec.equals("THANH_TẨY")) for (PotionEffect e : player.getActivePotionEffects()) player.removePotionEffect(e.getType());
+            if (spec.equals("BẤT_TỬ") || spec.equals("IMMORTAL")) {
+                target.setMetadata("Alchemist_Immortal", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), System.currentTimeMillis() + 10000L));
+            }
+            else if (spec.equals("THANH_TẨY") || spec.equals("CLEANSE")) {
+                // Sử dụng hàm giải trừ từ Manager[cite: 6, 7]
+                vn.minecraft.rPGCore.managers.StatusEffectManager.cleanseNegativeEffects(target);
+            }
         }
-
-        player.sendMessage("§a[+] Đã hấp thụ Dược lực thành công.");
-        brewingManager.deletePotionFile(potionUuid);
     }
 }

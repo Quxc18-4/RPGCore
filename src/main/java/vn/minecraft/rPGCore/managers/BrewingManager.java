@@ -137,7 +137,7 @@ public class BrewingManager implements Listener {
         if (waterItem != null && waterItem.getType() != Material.AIR) {
             String wId = itemManager.getItemId(waterItem);
             // [CẬP NHẬT] Hỗ trợ nhận diện Bình Sứ Nạp Nước
-            if (wId != null && (wId.startsWith("water_") || wId.equals("alch_thermal_flask_water"))) {
+            if (wId != null && (wId.startsWith("water_") || wId.startsWith("alch_thermal_flask_water"))) {
                 ingredients.add(itemManager.getItemData(wId));
             } else {
                 isEnhancing = true;
@@ -205,7 +205,7 @@ public class BrewingManager implements Listener {
 
             if (slot == WATER_SLOT) {
                 // [CẬP NHẬT] Nhận diện Bình sứ
-                boolean isWater = cursorId != null && (cursorId.startsWith("water_") || cursorId.equals("alch_thermal_flask_water"));
+                boolean isWater = cursorId != null && (cursorId.startsWith("water_") || cursorId.startsWith("alch_thermal_flask_water"));
                 boolean isCustomPotion = cursor.hasItemMeta() && cursor.getItemMeta().getPersistentDataContainer().has(new org.bukkit.NamespacedKey(plugin, "potion_uuid"), PersistentDataType.STRING);
 
                 if (!isWater && !isCustomPotion) {
@@ -258,7 +258,7 @@ public class BrewingManager implements Listener {
             String oldUuidToDelete = null;
 
             String waterId = itemManager.getItemId(waterItem);
-            boolean isThermalFlask = waterId != null && waterId.equals("alch_thermal_flask_water");
+            boolean isThermalFlask = waterId != null && waterId.startsWith("alch_thermal_flask_water");
 
             if (waterId != null && (waterId.startsWith("water_") || isThermalFlask)) {
                 ingredients.add(itemManager.getItemData(waterId));
@@ -306,7 +306,7 @@ public class BrewingManager implements Listener {
 
             savePotionToFile(resultData);
 
-            vn.minecraft.rPGCore.jobs.core.JobManager.processAlchemistBrewExp(player, resultData);
+            vn.minecraft.rPGCore.jobs.core.JobManager.processAlchemistBrewExp(player, resultData, ingredients);
 
             if (oldUuidToDelete != null) deletePotionFile(oldUuidToDelete);
 
@@ -333,7 +333,12 @@ public class BrewingManager implements Listener {
                 player.getWorld().spawnParticle(Particle.WITCH, player.getLocation().add(0, 1, 0), 20, 0.3, 0.3, 0.3, 0);
             }
 
-            inv.setItem(OUTPUT_SLOT, buildPotionItem(resultData));
+            // Xử lý Dung Môi Song Sinh (Nhân đôi kết quả)
+            ItemStack outputItem = buildPotionItem(resultData);
+            if (resultData.flavorTags.contains("§d[Song Sinh]")) {
+                outputItem.setAmount(2);
+            }
+            inv.setItem(OUTPUT_SLOT, outputItem);
             Bukkit.getScheduler().runTaskLater(plugin, () -> updateBrewButton(inv, player), 1L);
         }
     }

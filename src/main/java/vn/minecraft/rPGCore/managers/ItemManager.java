@@ -525,7 +525,7 @@ public class ItemManager {
         register(new ItemData("herb_wolf_sand_seed", Rarity.EPIC, Category.HERB, 0.0, Material.COCOA_BEANS, "Hạt Cát Sói", "Vị Cay | Pha chế: +15% Tỉ lệ chí mạng", "Chỉ chịu nảy mầm khi hấp thụ ánh trăng tròn.", "Kích phát bản năng hoang dã tiềm ẩn trong huyết quản."));
         register(new ItemData("herb_venom_tongue", Rarity.EPIC, Category.HERB, 0.0, Material.SWEET_BERRIES, "Quả Lưỡi Độc", "Vị Chua | Pha chế: Sát thương phép thuật", "Sinh trưởng ở những bãi lầy độc hại nhất.", "Dịch quả khiến mọi vết thương không thể khép miệng."));
         register(new ItemData("herb_carnivore_flower", Rarity.EPIC, Category.HERB, 0.0, Material.CRIMSON_FUNGUS, "Hoa Ăn Thịt", "Vị Đắng | Pha chế: +10% Tỉ lệ hút máu", "Đài hoa có màu đỏ sẫm và tanh nồng mùi máu.", "Nó được nuôi dưỡng bằng xác của những con ma thú."));
-        register(new ItemData("herb_ancient_water", Rarity.EPIC, Category.HERB, 0.0, Material.POTION, "Nước Tinh Khiết Cổ Đại", "Vô vị | Pha chế: Dung môi (Tăng 50% Tỉ lệ thành công)", "Lấy từ khe nứt sâu thẳm dưới lòng đất.", "Thứ chất lỏng thuần khiết duy nhất có thể kìm hãm", "sự phản ứng mãnh liệt của các loại Thần Dược."));
+        //register(new ItemData("herb_ancient_water", Rarity.EPIC, Category.HERB, 0.0, Material.POTION, "Nước Tinh Khiết Cổ Đại", "Vô vị | Pha chế: Dung môi (Tăng 50% Tỉ lệ thành công)", "Lấy từ khe nứt sâu thẳm dưới lòng đất.", "Thứ chất lỏng thuần khiết duy nhất có thể kìm hãm", "sự phản ứng mãnh liệt của các loại Thần Dược."));
         register(new ItemData("herb_phoenix_tear", Rarity.EPIC, Category.HERB, 0.0, Material.WEEPING_VINES, "Giọt Lệ Phượng Hoàng", "Vị Cay | Pha chế: +25% Hồi máu tức thì", "Rơi xuống từ bầu trời rực lửa.", "Mỗi giọt mang sức sống tái sinh của truyền thuyết."));
         register(new ItemData("herb_astral_fruit", Rarity.EPIC, Category.HERB, 0.0, Material.CHORUS_FLOWER, "Quả Tinh Tú", "Vị Mặn | Pha chế: +25% Hồi năng lượng tức thì", "Ngưng tụ ánh sáng các vì sao.", "Ăn vào cảm giác như vũ trụ thu nhỏ trong dạ dày."));
 
@@ -562,9 +562,30 @@ public class ItemManager {
         register(new ItemData("alch_thermal_flask_salty", Rarity.UNCOMMON, Category.MISC, 0.0, Material.POTION, "§bBình Sứ: Nước Biển", "Vị Mặn | Đạo cụ pha chế", "Giảm 20% Độc tính thành phẩm."));
         register(new ItemData("alch_thermal_flask_cave", Rarity.UNCOMMON, Category.MISC, 0.0, Material.POTION, "§bBình Sứ: Nước Mạch Ngầm", "Vị Cay | Đạo cụ pha chế", "Giảm 20% Độc tính thành phẩm."));
 
-        // --- DUNG MÔI XÚC TÁC MỚI (Dùng cho SLOT DUNG MÔI) ---
-        register(new ItemData("catalyst_purity", Rarity.RARE, Category.MISC, 0.0, Material.AMETHYST_SHARD, "§dDung Môi Tinh Khiết", "Vô vị | Chất Xúc Tác", "§a+15% Tỉ lệ nấu thành công.", "§c-10% Hiệu quả dược liệu (Stats)."));
-        register(new ItemData("catalyst_chaos", Rarity.EPIC, Category.MISC, 0.0, Material.ECHO_SHARD, "§5Dung Môi Hỗn Mang", "Vị Cay | Chất Xúc Tác", "§a+25% Hiệu quả dược liệu (Stats).", "§c-20% Tỉ lệ nấu thành công."));
+        // ==========================================
+        // CÁC LOẠI DUNG MÔI ĐẶC BIỆT (SOLVENT HERBS)
+        // ==========================================
+
+        // 1. Dung Môi Trung Hòa
+        register(new ItemData("herb_solvent_dilution", Rarity.UNCOMMON, Category.HERB, 0.0, Material.SUGAR_CANE, "Cỏ Dịu Mát", "Vô vị | Dung môi: Tăng 20% Tỉ lệ | Giảm 20% Hiệu quả thuốc", "Loài cỏ tiết ra lớp nhựa làm chậm mọi phản ứng ma pháp."));
+
+        // 2. Dung Môi Hỗn Mang
+        register(new ItemData("herb_solvent_volatile", Rarity.RARE, Category.HERB, 0.0, Material.REDSTONE_TORCH, "Hoa Nổ Thạch Anh", "Vị Cay | Dung môi: Giảm 15% Tỉ lệ | Tăng 30% Hiệu quả thuốc)", "Nhiệt lượng sinh ra có thể làm nứt cả thành vạc."));
+
+        // 3. Dung Môi Thanh Tẩy
+        register(new ItemData("herb_solvent_purifying", Rarity.RARE, Category.HERB, 0.0, Material.LILY_PAD, "Rễ Nước Trong", "Vị Ngọt | Dung môi: Xóa bỏ Độc tính | Giảm 50% Thời gian duy trì)", "Lọc sạch mọi tạp chất, kể cả những tinh chất có lợi."));
+
+        // 4. Dung Môi Ngưng Đọng
+        register(new ItemData("herb_solvent_stasis", Rarity.EPIC, Category.HERB, 0.0, Material.BROWN_MUSHROOM, "Nấm Thời Gian", "Vị Đắng | Dung môi: Tăng 100% Thời gian duy trì | +10 Độc Tính)", "Ép cơ thể phải duy trì trạng thái buff bằng cách vắt kiệt sinh lực."));
+
+        // 5. Dung Môi Lan Tỏa (Buff AoE)
+        register(new ItemData("herb_solvent_resonance", Rarity.EPIC, Category.HERB, 0.0, Material.DANDELION, "Bồ Công Anh Gió", "Vị Chua | Dung môi: Buff 1 Đồng minh 5m, Giảm 30% Hiệu quả thuốc)", "Hoa bồ công anh mang theo dược lực nương theo chiều gió."));
+
+        // 6. Dung Môi Song Sinh
+        register(new ItemData("herb_solvent_twin", Rarity.MYTHIC, Category.HERB, 0.0, Material.WEEPING_VINES, "Dây Leo Bện Song Sinh", "Vô vị | Dung môi: Giảm 30% Tỉ lệ | x2 Sản lượng)", "Hình thái kỳ lạ, luôn luôn tồn tại song song hai thực thể."));
+
+        // 7. Dung Môi Huyết Tế
+        register(new ItemData("herb_solvent_sacrifice", Rarity.LEGENDARY, Category.HERB, 0.0, Material.CRIMSON_ROOTS, "Lá Máu Cuồng Nộ", "Vị Đắng | Dung môi: Tăng 100% Tỉ lệ | Rút 90% HP & Cấm Hồi Máu)", "Nở rộ trên xác của những ma thú tàn bạo nhất."));
         // --- 16.3 NGUYÊN LIỆU ĐẶC BIỆT ---
 
         register(new ItemData("essence_mana", Rarity.EPIC, Category.MISC, 0.0, Material.PRISMARINE_CRYSTALS, "§bTinh Chất Ma Lực", null, "Kết tinh từ sự giao thoa giữa thảo dược và ma lực vạc pha chế."));

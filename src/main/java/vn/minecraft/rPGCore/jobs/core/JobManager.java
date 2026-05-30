@@ -359,37 +359,47 @@ public class JobManager {
         }
     }
 
-    public static void processAlchemistBrewExp(Player player, vn.minecraft.rPGCore.brewing.PotionData result) {
+    // Đã thêm tham số List<ItemData> ingredients vào hàm để chấm điểm EXP
+    public static void processAlchemistBrewExp(Player player, vn.minecraft.rPGCore.brewing.PotionData result, List<vn.minecraft.rPGCore.managers.ItemManager.ItemData> ingredients) {
         PlayerJobData data = getPlayerData(player);
         if (data == null || !data.getJobId().equalsIgnoreCase("ALCHEMIST")) return;
 
-        double finalExp = 0.0;
+        double finalExp = 15.0; // Base EXP thành công (Giống Đầu Bếp)
 
         if (result.isRuined) {
-            finalExp = 15.0; // EXP cơ bản khi nổ vạc (Học từ sai lầm)
-            // [SỬA LỖI]: Gọi Quest Nấu Thất Bại (DAILY_ALCH_2, WEEKLY_ALCH_6)
+            finalExp = 10.0; // Base EXP thất bại (Giống Đầu Bếp)
             vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.BREW_FAIL, 1);
         } else {
-            double baseExp = 35.0; // EXP cơ bản khi thành công
-            double statsMultiplier = result.customStats.size() * 0.15;
-            double specialMultiplier = result.specialEffects.size() * 0.3;
-            double toxPenalty = Math.min(result.toxicityPoints * 0.01, 0.4);
-            double flavorBonus = 0.0;
-            if (result.flavorTags.contains("§a[Cân Bằng Hoàn Hảo]")) flavorBonus += 0.4;
-            if (result.isEnhanced) flavorBonus += 0.5;
+            // CỘNG DỒN EXP DỰA TRÊN ĐỘ HIẾM CỦA THẢO DƯỢC (Tương tự hệ thống Cooking)
+            if (ingredients != null) {
+                for (vn.minecraft.rPGCore.managers.ItemManager.ItemData itemData : ingredients) {
+                    if (itemData == null || itemData.rarity == null) continue;
+                    switch (itemData.rarity) {
+                        case COMMON: finalExp += 2.0; break;
+                        case UNCOMMON: finalExp += 5.0; break;
+                        case RARE: finalExp += 10.0; break;
+                        case EPIC: finalExp += 20.0; break;
+                        case MYTHIC: finalExp += 40.0; break;
+                        case LEGENDARY: finalExp += 80.0; break;
+                    }
+                }
+            }
 
-            finalExp = baseExp * (1.0 + statsMultiplier + specialMultiplier + flavorBonus - toxPenalty);
+            // Thưởng thêm 15% tổng EXP nếu đạt chuẩn Cân bằng / Cường hóa
+            // (Đây là nét đặc trưng riêng của Dược Sư so với Đầu Bếp)
+            double flavorBonus = 1.0;
+            if (result.flavorTags.contains("§a[Cân Bằng Hoàn Hảo]")) flavorBonus += 0.15;
+            if (result.isEnhanced) flavorBonus += 0.15;
 
-            // [SỬA LỖI]: Gọi Quest Nấu Thành Công (DAILY_ALCH_4, WEEKLY_ALCH_5)
+            finalExp *= flavorBonus;
+
             vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.BREW_SUCCESS, 1);
 
-            // [SỬA LỖI]: Gọi Quest Nấu Thuốc Hoàn Hảo / Cường Hóa (WEEKLY_ALCH_3)
             if (result.flavorTags.contains("§a[Cân Bằng Hoàn Hảo]") || result.isEnhanced) {
                 vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.BREW_PERFECT, 1);
             }
         }
 
-        // [SỬA LỖI]: Gọi Quest Nấu Tổng Quát (Bất kể thành bại - DAILY_ALCH_3, WEEKLY_ALCH_4)
         vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.BREW_ANY, 1);
 
         addExp(player, Math.max(5.0, finalExp));
