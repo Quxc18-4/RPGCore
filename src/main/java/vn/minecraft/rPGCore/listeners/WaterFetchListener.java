@@ -28,7 +28,7 @@ public class WaterFetchListener implements Listener {
         if (item == null || item.getType() == Material.AIR) return;
 
         boolean isVanillaBottle = item.getType() == Material.GLASS_BOTTLE;
-        boolean isThermalFlask = "alch_thermal_flask_empty".equals(itemManager.getItemId(item));
+        boolean isThermalFlask = "alch_thermal_flask_water_empty".equals(itemManager.getItemId(item));
 
         // Chỉ xử lý nếu cầm Chai Thủy Tinh hoặc Bình Sứ Cách Nhiệt Rỗng
         if ((isVanillaBottle || isThermalFlask) && event.getAction().isRightClick()) {
@@ -41,19 +41,28 @@ public class WaterFetchListener implements Listener {
                 Biome biome = targetBlock.getBiome();
                 String biomeName = biome.getKey().getKey().toUpperCase();
 
-                // Xác định ID nước dựa trên loại bình (Vanilla hoặc Bình Sứ)
-                String waterId = isThermalFlask ? "alch_thermal_flask_tasteless" : "water_tasteless";
+                // [SỬA LỖI]: Cấu trúc ID bắt buộc phải có chữ "water" ở giữa để Vạc pha chế nhận diện được
+                String waterId = isThermalFlask ? "alch_thermal_flask_water_tasteless" : "water_tasteless";
 
                 if (biomeName.contains("OCEAN") || biomeName.contains("BEACH")) {
-                    waterId = isThermalFlask ? "alch_thermal_flask_salty" : "water_salty";
+                    waterId = isThermalFlask ? "alch_thermal_flask_water_salty" : "water_salty";
                 } else if (biomeName.contains("RIVER")) {
-                    waterId = isThermalFlask ? "alch_thermal_flask_sweet" : "water_sweet";
+                    waterId = isThermalFlask ? "alch_thermal_flask_water_sweet" : "water_sweet";
                 } else if (biomeName.contains("CAVE") || biomeName.contains("DEEP") || biomeName.contains("DRIPSTONE")) {
-                    waterId = isThermalFlask ? "alch_thermal_flask_cave" : "water_cave";
+                    waterId = isThermalFlask ? "alch_thermal_flask_water_cave" : "water_cave";
                 }
 
-                item.setAmount(item.getAmount() - 1);
                 ItemStack waterItem = itemManager.buildItem(waterId, 1);
+
+                // [SỬA LỖI]: Bắt buộc phải check Null. Nếu cấu hình ItemManager thiếu ID này, báo lỗi và KHÔNG trừ bình.
+                if (waterItem == null) {
+                    player.sendMessage("§c§l[Lỗi Hệ Thống] §fLoại nước §e'" + waterId + "' §fchưa được đăng ký trong ItemManager!");
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
+                    return;
+                }
+
+                // Nếu mọi thứ hợp lệ, mới tiến hành trừ bình rỗng
+                item.setAmount(item.getAmount() - 1);
 
                 if (player.getInventory().firstEmpty() == -1) {
                     player.getWorld().dropItemNaturally(player.getLocation(), waterItem);

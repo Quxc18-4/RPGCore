@@ -78,6 +78,9 @@ public class BrewingManager implements Listener {
             event.setCancelled(true);
             Player player = event.getPlayer();
 
+            // [FIX GHOST ITEM KHI MỞ VẠC]
+            org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, player::updateInventory, 1L);
+
             long now = System.currentTimeMillis();
             if (clickCooldowns.getOrDefault(player.getUniqueId(), 0L) > now) return;
             clickCooldowns.put(player.getUniqueId(), now + 200L);
@@ -90,10 +93,13 @@ public class BrewingManager implements Listener {
     @EventHandler
     public void onBrewingInventoryDrag(InventoryDragEvent event) {
         if (!event.getView().getTitle().equals(GUI_NAME)) return;
+
+        // [FIX GHOST ITEM KHI KÉO THẢ NHIỀU Ô]
+        org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> ((Player) event.getWhoClicked()).updateInventory(), 1L);
+
         for (int slot : event.getRawSlots()) {
             if (slot < 54) {
                 event.setCancelled(true);
-                ((Player) event.getWhoClicked()).updateInventory();
                 return;
             }
         }
@@ -144,13 +150,32 @@ public class BrewingManager implements Listener {
             }
         }
 
-        int[] allMats = {10, 11, 12, 19, 20, 21, 37, 38, 39, 25};
-        for (int s : allMats) {
+        // 1. Quét 6 ô Thảo dược chính
+        for (int s : HERB_SLOTS) {
             ItemStack i = inv.getItem(s);
             if (i != null && i.getType() != Material.AIR) {
                 String id = itemManager.getItemId(i);
                 if (id != null) ingredients.add(itemManager.getItemData(id));
             }
+        }
+
+        // 2. Quét 3 ô Điều vị (Ép kiểu SPICE để lách hệ thống trừ tỉ lệ)
+        for (int s : SPICE_SLOTS) {
+            ItemStack i = inv.getItem(s);
+            if (i != null && i.getType() != Material.AIR) {
+                ItemData original = itemManager.getItemData(itemManager.getItemId(i));
+                if (original != null) {
+                    ItemData spiceClone = new ItemData(original.id, original.rarity, ItemManager.Category.SPICE, original.points, original.material, original.name, original.effect, original.description.toArray(new String[0]));
+                    ingredients.add(spiceClone);
+                }
+            }
+        }
+
+        // 3. Quét Dung môi
+        ItemStack solvItem = inv.getItem(SOLVENT_SLOT);
+        if (solvItem != null && solvItem.getType() != Material.AIR) {
+            String id = itemManager.getItemId(solvItem);
+            if (id != null) ingredients.add(itemManager.getItemData(id));
         }
 
         double successRate = engine.getSuccessRate(ingredients, player, isEnhancing);
@@ -184,6 +209,10 @@ public class BrewingManager implements Listener {
 
         Player player = (Player) event.getWhoClicked();
 
+        // [FIX GHOST ITEM TỔNG LỰC CHO MỌI THAO TÁC CLICK TRONG GUI]
+        // Đặt ở ngay đầu hàm, mọi thao tác trả về (return) bên dưới đều sẽ được đồng bộ an toàn!
+        org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, player::updateInventory, 1L);
+
         if (event.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY || event.getClick().isKeyboardClick() || event.getClick() == ClickType.DOUBLE_CLICK) {
             event.setCancelled(true); player.updateInventory(); return;
         }
@@ -209,23 +238,38 @@ public class BrewingManager implements Listener {
                 boolean isCustomPotion = cursor.hasItemMeta() && cursor.getItemMeta().getPersistentDataContainer().has(new org.bukkit.NamespacedKey(plugin, "potion_uuid"), PersistentDataType.STRING);
 
                 if (!isWater && !isCustomPotion) {
-                    event.setCancelled(true); player.sendMessage("§cChỉ được đặt Nước, Bình Sứ hoặc Thuốc vào ô này!");
+                    event.setCancelled(true); player.sendMessage("§c§l[!] §cChỉ được đặt Nước, Bình Sứ hoặc Thuốc vào ô này!");
                     player.updateInventory(); return;
                 }
                 if (isCustomPotion) {
                     String uuid = cursor.getItemMeta().getPersistentDataContainer().get(new org.bukkit.NamespacedKey(plugin, "potion_uuid"), PersistentDataType.STRING);
                     PotionData old = loadPotionFromFile(uuid);
                     if (old == null || old.isEnhanced || old.isRuined) {
-                        event.setCancelled(true); player.sendMessage("§cThuốc bị lỗi, hỏng hoặc đã được Cường Hóa!");
+                        event.setCancelled(true); player.sendMessage("§c§l[!] §cThuốc bị lỗi, hỏng hoặc đã được Cường Hóa!");
                         player.updateInventory(); return;
                     }
                 }
             } else if (slot == 10 || slot == 11 || slot == 12 || slot == 19 || slot == 20 || slot == 21) {
-                if (data == null || data.category != ItemManager.Category.HERB) { event.setCancelled(true); return; }
+                // [SỬA LỖI]: Báo lỗi nếu đặt sai đồ, CẤM đặt Dung Môi vào ô Thảo Dược
+                if (data == null || data.category != ItemManager.Category.HERB || data.id.startsWith("herb_solvent_")) {
+                    event.setCancelled(true);
+                    player.sendMessage("§c§l[!] §cÔ này chỉ dành riêng cho Thảo Dược Chính!");
+                    player.updateInventory(); return;
+                }
             } else if (slot == 37 || slot == 38 || slot == 39) {
-                if (data == null || (data.category != ItemManager.Category.SPICE && data.category != ItemManager.Category.HERB)) { event.setCancelled(true); return; }
+                // [SỬA LỖI]: Báo lỗi nếu đặt sai, CẤM đặt Dung Môi vào ô Gia Vị
+                if (data == null || (data.category != ItemManager.Category.SPICE && data.category != ItemManager.Category.HERB) || data.id.startsWith("herb_solvent_")) {
+                    event.setCancelled(true);
+                    player.sendMessage("§c§l[!] §cÔ này chỉ dành cho Gia vị hoặc Thảo mộc khử vị!");
+                    player.updateInventory(); return;
+                }
             } else if (slot == SOLVENT_SLOT) {
-                if (data == null) { event.setCancelled(true); return; }
+                // [SỬA LỖI]: CHỐT CỨNG chỉ nhận các món có ID Dung Môi
+                if (data == null || !data.id.startsWith("herb_solvent_")) {
+                    event.setCancelled(true);
+                    player.sendMessage("§c§l[!] §cÔ này chỉ dành riêng cho Dung Môi!");
+                    player.updateInventory(); return;
+                }
             } else if (slot != BUTTON_SLOT && slot != OUTPUT_SLOT) {
                 event.setCancelled(true); player.updateInventory(); return;
             }
@@ -279,8 +323,19 @@ public class BrewingManager implements Listener {
                 player.sendMessage("§c§l[!] §cVui lòng bỏ ít nhất 1 Thảo dược!"); return;
             }
 
-            for (int s : SPICE_SLOTS) if (inv.getItem(s) != null) ingredients.add(itemManager.getItemData(itemManager.getItemId(inv.getItem(s))));
-            if (inv.getItem(SOLVENT_SLOT) != null) ingredients.add(itemManager.getItemData(itemManager.getItemId(inv.getItem(SOLVENT_SLOT))));
+            // BẰNG ĐOẠN CODE ÉP KIỂU NÀY:
+            for (int s : SPICE_SLOTS) {
+                if (inv.getItem(s) != null && inv.getItem(s).getType() != Material.AIR) {
+                    ItemData original = itemManager.getItemData(itemManager.getItemId(inv.getItem(s)));
+                    if (original != null) {
+                        ItemData spiceClone = new ItemData(original.id, original.rarity, ItemManager.Category.SPICE, original.points, original.material, original.name, original.effect, original.description.toArray(new String[0]));
+                        ingredients.add(spiceClone);
+                    }
+                }
+            }
+            if (inv.getItem(SOLVENT_SLOT) != null && inv.getItem(SOLVENT_SLOT).getType() != Material.AIR) {
+                ingredients.add(itemManager.getItemData(itemManager.getItemId(inv.getItem(SOLVENT_SLOT))));
+            }
 
             PotionData resultData = engine.evaluate(ingredients, player, basePotion);
 
@@ -288,7 +343,9 @@ public class BrewingManager implements Listener {
             // LOGIC ÁP DỤNG ĐẠO CỤ CHUYÊN NGÀNH
             // ==========================================
             if (isThermalFlask) {
-                resultData.toxicityPoints *= 0.8; // Bình Sứ giảm 20% độc
+                resultData.toxicityPoints *= 0.8;
+                // [CẬP NHẬT MỚI]: Nhồi thông tin Bình Sứ vào file cấu hình của Potion
+                resultData.specialEffects.add("THERMAL_FLASK");
             }
 
             ItemStack spoon = null;
@@ -309,6 +366,9 @@ public class BrewingManager implements Listener {
             vn.minecraft.rPGCore.jobs.core.JobManager.processAlchemistBrewExp(player, resultData, ingredients);
 
             if (oldUuidToDelete != null) deletePotionFile(oldUuidToDelete);
+
+            // [CẬP NHẬT MỚI]: Xử lý tiêu hao Nước Nền (Tiêu hao luôn bình sứ, không trả lại Vạc)
+            waterItem.setAmount(waterItem.getAmount() - 1);
 
             // Xử lý tiêu hao Nước Nền
             if (isThermalFlask) {
@@ -358,12 +418,15 @@ public class BrewingManager implements Listener {
 
         List<String> bottomTags = new ArrayList<>();
 
+        if (data.specialEffects.contains("THERMAL_FLASK")) {
+            bottomTags.add("§b[Đựng trong Bình Sứ]");
+        }
+
         if (data.isRuined) {
             lore.add("§7Mùi vị kinh khủng, dung môi phản ứng tệ...");
             bottomTags.add("§c[Kinh tởm]");
         } else {
-            // Không lặp chữ [Cường hóa] nếu trên tên thuốc đã có
-            if (data.isEnhanced && !data.name.contains("Cường Hóa") && !data.name.contains("Đại Tài")) {
+            if (data.isEnhanced && !data.name.contains("Cường Hóa") && !data.name.contains("Siêu Cấp")) {
                 bottomTags.add("§d[Cường hóa]");
             }
             if (data.toxicityPoints < 2.0 && !data.customStats.isEmpty() && data.durationMinutes >= 15) {
@@ -389,6 +452,7 @@ public class BrewingManager implements Listener {
             if (!data.customStats.isEmpty() || !data.specialEffects.isEmpty()) {
                 lore.add("§f§lThuộc Tính Dược Liệu:");
                 for (String spec : data.specialEffects) {
+                    if (spec.equals("THERMAL_FLASK")) continue;
                     if (spec.equals("IMMORTAL")) lore.add("§f ➥ §eMiễn nhiễm tử vong trong 10s");
                     if (spec.equals("CLEANSE")) lore.add("§f ➥ §bXóa bỏ toàn bộ trạng thái xấu");
                     if (spec.equals("EXECUTE_POISON")) lore.add("§f ➥ §5Độc Kết Liễu < 5% HP");
@@ -397,34 +461,65 @@ public class BrewingManager implements Listener {
 
                 for (String stat : data.customStats.keySet()) {
                     String cleanStat = stat.replace(" (%)", "").replace("Tỉ lệ", "Tỉ lệ").trim();
-                    // [FIX UI]: Tự động thêm % cho mọi chỉ số trừ "Máu tối đa"
                     boolean isFlat = cleanStat.equalsIgnoreCase("Máu tối đa");
                     String sign = isFlat ? "" : "%";
                     lore.add("§f- §7" + cleanStat + ": §a+" + String.format("%.1f", data.customStats.get(stat)) + sign);
                 }
             }
+
             if (!data.potionEffects.isEmpty()) {
                 lore.add("§f§lHiệu Ứng Thể Chất:");
-                Map<String, String> peNames = Map.of("WATER_BREATHING", "Thở dưới nước", "JUMP", "Nhảy cao", "FIRE_RESISTANCE", "Kháng lửa", "INVISIBILITY", "Tàng Hình");
+                Map<String, String> peNames = new HashMap<>();
+                peNames.put("WATER_BREATHING", "Thở Dưới Nước"); peNames.put("JUMP", "Nhảy Cao");
+                peNames.put("FIRE_RESISTANCE", "Kháng Lửa"); peNames.put("INVISIBILITY", "Tàng Hình");
+                peNames.put("SPEED", "Tốc Độ"); peNames.put("SLOW", "Làm Chậm");
+                peNames.put("FAST_DIGGING", "Nhanh Nhẹn"); peNames.put("SLOW_DIGGING", "Mệt Mỏi");
+                peNames.put("INCREASE_DAMAGE", "Sức Mạnh"); peNames.put("HEAL", "Hồi Máu");
+                peNames.put("HARM", "Sát Thương"); peNames.put("CONFUSION", "Buồn Nôn");
+                peNames.put("REGENERATION", "Hồi Sinh Lực"); peNames.put("DAMAGE_RESISTANCE", "Kháng Cự");
+                peNames.put("BLINDNESS", "Mù Lòa"); peNames.put("NIGHT_VISION", "Nhìn Trong Đêm");
+                peNames.put("HUNGER", "Đói Khát"); peNames.put("WEAKNESS", "Yếu Ớt");
+                peNames.put("POISON", "Trúng Độc"); peNames.put("WITHER", "Khô Héo");
+                peNames.put("HEALTH_BOOST", "Tăng Máu"); peNames.put("ABSORPTION", "Hấp Thụ");
+                peNames.put("SATURATION", "No Nê"); peNames.put("GLOWING", "Phát Sáng");
+                peNames.put("LEVITATION", "Lơ Lửng"); peNames.put("LUCK", "May Mắn");
+                peNames.put("UNLUCK", "Xui Xẻo"); peNames.put("SLOW_FALLING", "Rơi Chậm");
+                peNames.put("CONDUIT_POWER", "Sức Mạnh Vỏ Ốc"); peNames.put("DOLPHINS_GRACE", "Duyên Dáng");
+                peNames.put("BAD_OMEN", "Điềm Gở"); peNames.put("HERO_OF_THE_VILLAGE", "Anh Hùng Làng");
+
                 for (String pe : data.potionEffects) {
-                    // [FIX CỘNG DỒN]: Phân tích chuỗi "JUMP:2"
                     String[] parts = pe.split(":");
                     String name = peNames.getOrDefault(parts[0], parts[0]);
-                    String levelText = (parts.length > 1 && Integer.parseInt(parts[1]) > 1) ? " Cấp " + parts[1] : "";
+                    String levelText = "";
+                    if (parts.length > 1) {
+                        int lvl = Integer.parseInt(parts[1]);
+                        if (lvl > 1) levelText = " " + getRomanNumeral(lvl);
+                    }
                     lore.add("§f- §bNhận hiệu ứng " + name + levelText);
                 }
             }
         }
 
-        // Ép không cho lặp khoảng trắng
-        if (!data.flavorTags.isEmpty()) {
-            lore.add("");
-            lore.addAll(data.flavorTags);
+        // ==========================================
+        // [FIX CHÍNH THỨC]: GỘP TAGS KHÔNG CÁCH DÒNG
+        // ==========================================
+        List<String> cleanTags = new ArrayList<>();
+        for (String t : data.flavorTags) {
+            if (t != null && !t.trim().isEmpty()) {
+                cleanTags.add(t.trim()); // Dọn dẹp các khoảng trắng bị thừa/ẩn
+            }
         }
 
-        if (!bottomTags.isEmpty()) {
-            lore.add("");
-            lore.add(String.join(" ", bottomTags));
+        if (!cleanTags.isEmpty() || !bottomTags.isEmpty()) {
+            lore.add(""); // Tạo duy nhất 1 dòng trống để tách phần Tags với phần Chỉ Số
+
+            if (!cleanTags.isEmpty()) {
+                lore.addAll(cleanTags); // Add [Cân bằng hoàn hảo]
+            }
+
+            if (!bottomTags.isEmpty()) {
+                lore.add(String.join(" ", bottomTags)); // Add [Cường hóa] ngay sát bên dưới
+            }
         }
 
         meta.setLore(lore);
@@ -469,4 +564,13 @@ public class BrewingManager implements Listener {
     }
 
     public void deletePotionFile(String uuid) { File file = new File(folder, uuid + ".yml"); if (file.exists()) file.delete(); }
+
+    // ==========================================
+    // HÀM HELPER: DỊCH SỐ SANG CHỮ LA MÃ
+    // ==========================================
+    private String getRomanNumeral(int level) {
+        String[] romans = {"", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"};
+        if (level > 0 && level <= 10) return romans[level];
+        return String.valueOf(level);
+    }
 }

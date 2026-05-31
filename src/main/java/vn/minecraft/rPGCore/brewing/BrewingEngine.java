@@ -26,29 +26,48 @@ public class BrewingEngine {
 
     public static final List<SecretRecipe> SECRET_RECIPES = new ArrayList<>();
     static {
-        // LƯU Ý: Bạn có thể tự thay đổi các ID ("water_pure", "herb_blood"...) cho khớp với items.yml của bạn!
-        SECRET_RECIPES.add(new SecretRecipe("RECIPE_IMMORTAL", "§e§lThần Dược Bất Tử", 255, 215, 0, "IMMORTAL", "water_pure", "herb_phoenix_tear", "herb_dragon_root"));
-        SECRET_RECIPES.add(new SecretRecipe("RECIPE_RESURRECT", "§d§lGiọt Lệ Niết Bàn", 255, 105, 180, "RESURRECTION", "water_magic", "herb_angel_feather", "herb_soul_flower"));
-        SECRET_RECIPES.add(new SecretRecipe("RECIPE_CLEANSE", "§b§lThánh Thủy Tinh Khiết", 0, 255, 255, "CLEANSE", "water_pure", "herb_white_lotus", "herb_moon_grass"));
-        SECRET_RECIPES.add(new SecretRecipe("RECIPE_EXECUTE", "§5§lĐộc Tử Thần", 75, 0, 130, "EXECUTE_POISON", "water_swamp", "herb_death_cap", "herb_widow_bite"));
+        // [ĐÃ SỬA LỖI]: Cập nhật chính xác 100% ID Thảo dược theo ItemManager hiện tại
+        SECRET_RECIPES.add(new SecretRecipe("RECIPE_IMMORTAL", "§e§lThần Dược Bất Tử", 255, 215, 0, "IMMORTAL",
+                "water_tasteless", "herb_phoenix_tear", "herb_immortal_bloom"));
 
-        SecretRecipe heal100 = new SecretRecipe("RECIPE_HEAL_100", "§a§lThần Dược Hồi Sinh Cơ", 50, 255, 50, null, "water_pure", "herb_golden_apple", "herb_blood_grass");
-        heal100.customStats.put("Hồi máu tức thì (%)", 100.0); SECRET_RECIPES.add(heal100);
+        SECRET_RECIPES.add(new SecretRecipe("RECIPE_RESURRECT", "§d§lGiọt Lệ Niết Bàn", 255, 105, 180, "RESURRECTION",
+                "water_cave", "herb_feather_leaf", "herb_yggdrasil_sprout"));
 
-        SecretRecipe mana100 = new SecretRecipe("RECIPE_MANA_100", "§3§lBình Ma Lực Tối Thượng", 0, 191, 255, null, "water_magic", "herb_mana_shroom", "herb_star_dust");
-        mana100.customStats.put("Hồi năng lượng tức thì (%)", 100.0); SECRET_RECIPES.add(mana100);
+        SECRET_RECIPES.add(new SecretRecipe("RECIPE_CLEANSE", "§b§lThánh Thủy Tinh Khiết", 0, 255, 255, "CLEANSE",
+                "water_tasteless", "herb_fairy_tear", "herb_prism_orchid"));
 
-        SecretRecipe speed = new SecretRecipe("RECIPE_SPEED", "§f§lCuồng Phong Dược", 255, 255, 255, null, "water_river", "herb_wind_leaf", "herb_lightning_root");
-        speed.customStats.put("Tốc độ di chuyển", 50.0); SECRET_RECIPES.add(speed);
+        SECRET_RECIPES.add(new SecretRecipe("RECIPE_EXECUTE", "§5§lĐộc Tử Thần", 75, 0, 130, "EXECUTE_POISON",
+                "water_cave", "herb_toxic_toadstool", "herb_dark_lotus"));
 
-        SecretRecipe shield = new SecretRecipe("RECIPE_SHIELD", "§8§lThiết Giáp Tinh Trạch", 105, 105, 105, null, "water_sea", "herb_iron_bark", "herb_turtle_shell");
-        shield.customStats.put("Tỉ lệ Giáp", 40.0); SECRET_RECIPES.add(shield);
+        SecretRecipe heal100 = new SecretRecipe("RECIPE_HEAL_100", "§a§lThần Dược Hồi Sinh Cơ", 50, 255, 50, null,
+                "water_tasteless", "herb_vitality_shroom", "herb_blood_grass");
+        heal100.customStats.put("Hồi máu tức thì (%)", 100.0);
+        SECRET_RECIPES.add(heal100);
 
-        SecretRecipe berserk = new SecretRecipe("RECIPE_BERSERK", "§4§lHuyết Sát Dược", 139, 0, 0, null, "water_swamp", "herb_demon_horn", "herb_blood_grass");
-        berserk.customStats.put("Sát thương (%)", 30.0); berserk.customStats.put("Tỉ lệ chí mạng", 20.0); SECRET_RECIPES.add(berserk);
+        SecretRecipe mana100 = new SecretRecipe("RECIPE_MANA_100", "§3§lBình Ma Lực Tối Thượng", 0, 191, 255, null,
+                "water_cave", "herb_mana_shroom", "herb_astral_fruit");
+        mana100.customStats.put("Hồi năng lượng tức thì (%)", 100.0);
+        SECRET_RECIPES.add(mana100);
 
-        SecretRecipe luck = new SecretRecipe("RECIPE_LUCK", "§6§lPhúc Lộc Dược", 255, 204, 0, null, "water_pure", "herb_clover", "herb_gold_dust");
-        luck.customStats.put("Tỉ lệ né tránh", 30.0); SECRET_RECIPES.add(luck);
+        SecretRecipe speed = new SecretRecipe("RECIPE_SPEED", "§f§lCuồng Phong Dược", 255, 255, 255, null,
+                "water_sweet", "herb_swift_maple", "herb_spring_leaf");
+        speed.customStats.put("Tốc độ di chuyển", 50.0);
+        SECRET_RECIPES.add(speed);
+
+        SecretRecipe shield = new SecretRecipe("RECIPE_SHIELD", "§8§lThiết Giáp Tinh Trạch", 105, 105, 105, null,
+                "water_salty", "herb_stone_root", "herb_thorn_daisy");
+        shield.customStats.put("Tỉ lệ Giáp", 40.0);
+        SECRET_RECIPES.add(shield);
+
+        SecretRecipe berserk = new SecretRecipe("RECIPE_BERSERK", "§4§lHuyết Sát Dược", 139, 0, 0, null,
+                "water_cave", "herb_muscle_root", "herb_crimson_lotus");
+        berserk.customStats.put("Sát thương", 30.0); berserk.customStats.put("Tỉ lệ chí mạng", 20.0);
+        SECRET_RECIPES.add(berserk);
+
+        SecretRecipe luck = new SecretRecipe("RECIPE_LUCK", "§6§lPhúc Lộc Dược", 255, 204, 0, null,
+                "water_tasteless", "herb_mirage_leaf", "herb_glow_bloom");
+        luck.customStats.put("Tỉ lệ né tránh", 30.0);
+        SECRET_RECIPES.add(luck);
     }
 
     // ==========================================
@@ -68,6 +87,15 @@ public class BrewingEngine {
 
         // Trừ dần tỉ lệ dựa trên độ hiếm của từng nguyên liệu
         for (ItemData ing : ingredients) {
+
+            // [SỬA LỖI ĐẮT GIÁ]: Bỏ qua Nước (MISC), Dung Môi (solvent) và Gia vị thuần (SPICE).
+            // Đảm bảo hệ thống CHỈ trừ % tỉ lệ thành công từ các Thảo Dược Chính!
+            if (ing.category == vn.minecraft.rPGCore.managers.ItemManager.Category.MISC ||
+                    ing.category == vn.minecraft.rPGCore.managers.ItemManager.Category.SPICE ||
+                    ing.id.startsWith("herb_solvent_")) {
+                continue;
+            }
+
             double drop = 0;
             if (ing.rarity != null) {
                 switch (ing.rarity) {
@@ -315,7 +343,7 @@ public class BrewingEngine {
         else if (hasVanilla) baseName = "Thuốc Đa Dụng";
 
         if (basePotion != null) result.name = "§d§l" + baseName + " Cường Hóa";
-        else if (result.isEnhanced && vn.minecraft.rPGCore.jobs.types.AlchemistJob.hasUltimate(alchemist, "ALCH_ULT_1")) result.name = "§5§l" + baseName + " Đại Tài (200%)";
+        else if (result.isEnhanced && vn.minecraft.rPGCore.jobs.types.AlchemistJob.hasUltimate(alchemist, "ALCH_ULT_1")) result.name = "§5§l" + baseName + " Siêu Cấp";
         else if (isAlchemist && alchLevel >= 40) result.name = "§6" + baseName + " Cô Đặc";
         else if (isAlchemist && alchLevel >= 20) result.name = "§e" + baseName + " Tinh Khiết";
         else if (!isAlchemist) result.name = "§f" + baseName + " Pha Loãng";

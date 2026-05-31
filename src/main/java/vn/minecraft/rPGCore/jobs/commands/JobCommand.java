@@ -36,7 +36,7 @@ public class JobCommand implements CommandExecutor, TabCompleter {
             }
 
             if (args.length < 2) {
-                player.sendMessage("§cCú pháp Admin: /job admin <roll/level/resetshop/baits> [số]");
+                player.sendMessage("§cCú pháp Admin: /job admin <roll/level/resetshop/baits/herbs> [số]");
                 return true;
             }
 
@@ -53,7 +53,7 @@ public class JobCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
 
-            // [CẬP NHẬT 2]: LỆNH LẤY TOÀN BỘ MỒI CÂU - CÓ SẮP XẾP
+            // LỆNH LẤY TOÀN BỘ MỒI CÂU - CÓ SẮP XẾP
             if (args[1].equalsIgnoreCase("baits")) {
                 org.bukkit.inventory.Inventory inv = org.bukkit.Bukkit.createInventory(null, 54, "§8Kho Mồi Câu Admin");
                 vn.minecraft.rPGCore.managers.ItemManager im = vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager();
@@ -62,22 +62,47 @@ public class JobCommand implements CommandExecutor, TabCompleter {
                 List<String> buffBaits = new ArrayList<>();
                 List<String> otherBaits = new ArrayList<>();
 
-                // Phân loại mồi
                 for (String id : im.getAllIds()) {
                     if (id.startsWith("bait_base_")) baseBaits.add(id);
                     else if (id.startsWith("bait_buff_")) buffBaits.add(id);
                     else if (id.startsWith("bait_")) otherBaits.add(id);
                 }
 
-                // Sắp xếp Alphabet
                 baseBaits.sort(String::compareTo);
                 buffBaits.sort(String::compareTo);
                 otherBaits.sort(String::compareTo);
 
-                // Thêm vào Rương theo thứ tự: Nền -> Buff -> Khác
                 for (String id : baseBaits) inv.addItem(im.buildItem(id, 64));
                 for (String id : buffBaits) inv.addItem(im.buildItem(id, 64));
                 for (String id : otherBaits) inv.addItem(im.buildItem(id, 64));
+
+                player.openInventory(inv);
+                return true;
+            }
+
+            // [MỚI]: LỆNH LẤY TOÀN BỘ THẢO DƯỢC VÀ DUNG MÔI (Bao gồm cả Bình Sứ)
+            if (args[1].equalsIgnoreCase("herbs")) {
+                org.bukkit.inventory.Inventory inv = org.bukkit.Bukkit.createInventory(null, 54, "§8Kho Thảo Dược Admin");
+                vn.minecraft.rPGCore.managers.ItemManager im = vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager();
+
+                List<String> herbs = new ArrayList<>();
+                List<String> solvents = new ArrayList<>();
+                List<String> flasks = new ArrayList<>();
+
+                for (String id : im.getAllIds()) {
+                    if (id.startsWith("herb_solvent_")) solvents.add(id);
+                    else if (id.startsWith("herb_")) herbs.add(id);
+                    else if (id.startsWith("alch_thermal_flask_")) flasks.add(id);
+                }
+
+                herbs.sort(String::compareTo);
+                solvents.sort(String::compareTo);
+                flasks.sort(String::compareTo);
+
+                // Ưu tiên hiển thị Thảo dược -> Dung Môi -> Bình sứ nước
+                for (String id : herbs) inv.addItem(im.buildItem(id, 64));
+                for (String id : solvents) inv.addItem(im.buildItem(id, 64));
+                for (String id : flasks) inv.addItem(im.buildItem(id, 64));
 
                 player.openInventory(inv);
                 return true;
@@ -136,6 +161,8 @@ public class JobCommand implements CommandExecutor, TabCompleter {
             adminCmds.add("level");
             adminCmds.add("resetshop");
             adminCmds.add("baits"); // Tab Complete cho baits
+            adminCmds.add("herbs"); // Tab Complete cho herbs
+
             String current = args[1].toLowerCase();
             return adminCmds.stream().filter(s -> s.startsWith(current)).collect(Collectors.toList());
         }

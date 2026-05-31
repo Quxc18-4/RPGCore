@@ -555,12 +555,12 @@ public class ItemManager {
         register(new ItemData("alch_magnifying_glass", Rarity.RARE, Category.MISC, 0.0, Material.GHAST_TEAR, "§fKính Lúp Thảo Mộc", "Tiêu hao: Giúp tăng thêm 50% tầm nhìn thảo dược", "Dùng để soi tìm các dược tính ẩn. Tăng cường Giác Quan Dược Sư lên tối đa."));
         register(new ItemData("alch_lost_recipe", Rarity.EPIC, Category.MISC, 0.0, Material.ENCHANTED_BOOK, "§d§lSách Công Thức Thất Truyền", "Sử dụng: Tiêu hao để mở khóa 1 công thức chế thuốc thất truyền.", "Ghi chép 1 trong 10 công thức luyện Thần Dược cổ đại."));
 
-        // --- HỆ THỐNG BÌNH SỨ CÁCH NHIỆT (TÁCH THÀNH 4 LOẠI NƯỚC ĐỂ GIỮ NGŨ VỊ) ---
-        register(new ItemData("alch_thermal_flask_empty", Rarity.UNCOMMON, Category.MISC, 0.0, Material.CLAY_BALL, "§fBình Sứ Cách Nhiệt Rỗng", "Vô vị | Đạo cụ pha chế", "Dùng để nạp nước tự nhiên. Giảm 20% Độc tính khi nấu thuốc."));
-        register(new ItemData("alch_thermal_flask_sweet", Rarity.UNCOMMON, Category.MISC, 0.0, Material.HONEY_BOTTLE, "§bBình Sứ: Nước Sông", "Vị Ngọt | Đạo cụ pha chế", "Giảm 20% Độc tính thành phẩm."));
-        register(new ItemData("alch_thermal_flask_tasteless", Rarity.UNCOMMON, Category.MISC, 0.0, Material.POTION, "§bBình Sứ: Nước Hồ", "Vô vị | Đạo cụ pha chế", "Giảm 20% Độc tính thành phẩm."));
-        register(new ItemData("alch_thermal_flask_salty", Rarity.UNCOMMON, Category.MISC, 0.0, Material.POTION, "§bBình Sứ: Nước Biển", "Vị Mặn | Đạo cụ pha chế", "Giảm 20% Độc tính thành phẩm."));
-        register(new ItemData("alch_thermal_flask_cave", Rarity.UNCOMMON, Category.MISC, 0.0, Material.POTION, "§bBình Sứ: Nước Mạch Ngầm", "Vị Cay | Đạo cụ pha chế", "Giảm 20% Độc tính thành phẩm."));
+        // --- HỆ THỐNG BÌNH SỨ CÁCH Nhiệt (TÁCH THÀNH 4 LOẠI NƯỚC ĐỂ GIỮ NGŨ VỊ) ---
+        register(new ItemData("alch_thermal_flask_water_empty", Rarity.UNCOMMON, Category.MISC, 0.0, Material.GLASS_BOTTLE, "§fBình Sứ Cách Nhiệt Rỗng", "Vô vị | Đạo cụ pha chế", "Dùng để nạp nước tự nhiên. Giảm 20% Độc tính khi nấu thuốc."));
+        register(new ItemData("alch_thermal_flask_water_sweet", Rarity.UNCOMMON, Category.MISC, 0.0, Material.HONEY_BOTTLE, "§bBình Sứ: Nước Sông", "Vị Ngọt | Đạo cụ pha chế", "Giảm 20% Độc tính thành phẩm."));
+        register(new ItemData("alch_thermal_flask_water_tasteless", Rarity.UNCOMMON, Category.MISC, 0.0, Material.POTION, "§bBình Sứ: Nước Hồ", "Vô vị | Đạo cụ pha chế", "Giảm 20% Độc tính thành phẩm."));
+        register(new ItemData("alch_thermal_flask_water_salty", Rarity.UNCOMMON, Category.MISC, 0.0, Material.POTION, "§bBình Sứ: Nước Biển", "Vị Mặn | Đạo cụ pha chế", "Giảm 20% Độc tính thành phẩm."));
+        register(new ItemData("alch_thermal_flask_water_cave", Rarity.UNCOMMON, Category.MISC, 0.0, Material.POTION, "§bBình Sứ: Nước Mạch Ngầm", "Vị Cay | Đạo cụ pha chế", "Giảm 20% Độc tính thành phẩm."));
 
         // ==========================================
         // CÁC LOẠI DUNG MÔI ĐẶC BIỆT (SOLVENT HERBS)

@@ -63,7 +63,15 @@ public class PotionListener implements Listener {
         }
 
         item.setAmount(item.getAmount() - 1);
-        player.getInventory().addItem(new ItemStack(Material.GLASS_BOTTLE));
+        // [FIX LỖI TRẢ BÌNH SỨ]: Gọi trực tiếp ItemManager từ RPGCore
+        if (data.specialEffects.contains("THERMAL_FLASK")) {
+            ItemStack thermalFlask = vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager().buildItem("alch_thermal_flask_empty", 1);
+            if (thermalFlask != null) {
+                player.getInventory().addItem(thermalFlask);
+            }
+        } else {
+            player.getInventory().addItem(new ItemStack(Material.GLASS_BOTTLE));
+        }
 
         if (data.isRuined) {
             player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_DRINK, 1f, 1f);
