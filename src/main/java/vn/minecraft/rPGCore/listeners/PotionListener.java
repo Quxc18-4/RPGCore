@@ -39,17 +39,13 @@ public class PotionListener implements Listener {
     }
 
     @EventHandler
-    public void onPotionDrink(PlayerInteractEvent event) {
-        if (event.getHand() != org.bukkit.inventory.EquipmentSlot.HAND) return;
-        if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
-
+    public void onPotionDrink(org.bukkit.event.player.PlayerItemConsumeEvent event) {
         ItemStack item = event.getItem();
         if (item == null || item.getType() != Material.POTION || !item.hasItemMeta()) return;
 
         ItemMeta meta = item.getItemMeta();
         if (!meta.getPersistentDataContainer().has(UUID_KEY, PersistentDataType.STRING)) return;
 
-        event.setCancelled(true);
         Player player = event.getPlayer();
         UUID playerUuid = player.getUniqueId();
 
@@ -58,24 +54,27 @@ public class PotionListener implements Listener {
         PotionData data = brewingManager.loadPotionFromFile(potionUuid);
         if (data == null) {
             player.sendMessage("§cBình thuốc này đã hết hạn hoặc bị lỗi!");
-            item.setAmount(item.getAmount() - 1);
+            event.setCancelled(true); // Hủy không cho uống nữa
+            item.setAmount(item.getAmount() - 1); // Xóa bình thuốc lỗi khỏi tay
             return;
         }
 
-        item.setAmount(item.getAmount() - 1);
-        // [FIX LỖI TRẢ BÌNH SỨ]: Gọi trực tiếp ItemManager từ RPGCore
+        // ==========================================
+        // [FIX CHÍNH THỨC]: ÉP VANILLA TRẢ BÌNH SỨ
+        // ==========================================
+        // Không cần thủ công trừ đồ (item.setAmount) nữa, vì ConsumeEvent sẽ tự lo!
         if (data.specialEffects.contains("THERMAL_FLASK")) {
-            ItemStack thermalFlask = vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager().buildItem("alch_thermal_flask_empty", 1);
+            ItemStack thermalFlask = vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager().buildItem("alch_thermal_flask_water_empty", 1);
             if (thermalFlask != null) {
-                player.getInventory().addItem(thermalFlask);
+                // setReplacement sinh ra để dành cho sự kiện ConsumeEvent này!
+                event.setReplacement(thermalFlask);
             }
         } else {
-            player.getInventory().addItem(new ItemStack(Material.GLASS_BOTTLE));
+            // Trả Glass Bottle mặc định cho các bình thủy tinh
+            event.setReplacement(new ItemStack(Material.GLASS_BOTTLE));
         }
 
         if (data.isRuined) {
-            player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_DRINK, 1f, 1f);
-            player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_BURP, 1f, 0.5f);
             player.addPotionEffect(new PotionEffect(PotionEffectType.NAUSEA, 200, 1));
             player.sendMessage("§cỌe... Đau bụng quá!");
             brewingManager.deletePotionFile(potionUuid);
@@ -97,15 +96,15 @@ public class PotionListener implements Listener {
             player.sendMessage("§5Hấp thụ Ma lực nhân tạo gây ức chế mạch phép thuật! Sát thương phép bị giảm.");
         }
 
-        player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_DRINK, 1f, 1f);
+        // Không cần phát âm thanh Drink/Burp thủ công nữa vì Vanilla đã tự phát khi uống xong
 
         // ==========================================
         // 1. ÁP DỤNG HÌNH PHẠT HUYẾT TẾ NẾU CÓ TAG
         // ==========================================
         if (data.flavorTags.contains("§4[Huyết Tế]")) {
             double ripHp = player.getHealth() * 0.9;
-            vn.minecraft.rPGCore.managers.StatusEffectManager.applyTrueDamage(player, ripHp); //[cite: 6]
-            vn.minecraft.rPGCore.managers.StatusEffectManager.applyAntiHeal(player, 300); // 15s (300 ticks)[cite: 6]
+            vn.minecraft.rPGCore.managers.StatusEffectManager.applyTrueDamage(player, ripHp);
+            vn.minecraft.rPGCore.managers.StatusEffectManager.applyAntiHeal(player, 300); // 15s (300 ticks)
         }
 
         // ==========================================

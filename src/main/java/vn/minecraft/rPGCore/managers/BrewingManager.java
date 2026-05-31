@@ -340,6 +340,25 @@ public class BrewingManager implements Listener {
             PotionData resultData = engine.evaluate(ingredients, player, basePotion);
 
             // ==========================================
+            // [FIX CHÍNH THỨC]: TẨY RỬA DỮ LIỆU KHI NẤU HỎNG (Chặn kế thừa Tag)
+            // ==========================================
+            if (resultData.isRuined) {
+                // 1. Xóa toàn bộ chỉ số để làm nhẹ file save yml (thuốc hỏng thì không có tác dụng)
+                resultData.customStats.clear();
+                resultData.potionEffects.clear();
+
+                // 2. Xóa sạch các Tag "Tốt" được kế thừa từ bình thuốc gốc,
+                // và xóa luôn chữ [Kinh Tởm] dư thừa do engine tạo ra để nhường chỗ cho UI tự xếp.
+                resultData.flavorTags.removeIf(tag ->
+                        tag.contains("Cân Bằng") ||
+                                tag.contains("Hoàn Hảo") ||
+                                tag.contains("Cường Hóa") ||
+                                tag.contains("Song Sinh") ||
+                                tag.toLowerCase().contains("kinh tởm")
+                );
+            }
+
+            // ==========================================
             // LOGIC ÁP DỤNG ĐẠO CỤ CHUYÊN NGÀNH
             // ==========================================
             if (isThermalFlask) {
@@ -501,12 +520,21 @@ public class BrewingManager implements Listener {
         }
 
         // ==========================================
-        // [FIX CHÍNH THỨC]: GỘP TAGS KHÔNG CÁCH DÒNG
+        // [FIX CHÍNH THỨC]: GỘP TAGS KHÔNG CÁCH DÒNG (Safety Layer)
         // ==========================================
         List<String> cleanTags = new ArrayList<>();
         for (String t : data.flavorTags) {
             if (t != null && !t.trim().isEmpty()) {
-                cleanTags.add(t.trim()); // Dọn dẹp các khoảng trắng bị thừa/ẩn
+                String tag = t.trim();
+
+                // Khóa an toàn 2 lớp: Chặn hiển thị các tag tốt nếu lỡ lọt vào thuốc hỏng
+                if (data.isRuined && (tag.contains("Cân Bằng") || tag.contains("Hoàn Hảo") || tag.contains("Cường Hóa") || tag.contains("Song Sinh") || tag.toLowerCase().contains("kinh tởm"))) {
+                    continue;
+                }
+
+                if (!cleanTags.contains(tag)) {
+                    cleanTags.add(tag);
+                }
             }
         }
 
@@ -514,11 +542,11 @@ public class BrewingManager implements Listener {
             lore.add(""); // Tạo duy nhất 1 dòng trống để tách phần Tags với phần Chỉ Số
 
             if (!cleanTags.isEmpty()) {
-                lore.addAll(cleanTags); // Add [Cân bằng hoàn hảo]
+                lore.addAll(cleanTags); // Add [Mờ Mắt] (nếu có)
             }
 
             if (!bottomTags.isEmpty()) {
-                lore.add(String.join(" ", bottomTags)); // Add [Cường hóa] ngay sát bên dưới
+                lore.add(String.join(" ", bottomTags)); // Add [Đựng trong Bình Sứ] [Kinh tởm]
             }
         }
 

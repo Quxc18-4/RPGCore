@@ -54,3 +54,6 @@ commands:
   h:
     description: "Quan ly he thong thu cuoi cua ban"
     usage: "/h [1/2/3/gui/admin]"
+  trinket:
+    description: Mo giao dien Trang Suc
+    aliases: [ t, trinket ]

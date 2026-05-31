@@ -92,8 +92,11 @@ public interface ISkill {
             player.removeMetadata(cdKey, vn.minecraft.rPGCore.RPGCore.getInstance());
         }
 
-        // 2. Kiểm tra Năng lượng
-        double cost = getManaCost(level);
+        // 2. Kiểm tra Năng lượng (Đã tích hợp Cost Reduction từ Trang Sức)
+        double baseCost = getManaCost(level);
+        double costReductionPct = rpgPlayer.getTotalStatsMap().getOrDefault("Giảm tiêu hao Năng lượng", 0.0);
+        double cost = baseCost * (1.0 - (costReductionPct / 100.0));
+
         if (rpgPlayer.getCurrentResource() < cost) {
             player.sendMessage("§cKhông đủ Năng lượng!");
             return false;

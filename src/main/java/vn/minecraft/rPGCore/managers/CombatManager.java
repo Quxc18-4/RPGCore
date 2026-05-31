@@ -59,10 +59,36 @@ public class CombatManager {
         double rawDamage = minDmg + (Math.random() * (maxDmg - minDmg));
         if (isCrossbow) rawDamage *= 1.55;
 
+        // Bạo kích
         if ((Math.random() * 100) <= finalCritRate) {
             rawDamage *= (1.0 + (finalCritDamage / 100.0));
             target.getWorld().spawnParticle(Particle.CRIT, target.getLocation().add(0, 1, 0), 15, 0.5, 0.5, 0.5, 0.1);
             attacker.playSound(attacker.getLocation(), Sound.ENTITY_PLAYER_ATTACK_CRIT, 1.0f, 1.2f);
+        }
+
+        // [TRINKET]: SÁT THƯƠNG LÊN BOSS MYTHICMOBS
+        double bossDamageBonus = combatStats.getOrDefault("Sát thương lên Boss", 0.0);
+        if (bossDamageBonus > 0) {
+            boolean isBoss = false;
+            // NOTE DÀNH CHO BẠN: Có thể check thêm theo điều kiện của MythicMobs API ở đây
+            if (target.hasMetadata("isBoss") || target.getCustomName() != null) {
+                try {
+                    if (io.lumine.mythic.bukkit.MythicBukkit.inst().getMobManager().isActiveMob(target.getUniqueId())) {
+                        isBoss = true;
+                    }
+                } catch (Exception ignored) {}
+            }
+            if (isBoss) {
+                dmgMultiplier *= (1.0 + (bossDamageBonus / 100.0));
+            }
+        }
+
+        // [TRINKET]: BÓC TÁCH SÁT THƯƠNG CHUẨN (TRUE DAMAGE)
+        double trueDamageRate = combatStats.getOrDefault("Sát thương chuẩn", 0.0);
+        double trueDamagePortion = 0.0;
+        if (trueDamageRate > 0) {
+            trueDamagePortion = rawDamage * (trueDamageRate / 100.0); // Cắt 1 phần rawDamage ra
+            rawDamage -= trueDamagePortion; // Phần còn lại (rawDamage) mới bị trừ Giáp
         }
 
         double targetDefense = 0;
@@ -92,8 +118,8 @@ public class CombatManager {
         double penToUse = isMagic ? finalMagicPen : finalArmorPen;
         targetDefense *= (1.0 - (penToUse / 100.0));
 
-        // Tính sát thương cuối cùng
-        double finalDamage = Math.max(1.0, (rawDamage - targetDefense) * dmgMultiplier);
+        // TÍNH SÁT THƯƠNG CUỐI CÙNG (Cộng lại phần True Damage đã bóc ra lúc nãy)
+        double finalDamage = Math.max(1.0, (Math.max(0.0, rawDamage - targetDefense) + trueDamagePortion) * dmgMultiplier);
 
         // Code Dummy Test
         if (target.getCustomName() != null && ChatColor.stripColor(target.getCustomName()).contains("Dummy")) {
@@ -115,7 +141,7 @@ public class CombatManager {
         return finalDamage;
     }
 
-    public static double calculateDamageTaken(Player victim, RPGPlayer rpgVictim, double incomingDamage) {
+    public static double calculateDamageTaken(Player victim, RPGPlayer rpgVictim, LivingEntity attacker, double incomingDamage) {
         Map<String, Double> totalStats = rpgVictim.getTotalStatsMap();
 
         // ==========================================
@@ -191,6 +217,27 @@ public class CombatManager {
                     double displayAbsorption = (currentShield / maxShield) * 20.0;
                     victim.setAbsorptionAmount(Math.max(1.0, displayAbsorption));
                 }
+            }
+        }
+
+        // ==========================================
+        // [TRINKET]: PHẢN SÁT THƯƠNG (THORNS) - CAP THEO % MÁU MAX
+        // ==========================================
+        double thornsRate = totalStats.getOrDefault("Phản sát thương", 0.0);
+        if (thornsRate > 0 && finalDamage > 0 && attacker != null && !attacker.hasMetadata("Damage_From_Thorns")) {
+            double rawThornsDmg = finalDamage * (thornsRate / 100.0);
+
+            // Giới hạn (Cap) lượng sát thương phản = 10% Máu tối đa của bản thân
+            double maxThornsCap = rpgVictim.getTotalMaxHealth() * 0.10;
+            double actualThornsDmg = Math.min(rawThornsDmg, maxThornsCap);
+
+            if (actualThornsDmg > 0) {
+                // Đánh dấu để tránh vòng lặp Phản Đòn vô tận (Ping-pong)
+                attacker.setMetadata("Damage_From_Thorns", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), true));
+                attacker.damage(actualThornsDmg, victim);
+                attacker.removeMetadata("Damage_From_Thorns", vn.minecraft.rPGCore.RPGCore.getInstance());
+
+                victim.getWorld().spawnParticle(Particle.ENCHANTED_HIT, victim.getLocation().add(0, 1, 0), 10, 0.5, 0.5, 0.5, 0.1);
             }
         }
 

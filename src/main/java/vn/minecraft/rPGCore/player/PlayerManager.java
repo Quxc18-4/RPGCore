@@ -3,6 +3,7 @@ package vn.minecraft.rPGCore.player;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 import vn.minecraft.rPGCore.classes.ClassManager;
 import vn.minecraft.rPGCore.classes.RPGClass;
@@ -72,6 +73,15 @@ public class PlayerManager {
             if (config.contains(uuid + ".elements")) {
                 rpgPlayer.setUnlockedElements(config.getStringList(uuid + ".elements"));
             }
+
+            // ==========================================
+            // [TRINKET]: Nạp dữ liệu 4 ô Trang sức
+            // ==========================================
+            for (int i = 0; i < 4; i++) {
+                if (config.contains(uuid + ".trinkets." + i)) {
+                    rpgPlayer.setTrinket(i, config.getItemStack(uuid + ".trinkets." + i));
+                }
+            }
         } else {
             rpgPlayer.setClass(defaultClass);
         }
@@ -123,6 +133,18 @@ public class PlayerManager {
             // [MỚI]: Lưu dữ liệu Nguyên tố (Dành cho Mage)
             // Nếu list rỗng, YML sẽ tự động lưu là mảng rỗng `elements: []` rất gọn gàng.
             config.set(uuid + ".elements", rpgPlayer.getUnlockedElements());
+
+            // [MỚI]: Lưu dữ liệu Nguyên tố (Dành cho Mage)
+            config.set(uuid + ".elements", rpgPlayer.getUnlockedElements());
+
+            // ==========================================
+            // [TRINKET]: Lưu dữ liệu Trang sức trực tiếp thành YAML ItemStack
+            // ==========================================
+            for (int i = 0; i < 4; i++) {
+                ItemStack trinket = rpgPlayer.getTrinket(i);
+                config.set(uuid + ".trinkets." + i, trinket);
+                // Nếu trinket là null, config sẽ tự động xóa dòng đó (rất sạch sẽ)
+            }
 
             // LƯU HỆ THỐNG KỸ NĂNG VÀ COMBO
             config.set(uuid + ".sp", rpgPlayer.getSkillData().getSkillPoints());

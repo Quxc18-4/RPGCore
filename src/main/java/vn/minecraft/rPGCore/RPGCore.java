@@ -57,6 +57,11 @@ public final class RPGCore extends JavaPlugin {
         this.skillManager = new SkillManager(this);
         SkillUIManager skillUI = new SkillUIManager(playerManager, skillManager);
         BlacksmithGUI blacksmithGUI = new BlacksmithGUI();
+        // ==========================================
+        // [MỚI]: KHỞI TẠO HỆ THỐNG TRANG SỨC (TRINKET)
+        // ==========================================
+        TrinketManager trinketManager = new TrinketManager();
+        TrinketForgeGUI trinketForgeGUI = new TrinketForgeGUI(this.itemManager);
 
         this.itemManager = new ItemManager(this);
 
@@ -114,6 +119,9 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(adminArrowCraftingUI, this);
         getServer().getPluginManager().registerEvents(new DurabilityListener(playerManager), this);
         getServer().getPluginManager().registerEvents(blacksmithGUI, this);
+        // Đăng ký Listener Trang Sức
+        getServer().getPluginManager().registerEvents(trinketManager, this);
+        getServer().getPluginManager().registerEvents(trinketForgeGUI, this);
         getServer().getPluginManager().registerEvents(cookingManager, this);
         getServer().getPluginManager().registerEvents(new FoodListener(this, this.boredomManager, this.foodBuffManager), this);
         // ĐĂNG KÝ LISTENER DƯỢC SƯ
@@ -195,6 +203,10 @@ public final class RPGCore extends JavaPlugin {
             this.getCommand("h").setExecutor(new vn.minecraft.rPGCore.mounts.commands.MountCommand(this.mountManager, mountStableGUI));
         } else {
             getLogger().warning("Khong the tim thay lenh /h trong plugin.yml!");
+        }
+
+        if (this.getCommand("tforge") != null) {
+            this.getCommand("tforge").setExecutor(trinketForgeGUI);
         }
 
         getLogger().info("RPGCore đã được bật thành công!");

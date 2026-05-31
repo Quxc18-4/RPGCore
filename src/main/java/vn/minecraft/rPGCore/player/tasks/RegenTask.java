@@ -137,6 +137,30 @@ public class RegenTask extends BukkitRunnable {
             hpRegen *= (1.0 + (bonusHpRegenPct / 100.0));
             resourceRegen *= (1.0 + (bonusManaRegenPct / 100.0));
 
+            // [TRINKET]: CỘNG THẲNG NĂNG LƯỢNG TĨNH (KHÔNG BỊ PHẠT KHI IN-COMBAT)
+            double staticManaRegen = stats.getOrDefault("Hồi Năng lượng Tĩnh", 0.0);
+            resourceRegen += staticManaRegen;
+
+            // [TRINKET]: HỘ THỂ TUẦN HOÀN (MỖI 15 GIÂY)
+            double periodicShieldPct = stats.getOrDefault("Hộ Thể Tuần Hoàn", 0.0);
+            if (periodicShieldPct > 0 && !player.isDead()) {
+                int shieldTimer = player.hasMetadata("Trinket_Shield_Timer") ? player.getMetadata("Trinket_Shield_Timer").get(0).asInt() : 15;
+                shieldTimer--;
+
+                if (shieldTimer <= 0) {
+                    shieldTimer = 15; // Reset đồng hồ
+                    double shieldAmount = maxHp * (periodicShieldPct / 100.0);
+
+                    // Ghi đè (Overwrite) lớp Khiên Cũ
+                    player.setMetadata("RPG_Absorption_Shield", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), shieldAmount));
+                    player.setMetadata("RPG_Absorption_Shield_Max", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), shieldAmount));
+                    player.setAbsorptionAmount(20.0); // Hiển thị phun tim vàng
+                    player.playSound(player.getLocation(), org.bukkit.Sound.ITEM_ARMOR_EQUIP_GOLD, 0.5f, 1.5f);
+                }
+                player.setMetadata("Trinket_Shield_Timer", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), shieldTimer));
+            } else if (player.hasMetadata("Trinket_Shield_Timer")) {
+                player.removeMetadata("Trinket_Shield_Timer", RPGCore.getInstance()); // Dọn rác nếu tháo nhẫn
+            }
             // ==========================================
             // 5. HÌNH PHẠT GIAO TRANH
             // ==========================================

@@ -76,9 +76,14 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
             }
 
             for (int n = 0; n < amount; n++) {
-                // Gọi hàm tĩnh (Static) để tạo ra món đồ
-                ItemStack item = createGachaItem(type, level, inputClass, inputTier, inputLineage, inputSubStats, inputArmorPiece);
-
+                ItemStack item;
+                // [MỚI]: Phân nhánh nếu người chơi gọi lệnh roll trang sức
+                if (type.equals("ring") || type.equals("necklace") || type.equals("bracelet")) {
+                    item = vn.minecraft.rPGCore.managers.TrinketGenerator.createTrinket(type, level);
+                } else {
+                    // Gọi hàm cũ để tạo Vũ khí / Giáp
+                    item = createGachaItem(type, level, inputClass, inputTier, inputLineage, inputSubStats, inputArmorPiece);
+                }
                 // Nhét vào túi của người gọi lệnh
                 player.getInventory().addItem(item);
             }
@@ -244,7 +249,7 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
             Collections.sort(selectedIndices);
             for (int index : selectedIndices) {
                 String statName = (String) RANDOM_STATS_DB[index][0];
-                double value = (0.5 + rand.nextDouble() * 1.25) * statMulti;
+                double value = ((0.5 + rand.nextDouble() * 1.25) * statMulti) * 0.75;
                 lore.add("§7 - " + statName + ": §e+" + String.format("%.1f", value) + "%");
             }
             lore.add("");
@@ -380,7 +385,7 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> completions = new ArrayList<>();
-        if (args.length == 2) completions.addAll(Arrays.asList("weapon", "armor"));
+        if (args.length == 2) completions.addAll(Arrays.asList("weapon", "armor", "ring", "necklace", "bracelet"));
         else if (args.length == 3) completions.addAll(Arrays.asList("1", "10", "50", "100"));
         else if (args.length >= 4) {
             completions.addAll(VALID_CLASSES); completions.addAll(VALID_TIERS); completions.addAll(ALL_LINEAGES);

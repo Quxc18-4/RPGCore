@@ -25,7 +25,7 @@ public class RepairAdminCommand implements CommandExecutor {
 
         if (args.length == 0) {
             player.sendMessage("§e/repairadmin kit <số_lần_dùng> §7- Lấy bộ sửa chữa.");
-            player.sendMessage("§e/repairadmin stone <1|2|3|4> <số_lượng> §7- Lấy đá mài.");
+            player.sendMessage("§e/repairadmin stone <1|2|3|4|5|6> <số_lượng> §7- Lấy đá/tinh thể.");
             return true;
         }
 
@@ -86,6 +86,20 @@ public class RepairAdminCommand implements CommandExecutor {
                 meta = stone.getItemMeta();
                 meta.setDisplayName("§dĐá Nâng Cấp");
                 meta.setLore(List.of("§7Nguyên liệu dùng tại Lò Rèn", "§7để nâng cấp chỉ số trang bị."));
+                break;
+            // ==========================================
+            // [MỚI]: CASE 6 - TINH THỂ PHA LÊ (CHO TRANG SỨC)
+            // ==========================================
+            case 6:
+                stone = new ItemStack(Material.AMETHYST_SHARD, amount);
+                meta = stone.getItemMeta();
+                meta.setDisplayName("§dTinh Thể Pha Lê");
+                meta.setLore(List.of(
+                        "§7Nguyên liệu dùng tại Bàn Gia Công",
+                        "§7để nâng cấp hoặc chế tạo Trang Sức."
+                ));
+                // Gắn khóa an toàn định danh để ItemManager không nhận nhầm với Amethyst Vanilla
+                meta.getPersistentDataContainer().set(new org.bukkit.NamespacedKey(vn.minecraft.rPGCore.RPGCore.getInstance(), "rpg_item_id"), org.bukkit.persistence.PersistentDataType.STRING, "misc_trinket_crystal");
                 break;
             default:
                 stone = new ItemStack(Material.YELLOW_DYE, amount);

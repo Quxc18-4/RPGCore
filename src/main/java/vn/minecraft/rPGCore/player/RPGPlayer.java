@@ -55,6 +55,17 @@ public class RPGPlayer {
         public double effectResistance = 0.0;
 
         public double expBonus = 0.0; public double manaRegen = 0.0; public double dropRate = 0.0;
+
+        // ==========================================
+        // [TRINKET]: KHAI BÁO CÁC CHỈ SỐ ĐỘC QUYỀN
+        // ==========================================
+        public double trueDamageRate = 0.0;     // Sát thương chuẩn
+        public double bossDamageBonus = 0.0;    // Sát thương lên Boss
+        public double thornsDamage = 0.0;       // Phản sát thương
+        public double periodicShield = 0.0;     // Hộ Thể Tuần Hoàn
+        public double manaCostReduction = 0.0;  // Giảm tiêu hao NL
+        public double staticManaRegen = 0.0;    // Hồi Năng lượng Tĩnh
+
         public Map<String, Integer> setCounts = new HashMap<>();
     }
 
@@ -206,6 +217,16 @@ public class RPGPlayer {
         map.put("Hồi Năng lượng", currentStats.manaRegen + potionManager.getBonus(uuid, "Hồi Năng lượng"));
         map.put("Tỉ lệ rớt đồ", currentStats.dropRate + (luk * 0.1) + foodManager.getBonus(uuid, FoodBuffManager.StatType.DROP_RATE));
 
+        // ==========================================
+        // [TRINKET]: ĐẨY CHỈ SỐ MỚI VÀO MAP XUẤT RA
+        // ==========================================
+        map.put("Sát thương chuẩn", currentStats.trueDamageRate);
+        map.put("Sát thương lên Boss", currentStats.bossDamageBonus);
+        map.put("Phản sát thương", currentStats.thornsDamage);
+        map.put("Hộ Thể Tuần Hoàn", currentStats.periodicShield);
+        map.put("Giảm tiêu hao Năng lượng", currentStats.manaCostReduction);
+        map.put("Hồi Năng lượng Tĩnh", currentStats.staticManaRegen);
+
         if (currentClass != null) {
             currentClass.applyPassiveBonusStats(this, map);
         }
@@ -214,11 +235,9 @@ public class RPGPlayer {
 
     public void updateEquipmentStats() {
         this.currentStats = new PlayerStats();
-        ItemStack[] armor = bukkitPlayer.getInventory().getArmorContents();
         ItemStack mainHand = bukkitPlayer.getInventory().getItemInMainHand();
-        ItemStack[] allEquips = new ItemStack[5];
-        System.arraycopy(armor, 0, allEquips, 0, 4);
-        allEquips[4] = mainHand;
+
+        ItemStack[] allEquips = getAllEquippedItems();
 
         String playerClassId = this.currentClass != null ? this.currentClass.getId() : "none";
         String playerClassName = this.currentClass != null ? ChatColor.stripColor(this.currentClass.getDisplayName()) : "None";
@@ -297,6 +316,15 @@ public class RPGPlayer {
                                     case "Nhận Kinh nghiệm": currentStats.expBonus += val; break;
                                     case "Hồi Năng lượng": currentStats.manaRegen += val; break;
                                     case "Tỉ lệ rớt đồ": currentStats.dropRate += val; break;
+                                    // ==========================================
+                                    // [TRINKET]: ĐỌC CHỈ SỐ MỚI TỪ LORE
+                                    // ==========================================
+                                    case "Sát thương chuẩn": currentStats.trueDamageRate += val; break;
+                                    case "Sát thương lên Boss": currentStats.bossDamageBonus += val; break;
+                                    case "Phản sát thương": currentStats.thornsDamage += val; break;
+                                    case "Hộ Thể Tuần Hoàn": currentStats.periodicShield += val; break;
+                                    case "Giảm tiêu hao Năng lượng": currentStats.manaCostReduction += val; break;
+                                    case "Hồi Năng lượng Tĩnh": currentStats.staticManaRegen += val; break;
                                 }
                             }
                         } catch (Exception ignored) {}
@@ -333,13 +361,7 @@ public class RPGPlayer {
     }
 
     private void updateSetVisuals() {
-        ItemStack[] armor = bukkitPlayer.getInventory().getArmorContents();
-        ItemStack mainHand = bukkitPlayer.getInventory().getItemInMainHand();
-
-        // Gộp cả Giáp và Vũ khí vào chung một mảng để xử lý
-        ItemStack[] allEquips = new ItemStack[5];
-        System.arraycopy(armor, 0, allEquips, 0, 4);
-        allEquips[4] = mainHand;
+        ItemStack[] allEquips = getAllEquippedItems();
 
         for (ItemStack item : allEquips) {
             if (item == null || !item.hasItemMeta() || !item.getItemMeta().hasLore()) continue;
@@ -724,5 +746,30 @@ public class RPGPlayer {
     }
     public boolean hasElement(String element) {
         return this.unlockedElements.contains(element.toUpperCase());
+    }
+    // ==========================================
+    // [TRINKET]: MẢNG LƯU TRỮ 4 Ô TRANG SỨC
+    // ==========================================
+    private ItemStack[] trinkets = new ItemStack[4];
+
+    public ItemStack[] getTrinkets() { return trinkets; }
+    public ItemStack getTrinket(int index) { return trinkets[index]; }
+    public void setTrinket(int index, ItemStack item) {
+        this.trinkets[index] = item;
+        updateEquipmentStats(); // Tự động cập nhật chỉ số khi đeo/tháo trang sức
+    }
+    // ==========================================
+    // HÀM PHỤ: LẤY TOÀN BỘ TRANG BỊ ĐANG ĐEO (GIÁP + VŨ KHÍ + TRANG SỨC)
+    // ==========================================
+    private ItemStack[] getAllEquippedItems() {
+        ItemStack[] armor = bukkitPlayer.getInventory().getArmorContents();
+        ItemStack mainHand = bukkitPlayer.getInventory().getItemInMainHand();
+
+        ItemStack[] allEquips = new ItemStack[9];
+        System.arraycopy(armor, 0, allEquips, 0, 4);
+        allEquips[4] = mainHand;
+        System.arraycopy(this.trinkets, 0, allEquips, 5, 4);
+
+        return allEquips;
     }
 }

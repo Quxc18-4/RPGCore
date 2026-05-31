@@ -349,7 +349,7 @@ public class PlayerListener implements Listener {
                 double modifiedDamage = rpgVictim.getCurrentClass().onTakeDamage(victim, rpgVictim, attackerEntity, initialDamage);
 
                 // Đi qua CombatManager để tính Né Tránh / Đỡ đòn
-                double finalDamage = CombatManager.calculateDamageTaken(victim, rpgVictim, modifiedDamage);
+                double finalDamage = CombatManager.calculateDamageTaken(victim, rpgVictim, attackerEntity, modifiedDamage);
 
                 if (finalDamage <= 0) event.setCancelled(true);
                 else event.setDamage(finalDamage);

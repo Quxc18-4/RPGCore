@@ -56,6 +56,7 @@ public abstract class RPGClass {
     protected double moveSpeedCap = 400.0;
     // [THÊM MỚI]: Cap hồi năng lượng mặc định cho tất cả các phái là 400%
     protected double resourceRegenCap = 400.0;
+    protected double costReductionCap = 33.0; // [THÊM MỚI]: Giới hạn Giảm tiêu hao NL tối đa 33%
 
     // ==========================================
     // CÁC HÀM SỰ KIỆN (HOOKS) CHO PHÉP OVERRIDE
@@ -148,6 +149,7 @@ public abstract class RPGClass {
         combatStats.put("Tốc độ di chuyển", Math.min(combatStats.getOrDefault("Tốc độ di chuyển", 0.0), moveSpeedCap));
         // Khóa Cap Hồi Năng Lượng
         combatStats.put("Hồi Năng lượng", Math.min(combatStats.getOrDefault("Hồi Năng lượng", 0.0), resourceRegenCap));
+        combatStats.put("Giảm tiêu hao Năng lượng", Math.min(combatStats.getOrDefault("Giảm tiêu hao Năng lượng", 0.0), costReductionCap));
         // Nhóm Chí mạng
         processCrit(combatStats, combatStats.getOrDefault("Tỉ lệ chí mạng", 5.0));
     }
