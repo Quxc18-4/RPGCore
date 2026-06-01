@@ -589,6 +589,14 @@ public class ItemManager {
         // --- 16.3 NGUYÊN LIỆU ĐẶC BIỆT ---
 
         register(new ItemData("essence_mana", Rarity.EPIC, Category.MISC, 0.0, Material.PRISMARINE_CRYSTALS, "§bTinh Chất Ma Lực", null, "Kết tinh từ sự giao thoa giữa thảo dược và ma lực vạc pha chế."));
+
+        // ==========================================
+        // --- 17. NGUYÊN LIỆU TRANG SỨC (TRINKET) ---
+        // ==========================================
+        register(new ItemData("misc_trinket_crystal", Rarity.EPIC, Category.MISC, 0.0, Material.AMETHYST_SHARD, "Tinh Thể Pha Lê", "Xúc tác đúc Trang Sức", "Kết tinh ma thuật vô cùng tinh khiết."));
+        register(new ItemData("trinket_blank_ring", Rarity.UNCOMMON, Category.TOOL, 0.0, Material.GOLD_NUGGET, "Phôi Nhẫn Ma Thuật", "Dùng tại Bàn Giả Kim", "Khuôn đúc cơ bản để chế tác Nhẫn."));
+        register(new ItemData("trinket_blank_necklace", Rarity.UNCOMMON, Category.TOOL, 0.0, Material.END_CRYSTAL, "Phôi Dây Chuyền Ma Thuật", "Dùng tại Bàn Giả Kim", "Khuôn đúc cơ bản để chế tác Dây Chuyền."));
+        register(new ItemData("trinket_blank_bracelet", Rarity.UNCOMMON, Category.TOOL, 0.0, Material.STRING, "Phôi Vòng Tay Ma Thuật", "Dùng tại Bàn Giả Kim", "Khuôn đúc cơ bản để chế tác Vòng Tay."));
     }
 
     private void register(ItemData data) {

@@ -64,6 +64,10 @@ public class CombatManager {
             rawDamage *= (1.0 + (finalCritDamage / 100.0));
             target.getWorld().spawnParticle(Particle.CRIT, target.getLocation().add(0, 1, 0), 15, 0.5, 0.5, 0.5, 0.1);
             attacker.playSound(attacker.getLocation(), Sound.ENTITY_PLAYER_ATTACK_CRIT, 1.0f, 1.2f);
+            // [SET 4] HUNTER: Tăng 15% Tốc chạy trong 3 giây (60 ticks) bằng Stats
+            if (rpgPlayer.hasSetBonus("hunter", 4)) {
+                vn.minecraft.rPGCore.managers.StatusEffectManager.applySpeed(attacker, 60, 0.15);
+            }
         }
 
         // [TRINKET]: SÁT THƯƠNG LÊN BOSS MYTHICMOBS
@@ -85,6 +89,10 @@ public class CombatManager {
 
         // [TRINKET]: BÓC TÁCH SÁT THƯƠNG CHUẨN (TRUE DAMAGE)
         double trueDamageRate = combatStats.getOrDefault("Sát thương chuẩn", 0.0);
+        // [SET 4] SHATTERING: Cộng thẳng 10% Sát thương chuẩn
+        if (rpgPlayer.hasSetBonus("shattering", 4)) {
+            trueDamageRate += 10.0;
+        }
         double trueDamagePortion = 0.0;
         if (trueDamageRate > 0) {
             trueDamagePortion = rawDamage * (trueDamageRate / 100.0); // Cắt 1 phần rawDamage ra
@@ -217,6 +225,21 @@ public class CombatManager {
                     double displayAbsorption = (currentShield / maxShield) * 20.0;
                     victim.setAbsorptionAmount(Math.max(1.0, displayAbsorption));
                 }
+            }
+        }
+
+        // ==========================================
+        // [SET 4] ARMORED: CHẶN ĐÒN SÁT THƯƠNG CHÍ TỬ (Hồi chiêu 30s)
+        // ==========================================
+        if (finalDamage >= victim.getHealth() && rpgVictim.hasSetBonus("armored", 4)) {
+            long lastTrigger = victim.hasMetadata("Armored_Cooldown") ? victim.getMetadata("Armored_Cooldown").get(0).asLong() : 0;
+            if (System.currentTimeMillis() - lastTrigger >= 30000) { // 30.000 ms = 30s
+                finalDamage = 0; // Hủy hoàn toàn sát thương kết liễu
+                victim.setMetadata("Armored_Cooldown", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), System.currentTimeMillis()));
+
+                victim.getWorld().spawnParticle(org.bukkit.Particle.TOTEM_OF_UNDYING, victim.getLocation().add(0, 1, 0), 40, 0.5, 0.5, 0.5, 0.1);
+                victim.playSound(victim.getLocation(), org.bukkit.Sound.ITEM_TOTEM_USE, 0.6f, 1.2f);
+                victim.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR, net.md_5.bungee.api.chat.TextComponent.fromLegacyText("§6§l[ÁO GIÁP THẦN CHẶN ĐÒN]"));
             }
         }
 

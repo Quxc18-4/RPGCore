@@ -29,14 +29,12 @@ public class TrinketForgeGUI implements CommandExecutor, Listener {
     public static final String GUI_NAME = "§d§lGia Công Trang Sức";
     private final Random rand = new Random();
 
-    private final double[] RATES = {100.0, 80.0, 60.0, 40.0, 20.0};
-    private final int[] MASTER_COSTS = {3, 8, 15, 25, 40};
+    private final double[] RATES = {70.0, 50.0, 35.0, 20.0, 10.0};
+    private final int[] MASTER_COSTS = {2, 4, 8, 12, 20};
 
-    // [ĐÃ SỬA]: Vẫn giữ nguyên cấu trúc hàm khởi tạo để file RPGCore.java của bạn không bị báo lỗi
     public TrinketForgeGUI(ItemManager ignoredManager) {
     }
 
-    // Hàm lấy ItemManager trực tiếp, đảm bảo không bao giờ bị null
     private ItemManager getItemManager() {
         return RPGCore.getInstance().getItemManager();
     }
@@ -81,26 +79,27 @@ public class TrinketForgeGUI implements CommandExecutor, Listener {
             hasItem = true;
         }
 
-        List<String> lore1 = new ArrayList<>(Arrays.asList("§7Tiêu hao: 1 Tinh Thể Pha Lê", "§7(Không rớt cấp khi thất bại)"));
+        List<String> lore1 = new ArrayList<>(Arrays.asList("§7Tiêu hao: 1 Tinh Thể Pha Lê"));
         List<String> lore10 = new ArrayList<>(Arrays.asList("§7Tiêu hao: Tối đa 10 Tinh Thể", "§7(Sẽ dừng lại ngay khi lên cấp)"));
         List<String> lore100 = new ArrayList<>(Arrays.asList("§7Tiêu hao: Tối đa 100 Tinh Thể", "§7(Sẽ dừng lại ngay khi lên cấp)"));
 
         if (hasItem && currentLevel < 5) {
-            String rateStr = "§fTỉ lệ thành công: §a" + RATES[currentLevel] + "%";
-            lore1.add(""); lore1.add(rateStr);
-            lore10.add(""); lore10.add(rateStr);
-            lore100.add(""); lore100.add(rateStr);
+            String rateStr = "§fTỉ lệ cơ bản: §a" + RATES[currentLevel] + "%";
+
+            lore1.addAll(Arrays.asList("", rateStr));
+            lore10.addAll(Arrays.asList("", rateStr));
+            lore100.addAll(Arrays.asList("", rateStr));
 
             inv.setItem(16, createButton(Material.AMETHYST_CLUSTER, "§d[★] Cường Hóa Bậc Thầy",
                     "§7Đột phá thẳng lên §d[+" + (currentLevel + 1) + "]",
                     "§7Tiêu hao: §e" + MASTER_COSTS[currentLevel] + " Tinh Thể Pha Lê",
                     "",
-                    "§aTỉ lệ thành công: 100%"
+                    "§fTỉ lệ cơ bản: §a100.0%"
             ));
         } else {
-            lore1.add(""); lore1.add("§cChưa có hoặc đã max cấp");
-            lore10.add(""); lore10.add("§cChưa có hoặc đã max cấp");
-            lore100.add(""); lore100.add("§cChưa có hoặc đã max cấp");
+            lore1.addAll(Arrays.asList("", "§cChưa có trang sức", "§choặc trang sức đã max cấp."));
+            lore10.addAll(Arrays.asList("", "§cChưa có trang sức", "§choặc trang sức đã max cấp."));
+            lore100.addAll(Arrays.asList("", "§cChưa có trang sức", "§choặc trang sức đã max cấp."));
 
             inv.setItem(16, createButton(Material.AMETHYST_CLUSTER, "§d[★] Cường Hóa Bậc Thầy", "§cChưa có trang sức hoặc đã max cấp."));
         }
@@ -111,17 +110,40 @@ public class TrinketForgeGUI implements CommandExecutor, Listener {
     }
 
     @EventHandler
+    public void onGrindstoneInteract(org.bukkit.event.player.PlayerInteractEvent event) {
+        if (event.getAction() != org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK) return;
+        org.bukkit.block.Block clickedBlock = event.getClickedBlock();
+        if (clickedBlock == null) return;
+        Player player = event.getPlayer();
+        if (player.isSneaking() && clickedBlock.getType() == Material.GRINDSTONE) {
+            event.setCancelled(true);
+            this.openGUI(player);
+            player.playSound(player.getLocation(), Sound.BLOCK_GRINDSTONE_USE, 0.5f, 1.5f);
+        }
+    }
+
+    @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         if (!event.getView().getTitle().equals(GUI_NAME)) return;
 
         int slot = event.getRawSlot();
         Player player = (Player) event.getWhoClicked();
 
-        if (slot == 10 || event.getClick().isShiftClick()) {
+        // ==========================================
+        // 1. [SỬA LỖI]: CHẶN TUYỆT ĐỐI SHIFT-CLICK VÀ PHÍM TẮT
+        // ==========================================
+        if (event.getClick().isShiftClick() || event.getClick().isKeyboardClick()) {
+            event.setCancelled(true); // Khóa đứng hành vi nhấc kính/tráo đồ
+            return;
+        }
+
+        // 2. Cho phép người chơi kéo-thả thủ công vào ô 10
+        if (slot == 10) {
             Bukkit.getScheduler().runTaskLater(RPGCore.getInstance(), () -> updateButtons(player.getOpenInventory().getTopInventory()), 1L);
             return;
         }
 
+        // 3. Chặn tương tác với kính nền ở các ô khác
         if (slot >= 0 && slot < 27 && (slot < 12 || slot > 14) && slot != 16) {
             event.setCancelled(true);
             return;
@@ -160,12 +182,19 @@ public class TrinketForgeGUI implements CommandExecutor, Listener {
             }
 
             getItemManager().takeItem(player, crystalTemplate, cost);
-            applyTrinketStatsChange(trinket, currentLevel, currentLevel + 1);
+
+            currentLevel++;
+            if (currentLevel == 1 || currentLevel == 3 || currentLevel == 5) applyTrinketMilestoneBoost(trinket);
+            applyTrinketNameChange(trinket, currentLevel);
 
             player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_BREAK, 1f, 1.5f);
-            player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1.5f);
+            player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1.5f);
             player.getWorld().spawnParticle(org.bukkit.Particle.END_ROD, player.getLocation().add(0, 1, 0), 30, 0.5, 0.5, 0.5, 0.1);
-            player.sendMessage("§d§l[Gia Công] §fĐột phá Bậc thầy! Trang sức tiến thẳng lên §d[+" + (currentLevel + 1) + "]");
+            player.sendMessage("§d§l[Gia Công] §fĐột phá Bậc thầy! Trang sức tiến thẳng lên §d[+" + currentLevel + "]");
+
+            if (currentLevel >= 4) {
+                Bukkit.broadcastMessage("§d§l[Gia Công] §a" + player.getName() + " §fvừa đột phá Bậc thầy thành công §d" + trinket.getItemMeta().getDisplayName() + "§f!");
+            }
 
             updateButtons(event.getInventory());
         }
@@ -173,14 +202,13 @@ public class TrinketForgeGUI implements CommandExecutor, Listener {
 
     private void processLoop(Player player, ItemStack trinket, int maxAttempts) {
         int currentLevel = getUpgradeLevel(trinket);
-        if (currentLevel >= 5) {
-            player.sendMessage("§cTrang sức đã đạt cấp độ tối đa!");
-            return;
-        }
+        if (currentLevel >= 5) return;
 
         ItemStack crystalTemplate = vn.minecraft.rPGCore.commands.RepairAdminCommand.getStoneItem(6, 1);
         int crystalsUsed = 0;
         boolean success = false;
+        boolean dropped = false;
+        boolean savedByCharmTotal = false;
 
         for (int i = 0; i < maxAttempts; i++) {
             if (currentLevel >= 5) break;
@@ -190,20 +218,57 @@ public class TrinketForgeGUI implements CommandExecutor, Listener {
             crystalsUsed++;
 
             if (rand.nextDouble() * 100.0 <= RATES[currentLevel]) {
-                applyTrinketStatsChange(trinket, currentLevel, currentLevel + 1);
-                success = true;
                 currentLevel++;
-                break; // Dừng ngay khi thành công
+                if (currentLevel == 1 || currentLevel == 3 || currentLevel == 5) {
+                    applyTrinketMilestoneBoost(trinket);
+                }
+                applyTrinketNameChange(trinket, currentLevel);
+                success = true;
+                break;
+            } else {
+                // Nếu đang ở mốc an toàn thì không làm gì cả, vòng lặp chạy tiếp
+                if (currentLevel == 1 || currentLevel == 3 || currentLevel == 5) {
+                    // Do nothing, safe milestone
+                } else if (currentLevel > 0) {
+                    // Kiểm tra Bùa Bảo Vệ khi ở mốc không an toàn (+2, +4)
+                    ItemStack charmTemplate = getItemManager().buildItem("misc_protection_charm", 1);
+                    boolean savedByCharm = false;
+
+                    if (charmTemplate != null && getItemManager().countItem(player, charmTemplate) > 0) {
+                        savedByCharm = true;
+                        savedByCharmTotal = true;
+                        getItemManager().takeItem(player, charmTemplate, 1);
+                        player.sendMessage("§d✨ [Bùa Bảo Vệ] §fSức mạnh ma thuật đã bảo vệ trang sức khỏi rớt cấp!");
+                        player.playSound(player.getLocation(), Sound.ITEM_TOTEM_USE, 1f, 1.5f);
+                    }
+
+                    if (!savedByCharm) {
+                        currentLevel--;
+                        applyTrinketNameChange(trinket, currentLevel);
+                        dropped = true;
+                        break; // Rớt cấp thì bắt buộc dừng vòng lặp Auto
+                    }
+                }
             }
         }
 
         if (crystalsUsed > 0) {
             if (success) {
                 player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1.5f);
-                player.sendMessage("§aNâng cấp thành công lên §d[+" + currentLevel + "] §8(Tiêu hao " + crystalsUsed + " Tinh thể)");
+                player.sendMessage("§d§l[Gia Công] §aNâng cấp thành công lên §d[+" + currentLevel + "] §8(Tiêu hao " + crystalsUsed + " Tinh thể)");
+
+                if (currentLevel >= 4) {
+                    Bukkit.broadcastMessage("§d§l[Gia Công] §a" + player.getName() + " §fvừa cường hóa thành công §d" + trinket.getItemMeta().getDisplayName() + "§f!");
+                }
+            } else if (dropped) {
+                player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BREAK, 1f, 0.5f);
+                player.sendMessage("§d§l[Gia Công] §cThất bại! Trang sức rớt xuống §d[+" + currentLevel + "]");
+            } else if (savedByCharmTotal) {
+                player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1f, 1f);
+                player.sendMessage("§d§l[Gia Công] §eThất bại! Đã được bảo vệ bởi Bùa Bảo Vệ.");
             } else {
                 player.playSound(player.getLocation(), Sound.BLOCK_GLASS_BREAK, 1f, 0.5f);
-                player.sendMessage("§cĐập " + crystalsUsed + " lần thất bại! Trang sức may mắn không bị rớt cấp.");
+                player.sendMessage("§d§l[Gia Công] §eThất bại! Rất may đồ được bảo toàn cấp độ.");
             }
             updateButtons(player.getOpenInventory().getTopInventory());
         } else {
@@ -222,56 +287,112 @@ public class TrinketForgeGUI implements CommandExecutor, Listener {
         return 0;
     }
 
-    private double getMultiplier(int level) {
-        return 1.0 + (level * 0.15);
-    }
-
-    private void applyTrinketStatsChange(ItemStack item, int oldLevel, int newLevel) {
+    private void applyTrinketNameChange(ItemStack item, int newLevel) {
         ItemMeta meta = item.getItemMeta();
-        List<String> lore = meta.getLore();
-        double oldMulti = getMultiplier(oldLevel);
-        double newMulti = getMultiplier(newLevel);
-
-        boolean isMagicSection = false;
-
-        for (int i = 0; i < lore.size(); i++) {
-            String line = lore.get(i);
-            String clean = ChatColor.stripColor(line).trim();
-
-            if (clean.startsWith("✦ Thuộc tính Ma thuật:")) { isMagicSection = true; continue; }
-            if (clean.startsWith("[Set")) isMagicSection = false;
-
-            if (isMagicSection && clean.startsWith("- ")) {
-                int colonIdx = line.indexOf(":");
-                if (colonIdx == -1) continue;
-
-                String valuePart = line.substring(colonIdx + 1);
-                // Bắt chính xác phần số thập phân (có hoặc không có dấu +)
-                java.util.regex.Matcher m = java.util.regex.Pattern.compile("([+0-9]*\\.?[0-9]+)").matcher(ChatColor.stripColor(valuePart));
-
-                if (m.find()) {
-                    String numStr = m.group(1);
-                    try {
-                        double oldVal = Double.parseDouble(numStr.replace("+", ""));
-                        double newVal = (oldVal / oldMulti) * newMulti;
-
-                        // Tạo chuỗi số mới, giữ lại dấu + nếu số cũ có dấu +
-                        String newNumStr = (numStr.startsWith("+") ? "+" : "") + String.format("%.1f", newVal);
-
-                        // Thay thế chính xác cụm số cũ bằng cụm số mới
-                        String newLine = line.replaceFirst(java.util.regex.Pattern.quote(numStr), newNumStr);
-                        lore.set(i, newLine);
-                    } catch (Exception ignored) {}
-                }
-            }
-        }
-
         String name = meta.getDisplayName();
         name = name.replaceAll(" (?:§.)?\\[\\+\\d+\\]", "");
         if (newLevel > 0) name = name + " §d[+" + newLevel + "]";
         meta.setDisplayName(name);
+        item.setItemMeta(meta);
+    }
+
+    private void applyTrinketMilestoneBoost(ItemStack item) {
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null || !meta.hasLore()) return;
+        List<String> lore = meta.getLore();
+        if (lore == null || lore.isEmpty()) return;
+
+        List<Integer> lineageLines = new ArrayList<>();
+        List<Integer> validMagicLines = new ArrayList<>();
+
+        boolean isLineageSection = false;
+        boolean isMagicSection = false;
+
+        for (int i = 0; i < lore.size(); i++) {
+            String clean = ChatColor.stripColor(lore.get(i)).trim();
+            if (clean.contains("Thuộc tính Dòng dõi")) { isLineageSection = true; isMagicSection = false; continue; }
+            if (clean.contains("Thuộc tính Ma thuật")) { isMagicSection = true; isLineageSection = false; continue; }
+            if (clean.startsWith("✦") || clean.startsWith("[Set")) { isLineageSection = false; isMagicSection = false; }
+
+            if (isLineageSection && clean.startsWith("- ") && !clean.contains("Không có")) lineageLines.add(i);
+            if (isMagicSection && clean.startsWith("- ")) validMagicLines.add(i);
+        }
+
+        // ==========================================
+        // 1. BUFF DÒNG DÕI (Ít nhất 1 dòng, 20% ra 2 dòng, THÊM 1 SAO)
+        // ==========================================
+        if (!lineageLines.isEmpty()) {
+            int index1 = lineageLines.get(rand.nextInt(lineageLines.size()));
+            addStarsAndMultiply(lore, index1, 1.25, 1); // Tăng 25% và thêm 1 sao
+
+            // 20% cơ hội tăng thêm 1 dòng nữa (nếu có hơn 1 dòng)
+            if (lineageLines.size() > 1 && rand.nextDouble() <= 0.20) {
+                int index2;
+                do {
+                    index2 = lineageLines.get(rand.nextInt(lineageLines.size()));
+                } while (index2 == index1); // Phải chọn dòng khác
+                addStarsAndMultiply(lore, index2, 1.25, 1); // Tăng 25% và thêm 1 sao
+            }
+        }
+
+        // ==========================================
+        // 2. BUFF DÒNG MA THUẬT (Thêm 1-2 sao)
+        // ==========================================
+        if (!validMagicLines.isEmpty()) {
+            int chosenLineIndex = validMagicLines.get(rand.nextInt(validMagicLines.size()));
+            boolean twoStars = (rand.nextInt(100) < 30);
+            double multi = twoStars ? 1.6 : 1.3;
+            int starsToAdd = twoStars ? 2 : 1;
+
+            addStarsAndMultiply(lore, chosenLineIndex, multi, starsToAdd);
+        }
+
         meta.setLore(lore);
         item.setItemMeta(meta);
+    }
+
+    // ==========================================
+    // HÀM PHỤ TRỢ: GỘP CHUNG LOGIC GẮN SAO CHO GỌN CODE
+    // ==========================================
+    private void addStarsAndMultiply(List<String> lore, int index, double multi, int starsToAdd) {
+        String oldLine = lore.get(index);
+
+        // 1. Đếm số sao hiện tại
+        int currentStars = 0;
+        for (char c : ChatColor.stripColor(oldLine).toCharArray()) {
+            if (c == '★') currentStars++;
+        }
+        int totalStars = currentStars + starsToAdd;
+
+        // 2. Cạo sạch sao và mã màu thừa ở chuỗi cũ
+        String cleanLine = oldLine.replace("★", "").trim();
+        cleanLine = cleanLine.replaceAll("( §[0-9a-fk-or])+$", "").trim();
+
+        // 3. Xây dựng dải sao mới liền mạch
+        StringBuilder stars = new StringBuilder(" §e");
+        for(int s = 0; s < totalStars; s++) stars.append("★");
+
+        // 4. Nhân chỉ số và dán dải sao vào
+        lore.set(index, multiplyLoreValue(cleanLine, multi, stars.toString()));
+    }
+
+    private String multiplyLoreValue(String line, double multi, String appendString) {
+        int colonIdx = line.indexOf(":");
+        if (colonIdx == -1) return line + appendString;
+
+        String valuePart = line.substring(colonIdx + 1);
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("([+0-9]*\\.?[0-9]+)").matcher(ChatColor.stripColor(valuePart));
+
+        if (m.find()) {
+            String numStr = m.group(1);
+            try {
+                double oldVal = Double.parseDouble(numStr.replace("+", ""));
+                double newVal = oldVal * multi;
+                String newNumStr = (numStr.startsWith("+") ? "+" : "") + String.format("%.1f", newVal);
+                return line.replaceFirst(java.util.regex.Pattern.quote(numStr), newNumStr) + appendString;
+            } catch (Exception ignored) {}
+        }
+        return line + appendString;
     }
 
     @EventHandler

@@ -138,17 +138,6 @@ public class TrinketManager implements CommandExecutor, Listener {
     }
 
     @EventHandler
-    public void onInteractGrindstone(org.bukkit.event.player.PlayerInteractEvent event) {
-        if (event.getAction() != org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK) return;
-        if (event.getClickedBlock() == null || event.getClickedBlock().getType() != Material.GRINDSTONE) return;
-
-        if (event.getPlayer().isSneaking()) {
-            event.setCancelled(true);
-            new vn.minecraft.rPGCore.ui.TrinketForgeGUI(RPGCore.getInstance().getItemManager()).openGUI(event.getPlayer());
-        }
-    }
-
-    @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         if (!event.getView().getTitle().equals(GUI_NAME)) return;
 

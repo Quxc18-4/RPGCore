@@ -34,6 +34,18 @@ public class StatusEffectManager {
                         player.removeMetadata("STATUS_SLOW_EXPIRE", RPGCore.getInstance());
                     }
                 }
+                // [BỔ SUNG]: Đọc Metadata Tốc chạy
+                if (player.hasMetadata("STATUS_SPEED_PERCENT") && player.hasMetadata("STATUS_SPEED_EXPIRE")) {
+                    long expire = player.getMetadata("STATUS_SPEED_EXPIRE").get(0).asLong();
+                    if (System.currentTimeMillis() <= expire) {
+                        double speedPct = player.getMetadata("STATUS_SPEED_PERCENT").get(0).asDouble();
+                        // Cộng trực tiếp vào Tốc độ di chuyển (VD: 0.15 = +15%)
+                        stats.put("Tốc độ di chuyển", stats.getOrDefault("Tốc độ di chuyển", 0.0) + (speedPct * 100.0));
+                    } else {
+                        player.removeMetadata("STATUS_SPEED_PERCENT", RPGCore.getInstance());
+                        player.removeMetadata("STATUS_SPEED_EXPIRE", RPGCore.getInstance());
+                    }
+                }
             }
         });
     }
@@ -155,6 +167,15 @@ public class StatusEffectManager {
     // 3. KHÓA DI CHUYỂN TUYỆT ĐỐI (ROOT)
     // ==========================================
     public static void applyAbsoluteRoot(LivingEntity target, int durationTicks) {
+        // [SET 4] SWIFT: Miễn nhiễm hoàn toàn với Trói Chân (Root)
+        if (target instanceof Player) {
+            Player player = (Player) target;
+            RPGPlayer rpgPlayer = RPGCore.getInstance().getPlayerManager().getRPGPlayer(player.getUniqueId());
+            if (rpgPlayer != null && rpgPlayer.hasSetBonus("swift", 4)) {
+                player.sendMessage("§a§l[SWIFT] §fBạn đã kháng lại hiệu ứng Trói chân!");
+                return; // Thoát hàm ngay lập tức, không cho Root
+            }
+        }
         long expireTime = System.currentTimeMillis() + (durationTicks * 50L);
         target.setMetadata("RPGCore_Rooted", new FixedMetadataValue(RPGCore.getInstance(), expireTime));
 
@@ -358,5 +379,33 @@ public class StatusEffectManager {
 
         // Xóa hiệu ứng Vết thương sâu (Anti-heal) do chính Manager này quản lý
         target.removeMetadata("STATUS_ANTI_HEAL", vn.minecraft.rPGCore.RPGCore.getInstance());
+    }
+    // ==========================================
+    // [HÀM MỚI]: BUFF TỐC ĐỘ CHẠY THÔNG QUA STATS
+    // ==========================================
+    public static void applySpeed(Player p, int durationTicks, double speedPercent) {
+        long expireTime = System.currentTimeMillis() + (durationTicks * 50L);
+
+        p.setMetadata("STATUS_SPEED_PERCENT", new FixedMetadataValue(RPGCore.getInstance(), speedPercent));
+        p.setMetadata("STATUS_SPEED_EXPIRE", new FixedMetadataValue(RPGCore.getInstance(), expireTime));
+
+        // Cập nhật tốc chạy ngay lập tức
+        RPGPlayer rpgP = RPGCore.getInstance().getPlayerManager().getRPGPlayer(p.getUniqueId());
+        if (rpgP != null) rpgP.updateMoveSpeed();
+
+        // Lên lịch gỡ Buff
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (p.isOnline() && p.hasMetadata("STATUS_SPEED_EXPIRE")) {
+                    long currentExpire = p.getMetadata("STATUS_SPEED_EXPIRE").get(0).asLong();
+                    if (System.currentTimeMillis() >= currentExpire) {
+                        p.removeMetadata("STATUS_SPEED_PERCENT", RPGCore.getInstance());
+                        p.removeMetadata("STATUS_SPEED_EXPIRE", RPGCore.getInstance());
+                        if (rpgP != null) rpgP.updateMoveSpeed(); // Phục hồi tốc độ
+                    }
+                }
+            }
+        }.runTaskLater(RPGCore.getInstance(), durationTicks);
     }
 }

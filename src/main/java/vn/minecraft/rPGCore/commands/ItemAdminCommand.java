@@ -59,7 +59,7 @@ public class ItemAdminCommand implements CommandExecutor, TabCompleter {
         }
 
         // ===========================================
-        // LỆNH DROP (Tích hợp chuẩn với MythicMobs + Hỗ trợ Scavenger)
+        // LỆNH DROP (Tích hợp chuẩn với MythicMobs)
         // Cú pháp trong MM: Command{c="ig drop <target.name> food_beef 50.0 2"} ~onDeath
         // ===========================================
         if (args[0].equalsIgnoreCase("drop")) {
@@ -92,27 +92,9 @@ public class ItemAdminCommand implements CommandExecutor, TabCompleter {
             vn.minecraft.rPGCore.player.RPGPlayer rpgPlayer = vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager().getRPGPlayer(target.getUniqueId());
 
             if (rpgPlayer != null) {
-                // - Tính Tỉ lệ rớt đồ tổng
+                // - Tính Tỉ lệ rớt đồ tổng (ĐÃ DỌN DẸP CODE SCAVENGER Ở ĐÂY)
                 double dropBonus = rpgPlayer.getTotalStatsMap().getOrDefault("Tỉ lệ rớt đồ", 0.0);
                 finalChance = baseChance * (1.0 + (dropBonus / 100.0));
-
-                // - Kiểm tra Nội tại Set 4 SCAVENGER (Bọc try-catch để an toàn tuyệt đối)
-                try {
-                    // Chú ý: Đảm bảo rpgPlayer.getStats() và setCounts của bạn đã được khởi tạo
-                    if (rpgPlayer.getStats() != null && rpgPlayer.getStats().setCounts != null) {
-                        int scavengerCount = rpgPlayer.getStats().setCounts.getOrDefault("scavenger", 0);
-
-                        if (scavengerCount >= 4) {
-                            // Theo mô tả của bạn ở file Equipment, Scavenger 4 món có 10% cơ hội x2
-                            if (Math.random() * 100.0 <= 10.0) {
-                                amount *= 2;
-                                target.sendMessage("§6§l[SCAVENGER] §eKích hoạt Nội tại: x2 Số lượng vật phẩm!");
-                            }
-                        }
-                    }
-                } catch (Exception ignored) {
-                    // Nếu hệ thống Set chưa hoàn thiện thì sẽ âm thầm bỏ qua, không gây sập lệnh
-                }
             }
 
             // 5. Quay xổ số quyết định rơi đồ
@@ -140,7 +122,7 @@ public class ItemAdminCommand implements CommandExecutor, TabCompleter {
                         }
                     }
 
-                    // 7. Thực hiện rớt đồ ra đất
+                    // 7. Thực hiện rớt đồ ra đất để người chơi tự nhặt và kích hoạt Scavenger
                     dropLoc.getWorld().dropItemNaturally(dropLoc, item);
                 }
             }

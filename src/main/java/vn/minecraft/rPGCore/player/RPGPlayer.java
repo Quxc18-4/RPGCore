@@ -225,7 +225,7 @@ public class RPGPlayer {
         map.put("Phản sát thương", currentStats.thornsDamage);
         map.put("Hộ Thể Tuần Hoàn", currentStats.periodicShield);
         map.put("Giảm tiêu hao Năng lượng", currentStats.manaCostReduction);
-        map.put("Hồi Năng lượng Tĩnh", currentStats.staticManaRegen);
+        map.put("Hồi Năng lượng cố định", currentStats.staticManaRegen);
 
         if (currentClass != null) {
             currentClass.applyPassiveBonusStats(this, map);
@@ -324,7 +324,7 @@ public class RPGPlayer {
                                     case "Phản sát thương": currentStats.thornsDamage += val; break;
                                     case "Hộ Thể Tuần Hoàn": currentStats.periodicShield += val; break;
                                     case "Giảm tiêu hao Năng lượng": currentStats.manaCostReduction += val; break;
-                                    case "Hồi Năng lượng Tĩnh": currentStats.staticManaRegen += val; break;
+                                    case "Hồi Năng lượng cố định": currentStats.staticManaRegen += val; break;
                                 }
                             }
                         } catch (Exception ignored) {}
@@ -771,5 +771,12 @@ public class RPGPlayer {
         System.arraycopy(this.trinkets, 0, allEquips, 5, 4);
 
         return allEquips;
+    }
+    // ==========================================
+    // KIỂM TRA SỐ LƯỢNG MẢNH TRANG BỊ CỦA SET BỘ
+    // ==========================================
+    public boolean hasSetBonus(String lineage, int requiredPieces) {
+        if (this.currentStats == null || this.currentStats.setCounts == null) return false;
+        return this.currentStats.setCounts.getOrDefault(lineage.toLowerCase(), 0) >= requiredPieces;
     }
 }

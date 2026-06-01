@@ -4,10 +4,7 @@ import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.attribute.Attribute;
-import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.entity.EntityRegainHealthEvent;
-import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
+import org.bukkit.event.entity.*;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -644,6 +641,84 @@ public class PlayerListener implements Listener {
             RPGPlayer rpgAttacker = playerManager.getRPGPlayer(attacker.getUniqueId());
             if (rpgAttacker != null) {
                 rpgAttacker.setInCombat();
+            }
+        }
+    }
+
+    // ==========================================
+    // [SET BONUS]: XỬ LÝ NHẶT ĐỒ (SCAVENGER & EXPERIENCED)
+    // ==========================================
+    @org.bukkit.event.EventHandler
+    public void onEntityPickupItem(org.bukkit.event.entity.EntityPickupItemEvent event) {
+        if (event.getEntity() instanceof Player) {
+            Player player = (Player) event.getEntity();
+            org.bukkit.entity.Item itemEntity = event.getItem();
+
+            // [ANTI-ABUSE 1]: Nếu đồ có Thrower (nghĩa là do Player vứt ra) -> Bỏ qua
+            if (itemEntity.getThrower() != null) return;
+
+            // [ANTI-ABUSE 2]: Nếu đồ do Máy thả (Dropper/Dispenser) nhả ra -> Bỏ qua
+            if (itemEntity.hasMetadata("Dropped_By_Machine")) return;
+
+            ItemStack item = itemEntity.getItemStack();
+
+            // [ANTI-ABUSE 3]: Chỉ kích hoạt nếu là vật phẩm RPG (nằm trong ItemManager)
+            if (!item.hasItemMeta() || !item.getItemMeta().getPersistentDataContainer().has(new org.bukkit.NamespacedKey(RPGCore.getInstance(), "rpg_item_id"), org.bukkit.persistence.PersistentDataType.STRING)) {
+                return;
+            }
+
+            RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
+            if (rpgPlayer == null) return;
+
+            // [Set 4] Scavenger: 10% x2 vật phẩm nhặt được
+            if (rpgPlayer.hasSetBonus("scavenger", 4)) {
+                if (Math.random() <= 0.10) {
+                    player.getInventory().addItem(item.clone());
+                    player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_ITEM_PICKUP, 1f, 2f);
+
+                    // Lấy tên vật phẩm (Có màu mè đàng hoàng)
+                    String itemName = item.getItemMeta().hasDisplayName() ? item.getItemMeta().getDisplayName() : "§f" + item.getType().name();
+
+                    // Thông báo chuẩn xịn, ngầu đét
+                    player.sendMessage("§6§l[SCAVENGER] §eKích hoạt Nội tại: x2 " + itemName + "§e!");
+                }
+            }
+
+            // [Set 4] Experienced: 5% phát hiện Xu vật lý
+            if (rpgPlayer.hasSetBonus("experienced", 4)) {
+                if (Math.random() <= 0.05) {
+                    RPGCore.getInstance().getCurrencyManager().givePhysicalCurrency(player, 10);
+
+                    // Thông báo đồng bộ với Scavenger
+                    player.sendMessage("§e§l[EXPERIENCED] §fKích hoạt Nội tại: §6Nhặt được thêm 10 Đồng!");
+                    player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f);
+                }
+            }
+        }
+    }
+
+    // ==========================================
+    // [ANTI-ABUSE]: GẮN MÁC ĐỒ TỪ MÁY PHÂN PHÁT (BẤT CHẤP API VERSION)
+    // ==========================================
+    @org.bukkit.event.EventHandler
+    public void onItemSpawn(org.bukkit.event.entity.ItemSpawnEvent event) {
+        org.bukkit.Location loc = event.getLocation();
+        org.bukkit.World world = loc.getWorld();
+        int bx = loc.getBlockX();
+        int by = loc.getBlockY();
+        int bz = loc.getBlockZ();
+
+        // Quét không gian 3x3 xung quanh vật phẩm vừa rơi ra
+        for (int x = -1; x <= 1; x++) {
+            for (int y = -1; y <= 1; y++) {
+                for (int z = -1; z <= 1; z++) {
+                    org.bukkit.Material type = world.getBlockAt(bx + x, by + y, bz + z).getType();
+                    if (type == org.bukkit.Material.DISPENSER || type == org.bukkit.Material.DROPPER) {
+                        // Nếu phát hiện nhả ra từ máy -> Gắn mác rác công nghiệp ngay!
+                        event.getEntity().setMetadata("Dropped_By_Machine", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), true));
+                        return;
+                    }
+                }
             }
         }
     }

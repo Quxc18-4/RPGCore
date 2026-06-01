@@ -85,7 +85,7 @@ public class BlacksmithGUI implements Listener {
         int currentLevel = 0;
         boolean hasItem = false;
 
-        if (equipment != null && !equipment.getType().isAir() && equipment.hasItemMeta() && equipment.getItemMeta().hasLore()) {
+        if (isValidRPGEquipment(equipment)) {
             currentLevel = getUpgradeLevel(equipment);
             hasItem = true;
         }
@@ -129,7 +129,7 @@ public class BlacksmithGUI implements Listener {
     private void updateMasterForgeButton(Inventory inv, Player player) {
         ItemStack equipment = inv.getItem(10);
 
-        if (equipment == null || equipment.getType().isAir() || !equipment.hasItemMeta() || !equipment.getItemMeta().hasLore()) {
+        if (!isValidRPGEquipment(equipment)) {
             inv.setItem(16, createButton(Material.YELLOW_STAINED_GLASS_PANE, "§6[★] Rèn Bậc Thầy", "§cHãy đặt trang bị vào để xem chi phí.", "§7Cần nghề phụ Thợ Rèn để sử dụng."));
             return;
         }
@@ -163,7 +163,23 @@ public class BlacksmithGUI implements Listener {
         int slot = event.getRawSlot();
         Player player = (Player) event.getWhoClicked();
 
-        if (slot == 10 || event.getClick().isShiftClick()) {
+        if (event.getClick().isShiftClick() || event.getClick().isKeyboardClick()) {
+            event.setCancelled(true);
+            return;
+        }
+
+        // Cập nhật: Chặn ngay từ lúc người chơi thả đồ vào ô 10
+        if (slot == 10) {
+            ItemStack cursor = event.getCursor();
+            if (cursor != null && !cursor.getType().isAir()) {
+                if (!isValidRPGEquipment(cursor)) {
+                    player.sendMessage("§c§l[!] §cChỉ có thể đặt Vũ Khí hoặc Giáp RPG vào Lò Rèn!");
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
+                    event.setCancelled(true);
+                    return; // Hủy hành động thả đồ
+                }
+            }
+
             Bukkit.getScheduler().runTaskLater(RPGCore.getInstance(), () -> {
                 if (player.getOpenInventory().getTitle().equals(GUI_NAME)) {
                     Inventory topInv = player.getOpenInventory().getTopInventory();
@@ -180,7 +196,8 @@ public class BlacksmithGUI implements Listener {
         ItemStack equipment = event.getInventory().getItem(10);
 
         if (slot >= 12 && slot <= 14) {
-            if (equipment == null || equipment.getType().isAir() || !equipment.hasItemMeta() || !equipment.getItemMeta().hasLore()) {
+            // Đã đổi sang dùng hàm isValidRPGEquipment
+            if (!isValidRPGEquipment(equipment)) {
                 player.sendMessage("§cBạn chưa đặt trang bị RPG vào ô nâng cấp!");
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
                 return;
@@ -193,7 +210,8 @@ public class BlacksmithGUI implements Listener {
             processUpgradeLoop(player, equipment, attempts);
         }
         else if (slot == 16) {
-            if (equipment == null || equipment.getType().isAir() || !equipment.hasItemMeta() || !equipment.getItemMeta().hasLore()) {
+            // Đã đổi sang dùng hàm isValidRPGEquipment
+            if (!isValidRPGEquipment(equipment)) {
                 player.sendMessage("§cBạn chưa đặt trang bị RPG vào ô nâng cấp!");
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
                 return;
@@ -534,5 +552,32 @@ public class BlacksmithGUI implements Listener {
             ItemStack item = event.getInventory().getItem(10);
             if (item != null && !item.getType().isAir()) event.getPlayer().getInventory().addItem(item);
         }
+    }
+    // ===============================================
+    // HÀM KIỂM TRA: CHỈ NHẬN VŨ KHÍ VÀ GIÁP RPG
+    // ===============================================
+    private boolean isValidRPGEquipment(ItemStack item) {
+        if (item == null || item.getType().isAir() || !item.hasItemMeta()) return false;
+        ItemMeta meta = item.getItemMeta();
+        if (!meta.hasLore()) return false;
+
+        // 1. Chặn ngay lập tức nếu là Trang Sức (dựa vào NBT Tag)
+        org.bukkit.NamespacedKey trinketKey = new org.bukkit.NamespacedKey(vn.minecraft.rPGCore.RPGCore.getInstance(), "trinket_type");
+        if (meta.getPersistentDataContainer().has(trinketKey, org.bukkit.persistence.PersistentDataType.STRING)) {
+            return false;
+        }
+
+        // 2. Phải chứa ít nhất 1 dòng chỉ số cơ bản của Vũ Khí / Giáp
+        for (String line : meta.getLore()) {
+            String clean = ChatColor.stripColor(line).trim();
+            if (clean.startsWith("- Sát thương vật lý:") ||
+                    clean.startsWith("- Sát thương phép thuật:") ||
+                    clean.startsWith("- Giáp:") ||
+                    clean.startsWith("- Kháng phép:") ||
+                    clean.startsWith("- Máu tối đa:")) {
+                return true;
+            }
+        }
+        return false;
     }
 }

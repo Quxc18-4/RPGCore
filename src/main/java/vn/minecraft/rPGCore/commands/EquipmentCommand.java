@@ -118,7 +118,8 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
             }
             if (tierIndex == -1) tierIndex = 0; // Dự phòng
         }
-        int subStats = inputSubStats != -1 ? inputSubStats : rand.nextInt(4) + 1;
+        // Tính toán số lượng dòng phụ dựa trên Tier
+        int subStats = inputSubStats != -1 ? inputSubStats : getSubStatsCount(tierIndex, rand);
         int armorPiece = inputArmorPiece != -1 ? inputArmorPiece : rand.nextInt(4) + 1;
 
         String lineage = inputLineage;
@@ -225,10 +226,22 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
 
             List<Integer> selectedIndices = new ArrayList<>();
             int actualSubStats = Math.min(subStats, availableIndices.size());
+            List<String> preferredStats = getPreferredStats(lineage.toLowerCase());
+
+            // Tier càng cao, Bể roll càng bị ép chặt vào Lineage
+            // Tier 0 (x2 Trọng số) -> Tier 7 (x16 Trọng số)
+            int synergyBoost = 2 + (tierIndex * 2);
 
             for (int i = 0; i < actualSubStats; i++) {
                 int totalWeight = 0;
-                for (int index : availableIndices) totalWeight += (int) RANDOM_STATS_DB[index][2];
+
+                // Tính lại tổng trọng số của Bể với Synergy
+                for (int index : availableIndices) {
+                    String statName = (String) RANDOM_STATS_DB[index][0];
+                    int baseWeight = (int) RANDOM_STATS_DB[index][2];
+                    if (preferredStats.contains(statName)) baseWeight *= synergyBoost;
+                    totalWeight += baseWeight;
+                }
 
                 int roll = rand.nextInt(totalWeight);
                 int currentWeightRoll = 0;
@@ -236,10 +249,14 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
 
                 for (int j = 0; j < availableIndices.size(); j++) {
                     int index = availableIndices.get(j);
-                    currentWeightRoll += (int) RANDOM_STATS_DB[index][2];
+                    String statName = (String) RANDOM_STATS_DB[index][0];
+                    int baseWeight = (int) RANDOM_STATS_DB[index][2];
+                    if (preferredStats.contains(statName)) baseWeight *= synergyBoost;
+
+                    currentWeightRoll += baseWeight;
                     if (roll < currentWeightRoll) {
                         chosenIndex = index;
-                        availableIndices.remove(j);
+                        availableIndices.remove(j); // Chống trùng dòng
                         break;
                     }
                 }
@@ -339,7 +356,7 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
                 lore.add("§8[Set 4 mảnh]: Miễn nhiễm hoàn toàn với Trói Chân và Làm Chậm"); break;
             case "shattering":
                 lore.add("§8[Set 3 mảnh]: +15% Xuyên Giáp và Xuyên Kháng Phép");
-                lore.add("§8[Set 4 mảnh]: Gây thêm 10% Sát thương chuẩn (Bỏ qua mọi phòng ngự)"); break;
+                lore.add("§8[Set 4 mảnh]: Gây thêm 10% Sát thương chuẩn"); break;
         }
     }
 
@@ -391,5 +408,47 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
             completions.addAll(VALID_CLASSES); completions.addAll(VALID_TIERS); completions.addAll(ALL_LINEAGES);
         }
         return completions;
+    }
+
+    // ==========================================
+    // [HỆ THỐNG MỚI]: ĐỊNH NGHĨA DÒNG PHỤ TƯƠNG THÍCH VỚI DÒNG DÕI
+    // ==========================================
+    private static List<String> getPreferredStats(String lineage) {
+        switch (lineage.toLowerCase()) {
+            case "vampiric": return Arrays.asList("Tỉ lệ hồi phục", "Tỉ lệ Giáp", "Tỉ lệ Kháng phép");
+            case "experienced": return Arrays.asList("Tốc độ di chuyển", "Giảm hồi chiêu", "Hồi Năng lượng");
+            case "hunter": return Arrays.asList("Tốc độ đánh", "Tỉ lệ xuyên giáp", "Sát thương chí mạng");
+            case "magical": return Arrays.asList("Hồi Năng lượng", "Giảm hồi chiêu", "Tỉ lệ xuyên kháng phép");
+            case "giant": return Arrays.asList("Tỉ lệ đỡ đòn", "Kháng hiệu ứng", "Tỉ lệ Kháng phép");
+            case "armored": return Arrays.asList("Tỉ lệ đỡ đòn", "Kháng hiệu ứng", "Tỉ lệ Giáp");
+            case "scavenger": return Arrays.asList("Tỉ lệ né tránh", "Nhận Kinh nghiệm", "Tốc độ di chuyển", "Hồi Năng lượng");
+            case "swift": return Arrays.asList("Tỉ lệ né tránh", "Tốc độ đánh", "Giảm hồi chiêu", "Tỉ lệ chí mạng");
+            case "shattering": return Arrays.asList("Tỉ lệ chí mạng", "Tỉ lệ xuyên giáp", "Sát thương chí mạng");
+            default: return new ArrayList<>();
+        }
+    }
+
+    // ==========================================
+    // [HỆ THỐNG MỚI]: TỈ LỆ SỐ DÒNG THEO PHẨM CHẤT (TIER)
+    // ==========================================
+    private static int getSubStatsCount(int tierIndex, Random rand) {
+        int[][] chances = {
+                {60, 30, 9, 1, 0},   // 0: Common (Max 4, tỉ lệ ra 4 cực thấp 1%)
+                {40, 40, 15, 5, 0},  // 1: Uncommon
+                {20, 45, 25, 10, 0}, // 2: Rare
+                {5,  35, 40, 20, 0}, // 3: Epic
+                {0,  25, 45, 30, 0}, // 4: Mythical
+                {0,  15, 45, 35, 5}, // 5: Heroic (Bắt đầu có tỉ lệ ra 5 dòng)
+                {0,  5,  40, 45, 10},// 6: Legendary
+                {0,  0,  20, 60, 20} // 7: Divine (Chắc chắn >= 3 dòng, 20% ra 5 dòng)
+        };
+        int[] weights = chances[Math.min(7, Math.max(0, tierIndex))];
+        int roll = rand.nextInt(100);
+        int current = 0;
+        for (int i = 0; i < weights.length; i++) {
+            current += weights[i];
+            if (roll < current) return i + 1;
+        }
+        return 1;
     }
 }
