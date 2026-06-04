@@ -29,6 +29,8 @@ public class TrinketRandomCraftGUI implements Listener {
     private final String[] TIER_NAMES = {"Common", "Uncommon", "Rare", "Epic", "Mythical", "Heroic", "Legendary", "Divine"};
     private final String[] TIER_COLORS = {"§7", "§a", "§b", "§5", "§d", "§6", "§c", "§e"};
 
+    private final int CRYSTAL_COST = 5;
+
     private final double[][] TIER_RATES = {
             {70, 25, 5,  0,  0,  0,  0,  0},
             {30, 45, 20, 5,  0,  0,  0,  0},
@@ -60,7 +62,7 @@ public class TrinketRandomCraftGUI implements Listener {
 
     private ItemStack getPlaceholder(int slot) {
         if (slot == 10) return createItem(Material.YELLOW_STAINED_GLASS_PANE, "§eÔ Phôi Trang Sức");
-        if (slot == 12) return createItem(Material.PURPLE_STAINED_GLASS_PANE, "§dÔ Tinh Thể Pha Lê");
+        if (slot == 12) return createItem(Material.PURPLE_STAINED_GLASS_PANE, "§dÔ Tinh Thể Pha Lê", "§7Yêu cầu: " + CRYSTAL_COST + " cái");
         for (int s : FOOD_SLOTS) {
             if (slot == s) return createItem(Material.GOLD_NUGGET, "§6Nguyên Liệu Hiến Tế", "§7Chỉ chấp nhận Trang Sức.");
         }
@@ -73,7 +75,6 @@ public class TrinketRandomCraftGUI implements Listener {
         return name.contains("Ô Phôi") || name.contains("Ô Tinh Thể") || name.contains("Nguyên Liệu Hiến Tế");
     }
 
-    // Lấy cấp độ của Trang sức để tính trung bình cộng
     private int getTrinketLevel(ItemStack item) {
         if (item == null || !item.hasItemMeta() || !item.getItemMeta().hasLore()) return 1;
         for (String line : item.getItemMeta().getLore()) {
@@ -88,7 +89,7 @@ public class TrinketRandomCraftGUI implements Listener {
     }
 
     // ==========================================
-    // CÔNG CỤ ĐO LƯỜNG PIXEL (CHUẨN MINECRAFT FONT)
+    // MODULE: TÍNH TOÁN PIXEL VÀ CĂN LỀ
     // ==========================================
     private int getPixelWidth(String text) {
         if (text == null || text.isEmpty()) return 0;
@@ -106,19 +107,17 @@ public class TrinketRandomCraftGUI implements Listener {
             }
 
             int charWidth = 6;
-            // [ĐÃ SỬA LỖI]: Xóa số '1' khỏi nhóm 4px. Số 1 rộng 6px như các số khác!
             if (c == 'i' || c == 'l' || c == '!' || c == '.' || c == ',' || c == ':' || c == ';' || c == '|' || c == '\'') charWidth = 2;
             else if (c == ' ' || c == 'I' || c == '[' || c == ']' || c == 't') charWidth = 4;
             else if (c == 'f' || c == 'k' || c == '"' || c == '<' || c == '>' || c == '{' || c == '}' || c == '*' || c == '(' || c == ')') charWidth = 5;
             else if (c == '@' || c == '~') charWidth = 7;
 
-            if (isBold) charWidth += 1; // Bold áp dụng cho cả khoảng trắng
+            if (isBold) charWidth += 1;
             width += charWidth;
         }
         return width;
     }
 
-    // Thuật toán của Bạn: Căn lề trái, sau đó BÙ KHOẢNG TRẮNG vào bên PHẢI cho đủ độ dài
     private String padRightExact(String text, int targetPx) {
         if (text == null) text = "";
         int width = getPixelWidth(text);
@@ -128,7 +127,6 @@ public class TrinketRandomCraftGUI implements Listener {
         int boldSpaces = 0;
         int normalSpaces = 0;
 
-        // Phương trình tìm kết hợp hoàn hảo giữa khoảng trắng 4px và 5px
         for (int b = 0; b <= missing / 5; b++) {
             if ((missing - b * 5) % 4 == 0) {
                 boldSpaces = b;
@@ -138,7 +136,7 @@ public class TrinketRandomCraftGUI implements Listener {
         }
 
         StringBuilder sb = new StringBuilder(text);
-        sb.append("§r"); // Reset màu trước khi chèn khoảng trắng để không bị lỗi màu
+        sb.append("§r");
 
         if (boldSpaces > 0) {
             sb.append("§l");
@@ -151,6 +149,83 @@ public class TrinketRandomCraftGUI implements Listener {
     }
 
     // ==========================================
+    // MODULE: XỬ LÝ LOGIC CỘNG HƯỞNG & ĐỘT PHÁ (COMBO)
+    // ==========================================
+    private double[] calculateFinalTiers(Inventory inv, List<String> comboLinesOut) {
+        int foodCount = 0;
+        double[] avgTiers = new double[8];
+        int[] tierCounts = new int[8];
+
+        // 1. Quét kho đồ lấy dữ liệu gốc
+        for (int s : FOOD_SLOTS) {
+            ItemStack food = inv.getItem(s);
+            if (food != null && !isPlaceholder(food) && food.hasItemMeta() && food.getItemMeta().getPersistentDataContainer().has(TRINKET_KEY, PersistentDataType.STRING)) {
+                foodCount++;
+                int tier = getTierFromItem(food);
+                if (tier != -1) {
+                    tierCounts[tier]++;
+                    for (int i = 0; i < 8; i++) avgTiers[i] += TIER_RATES[tier][i];
+                }
+            }
+        }
+
+        if (foodCount == 0) return avgTiers;
+
+        // 2. Chia trung bình để lấy Phổ Tỉ lệ cơ sở
+        for (int i = 0; i < 8; i++) avgTiers[i] /= foodCount;
+
+        // 3. Xử lý Hiệu ứng Cộng Hưởng (Synergy)
+        for (int t = 0; t < 8; t++) {
+            int stacks = tierCounts[t] / 3; // Lấy số tầng Stack
+
+            if (stacks > 0) {
+                if (comboLinesOut != null) {
+                    comboLinesOut.add("§aCộng hưởng: " + (stacks * 3) + "x " + TIER_COLORS[t] + TIER_NAMES[t] + " §a(+ Đột phá)");
+                }
+
+                // Tìm 2 dòng bét nhất có tỉ lệ để trừ
+                int low1 = -1, low2 = -1;
+                for (int i = 0; i < 8; i++) {
+                    if (avgTiers[i] > 0.001) {
+                        if (low1 == -1) low1 = i;
+                        else if (low2 == -1) { low2 = i; break; }
+                    }
+                }
+
+                double totalBoost = 0;
+
+                // Trừ nhẹ ở dòng bét nhất (2.5% mỗi tầng)
+                if (low1 != -1) {
+                    double sub1 = Math.min(avgTiers[low1], 2.5 * stacks);
+                    avgTiers[low1] -= sub1;
+                    totalBoost += sub1;
+                }
+
+                // Trừ mạnh ở dòng bét nhì (7.5% mỗi tầng)
+                if (low2 != -1) {
+                    double sub2 = Math.min(avgTiers[low2], 7.5 * stacks);
+                    avgTiers[low2] -= sub2;
+                    totalBoost += sub2;
+                }
+
+                // Bù trừ tỉ lệ lên các dòng đột phá cao hơn
+                if (totalBoost > 0) {
+                    int up1 = Math.min(7, t + 1); // Cấp cao hơn
+                    int up2 = Math.min(7, t + 2); // Cấp cao hơn nữa
+
+                    if (up1 != up2) {
+                        avgTiers[up1] += totalBoost * 0.75; // Tăng mạnh (75% lượng trừ)
+                        avgTiers[up2] += totalBoost * 0.25; // Tăng nhẹ (25% lượng trừ)
+                    } else {
+                        avgTiers[up1] += totalBoost; // Kịch khung Divine thì dồn hết vào Divine
+                    }
+                }
+            }
+        }
+        return avgTiers;
+    }
+
+    // ==========================================
     // CẬP NHẬT GIAO DIỆN HIỂN THỊ
     // ==========================================
     private void updateCraftButton(Inventory inv) {
@@ -158,11 +233,10 @@ public class TrinketRandomCraftGUI implements Listener {
         ItemStack crystal = inv.getItem(12);
 
         boolean hasCore = (core != null && !isPlaceholder(core) && core.hasItemMeta() && core.getItemMeta().getPersistentDataContainer().get(ITEM_KEY, PersistentDataType.STRING) != null && core.getItemMeta().getPersistentDataContainer().get(ITEM_KEY, PersistentDataType.STRING).startsWith("trinket_blank_"));
-        boolean hasCrystal = (crystal != null && !isPlaceholder(crystal) && crystal.hasItemMeta() && "misc_trinket_crystal".equals(crystal.getItemMeta().getPersistentDataContainer().get(ITEM_KEY, PersistentDataType.STRING)));
+        boolean hasCrystal = (crystal != null && !isPlaceholder(crystal) && crystal.hasItemMeta() && "misc_trinket_crystal".equals(crystal.getItemMeta().getPersistentDataContainer().get(ITEM_KEY, PersistentDataType.STRING)) && crystal.getAmount() >= CRYSTAL_COST);
 
         int foodCount = 0;
         int totalLevel = 0;
-        double[] avgTiers = new double[8];
         Map<String, Integer> lineageCounts = new HashMap<>();
 
         for (int s : FOOD_SLOTS) {
@@ -170,11 +244,6 @@ public class TrinketRandomCraftGUI implements Listener {
             if (food != null && !isPlaceholder(food) && food.hasItemMeta() && food.getItemMeta().getPersistentDataContainer().has(TRINKET_KEY, PersistentDataType.STRING)) {
                 foodCount++;
                 totalLevel += getTrinketLevel(food);
-
-                int tier = getTierFromItem(food);
-                if (tier != -1) {
-                    for (int i = 0; i < 8; i++) avgTiers[i] += TIER_RATES[tier][i];
-                }
                 String lineage = getLineageFromItem(food);
                 if (lineage != null) lineageCounts.put(lineage, lineageCounts.getOrDefault(lineage, 0) + 1);
             }
@@ -183,25 +252,26 @@ public class TrinketRandomCraftGUI implements Listener {
         int avgLevel = foodCount > 0 ? (totalLevel / foodCount) : 1;
 
         if (!hasCore || !hasCrystal || foodCount == 0) {
-            inv.setItem(28, createItem(Material.BARRIER, "§cThiếu Nguyên Liệu", "§7Cần 1 Phôi, 1 Tinh thể", "§7và ít nhất 1 Trang sức hiến tế."));
+            inv.setItem(28, createItem(Material.BARRIER, "§cThiếu Nguyên Liệu", "§7Cần 1 Phôi, " + CRYSTAL_COST + " Tinh thể", "§7và ít nhất 1 Trang sức hiến tế."));
             return;
         }
+
+        List<String> comboLines = new ArrayList<>();
+        double[] avgTiers = calculateFinalTiers(inv, comboLines);
 
         List<String> lore = new ArrayList<>();
         lore.add("§8Thông số dự kiến khi ghép:");
         lore.add("");
 
-        // Cố định độ rộng cột Phẩm Chất là 105 pixel
         int colPx = 105;
 
-        // Căn lề theo logic: [Chữ Trái] + [Khoảng Trắng Bù Đủ 105px] + [Chữ Phải]
         lore.add("  " + padRightExact("§fPhẩm chất", colPx) + "§fDòng dõi");
         lore.add(" §8--------------------------------------");
 
         List<String> tierLines = new ArrayList<>();
         for (int i = 7; i >= 0; i--) {
-            double pct = avgTiers[i] / foodCount;
-            if (pct > 0) tierLines.add(TIER_COLORS[i] + TIER_NAMES[i] + "§f: " + String.format("%.1f", pct) + "%");
+            double pct = avgTiers[i];
+            if (pct > 0.001) tierLines.add(TIER_COLORS[i] + TIER_NAMES[i] + "§f: " + String.format("%.1f", pct) + "%");
         }
 
         List<String> lineageLines = new ArrayList<>();
@@ -225,15 +295,19 @@ public class TrinketRandomCraftGUI implements Listener {
             String left = (i < tierLines.size()) ? tierLines.get(i) : "";
             String right = (i < lineageLines.size()) ? lineageLines.get(i) : "";
 
-            // Ép độ dài cột trái bằng ĐÚNG colPx (105px), phần dư được tự lấp bằng khoảng trắng
             String paddedLeft = padRightExact(left, colPx);
-
-            // Cột phải tự động nối tiếp thẳng tắp do cột trái luôn kết thúc ở 1 tọa độ cố định
             lore.add("  " + paddedLeft + right);
         }
 
         lore.add("");
         lore.add("§8▶ §fCấp độ trang sức dự kiến: §a" + avgLevel);
+
+        // Hiện thông báo kích hoạt Combo
+        if (!comboLines.isEmpty()) {
+            lore.add("");
+            lore.addAll(comboLines);
+        }
+
         lore.add("");
         lore.add("§eNhấp chuột để Bắt đầu Dung hợp");
 
@@ -307,7 +381,6 @@ public class TrinketRandomCraftGUI implements Listener {
                         return;
                     }
 
-                    // Nuốt toàn bộ đồ đang cầm trên chuột (Cho phép đặt số lượng nhiều)
                     inv.setItem(slot, cursor.clone());
                     event.getView().setCursor(null);
 
@@ -334,7 +407,6 @@ public class TrinketRandomCraftGUI implements Listener {
 
             int foodCount = 0;
             int totalLevel = 0;
-            double[] avgTiers = new double[8];
             Map<String, Integer> lineageCounts = new HashMap<>();
 
             for (int s : FOOD_SLOTS) {
@@ -342,9 +414,6 @@ public class TrinketRandomCraftGUI implements Listener {
                 if (food != null && !isPlaceholder(food)) {
                     foodCount++;
                     totalLevel += getTrinketLevel(food);
-
-                    int tier = getTierFromItem(food);
-                    for (int i = 0; i < 8; i++) avgTiers[i] += TIER_RATES[tier][i];
                     String lineage = getLineageFromItem(food);
                     if (lineage != null) lineageCounts.put(lineage, lineageCounts.getOrDefault(lineage, 0) + 1);
                 }
@@ -352,12 +421,15 @@ public class TrinketRandomCraftGUI implements Listener {
 
             int avgLevel = foodCount > 0 ? (totalLevel / foodCount) : 1;
 
+            // Xài chung hàm API với Giao diện để đảm bảo tỉ lệ đồng nhất 100%
+            double[] avgTiers = calculateFinalTiers(inv, null);
+
             Random rand = new Random();
             double rollTier = rand.nextDouble() * 100.0;
             double currentTierSum = 0;
             int finalTier = 0;
             for (int i = 0; i < 8; i++) {
-                currentTierSum += (avgTiers[i] / foodCount);
+                currentTierSum += avgTiers[i];
                 if (rollTier <= currentTierSum) { finalTier = i; break; }
             }
 
@@ -369,7 +441,6 @@ public class TrinketRandomCraftGUI implements Listener {
                 if (rollLineage <= currentLinSum) { finalLineage = entry.getKey(); break; }
             }
 
-            // [ĐÃ FIX BUG]: Trừ vật phẩm an toàn mà không làm mất cả stack
             if (core.getAmount() > 1) {
                 core.setAmount(core.getAmount() - 1);
             } else {
@@ -377,8 +448,8 @@ public class TrinketRandomCraftGUI implements Listener {
             }
 
             ItemStack crystal = inv.getItem(12);
-            if (crystal.getAmount() > 1) {
-                crystal.setAmount(crystal.getAmount() - 1);
+            if (crystal.getAmount() > CRYSTAL_COST) {
+                crystal.setAmount(crystal.getAmount() - CRYSTAL_COST);
             } else {
                 inv.setItem(12, getPlaceholder(12));
             }
