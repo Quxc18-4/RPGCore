@@ -157,6 +157,8 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(mountStorageGUI, this);
         getServer().getPluginManager().registerEvents(new MountListener(this.mountManager, mountStorageGUI), this);
         getServer().getPluginManager().registerEvents(new WaterFetchListener(this.itemManager), this);
+        getServer().getPluginManager().registerEvents(new TrinketMenuGUI(), this);
+        getServer().getPluginManager().registerEvents(new TrinketRandomCraftGUI(), this);
 
         new RegenTask(playerManager, bossBarManager).runTaskTimer(this, 0L, 20L);
 

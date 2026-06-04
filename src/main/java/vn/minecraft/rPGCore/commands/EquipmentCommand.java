@@ -77,9 +77,9 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
 
             for (int n = 0; n < amount; n++) {
                 ItemStack item;
-                // [MỚI]: Phân nhánh nếu người chơi gọi lệnh roll trang sức
+                // [CẬP NHẬT]: Truyền toàn bộ tham số ép buộc vào hàm sinh Trang Sức
                 if (type.equals("ring") || type.equals("necklace") || type.equals("bracelet")) {
-                    item = vn.minecraft.rPGCore.managers.TrinketGenerator.createTrinket(type, level);
+                    item = vn.minecraft.rPGCore.managers.TrinketGenerator.createTrinket(type, level, inputLineage, inputTier, inputSubStats);
                 } else {
                     // Gọi hàm cũ để tạo Vũ khí / Giáp
                     item = createGachaItem(type, level, inputClass, inputTier, inputLineage, inputSubStats, inputArmorPiece);

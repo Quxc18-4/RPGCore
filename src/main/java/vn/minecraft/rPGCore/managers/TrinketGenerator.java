@@ -37,26 +37,42 @@ public class TrinketGenerator {
             {"Hộ Thể Tuần Hoàn", 30, 20}, {"Giảm tiêu hao Năng lượng", 0, 40}, {"Hồi Năng lượng cố định", 0, 50}
     };
 
+    // Hàm gọi nhanh (Chỉ truyền level, mọi thứ random)
     public static ItemStack createTrinket(String type, int level) {
-        return createTrinket(type, level, null, -1, 0);
+        return createTrinket(type, level, null, -1, -1);
     }
 
-    public static ItemStack createTrinket(String type, int level, String forceLineage, int forceSubStats, int tierBoostBonus) {
+    // Hàm cầu nối (Wrapper) cho TrinketRandomCraftGUI để tránh lỗi Code
+    public static ItemStack createTrinketExact(String type, int level, String forceLineage, int forceSubStats, int exactTier) {
+        return createTrinket(type, level, forceLineage, exactTier, forceSubStats);
+    }
+
+    // ==========================================
+    // HÀM MASTER: XỬ LÝ TOÀN BỘ LOGIC GACHA (GỘP CHUNG)
+    // ==========================================
+    public static ItemStack createTrinket(String type, int level, String inputLineage, int inputTier, int inputSubStats) {
         Random rand = new Random();
 
-        int tierIndex = 0;
-        int roll = rand.nextInt(9515);
-        int currentWeightRoll = 0;
-        for (int i = 0; i < TIER_WEIGHTS.length; i++) {
-            currentWeightRoll += TIER_WEIGHTS[i];
-            if (roll < currentWeightRoll) { tierIndex = i; break; }
+        // 1. Xử lý Tier (Phẩm chất)
+        int tierIndex = inputTier;
+        if (tierIndex == -1) {
+            int totalWeight = 0;
+            for (int w : TIER_WEIGHTS) totalWeight += w;
+            int roll = rand.nextInt(totalWeight);
+            int currentWeightRoll = 0;
+            for (int i = 0; i < TIER_WEIGHTS.length; i++) {
+                currentWeightRoll += TIER_WEIGHTS[i];
+                if (roll < currentWeightRoll) { tierIndex = i; break; }
+            }
+            if (tierIndex == -1) tierIndex = 0;
+        } else {
+            tierIndex = Math.min(TIERS.length - 1, Math.max(0, tierIndex));
         }
 
-        tierIndex = Math.min(TIERS.length - 1, tierIndex + tierBoostBonus);
-
+        // 2. Xử lý Lineage (Dòng dõi)
         String lineage;
-        if (forceLineage != null && ALL_LINEAGES.contains(forceLineage.toLowerCase())) {
-            lineage = forceLineage.toLowerCase();
+        if (inputLineage != null && ALL_LINEAGES.contains(inputLineage.toLowerCase())) {
+            lineage = inputLineage.toLowerCase();
         } else {
             lineage = ALL_LINEAGES.get(rand.nextInt(ALL_LINEAGES.size()));
         }
@@ -64,6 +80,7 @@ public class TrinketGenerator {
         String tierColor = (String) TIERS[tierIndex][0];
         double tierMulti = (double) TIERS[tierIndex][2];
 
+        // 3. Xử lý Quality (Độ hoàn thiện)
         int totalQualityWeight = 0;
         for (Object[] q : QUALITY_DB) totalQualityWeight += (int) q[3];
         int qualityRoll = rand.nextInt(totalQualityWeight);
@@ -80,9 +97,7 @@ public class TrinketGenerator {
         double maxVar = (double) chosenQuality[2];
         double qualityMod = minVar + (rand.nextDouble() * (maxVar - minVar));
 
-        // ==========================================
-        // [CẬP NHẬT MỚI]: ĐỒNG BỘ MATERIAL LÀ GOLDEN_AXE + CMD
-        // ==========================================
+        // 4. Khởi tạo Material
         Material mat = Material.GOLDEN_AXE;
         int customModelData = 1001;
         String baseName;
@@ -115,12 +130,14 @@ public class TrinketGenerator {
         double powerRating = (levelFactor * 0.45) + (tierFactor * 0.35) + (qualityFactor * 0.20);
         double statMulti = 1.0 + (6.0 * powerRating);
 
+        // 5. Gắn chỉ số Dòng dõi
         lore.add(tierColor + "§l✦ Thuộc tính Dòng dõi (" + capitalize(lineage) + "):");
         List<String> excludedStats = applyLineageText(lore, lineage, statMulti);
         lore.add("");
         lore.add("§d§l✦ Thuộc tính Ma thuật:");
 
-        int subStats = (forceSubStats > 0) ? forceSubStats : getSubStatsCount(tierIndex, rand);
+        // 6. Tính toán & Gắn chỉ số Phụ (Substats)
+        int subStats = (inputSubStats != -1) ? inputSubStats : getSubStatsCount(tierIndex, rand);
 
         List<Object[]> availableStats = new ArrayList<>();
         for (Object[] statData : RANDOM_STATS_DB) {
@@ -172,7 +189,7 @@ public class TrinketGenerator {
         meta.setUnbreakable(true);
         meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_UNBREAKABLE, org.bukkit.inventory.ItemFlag.HIDE_ATTRIBUTES);
 
-        // [CẬP NHẬT MỚI]: CHỐNG STACK VĨNH VIỄN BẰNG UUID
+        // 7. Chống Stack vĩnh viễn bằng UUID
         org.bukkit.persistence.PersistentDataContainer data = meta.getPersistentDataContainer();
         data.set(new org.bukkit.NamespacedKey(vn.minecraft.rPGCore.RPGCore.getInstance(), "trinket_type"), org.bukkit.persistence.PersistentDataType.STRING, type.toLowerCase());
         data.set(new org.bukkit.NamespacedKey(vn.minecraft.rPGCore.RPGCore.getInstance(), "trinket_uuid"), org.bukkit.persistence.PersistentDataType.STRING, UUID.randomUUID().toString());

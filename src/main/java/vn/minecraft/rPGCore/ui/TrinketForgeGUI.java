@@ -29,8 +29,8 @@ public class TrinketForgeGUI implements CommandExecutor, Listener {
     public static final String GUI_NAME = "§d§lGia Công Trang Sức";
     private final Random rand = new Random();
 
-    private final double[] RATES = {70.0, 50.0, 35.0, 20.0, 10.0};
-    private final int[] MASTER_COSTS = {2, 4, 8, 12, 20};
+    private final double[] RATES = {70.0, 35.0, 20.0, 10.0, 4.0};
+    private final int[] MASTER_COSTS = {2, 4, 12, 24, 40};
 
     public TrinketForgeGUI(ItemManager ignoredManager) {
     }
