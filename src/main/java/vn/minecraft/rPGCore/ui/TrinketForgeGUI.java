@@ -69,14 +69,35 @@ public class TrinketForgeGUI implements CommandExecutor, Listener {
         return item;
     }
 
+    // [MỚI]: Hàm kiểm tra đồ có cờ KHÔNG THỂ NÂNG CẤP
+    private boolean isUnupgradable(ItemStack item) {
+        if (item == null || !item.hasItemMeta()) return false;
+        return item.getItemMeta().getPersistentDataContainer().has(
+                new org.bukkit.NamespacedKey(RPGCore.getInstance(), "unupgradable"),
+                PersistentDataType.BYTE
+        );
+    }
+
     private void updateButtons(Inventory inv) {
         ItemStack trinket = inv.getItem(10);
         int currentLevel = 0;
         boolean hasItem = false;
+        boolean unupgradable = false;
 
         if (trinket != null && trinket.hasItemMeta() && trinket.getItemMeta().getPersistentDataContainer().has(new org.bukkit.NamespacedKey(RPGCore.getInstance(), "trinket_type"), PersistentDataType.STRING)) {
             currentLevel = getUpgradeLevel(trinket);
             hasItem = true;
+            unupgradable = isUnupgradable(trinket);
+        }
+
+        // [CẬP NHẬT MỚI]: Bắt hiển thị giao diện báo lỗi nếu bỏ đồ cấm nâng cấp vào
+        if (hasItem && unupgradable) {
+            List<String> errLore = Arrays.asList("", "§cTrang sức này có thuộc tính", "§cKHÔNG THỂ CƯỜNG HÓA.");
+            inv.setItem(12, createButton(Material.RED_STAINED_GLASS_PANE, "§c[+] Không thể cường hóa", errLore.toArray(new String[0])));
+            inv.setItem(13, createButton(Material.RED_STAINED_GLASS_PANE, "§c[+] Không thể cường hóa", errLore.toArray(new String[0])));
+            inv.setItem(14, createButton(Material.RED_STAINED_GLASS_PANE, "§c[+] Không thể cường hóa", errLore.toArray(new String[0])));
+            inv.setItem(16, createButton(Material.BARRIER, "§c[★] Cường Hóa Bậc Thầy", "§cTrang sức này KHÔNG THỂ cường hóa."));
+            return;
         }
 
         List<String> lore1 = new ArrayList<>(Arrays.asList("§7Tiêu hao: 1 Tinh Thể Pha Lê"));
@@ -129,21 +150,16 @@ public class TrinketForgeGUI implements CommandExecutor, Listener {
         int slot = event.getRawSlot();
         Player player = (Player) event.getWhoClicked();
 
-        // ==========================================
-        // 1. [SỬA LỖI]: CHẶN TUYỆT ĐỐI SHIFT-CLICK VÀ PHÍM TẮT
-        // ==========================================
         if (event.getClick().isShiftClick() || event.getClick().isKeyboardClick()) {
-            event.setCancelled(true); // Khóa đứng hành vi nhấc kính/tráo đồ
+            event.setCancelled(true);
             return;
         }
 
-        // 2. Cho phép người chơi kéo-thả thủ công vào ô 10
         if (slot == 10) {
             Bukkit.getScheduler().runTaskLater(RPGCore.getInstance(), () -> updateButtons(player.getOpenInventory().getTopInventory()), 1L);
             return;
         }
 
-        // 3. Chặn tương tác với kính nền ở các ô khác
         if (slot >= 0 && slot < 27 && (slot < 12 || slot > 14) && slot != 16) {
             event.setCancelled(true);
             return;
@@ -157,12 +173,22 @@ public class TrinketForgeGUI implements CommandExecutor, Listener {
                 player.sendMessage("§cBạn chưa đặt Trang sức vào ô!");
                 return;
             }
+            if (isUnupgradable(trinket)) {
+                player.sendMessage("§c§l[!] §cTrang sức này không thể cường hóa!");
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
+                return;
+            }
             int attempts = (slot == 12) ? 1 : (slot == 13) ? 10 : 100;
             processLoop(player, trinket, attempts);
         } else if (slot == 16) {
             event.setCancelled(true);
             if (!isValidTrinket(trinket)) {
                 player.sendMessage("§cBạn chưa đặt Trang sức vào ô!");
+                return;
+            }
+            if (isUnupgradable(trinket)) {
+                player.sendMessage("§c§l[!] §cTrang sức này không thể cường hóa!");
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
                 return;
             }
 
@@ -226,11 +252,9 @@ public class TrinketForgeGUI implements CommandExecutor, Listener {
                 success = true;
                 break;
             } else {
-                // Nếu đang ở mốc an toàn thì không làm gì cả, vòng lặp chạy tiếp
                 if (currentLevel == 1 || currentLevel == 3 || currentLevel == 5) {
-                    // Do nothing, safe milestone
+                    // Do nothing
                 } else if (currentLevel > 0) {
-                    // Kiểm tra Bùa Bảo Vệ khi ở mốc không an toàn (+2, +4)
                     ItemStack charmTemplate = getItemManager().buildItem("misc_protection_charm", 1);
                     boolean savedByCharm = false;
 
@@ -246,7 +270,7 @@ public class TrinketForgeGUI implements CommandExecutor, Listener {
                         currentLevel--;
                         applyTrinketNameChange(trinket, currentLevel);
                         dropped = true;
-                        break; // Rớt cấp thì bắt buộc dừng vòng lặp Auto
+                        break;
                     }
                 }
             }
@@ -318,26 +342,19 @@ public class TrinketForgeGUI implements CommandExecutor, Listener {
             if (isMagicSection && clean.startsWith("- ")) validMagicLines.add(i);
         }
 
-        // ==========================================
-        // 1. BUFF DÒNG DÕI (Ít nhất 1 dòng, 20% ra 2 dòng, THÊM 1 SAO)
-        // ==========================================
         if (!lineageLines.isEmpty()) {
             int index1 = lineageLines.get(rand.nextInt(lineageLines.size()));
-            addStarsAndMultiply(lore, index1, 1.25, 1); // Tăng 25% và thêm 1 sao
+            addStarsAndMultiply(lore, index1, 1.25, 1);
 
-            // 20% cơ hội tăng thêm 1 dòng nữa (nếu có hơn 1 dòng)
             if (lineageLines.size() > 1 && rand.nextDouble() <= 0.20) {
                 int index2;
                 do {
                     index2 = lineageLines.get(rand.nextInt(lineageLines.size()));
-                } while (index2 == index1); // Phải chọn dòng khác
-                addStarsAndMultiply(lore, index2, 1.25, 1); // Tăng 25% và thêm 1 sao
+                } while (index2 == index1);
+                addStarsAndMultiply(lore, index2, 1.25, 1);
             }
         }
 
-        // ==========================================
-        // 2. BUFF DÒNG MA THUẬT (Thêm 1-2 sao)
-        // ==========================================
         if (!validMagicLines.isEmpty()) {
             int chosenLineIndex = validMagicLines.get(rand.nextInt(validMagicLines.size()));
             boolean twoStars = (rand.nextInt(100) < 30);
@@ -351,28 +368,20 @@ public class TrinketForgeGUI implements CommandExecutor, Listener {
         item.setItemMeta(meta);
     }
 
-    // ==========================================
-    // HÀM PHỤ TRỢ: GỘP CHUNG LOGIC GẮN SAO CHO GỌN CODE
-    // ==========================================
     private void addStarsAndMultiply(List<String> lore, int index, double multi, int starsToAdd) {
         String oldLine = lore.get(index);
-
-        // 1. Đếm số sao hiện tại
         int currentStars = 0;
         for (char c : ChatColor.stripColor(oldLine).toCharArray()) {
             if (c == '★') currentStars++;
         }
         int totalStars = currentStars + starsToAdd;
 
-        // 2. Cạo sạch sao và mã màu thừa ở chuỗi cũ
         String cleanLine = oldLine.replace("★", "").trim();
         cleanLine = cleanLine.replaceAll("( §[0-9a-fk-or])+$", "").trim();
 
-        // 3. Xây dựng dải sao mới liền mạch
         StringBuilder stars = new StringBuilder(" §e");
         for(int s = 0; s < totalStars; s++) stars.append("★");
 
-        // 4. Nhân chỉ số và dán dải sao vào
         lore.set(index, multiplyLoreValue(cleanLine, multi, stars.toString()));
     }
 

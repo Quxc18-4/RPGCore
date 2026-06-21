@@ -65,6 +65,10 @@ public final class RPGCore extends JavaPlugin {
 
         this.itemManager = new ItemManager(this);
 
+        // [MỚI CHÈN VÀO]: Load toàn bộ trang sức cố định từ thư mục trinkets/
+        FixedTrinketManager.getInstance().loadAll();
+        FixedEquipmentManager.getInstance().loadAll();
+
         // Khởi tạo Engine và Cooking Manager ĐÚNG THỨ TỰ
         vn.minecraft.rPGCore.cooking.CookingEngine cookingEngine = new vn.minecraft.rPGCore.cooking.CookingEngine();
         CookingManager cookingManager = new CookingManager(this, this.itemManager, cookingEngine);
@@ -119,6 +123,13 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(adminArrowCraftingUI, this);
         getServer().getPluginManager().registerEvents(new DurabilityListener(playerManager), this);
         getServer().getPluginManager().registerEvents(blacksmithGUI, this);
+
+        // [MỚI CHÈN VÀO]: Đăng ký Cổng Menu Lò Rèn và Tráp Phân Rã
+        getServer().getPluginManager().registerEvents(new EquipmentMenuGUI(), this);
+        getServer().getPluginManager().registerEvents(new EquipmentStrongboxGUI(), this);
+
+        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.ui.EquipmentCategoryGUI(), this);
+        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.ui.EquipmentRecipeCraftGUI(), this);
         // Đăng ký Listener Trang Sức
         getServer().getPluginManager().registerEvents(trinketManager, this);
         getServer().getPluginManager().registerEvents(trinketForgeGUI, this);
@@ -159,6 +170,8 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new WaterFetchListener(this.itemManager), this);
         getServer().getPluginManager().registerEvents(new TrinketMenuGUI(), this);
         getServer().getPluginManager().registerEvents(new TrinketRandomCraftGUI(), this);
+        // [MỚI CHÈN VÀO]: Đăng ký Listener cho Giao diện Ghép Công Thức
+        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.ui.TrinketRecipeCraftGUI(), this);
 
         new RegenTask(playerManager, bossBarManager).runTaskTimer(this, 0L, 20L);
 

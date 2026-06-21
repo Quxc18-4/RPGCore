@@ -71,11 +71,12 @@ public class TrinketMenuGUI implements Listener {
                 "§a▶ Click để tiến hành!"));
 
         // 5. Nút Ghép Công Thức (Dùng Sách Enchant cho đẹp)
+        // Đổi từ "Tính năng đang phát triển..." thành "Mở Kho lưu trữ"
         inv.setItem(15, createItem(Material.ENCHANTED_BOOK, "§6§l[?] Ghép Công Thức",
                 "§7Sử dụng công thức cố định",
                 "§7để chế tạo trang sức đặc biệt.",
                 "",
-                "§c▶ Tính năng đang phát triển..."));
+                "§a▶ Click để mở Kho lưu trữ!"));
 
         player.openInventory(inv);
     }
@@ -105,8 +106,9 @@ public class TrinketMenuGUI implements Listener {
             player.playSound(player.getLocation(), Sound.BLOCK_PORTAL_TRIGGER, 0.5f, 2f);
             new TrinketRandomCraftGUI().openGUI(player);
         } else if (slot == 15) {
-            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
-            player.sendMessage("§c§l[!] §cTính năng Ghép Công Thức đang được chuẩn bị!");
+            // [ĐÃ SỬA]: Mở GUI Ghép công thức cố định
+            player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_CHIME, 1f, 1.5f);
+            new TrinketRecipeCraftGUI().openGUI(player);
         }
     }
 }

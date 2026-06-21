@@ -34,16 +34,16 @@ public class BlacksmithGUI implements Listener {
     private final List<Integer> SAFE_LEVELS = Arrays.asList(0, 3, 6, 9, 12, 15);
     private final Random rand = new Random();
 
-    @EventHandler
-    public void onInteractAnvil(PlayerInteractEvent event) {
-        if (event.getHand() != EquipmentSlot.HAND) return;
-        if (event.getAction() == Action.RIGHT_CLICK_BLOCK && event.getClickedBlock() != null) {
-            if (event.getClickedBlock().getType() == Material.ANVIL || event.getClickedBlock().getType() == Material.CHIPPED_ANVIL || event.getClickedBlock().getType() == Material.DAMAGED_ANVIL) {
-                event.setCancelled(true);
-                openGUI(event.getPlayer());
-            }
-        }
-    }
+//    @EventHandler
+//    public void onInteractAnvil(PlayerInteractEvent event) {
+//        if (event.getHand() != EquipmentSlot.HAND) return;
+//        if (event.getAction() == Action.RIGHT_CLICK_BLOCK && event.getClickedBlock() != null) {
+//            if (event.getClickedBlock().getType() == Material.ANVIL || event.getClickedBlock().getType() == Material.CHIPPED_ANVIL || event.getClickedBlock().getType() == Material.DAMAGED_ANVIL) {
+//                event.setCancelled(true);
+//                openGUI(event.getPlayer());
+//            }
+//        }
+//    }
 
     public void openGUI(Player player) {
         Inventory inv = Bukkit.createInventory(null, 27, GUI_NAME);
@@ -84,16 +84,26 @@ public class BlacksmithGUI implements Listener {
         ItemStack equipment = inv.getItem(10);
         int currentLevel = 0;
         boolean hasItem = false;
+        boolean unupgradable = false;
 
         if (isValidRPGEquipment(equipment)) {
             currentLevel = getUpgradeLevel(equipment);
             hasItem = true;
+            unupgradable = isUnupgradable(equipment);
         }
 
-        // ĐỔI TỪ HỆ SỐ NHÂN SANG CỘNG THẲNG
+        // [MỚI]: Bắt đồ chế tạo KHÔNG THỂ CƯỜNG HÓA
+        if (hasItem && unupgradable) {
+            List<String> errLore = Arrays.asList("", "§cTrang bị này có thuộc tính", "§cKHÔNG THỂ CƯỜNG HÓA.");
+            inv.setItem(12, createButton(Material.RED_STAINED_GLASS_PANE, "§c[+] Không thể cường hóa", errLore.toArray(new String[0])));
+            inv.setItem(13, createButton(Material.RED_STAINED_GLASS_PANE, "§c[+] Không thể cường hóa", errLore.toArray(new String[0])));
+            inv.setItem(14, createButton(Material.RED_STAINED_GLASS_PANE, "§c[+] Không thể cường hóa", errLore.toArray(new String[0])));
+            return;
+        }
+
         double baseRate = hasItem && currentLevel < 15 ? RATES[currentLevel] : 0;
         double jobBonus = JobManager.getForgeBonus(player, currentLevel);
-        double finalRate = baseRate + jobBonus; // <-- Cộng thẳng!
+        double finalRate = baseRate + jobBonus;
 
         List<String> lore1 = new ArrayList<>(Arrays.asList("§7Tiêu hao: 1 Đá Nâng Cấp"));
         List<String> lore10 = new ArrayList<>(Arrays.asList("§7Tiêu hao: Tối đa 10 Đá Nâng Cấp", "§7(Sẽ dừng lại ngay khi lên cấp)"));
@@ -134,6 +144,12 @@ public class BlacksmithGUI implements Listener {
             return;
         }
 
+        // [MỚI]: Chặn nút Rèn Bậc Thầy
+        if (isUnupgradable(equipment)) {
+            inv.setItem(16, createButton(Material.BARRIER, "§c[★] Rèn Bậc Thầy", "§cTrang bị chế tạo KHÔNG THỂ cường hóa."));
+            return;
+        }
+
         int currentLevel = getUpgradeLevel(equipment);
         if (currentLevel >= 15) {
             inv.setItem(16, createButton(Material.YELLOW_STAINED_GLASS_PANE, "§6[★] Rèn Bậc Thầy", "§cTrang bị đã đạt cấp độ tối đa."));
@@ -142,9 +158,7 @@ public class BlacksmithGUI implements Listener {
 
         int cost = getScrapCost(currentLevel);
 
-        // [KỸ NĂNG TỐI THƯỢNG]: Bậc Thầy Tiết Kiệm
         PlayerJobData data = JobManager.getPlayerData(player);
-        // [ĐÃ SỬA]: Thêm check "BLACKSMITH".equals(data.getJobId())
         if ("BLACKSMITH".equals(data.getJobId()) && data.hasUnlockedSkill("BLACKSMITH", "BS_MASTER_SAVER")) {
             cost = (int) (cost * 0.8);
         }
@@ -196,9 +210,15 @@ public class BlacksmithGUI implements Listener {
         ItemStack equipment = event.getInventory().getItem(10);
 
         if (slot >= 12 && slot <= 14) {
-            // Đã đổi sang dùng hàm isValidRPGEquipment
             if (!isValidRPGEquipment(equipment)) {
                 player.sendMessage("§cBạn chưa đặt trang bị RPG vào ô nâng cấp!");
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
+                return;
+            }
+
+            // [MỚI CHÈN VÀO]: Chặn click đập thường
+            if (isUnupgradable(equipment)) {
+                player.sendMessage("§c§l[!] §cTrang bị này không thể cường hóa!");
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
                 return;
             }
@@ -210,9 +230,15 @@ public class BlacksmithGUI implements Listener {
             processUpgradeLoop(player, equipment, attempts);
         }
         else if (slot == 16) {
-            // Đã đổi sang dùng hàm isValidRPGEquipment
             if (!isValidRPGEquipment(equipment)) {
                 player.sendMessage("§cBạn chưa đặt trang bị RPG vào ô nâng cấp!");
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
+                return;
+            }
+
+            // [MỚI CHÈN VÀO]: Chặn click đập Rèn Bậc Thầy
+            if (isUnupgradable(equipment)) {
+                player.sendMessage("§c§l[!] §cTrang bị này không thể cường hóa!");
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
                 return;
             }
@@ -579,5 +605,12 @@ public class BlacksmithGUI implements Listener {
             }
         }
         return false;
+    }
+    private boolean isUnupgradable(ItemStack item) {
+        if (item == null || !item.hasItemMeta()) return false;
+        return item.getItemMeta().getPersistentDataContainer().has(
+                new org.bukkit.NamespacedKey(RPGCore.getInstance(), "unupgradable"),
+                org.bukkit.persistence.PersistentDataType.BYTE
+        );
     }
 }
