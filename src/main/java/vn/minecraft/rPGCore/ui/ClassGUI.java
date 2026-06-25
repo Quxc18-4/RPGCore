@@ -55,6 +55,7 @@ public class ClassGUI {
             // THÊM DÒNG NÀY ĐỂ ẨN "When in Main Hand..."
             // ==========================================
             meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ATTRIBUTES);
+            meta.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
 
             // Thêm hiệu ứng phát sáng (Enchant) cho Mage/Reaper
             if (rpgClass.isEnchanted()) {

@@ -55,9 +55,10 @@ public class PlayerListener implements Listener {
         if (mainType == Material.SHEARS) return cId.equals("assassin");
         if (mainType == Material.STICK || mainType == Material.BLAZE_ROD || mainType == Material.BREEZE_ROD) return cId.equals("mage");
         if (mainType == Material.LEAD) return cId.equals("summoner");
+        if (mainType.name().endsWith("_AXE")) return cId.equals("bard") || cId.equals("commoner");
         if (mainType.name().endsWith("_HOE")) return cId.equals("reaper") || cId.equals("commoner");
         if (mainType.name().endsWith("_SWORD")) return cId.equals("warrior") || cId.equals("commoner");
-        if (mainType.name().endsWith("_AXE")) return cId.equals("paladin") || cId.equals("commoner");
+        if (mainType.name().endsWith("_SHOVEL")) return cId.equals("paladin") || cId.equals("commoner");
         if (mainType == Material.SHIELD) return cId.equals("tanker") || cId.equals("commoner");
 
         return false; // Cầm đất, đá, lúa mì... không tính là vũ khí

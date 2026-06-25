@@ -81,7 +81,7 @@ classes:
     icon: SHEARS
     description:
       - "&7Sát thủ bóng đêm, ẩn thân, né tránh."
-      - "&7Gây sát thương cực cao,..."
+      - "&7Gây sát thương chí mạng cực cao."
     max-health: 800.0
     max-resource: 100.0
     resource-type: STAMINA

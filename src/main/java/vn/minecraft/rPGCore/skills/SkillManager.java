@@ -6,6 +6,7 @@ import vn.minecraft.rPGCore.skills.archer.*;
 import vn.minecraft.rPGCore.skills.assassin.*;
 import vn.minecraft.rPGCore.skills.bard.MaestroJourney;
 import vn.minecraft.rPGCore.skills.bard.ScatteringChords;
+import vn.minecraft.rPGCore.skills.bard.WanderingMinstrel;
 import vn.minecraft.rPGCore.skills.mage.*;
 import vn.minecraft.rPGCore.skills.mage.fusion.FusionEngine;
 import vn.minecraft.rPGCore.skills.summoner.*;
@@ -96,6 +97,7 @@ public class SkillManager {
         //Bard
         registerSkill(new MaestroJourney());
         registerSkill(new ScatteringChords());
+        registerSkill(new WanderingMinstrel());
     }
 
     public void registerSkill(ISkill skill) {
