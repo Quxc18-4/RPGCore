@@ -4,6 +4,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.checkerframework.checker.units.qual.C;
 import vn.minecraft.rPGCore.skills.archer.*;
 import vn.minecraft.rPGCore.skills.assassin.*;
+import vn.minecraft.rPGCore.skills.bard.MaestroJourney;
+import vn.minecraft.rPGCore.skills.bard.ScatteringChords;
 import vn.minecraft.rPGCore.skills.mage.*;
 import vn.minecraft.rPGCore.skills.mage.fusion.FusionEngine;
 import vn.minecraft.rPGCore.skills.summoner.*;
@@ -91,6 +93,9 @@ public class SkillManager {
         registerSkill(new MageManaFlowPassive());
         registerSkill(new MageLevitationSkill());
         registerSkill(new UltimateElementGate(plugin));
+        //Bard
+        registerSkill(new MaestroJourney());
+        registerSkill(new ScatteringChords());
     }
 
     public void registerSkill(ISkill skill) {

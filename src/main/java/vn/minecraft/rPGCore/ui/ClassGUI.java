@@ -19,7 +19,8 @@ public class ClassGUI {
     public static final String GUI_TITLE = "§8§lCHỌN CLASS NHÂN VẬT";
 
     // Vị trí cố định đặt 7 class sao cho căn giữa và cách nhau 1 ô (GUI 36 ô)
-    private static final int[] CLASS_SLOTS = {11, 13, 15, 28, 30, 32, 34};
+    // Thay thế dòng cũ bằng dòng này (Xếp 4 ô hàng 2 và 4 ô hàng 4)
+    private static final int[] CLASS_SLOTS = {10, 12, 14, 16, 28, 30, 32, 34};
 
     public void openGUI(Player player, List<RPGClass> availableClasses) {
         Inventory gui = Bukkit.createInventory(null, 45, GUI_TITLE);

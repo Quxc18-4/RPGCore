@@ -86,3 +86,13 @@ classes:
     max-resource: 100.0
     resource-type: STAMINA
     enchanted: false
+  bard:
+    display-name: "&dBard"
+    icon: MUSIC_DISC_5
+    description:
+      - "&7Nhạc sư lãng du với những giai điệu ma thuật."
+      - "&7Hỗ trợ đồng minh và điều khiển nhịp độ trận đấu."
+    max-health: 850.0
+    max-resource: 150.0
+    resource-type: MANA
+    enchanted: true
