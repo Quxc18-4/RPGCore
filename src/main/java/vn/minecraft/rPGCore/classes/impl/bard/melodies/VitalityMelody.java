@@ -5,7 +5,6 @@ import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.metadata.FixedMetadataValue;
 import vn.minecraft.rPGCore.RPGCore;
@@ -18,15 +17,16 @@ public class VitalityMelody implements IMelody {
     @Override
     public void cast(Player player, RPGPlayer rpgPlayer, Location targetLocation) {
         double radius = 5.0 * ToneModifier.getEchoRadiusMultiplier(player, rpgPlayer);
-        double durationTicks = (5.0 * 20.0) * ToneModifier.getLowDurationMultiplier(player);
+        long durationTicks = (long) ((5.0 * 20.0) * ToneModifier.getLowDurationMultiplier(player));
         double highMultiplier = ToneModifier.getHighToneMultiplier(player);
 
-        player.getWorld().playSound(targetLocation, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 0.8f);
+        // Thay thế MelodyUtils.playArpeggio bằng:
+        float[] pitches = {0.5f, 0.7f, 0.9f, 1.1f, 1.3f, 1.5f, 1.8f, 2.0f};
+        int[] ticks = {0, 5, 10, 15, 20, 25, 30, 45}; // Lướt tay rất nhanh
+        MelodyUtils.playMelodySequence(targetLocation, Sound.BLOCK_NOTE_BLOCK_HARP, 1.5f, pitches, ticks);
+        MelodyUtils.drawExpandingAura(targetLocation, radius, Color.LIME, Particle.GLOW);
 
-        // LÕI 7: Dấu Lặng Ngân (Fermata) - Thanh Tẩy
-        boolean hasFermata = rpgPlayer.hasSetBonus("BARD_CORE_7", 1);
-
-        // Tính toán Máu & Khiên (Base 5% Max HP Bard)
+        boolean hasFermata = rpgPlayer.getSkillData().getSkillLevel("BARD_CORE_7") > 0;
         double healAmount = (rpgPlayer.getTotalMaxHealth() * 0.05) * highMultiplier;
 
         for (Entity e : targetLocation.getWorld().getNearbyEntities(targetLocation, radius, radius, radius)) {
@@ -35,25 +35,19 @@ public class VitalityMelody implements IMelody {
                 RPGPlayer rpgAlly = RPGCore.getInstance().getPlayerManager().getRPGPlayer(ally.getUniqueId());
 
                 if (rpgAlly != null) {
-                    // Gọi hàm heal có màng lọc Anti-Heal
                     rpgAlly.heal(healAmount);
-
-                    // Cấp Khiên (Sử dụng Meta khiên có sẵn trong RPGCore cleanup)
-                    long expire = System.currentTimeMillis() + (long) (durationTicks * 50);
+                    long expire = System.currentTimeMillis() + (durationTicks * 50);
                     ally.setMetadata("RPG_Absorption_Shield", new FixedMetadataValue(RPGCore.getInstance(), healAmount));
                     ally.setMetadata("RPG_Absorption_Shield_Expire", new FixedMetadataValue(RPGCore.getInstance(), expire));
 
-                    // Xử lý Lõi 7: Thanh Tẩy
+                    MelodyUtils.drawTargetFeedback(ally, Particle.HEART);
+
                     if (hasFermata) {
                         StatusEffectManager.cleanseNegativeEffects(ally);
                     }
-
-                    ally.getWorld().spawnParticle(Particle.HEART, ally.getLocation().add(0, 2, 0), 3, 0.3, 0.3, 0.3, 0);
                 }
             }
         }
-
-        // Xử lý chung: Dissonance, Afterglow, Eternal Melody
         MelodyUtils.processGlobalPerks(player, rpgPlayer, targetLocation, radius, durationTicks);
     }
 }

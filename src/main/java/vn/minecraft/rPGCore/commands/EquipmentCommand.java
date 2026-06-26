@@ -1,6 +1,7 @@
 package vn.minecraft.rPGCore.commands;
 
 import org.bukkit.Material;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -176,7 +177,7 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
             double baseAtk = level * 4.5 * tierMulti * qualityMod;
             double minAtk = baseAtk * 0.75;
             double maxAtk = baseAtk * 1.25;
-            boolean isMagicWeapon = rpgClass.equalsIgnoreCase("mage") || rpgClass.equalsIgnoreCase("summoner");
+            boolean isMagicWeapon = rpgClass.equalsIgnoreCase("mage") || rpgClass.equalsIgnoreCase("summoner") || rpgClass.equalsIgnoreCase("bard");
             String dmgType = isMagicWeapon ? "Sát thương phép thuật" : "Sát thương vật lý";
             lore.add("§7 - " + dmgType + ": §f" + String.format("%.1f", minAtk) + " §8~ §f" + String.format("%.1f", maxAtk));
             maxDurability = (int) (1500 * (tierMulti * 0.3 + qualityMod * 0.7));
@@ -276,6 +277,15 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
             applySetBonus(lore, lineage.toLowerCase());
             lore.add("");
         }
+
+        // [FIX]: Ép Tốc độ vung tay (Attack Speed) của Vanilla lên 100 để không bị delay hoạt ảnh
+        org.bukkit.attribute.AttributeModifier speedMod = new org.bukkit.attribute.AttributeModifier(
+                org.bukkit.NamespacedKey.minecraft("bard_fast_equip"),
+                100.0,
+                org.bukkit.attribute.AttributeModifier.Operation.ADD_NUMBER,
+                org.bukkit.inventory.EquipmentSlotGroup.MAINHAND
+        );
+        meta.addAttributeModifier(Attribute.ATTACK_SPEED, speedMod);
 
         meta.setUnbreakable(true);
         meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_UNBREAKABLE, org.bukkit.inventory.ItemFlag.HIDE_ATTRIBUTES);

@@ -172,6 +172,7 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new TrinketRandomCraftGUI(), this);
         // [MỚI CHÈN VÀO]: Đăng ký Listener cho Giao diện Ghép Công Thức
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.ui.TrinketRecipeCraftGUI(), this);
+        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.skills.bard.BardCoreGUI(), this);
 
         new RegenTask(playerManager, bossBarManager).runTaskTimer(this, 0L, 20L);
 
@@ -223,6 +224,8 @@ public final class RPGCore extends JavaPlugin {
         if (this.getCommand("tforge") != null) {
             this.getCommand("tforge").setExecutor(trinketForgeGUI);
         }
+
+        vn.minecraft.rPGCore.classes.impl.bard.BardGlobalManager.startEngine();
 
         getLogger().info("RPGCore đã được bật thành công!");
 

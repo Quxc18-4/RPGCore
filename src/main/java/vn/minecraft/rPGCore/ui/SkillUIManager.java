@@ -8,6 +8,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import vn.minecraft.rPGCore.player.PlayerManager;
@@ -429,7 +430,8 @@ public class SkillUIManager implements Listener {
             meta.addItemFlags(
                     org.bukkit.inventory.ItemFlag.HIDE_ATTRIBUTES,
                     org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS,
-                    org.bukkit.inventory.ItemFlag.HIDE_UNBREAKABLE
+                    org.bukkit.inventory.ItemFlag.HIDE_UNBREAKABLE,
+                    ItemFlag.HIDE_ADDITIONAL_TOOLTIP
             );
 
             item.setItemMeta(meta);

@@ -1,5 +1,6 @@
 package vn.minecraft.rPGCore.classes.impl.bard.melodies;
 
+import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -15,31 +16,28 @@ public class ExplosiveMelody implements IMelody {
     @Override
     public void cast(Player player, RPGPlayer rpgPlayer, Location targetLocation) {
         double radius = 5.0 * ToneModifier.getEchoRadiusMultiplier(player, rpgPlayer);
-        // Knockback Base là 1.5 (Tương đương văng 3 Block). Khuếch đại bởi Âm Cao.
         double kbForce = 1.5 * ToneModifier.getHighToneMultiplier(player);
 
-        player.getWorld().playSound(targetLocation, Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.2f);
-        // Hiệu ứng Sóng Xung Kích chuẩn 1.21.x
+        // Thay thế MelodyUtils.playArpeggio bằng:
+        float[] pitches = {0.5f, 0.8f, 1.0f};
+        int[] ticks = {0, 2, 4}; // Quạt tay cực mạnh
+        MelodyUtils.playMelodySequence(targetLocation, Sound.BLOCK_NOTE_BLOCK_GUITAR, 1.5f, pitches, ticks);
+        player.getWorld().playSound(targetLocation, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.2f);
+        MelodyUtils.drawExpandingAura(targetLocation, radius, Color.MAROON, Particle.EXPLOSION);
+
         player.getWorld().spawnParticle(Particle.SONIC_BOOM, targetLocation.add(0, 1, 0), 1);
 
         for (Entity e : targetLocation.getWorld().getNearbyEntities(targetLocation, radius, radius, radius)) {
             if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) {
                 LivingEntity enemy = (LivingEntity) e;
-
-                // Tính toán Vector đẩy lùi văng ra khỏi tâm targetLocation
                 Vector direction = enemy.getLocation().toVector().subtract(targetLocation.toVector());
-                if (direction.lengthSquared() == 0) {
-                    direction = new Vector(0, 1, 0); // Tránh lỗi chia cho 0 nếu đứng trùng tâm
-                } else {
-                    direction.normalize();
-                }
+                if (direction.lengthSquared() == 0) direction = new Vector(0, 1, 0);
+                else direction.normalize();
 
-                // Tạo lực đẩy (Hất lên trên một chút để tạo độ nảy)
                 direction.multiply(kbForce).setY(Math.min(0.8, kbForce * 0.5));
                 enemy.setVelocity(direction);
             }
         }
-
-        MelodyUtils.processGlobalPerks(player, rpgPlayer, targetLocation, radius, 0); // Tức thời -> Duration = 0
+        MelodyUtils.processGlobalPerks(player, rpgPlayer, targetLocation, radius, 0);
     }
 }
