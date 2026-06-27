@@ -27,8 +27,8 @@ public class BardCoreGUI implements Listener {
             new CoreData(2, "Hơi Thở Của Gió", "Nếu HP > 90% khi kích nổ Giai điệu: Kỹ năng đó tốn 0 Mana và giảm thêm 20% Hồi chiêu cuối."),
             new CoreData(3, "Vang Vọng Tột Cùng", "Tăng vĩnh viễn mức mở rộng Bán kính của Âm Vang từ 50% lên 80% mỗi Âm."),
             new CoreData(4, "Hợp Âm Dội Lại", "Khi Giai điệu nổ, tự động hoàn trả 1 Âm ngẫu nhiên vừa bị tiêu thụ vào bộ nhớ."),
-            new CoreData(5, "Bội Âm (Overtone)", "Mỗi Âm đang giữ +20% Tốc chạy & +15% Kháng CC. (Mất đi khi tiêu thụ)."),
-            new CoreData(6, "Nghịch Âm (Dissonance)", "Kẻ địch dính Giai điệu bị giảm 15% Kháng Phép và Giáp Vật lý."),
+            new CoreData(5, "Bội Âm", "Mỗi Âm đang giữ +20% Tốc chạy & +15% Kháng Hiệu Ứng. (Mất đi khi tiêu thụ)."),
+            new CoreData(6, "Nghịch Âm", "Kẻ địch dính Giai điệu bị giảm 15% Kháng Phép và Giáp Vật lý."),
             new CoreData(7, "Dấu Lặng Ngân", "Giai điệu Sự Sống thanh tẩy 1 Hiệu ứng xấu ngẫu nhiên cho đồng minh."),
             new CoreData(8, "Thiên Tài Âm Nhạc", "Tăng giới hạn lưu trữ từ 3 Âm lên tối đa 4 Âm."),
             new CoreData(9, "Giai Điệu Vĩnh Cửu", "Giai điệu trúng từ 4 đồng minh trở lên lập tức giảm 50% Hồi chiêu của kỹ năng đó.")
@@ -57,7 +57,7 @@ public class BardCoreGUI implements Listener {
             CoreData core = selectedCores.get(i);
             ItemStack item = new ItemStack(Material.AMETHYST_CLUSTER);
             ItemMeta meta = item.getItemMeta();
-            meta.setDisplayName("§d§l[Lõi Cấp " + core.id + "] §f" + core.name);
+            meta.setDisplayName("§d§l[Lõi Nâng Cấp [" + core.id + "] ] §f" + core.name);
             meta.setLore(Arrays.asList("§7" + core.description, "", "§eNhấp chuột để chọn Lõi này!"));
             item.setItemMeta(meta);
             inv.setItem(slots[i], item);

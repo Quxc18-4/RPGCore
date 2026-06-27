@@ -187,7 +187,7 @@ public class BardClass extends RPGClass {
 
     // ==========================================
     // KHU VỰC QUẢN LÝ ĐÒN ĐÁNH THƯỜNG (BASIC ATTACK)
-    // Cơ chế mới: Dual-Mode (Truy Ảnh 180 độ / Đạn Xuyên Thấu)
+    // Cơ chế: Đạn Lượn Sóng - Khóa Mục Tiêu Phân Tán & Tương tác Âm Sắc
     // ==========================================
     private final Map<java.util.UUID, Long> nextAttackTime = new java.util.HashMap<>();
 
@@ -207,145 +207,202 @@ public class BardClass extends RPGClass {
         attackCooldown = Math.max(200, attackCooldown);
         nextAttackTime.put(player.getUniqueId(), currentTime + attackCooldown);
 
-        fireDualModeChords(player, rpgPlayer);
+        fireAdaptiveChords(player, rpgPlayer);
         return false;
     }
 
-    private void fireDualModeChords(Player player, RPGPlayer rpgPlayer) {
+    private void fireAdaptiveChords(Player player, RPGPlayer rpgPlayer) {
+        // 1. ĐỌC CHỈ SỐ ÂM SẮC (TONES) TỪ NGƯỜI CHƠI
+        java.util.List<vn.minecraft.rPGCore.classes.impl.bard.tones.ToneType> tones =
+                vn.minecraft.rPGCore.classes.impl.bard.tones.ToneManager.getCurrentTones(player);
+
+        int sharpCount = 0, lowCount = 0, echoCount = 0, highCount = 0;
+        for (vn.minecraft.rPGCore.classes.impl.bard.tones.ToneType t : tones) {
+            if (t == vn.minecraft.rPGCore.classes.impl.bard.tones.ToneType.SHARP) sharpCount++;
+            else if (t == vn.minecraft.rPGCore.classes.impl.bard.tones.ToneType.LOW) lowCount++;
+            else if (t == vn.minecraft.rPGCore.classes.impl.bard.tones.ToneType.ECHO) echoCount++;
+            else if (t == vn.minecraft.rPGCore.classes.impl.bard.tones.ToneType.HIGH) highCount++;
+        }
+
+        // 2. TÍNH TOÁN CÁC CHỈ SỐ BỔ TRỢ TỪ ÂM
+        // Số lượng đạn (Âm Vang)
+        int projCount = Math.min(4, echoCount + 1);
+
+        // Hệ số sát thương cơ bản chia theo số lượng tia
+        double baseDmgMulti = 1.0;
+        if (projCount == 2) baseDmgMulti = 0.50;
+        else if (projCount == 3) baseDmgMulti = 0.33;
+        else if (projCount == 4) baseDmgMulti = 0.30;
+
+        // Âm Sắc: Cộng thẳng 10% sát thương vào mỗi tia đạn
+        double finalDmgMulti = baseDmgMulti + (sharpCount * 0.10);
+
+        // Âm Trầm: Làm chậm 15% mỗi Âm
+        double slowPercent = lowCount * 0.15;
+
+        // Âm Cao: Gây nổ AoE 3x3 khi trúng đích (Không cộng dồn)
+        boolean hasAoE = highCount > 0;
+
         org.bukkit.Sound instrument = BARD_INSTRUMENTS[random.nextInt(BARD_INSTRUMENTS.length)];
         player.getWorld().playSound(player.getLocation(), instrument, 1.0f, 1.5f);
 
-        // [ĐÃ SỬA]: Tăng Bán kính quét lên 8.5 Block (Tầm đánh chuẩn của Pháp Sư Tầm Trung)
-        double searchRadius = 8.5;
-        java.util.List<org.bukkit.entity.LivingEntity> validTargets = new java.util.ArrayList<>();
-        org.bukkit.util.Vector playerDir = player.getEyeLocation().getDirection().normalize();
+        // 3. TOÁN HỌC VECTOR: TÍNH GÓC BẮN TỎA RA (SPREAD ANGLES)
+        double[] spreadAngles;
+        if (projCount == 1) spreadAngles = new double[]{0};
+        else if (projCount == 2) spreadAngles = new double[]{-12, 12};
+        else if (projCount == 3) spreadAngles = new double[]{-15, 0, 15};
+        else spreadAngles = new double[]{-20, -7, 7, 20}; // Có Lõi 8 (4 đạn)
 
-        for (org.bukkit.entity.Entity e : player.getNearbyEntities(searchRadius, searchRadius, searchRadius)) {
-            // Tuân thủ Luật: Nhận dạng đồng minh trước khi Target
-            if (e instanceof org.bukkit.entity.LivingEntity && CombatManager.canTarget(player, e)) {
-                org.bukkit.util.Vector dirToTarget = e.getLocation().toVector().subtract(player.getLocation().toVector()).normalize();
+        // [QUAN TRỌNG]: Bộ nhớ dùng chung để phân phối đạn, tránh 4 đạn cắm vào 1 con
+        java.util.Set<java.util.UUID> lockedTargets = new java.util.HashSet<>();
 
-                // Thuật toán: Chỉ quét góc 180 độ phía trước mặt
-                if (playerDir.dot(dirToTarget) > 0) {
-                    validTargets.add((org.bukkit.entity.LivingEntity) e);
-                }
-            }
-        }
-
-        if (validTargets.isEmpty()) {
-            // Không có quái -> Đạn Skillshot 100% ST (Bắn mù)
-            launchSkillshotChord(player, rpgPlayer);
-        } else {
-            // Có quái -> Đạn Truy Ảnh chia 3 (Mỗi tia 33% ST)
-            java.util.Collections.shuffle(validTargets);
-            java.util.List<org.bukkit.entity.LivingEntity> finalTargets = validTargets.subList(0, Math.min(3, validTargets.size()));
-
-            for (org.bukkit.entity.LivingEntity target : finalTargets) {
-                launchHomingChord(player, rpgPlayer, target);
-            }
+        // Phóng các nốt nhạc
+        for (int i = 0; i < projCount; i++) {
+            launchAdaptiveProjectile(player, rpgPlayer, finalDmgMulti, slowPercent, hasAoE, spreadAngles[i], lockedTargets);
         }
     }
 
-    // ==========================================
-    // CHẾ ĐỘ 1: ĐẠN SKILLSHOT ĐƠN MỤC TIÊU (100% SÁT THƯƠNG)
-    // ==========================================
-    private void launchSkillshotChord(Player player, RPGPlayer rpgPlayer) {
+    private void launchAdaptiveProjectile(Player player, RPGPlayer rpgPlayer, double dmgMulti, double slowPercent, boolean hasAoE, double yawOffsetDegrees, java.util.Set<java.util.UUID> lockedTargets) {
         new org.bukkit.scheduler.BukkitRunnable() {
             org.bukkit.Location currentLoc = player.getEyeLocation().clone().add(0, -0.3, 0);
-            org.bukkit.util.Vector direction = player.getEyeLocation().getDirection().normalize().multiply(0.9); // Tốc độ bay khá nhanh
+            org.bukkit.util.Vector direction = player.getEyeLocation().getDirection().normalize();
+
             int ticksLived = 0;
             double noteColor = Math.random();
+            org.bukkit.entity.LivingEntity homingTarget = null;
 
-            org.bukkit.util.Vector randomAxis = new org.bukkit.util.Vector(Math.random(), Math.random(), Math.random()).normalize();
-            org.bukkit.util.Vector perpVector = direction.clone().crossProduct(randomAxis).normalize();
+            // Xử lý góc bắn chùm (Spread)
+            {
+                double radians = Math.toRadians(yawOffsetDegrees);
+                double cos = Math.cos(radians);
+                double sin = Math.sin(radians);
+                double x = direction.getX() * cos - direction.getZ() * sin;
+                double z = direction.getX() * sin + direction.getZ() * cos;
+                direction.setX(x).setZ(z).normalize().multiply(0.85); // Tốc độ bay 0.85
+            }
 
             @Override
             public void run() {
-                // Tầm bắn xa: ~18 block (20 ticks * 0.9 tốc độ)
-                if (ticksLived++ > 20 || currentLoc.getBlock().getType().isSolid() || !player.isOnline()) {
-                    player.getWorld().spawnParticle(Particle.ENCHANTED_HIT, currentLoc, 5, 0.1, 0.1, 0.1, 0.05);
+                // Lifespan 25 ticks (~21 block)
+                if (ticksLived++ > 25 || currentLoc.getBlock().getType().isSolid() || !player.isOnline()) {
+                    player.getWorld().spawnParticle(Particle.ENCHANTED_HIT, currentLoc, 3, 0.1, 0.1, 0.1, 0.05);
                     this.cancel();
                     return;
                 }
 
-                double waveOffset = Math.sin(ticksLived * 0.5) * 0.3;
-                org.bukkit.Location visualLoc = currentLoc.clone().add(perpVector.clone().multiply(waveOffset));
+                // 1. CẢM BIẾN DÒ TÌM THÔNG MINH (Bán kính 3.5 = Hộp quét 7x7)
+                if (homingTarget == null || !homingTarget.isValid() || homingTarget.isDead()) {
+                    double closestUnlockedDist = 12.25; // 3.5 * 3.5
+                    double closestLockedDist = 12.25;
+                    org.bukkit.entity.LivingEntity bestUnlocked = null;
+                    org.bukkit.entity.LivingEntity bestLocked = null;
 
-                player.getWorld().spawnParticle(Particle.NOTE, visualLoc.clone().add(0, -0.4, 0), 0, noteColor, 0, 0, 1);
+                    for (org.bukkit.entity.Entity e : currentLoc.getWorld().getNearbyEntities(currentLoc, 3.5, 3.5, 3.5)) {
+                        if (e instanceof LivingEntity && !e.equals(player) && CombatManager.canTarget(player, e)) {
+                            double d = e.getLocation().distanceSquared(currentLoc);
 
-                for (org.bukkit.entity.Entity e : currentLoc.getWorld().getNearbyEntities(currentLoc, 1.2, 1.2, 1.2)) {
+                            // Phân loại: Đạn khác đã xí phần mục tiêu này chưa?
+                            if (lockedTargets.contains(e.getUniqueId())) {
+                                if (d < closestLockedDist) {
+                                    closestLockedDist = d;
+                                    bestLocked = (LivingEntity) e;
+                                }
+                            } else {
+                                if (d < closestUnlockedDist) {
+                                    closestUnlockedDist = d;
+                                    bestUnlocked = (LivingEntity) e;
+                                }
+                            }
+                        }
+                    }
+
+                    // Ưu tiên chọn mục tiêu CHƯA BỊ KHÓA
+                    if (bestUnlocked != null) {
+                        homingTarget = bestUnlocked;
+                        lockedTargets.add(homingTarget.getUniqueId());
+                    }
+                    // Chấp nhận bắn bồi nếu xung quanh chỉ có mục tiêu đã bị khóa
+                    else if (bestLocked != null) {
+                        homingTarget = bestLocked;
+                    }
+                }
+
+                // 2. BẺ LÁI NẾU BẮT ĐƯỢC TÍN HIỆU (HOMING)
+                if (homingTarget != null) {
+                    org.bukkit.Location targetEye = homingTarget.getLocation().add(0, homingTarget.getHeight() / 2.0, 0);
+                    org.bukkit.util.Vector toTarget = targetEye.toVector().subtract(currentLoc.toVector()).normalize().multiply(0.85);
+                    // Hòa trộn Vector (25% bẻ lái) để bẻ mượt mà
+                    direction = direction.multiply(0.75).add(toTarget.multiply(0.25)).normalize().multiply(0.85);
+                }
+
+                currentLoc.add(direction);
+
+                // 3. VẼ HẠT NỐT NHẠC VỚI QUỸ ĐẠO LƯỢN SÓNG (SINE WAVE)
+                if (ticksLived % 2 == 0) {
+                    org.bukkit.util.Vector right = direction.clone().crossProduct(new org.bukkit.util.Vector(0, 1, 0)).normalize();
+                    if (right.lengthSquared() == 0) {
+                        right = direction.clone().crossProduct(new org.bukkit.util.Vector(1, 0, 0)).normalize();
+                    }
+
+                    // Biên độ nảy sóng âm (0.4)
+                    double waveOffset = Math.sin(ticksLived * 0.4) * 0.4;
+                    org.bukkit.Location visualLoc = currentLoc.clone().add(right.multiply(waveOffset));
+
+                    player.getWorld().spawnParticle(Particle.NOTE, visualLoc.clone().add(0, -0.4, 0), 0, noteColor, 0, 0, 1);
+                }
+
+                // 4. KIỂM TRA VA CHẠM (Hitbox 0.8)
+                for (org.bukkit.entity.Entity e : currentLoc.getWorld().getNearbyEntities(currentLoc, 0.8, 0.8, 0.8)) {
                     if (e instanceof LivingEntity && !e.equals(player) && CombatManager.canTarget(player, e)) {
-                        LivingEntity target = (LivingEntity) e;
+                        LivingEntity hitTarget = (LivingEntity) e;
 
-                        // ST Kỹ năng 100%
-                        double dmg = CombatManager.calculateDamage(player, rpgPlayer, target, 1.0, 0.0, true, false);
+                        // ÁP DỤNG HIỆU ỨNG TRÚNG ĐÍCH (ON-HIT)
+                        processOnHitEffects(player, rpgPlayer, hitTarget, dmgMulti, slowPercent, hasAoE, currentLoc);
 
-                        player.setMetadata("Ghost_L_Blocker", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), true));
-                        CombatManager.applySkillDamage(player, target, dmg);
-                        player.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
-
-                        player.getWorld().playSound(currentLoc, org.bukkit.Sound.BLOCK_AMETHYST_BLOCK_HIT, 1.0f, 1.5f);
-                        player.getWorld().spawnParticle(Particle.ENCHANTED_HIT, currentLoc, 15, 0.2, 0.2, 0.2, 0.1);
                         this.cancel();
                         return;
                     }
                 }
-                currentLoc.add(direction);
             }
         }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
     }
 
-    // ==========================================
-    // CHẾ ĐỘ 2: ĐẠN TRUY ẢNH 180 ĐỘ (33% SÁT THƯƠNG MỖI TIA)
-    // ==========================================
-    private void launchHomingChord(Player player, RPGPlayer rpgPlayer, LivingEntity target) {
-        new org.bukkit.scheduler.BukkitRunnable() {
-            org.bukkit.Location currentLoc = player.getEyeLocation().clone().add(0, -0.3, 0);
-            int ticksLived = 0;
-            double noteColor = Math.random();
+    private void processOnHitEffects(Player player, RPGPlayer rpgPlayer, LivingEntity primaryTarget, double dmgMulti, double slowPercent, boolean hasAoE, org.bukkit.Location hitLoc) {
+        // [SÁT THƯƠNG GỐC] Lên mục tiêu chính
+        double mainDmg = CombatManager.calculateDamage(player, rpgPlayer, primaryTarget, dmgMulti, 0.0, true, false);
+        player.setMetadata("Ghost_L_Blocker", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), true));
+        CombatManager.applySkillDamage(player, primaryTarget, mainDmg);
+        player.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
 
-            @Override
-            public void run() {
-                // Lifespan 40 ticks đủ để bay hết cự ly 8.5 Block
-                if (ticksLived++ > 40 || !target.isValid() || target.isDead() || !player.isOnline() || target.getWorld() != currentLoc.getWorld()) {
-                    player.getWorld().spawnParticle(Particle.ENCHANTED_HIT, currentLoc, 5, 0.1, 0.1, 0.1, 0.05);
-                    this.cancel();
-                    return;
-                }
+        // [ÂM TRẦM] Làm chậm mục tiêu chính
+        if (slowPercent > 0) {
+            vn.minecraft.rPGCore.managers.StatusEffectManager.applySlow(primaryTarget, 40, slowPercent, 1); // 40 ticks = 2 giây
+        }
 
-                org.bukkit.Location targetEyeLoc = target.getLocation().add(0, target.getHeight() / 2.0, 0);
-                org.bukkit.util.Vector direction = targetEyeLoc.toVector().subtract(currentLoc.toVector());
-                double distance = direction.length();
+        player.getWorld().playSound(hitLoc, org.bukkit.Sound.BLOCK_AMETHYST_BLOCK_HIT, 1.0f, 1.5f);
+        player.getWorld().spawnParticle(Particle.ENCHANTED_HIT, hitLoc, 10, 0.2, 0.2, 0.2, 0.1);
 
-                if (distance < 1.2) { // Mở rộng Hitbox va chạm một chút để đảm bảo trúng
-                    // ST Kỹ năng 33% (Phân tách)
-                    double dmg = CombatManager.calculateDamage(player, rpgPlayer, target, 0.33, 0.0, true, false);
+        // [ÂM CAO] Kích hoạt nổ AoE 3x3
+        if (hasAoE) {
+            player.getWorld().spawnParticle(Particle.SONIC_BOOM, hitLoc, 1);
 
+            for (org.bukkit.entity.Entity e : hitLoc.getWorld().getNearbyEntities(hitLoc, 1.5, 1.5, 1.5)) {
+                if (e instanceof LivingEntity && !e.equals(player) && !e.equals(primaryTarget) && CombatManager.canTarget(player, e)) {
+                    LivingEntity secondaryTarget = (LivingEntity) e;
+
+                    // Nạn nhân phụ nhận 50% Sát thương
+                    double secDmg = CombatManager.calculateDamage(player, rpgPlayer, secondaryTarget, dmgMulti * 0.5, 0.0, true, false);
                     player.setMetadata("Ghost_L_Blocker", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), true));
-                    CombatManager.applySkillDamage(player, target, dmg);
+                    CombatManager.applySkillDamage(player, secondaryTarget, secDmg);
                     player.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
 
-                    player.getWorld().playSound(currentLoc, org.bukkit.Sound.BLOCK_AMETHYST_BLOCK_HIT, 0.8f, 1.5f);
-                    player.getWorld().spawnParticle(Particle.ENCHANTED_HIT, currentLoc, 8, 0.2, 0.2, 0.2, 0.1);
-                    this.cancel();
-                    return;
+                    // Nạn nhân phụ cũng chịu làm chậm nếu có Âm Trầm
+                    if (slowPercent > 0) {
+                        vn.minecraft.rPGCore.managers.StatusEffectManager.applySlow(secondaryTarget, 40, slowPercent, 1);
+                    }
                 }
-
-                // [ĐÃ SỬA]: Tốc độ rượt đuổi đẩy lên 0.75 block/tick để bắt kịp khoảng cách 8.5 Block
-                direction.normalize().multiply(0.75);
-
-                org.bukkit.util.Vector right = direction.clone().crossProduct(new org.bukkit.util.Vector(0, 1, 0)).normalize();
-                if (right.lengthSquared() == 0) {
-                    right = direction.clone().crossProduct(new org.bukkit.util.Vector(1, 0, 0)).normalize();
-                }
-
-                double waveOffset = Math.sin(ticksLived * 0.4) * 0.4;
-                org.bukkit.Location visualLoc = currentLoc.clone().add(right.multiply(waveOffset));
-
-                player.getWorld().spawnParticle(Particle.NOTE, visualLoc.clone().add(0, -0.4, 0), 0, noteColor, 0, 0, 1);
-                currentLoc.add(direction);
             }
-        }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
+        }
     }
 
     @Override
