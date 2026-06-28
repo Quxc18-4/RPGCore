@@ -55,8 +55,8 @@ public class ScatteringChords implements ISkill {
                 "§8▪ §fLoại Giai Điệu: §a[ Dồn Dập ]",
                 "§8▪ §fPhạm vi: §e10 Block",
                 "",
-                "§c[Thi Triển]",
-                "§f- Gây §c" + totalDmg + "% ST Phép§f mỗi tia."
+                "§c[Thi Triển - Hợp Âm Tán Xạ]",
+                "§f- Gây §c" + totalDmg + "% Sát Thương Phép§f mỗi tia."
         );
     }
 
