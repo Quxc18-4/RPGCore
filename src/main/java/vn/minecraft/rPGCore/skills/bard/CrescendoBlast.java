@@ -32,7 +32,7 @@ public class CrescendoBlast implements ISkill {
     public String getId() { return "bard_crescendo_blast"; }
 
     @Override
-    public String getName() { return "Giai Điệu Bùng Nổ"; }
+    public String getName() { return "Khúc Ca Chấn Động"; }
 
     @Override
     public String getRequiredClass() { return "bard"; }
@@ -111,23 +111,28 @@ public class CrescendoBlast implements ISkill {
             }
         }
 
-        // 3. TOÁN HỌC VECTOR: QUÉT HITBOX HÌNH NÓN (CONE AoE)
+        // 3. TOÁN HỌC VECTOR: TÍNH TOÁN HƯỚNG QUÉT PHẲNG (FLAT YAW)
         double searchRadius = 6.0;
         Location eyeLoc = player.getEyeLocation();
-        Vector playerDir = eyeLoc.getDirection().normalize();
+        Vector playerDir = eyeLoc.getDirection();
+
+        // [ĐÃ SỬA] Ép trục Y về 0 để chiêu luôn bay song song mặt đất
+        playerDir.setY(0).normalize();
 
         // Âm thanh xuất chiêu
         player.getWorld().playSound(eyeLoc, Sound.ENTITY_WARDEN_SONIC_BOOM, 0.8f, 1.2f);
         player.getWorld().playSound(eyeLoc, Sound.ITEM_GOAT_HORN_SOUND_0, 1.0f, 1.5f);
 
-        // Vẽ Particle hình nón phía trước mặt
-        drawConeParticles(player, searchRadius);
+        // Vẽ Particle hình nón phía trước mặt dựa trên hướng đã làm phẳng
+        drawConeParticles(player, searchRadius, playerDir);
 
         List<LivingEntity> hitTargets = new ArrayList<>();
 
         for (Entity e : player.getNearbyEntities(searchRadius, searchRadius, searchRadius)) {
             if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) {
-                Vector dirToTarget = e.getLocation().toVector().subtract(player.getLocation().toVector()).normalize();
+                // Vector nối từ người chơi đến mục tiêu (cũng phải ép Y về 0 để tính góc quét chính xác)
+                Vector dirToTarget = e.getLocation().toVector().subtract(player.getLocation().toVector());
+                dirToTarget.setY(0).normalize();
 
                 // Toán học Vector: Góc quét 90 độ (45 độ mỗi bên). cos(45 độ) ~ 0.707
                 if (playerDir.dot(dirToTarget) >= 0.707) {
@@ -148,8 +153,8 @@ public class CrescendoBlast implements ISkill {
             Vector knockback = playerDir.clone().multiply(1.5).setY(0.4);
             target.setVelocity(knockback);
 
-            // [ĐÃ SỬA CÚ PHÁP]: Thay thế applyStun bằng applyAbsoluteRoot của hệ thống hiện tại
-            StatusEffectManager.applyAbsoluteRoot(target, stunTicks);
+            // [ĐÃ SỬA]: Dùng Slow cường độ cực cao (Amplifier 10) để trói chân quái vật mà không triệt tiêu Vector Knockback
+            StatusEffectManager.applySlow(target, stunTicks, 1.0, 10);
 
             // Hạt vỡ khi trúng chiêu
             player.getWorld().spawnParticle(Particle.SONIC_BOOM, target.getLocation().add(0, 1, 0), 1);
@@ -166,15 +171,15 @@ public class CrescendoBlast implements ISkill {
             ToneManager.addTone(player, rpgPlayer, ToneType.HIGH);
         }
 
-        // 6. [ĐÃ SỬA CÚ PHÁP]: TÍNH TOÁN COOLDOWN THỦ CÔNG (ĐỂ ÁP DỤNG LÕI 2 & LÕI 9)
-        long finalCd = getFinalCooldown(rpgPlayer, getCooldown(level)); // Lấy Base + Stats CDR từ interface
+        // 6. TÍNH TOÁN COOLDOWN THỦ CÔNG (ĐỂ ÁP DỤNG LÕI 2 & LÕI 9)
+        long finalCd = getFinalCooldown(rpgPlayer, getCooldown(level));
 
         if (triggeredCore2) {
-            finalCd = (long) (finalCd * 0.8); // Lõi 2 giảm thêm 20%
+            finalCd = (long) (finalCd * 0.8);
         }
 
         if (player.hasMetadata("BARD_ETERNAL_MELODY_TRIGGERED")) {
-            finalCd = finalCd / 2; // Lõi 9 giảm 50%
+            finalCd = finalCd / 2;
             player.removeMetadata("BARD_ETERNAL_MELODY_TRIGGERED", RPGCore.getInstance());
         }
 
@@ -185,13 +190,12 @@ public class CrescendoBlast implements ISkill {
     }
 
     // Hàm tiện ích: Vẽ Particle hình nón tỏa ra phía trước
-    private void drawConeParticles(Player player, double radius) {
+    private void drawConeParticles(Player player, double radius, Vector flatDir) {
         Location startLoc = player.getEyeLocation().add(0, -0.5, 0);
-        Vector dir = startLoc.getDirection().normalize();
 
-        // Trục vuông góc để xoay
+        // Trục vuông góc để xoay dựa trên flatDir (Hướng đã làm phẳng trục Y)
         Vector up = new Vector(0, 1, 0);
-        Vector right = dir.clone().crossProduct(up).normalize();
+        Vector right = flatDir.clone().crossProduct(up).normalize();
 
         new org.bukkit.scheduler.BukkitRunnable() {
             double distance = 1.0;
@@ -205,7 +209,7 @@ public class CrescendoBlast implements ISkill {
                 // Vẽ một vòng cung (Arc) nằm ngang phía trước
                 for (double angle = -45; angle <= 45; angle += 15) {
                     double radians = Math.toRadians(angle);
-                    Vector offsetDir = dir.clone().multiply(Math.cos(radians)).add(right.clone().multiply(Math.sin(radians))).normalize();
+                    Vector offsetDir = flatDir.clone().multiply(Math.cos(radians)).add(right.clone().multiply(Math.sin(radians))).normalize();
                     Location particleLoc = startLoc.clone().add(offsetDir.multiply(distance));
 
                     player.getWorld().spawnParticle(Particle.NOTE, particleLoc, 0, Math.random(), 0, 0, 1);
