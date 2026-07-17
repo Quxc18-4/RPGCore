@@ -29,27 +29,28 @@ public class MaestroJourney implements ISkill {
     @Override
     public List<String> getDescription(int level) {
         return Arrays.asList(
-                "§7Cơ chế độc quyền của hệ phái Nhạc Sư.",
-                "§7Vừa di chuyển, vừa tấu lên những khúc ca.",
-                "",
                 "§e[Nội Tại - Lan Tỏa Âm Nhạc]",
                 "§f- Mở khóa Tốc độ di chuyển tối đa lên §e600%§f.",
                 "§f- Mỗi §b10%§f tốc độ di chuyển vượt mức 200% sẽ chuyển hóa thành:",
                 "§f  §8• §a+1% §fGiảm Hồi Chiêu (Tối đa 40%).",
-                "§f  §8• §d+2% §fThời gian duy trì Buff (Tối đa 80%).",
+                "§f  §8• §d+2% §fThời gian duy trì Giai Điệu (Tối đa 80%).",
                 "",
-                "§d[Nội Tại - Lưu Trữ Âm Sắc]",
-                "§f- Tự động sinh ra ngẫu nhiên 1 Âm mỗi 12s (Tối đa: 2 Âm).",
-                "§f- §eÂm Cao: §f+25% Sát thương/Hồi máu/Hệ số Buff.",
-                "§f- §bÂm Vang: §f+50% Bán kính/Diện tích tác dụng.",
+                "§d[Nội Tại - Chơi Nhạc - Cường Hóa đòn đánh thường]",
+                "§f- §eÂm Cao: §fĐòn đánh thường gây thêm sát thương lan.",
+                "§f- §bÂm Vang: §fSố tia đạn đòn đánh thường tăng 1.",
+                "§f- §6Âm Trầm: §fĐòn đánh thường làm chậm 15%.",
+                "§f- §cÂm Sắc: §f+10% Sát thương đòn đánh thường.",
+                "",
+                "§d[Nội Tại - Lưu Trữ Âm Sắc - Sinh ra 1 Âm mỗi 12s]",
+                "§f- §eÂm Cao: §f+15% Sát thương | Hiệu quả đặc biệt cho Kỹ năng.",
+                "§f- §bÂm Vang: §f+50% Phạm vi ảnh hưởng của Giai điệu.",
                 "§f- §6Âm Trầm: §f+30% Thời gian duy trì Giai điệu.",
-                "§f- §cÂm Sắc: §f+10% Xuyên Giáp/ Kháng Phép || +10% Kháng Hiệu Ứng.",
+                "§f- §cÂm Sắc: §f+10% Xuyên Kháng Phép cho Kỹ năng.",
                 "",
-                "§d[Nội Tại - Diễn Tấu]",
-                "§f- Kích nổ khi thi triển kỹ năng lúc đã tích đủ 3 Âm.",
-                "§f- §aDũng Cảm: §f+10% Sát thương (Duy trì: 8s).",
-                "§f- §aCan Trường: §fGiảm 10% Sát thương nhận vào (Duy trì: 6s).",
-                "§f- §aSự Sống: §fHồi 5% Máu tối đa & Tạo Khiên 5% (Duy trì: 5s).",
+                "§d[Nội Tại - Diễn Tấu Giai Điệu - Kích nổ khi đủ 3 Âm]",
+                "§f- §aDũng Cảm: §f+20% Sát thương cho đồng minh (Duy trì: 8s).",
+                "§f- §aCan Trường: §fGiảm 12% Sát thương nhận vào (Duy trì: 6s).",
+                "§f- §aSự Sống: §fHồi ngay lập tức 8% Máu tối đa cho đồng minh.",
                 "§f- §aU Ám: §fLàm chậm 30% & Giảm 10% ST địch gây ra (Duy trì: 5s).",
                 "§f- §aBùng Nổ: §fHất văng mọi kẻ địch ra xa 3 Block.",
                 "§f- §aDồn Dập: §f+15% Tốc Đánh & +30% Tốc Chạy (Duy trì: 6s).",
@@ -60,7 +61,6 @@ public class MaestroJourney implements ISkill {
 
     @Override
     public boolean execute(Player player, RPGPlayer rpgPlayer, int level) {
-        // Hoàn toàn KHÔNG CẦN CHẠY CODE GÌ Ở ĐÂY. BardGlobalManager lo tất!
         return true;
     }
 }

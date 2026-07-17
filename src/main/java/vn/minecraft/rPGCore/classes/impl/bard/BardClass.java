@@ -43,21 +43,18 @@ public class BardClass extends RPGClass {
                      double regenRate, boolean isEnchanted) {
         super(id, displayName, icon, description, maxHealth, maxResource, resourceType, regenRate, isEnchanted);
 
-        // ==========================================
-        // THIẾT LẬP GIỚI HẠN (CAP) THEO GDD
-        // ==========================================
-        this.moveSpeedCap = 600.0; // Mở khóa Tốc độ di chuyển lên 600% (Tiến trình vi mô)
-        this.effectResistCap = 100.0; // Đạt max 100% Kháng hiệu ứng
+        this.moveSpeedCap = 600.0;
+        this.effectResistCap = 100.0;
 
         // ==========================================
         // HOOK 1: GIAI ĐIỆU DŨNG CẢM (VALOR)
-        // +10% Sát thương đầu ra cho đồng minh
+        // [CÂN BẰNG]: +20% Sát thương đầu ra cho đồng minh
         // ==========================================
         CombatManager.registerCombatModifier(new CombatManager.ICombatModifier() {
             @Override
             public double getOutgoingDamageModifier(LivingEntity attacker, LivingEntity target) {
                 if (attacker.hasMetadata(META_VALOR_BUFF)) {
-                    return 0.10;
+                    return 0.20;
                 }
                 return 0.0;
             }
@@ -65,13 +62,13 @@ public class BardClass extends RPGClass {
 
         // ==========================================
         // HOOK 2: GIAI ĐIỆU CAN TRƯỜNG (AEGIS)
-        // -10% Sát thương nhận vào cho đồng minh
+        // [CÂN BẰNG]: -12% Sát thương nhận vào cho đồng minh
         // ==========================================
         CombatManager.registerCombatModifier(new CombatManager.ICombatModifier() {
             @Override
             public double getIncomingDamageReduction(LivingEntity victim, LivingEntity attacker) {
                 if (victim.hasMetadata(META_AEGIS_BUFF)) {
-                    return 0.10; // Giảm 10%
+                    return 0.12;
                 }
                 return 0.0;
             }
@@ -80,13 +77,13 @@ public class BardClass extends RPGClass {
         // ==========================================
         // HOOK 3: GIAI ĐIỆU U ÁM (GLOOM) & LÕI 6 (DISSONANCE)
         // U Ám: Quái vật bị giảm 10% sát thương gây ra.
-        // Nghịch Âm: Quái vật chịu thêm 15% sát thương (Mô phỏng -15% Giáp/Kháng phép)
+        // Nghịch Âm: Quái vật chịu thêm 15% sát thương
         // ==========================================
         CombatManager.registerCombatModifier(new CombatManager.ICombatModifier() {
             @Override
             public double getOutgoingDamageModifier(LivingEntity attacker, LivingEntity target) {
                 if (attacker.hasMetadata(META_GLOOM_DEBUFF)) {
-                    return -0.10; // Quái vật đánh yếu đi 10%
+                    return -0.10;
                 }
                 return 0.0;
             }
@@ -94,7 +91,7 @@ public class BardClass extends RPGClass {
             @Override
             public double getIncomingDamageReduction(LivingEntity victim, LivingEntity attacker) {
                 if (victim.hasMetadata(META_DISSONANCE_DEBUFF)) {
-                    return -0.15; // Trả về ÂM -> Nạn nhân nhận THÊM 15% sát thương
+                    return -0.15;
                 }
                 return 0.0;
             }
@@ -120,18 +117,15 @@ public class BardClass extends RPGClass {
             }
         }
 
-        // 3. ÂM SẮC (SHARP TONE) - Dạng Buff (Kháng CC)
-        if (player.hasMetadata("BARD_SHARP_BUFF")) {
-            stats.put("Kháng hiệu ứng", stats.getOrDefault("Kháng hiệu ứng", 0.0) + 10.0);
-        }
+        // Đã xóa BARD_SHARP_BUFF (10% Kháng hiệu ứng) theo yêu cầu cân bằng mới.
 
-        // 4. ÂM SẮC (SHARP TONE) - Dạng Tấn Công (Xuyên Thấu)
+        // 3. ÂM SẮC (SHARP TONE) - Dạng Tấn Công (Xuyên Thấu)
         if (player.hasMetadata("BARD_SHARP_ATTACK")) {
             stats.put("Tỉ lệ xuyên giáp", stats.getOrDefault("Tỉ lệ xuyên giáp", 0.0) + 10.0);
             stats.put("Tỉ lệ xuyên kháng phép", stats.getOrDefault("Tỉ lệ xuyên kháng phép", 0.0) + 10.0);
         }
 
-        // 5. GIAI ĐIỆU DỒN DẬP (UPBEAT) - Bơm MS và Attack Speed
+        // 4. GIAI ĐIỆU DỒN DẬP (UPBEAT) - Bơm MS và Attack Speed
         if (player.hasMetadata("BARD_UPBEAT_BUFF")) {
             stats.put("Tốc độ đánh", stats.getOrDefault("Tốc độ đánh", 0.0) + 15.0);
             stats.put("Tốc độ di chuyển", stats.getOrDefault("Tốc độ di chuyển", 0.0) + 30.0);
@@ -150,24 +144,19 @@ public class BardClass extends RPGClass {
             long currentTime = System.currentTimeMillis();
             long lastHealTime = siphonHealCooldowns.getOrDefault(attacker.getUniqueId(), 0L);
 
-            // Tối đa hồi 5 lần/giây (Tương đương Delay 200ms) để chống lạm dụng
             if (currentTime - lastHealTime >= 200) {
                 RPGPlayer rpgAttacker = vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager().getRPGPlayer(attacker.getUniqueId());
                 if (rpgAttacker != null) {
-                    // Sử dụng hàm an toàn từ RPGPlayer
                     double maxHp = rpgAttacker.getTotalMaxHealth();
                     double healAmount = maxHp * 0.005; // 0.5% Max HP
 
-                    // Gọi thông qua RPGPlayer.heal() để áp dụng màng lọc Anti-Heal
                     rpgAttacker.heal(healAmount);
-
-                    // Chỉ hiển thị Particle khi đòn đánh trúng, không cần biết có bị chặn hồi máu hay không (để giữ feedback hình ảnh)
                     attacker.getWorld().spawnParticle(org.bukkit.Particle.HEART, attacker.getLocation().add(0, 1, 0), 1, 0.3, 0.3, 0.3, 0);
 
                     siphonHealCooldowns.put(attacker.getUniqueId(), currentTime);
                 }
             }
-            // [MỚI] LÕI 2: NHỊP ĐIỆU DỒN DẬP (Đánh trúng giảm 0.5s hồi chiêu kỹ năng)
+            // LÕI 2: NHỊP ĐIỆU DỒN DẬP (Đánh trúng giảm 0.5s hồi chiêu kỹ năng)
             RPGPlayer rpgAttacker = RPGCore.getInstance().getPlayerManager().getRPGPlayer(attacker.getUniqueId());
             if (rpgAttacker != null && rpgAttacker.getSkillData().getSkillLevel("BARD_CORE_2") > 0) {
                 for (String skillId : rpgAttacker.getSkillData().getSkills().keySet()) {
@@ -176,7 +165,6 @@ public class BardClass extends RPGClass {
                         long currentExpire = attacker.getMetadata(cdKey).get(0).asLong();
                         long now = System.currentTimeMillis();
                         if (currentExpire > now) {
-                            // Trừ đi 500ms (0.5s) cho mỗi đòn đánh
                             attacker.setMetadata(cdKey, new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), currentExpire - 500L));
                         }
                     }
@@ -234,7 +222,8 @@ public class BardClass extends RPGClass {
         else if (projCount == 3) baseDmgMulti = 0.33;
         else if (projCount == 4) baseDmgMulti = 0.30;
 
-        // Âm Sắc: Cộng thẳng 10% sát thương vào mỗi tia đạn
+        // Cơ chế của Âm Sắc (Sharp): Ở basic attack vẫn có thể cộng sát thương nhẹ, hoặc bạn muốn gỡ luôn thì báo tôi nhé.
+        // Hiện tại vẫn đang giữ +10% DMG cho tia đạn.
         double finalDmgMulti = baseDmgMulti + (sharpCount * 0.10);
 
         // Âm Trầm: Làm chậm 15% mỗi Âm
@@ -355,10 +344,7 @@ public class BardClass extends RPGClass {
                 for (org.bukkit.entity.Entity e : currentLoc.getWorld().getNearbyEntities(currentLoc, 0.8, 0.8, 0.8)) {
                     if (e instanceof LivingEntity && !e.equals(player) && CombatManager.canTarget(player, e)) {
                         LivingEntity hitTarget = (LivingEntity) e;
-
-                        // ÁP DỤNG HIỆU ỨNG TRÚNG ĐÍCH (ON-HIT)
                         processOnHitEffects(player, rpgPlayer, hitTarget, dmgMulti, slowPercent, hasAoE, currentLoc);
-
                         this.cancel();
                         return;
                     }

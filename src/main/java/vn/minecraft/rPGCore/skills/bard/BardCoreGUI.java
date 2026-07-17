@@ -10,6 +10,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.metadata.FixedMetadataValue;
 import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 
@@ -35,31 +36,73 @@ public class BardCoreGUI implements Listener {
     };
 
     public static void openSelectionMenu(Player player, RPGPlayer rpgPlayer) {
-        Inventory inv = Bukkit.createInventory(null, 27, GUI_TITLE);
-
-        List<CoreData> availableCores = new ArrayList<>();
-        for (CoreData core : CORES) {
-            if (rpgPlayer.getSkillData().getSkillLevel("BARD_CORE_" + core.id) == 0) {
-                availableCores.add(core);
-            }
-        }
-
-        if (availableCores.isEmpty()) {
-            player.sendMessage("§cBạn đã học toàn bộ Lõi Nâng Cấp!");
+        // Nếu không có điểm, chặn không cho mở GUI để tránh sinh lỗi
+        int unspent = rpgPlayer.getSkillData().getSkillLevel("BARD_UNSPENT_CORES");
+        if (unspent <= 0) {
+            player.sendMessage("§cBạn không có điểm Đột Phá Lõi nào!");
             return;
         }
 
-        Collections.shuffle(availableCores);
-        List<CoreData> selectedCores = availableCores.subList(0, Math.min(3, availableCores.size()));
+        Inventory inv = Bukkit.createInventory(null, 27, GUI_TITLE);
+        List<CoreData> selectedCores = new ArrayList<>();
 
-        int[] slots = {11, 13, 15};
+        // 1. KIỂM TRA CACHE XEM ĐÃ ROLL TRƯỚC ĐÓ CHƯA
+        if (player.hasMetadata("BARD_ROLLED_CORES")) {
+            String savedRolls = player.getMetadata("BARD_ROLLED_CORES").get(0).asString();
+            String[] ids = savedRolls.split(",");
+            for (String idStr : ids) {
+                try {
+                    int id = Integer.parseInt(idStr);
+                    for (CoreData core : CORES) {
+                        if (core.id == id) {
+                            selectedCores.add(core);
+                            break;
+                        }
+                    }
+                } catch (NumberFormatException ignored) {}
+            }
+        }
+
+        // 2. NẾU CHƯA CÓ CACHE (Lần đầu mở) -> QUAY RANDOM VÀ LƯU LẠI
+        if (selectedCores.isEmpty()) {
+            List<CoreData> availableCores = new ArrayList<>();
+            for (CoreData core : CORES) {
+                if (rpgPlayer.getSkillData().getSkillLevel("BARD_CORE_" + core.id) == 0) {
+                    availableCores.add(core);
+                }
+            }
+
+            if (availableCores.isEmpty()) {
+                player.sendMessage("§aBạn đã mở khóa toàn bộ Lõi Kỹ Năng của Nhạc Sư!");
+                return;
+            }
+
+            Collections.shuffle(availableCores);
+            selectedCores = availableCores.subList(0, Math.min(3, availableCores.size()));
+
+            // Lưu kết quả lại vào Metadata (Ví dụ: "1,5,8")
+            StringBuilder savedMeta = new StringBuilder();
+            for (CoreData core : selectedCores) {
+                savedMeta.append(core.id).append(",");
+            }
+            player.setMetadata("BARD_ROLLED_CORES", new FixedMetadataValue(RPGCore.getInstance(), savedMeta.toString()));
+        }
+
+        // 3. VẼ GUI VỚI KẾT QUẢ ĐÃ CHỐT
+        int[] slots = {11, 13, 15}; // Vị trí cân xứng giữa GUI
         for (int i = 0; i < selectedCores.size(); i++) {
             CoreData core = selectedCores.get(i);
-            ItemStack item = new ItemStack(Material.AMETHYST_CLUSTER);
-            ItemMeta meta = item.getItemMeta();
-            meta.setDisplayName("§d§l[Lõi Nâng Cấp [" + core.id + "] ] §f" + core.name);
-            meta.setLore(Arrays.asList("§7" + core.description, "", "§eNhấp chuột để chọn Lõi này!"));
-            item.setItemMeta(meta);
+            org.bukkit.inventory.ItemStack item = new org.bukkit.inventory.ItemStack(Material.AMETHYST_CLUSTER);
+            org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
+            if (meta != null) {
+                meta.setDisplayName("§d§l[Lõi Kỹ Năng] §e" + core.name);
+                meta.setLore(Arrays.asList(
+                        "§7" + core.description,
+                        "",
+                        "§a► Nhấp chuột để Thức Tỉnh Lõi này!"
+                ));
+                item.setItemMeta(meta);
+            }
             inv.setItem(slots[i], item);
         }
 
@@ -76,11 +119,17 @@ public class BardCoreGUI implements Listener {
         ItemStack clickedItem = event.getCurrentItem();
 
         if (clickedItem == null || clickedItem.getType() != Material.AMETHYST_CLUSTER) return;
+        if (!clickedItem.hasItemMeta()) return;
 
         String name = clickedItem.getItemMeta().getDisplayName();
         int coreId = -1;
+
+        // FIX LỖI UI: So sánh trực tiếp với tên của Core thay vì chuỗi hardcode bị sai
         for (CoreData core : CORES) {
-            if (name.contains("Lõi Cấp " + core.id)) { coreId = core.id; break; }
+            if (name.contains(core.name)) {
+                coreId = core.id;
+                break;
+            }
         }
 
         if (coreId != -1) {
@@ -88,10 +137,18 @@ public class BardCoreGUI implements Listener {
             int unspent = rpgPlayer.getSkillData().getSkillLevel("BARD_UNSPENT_CORES");
 
             if (unspent > 0) {
+                // Trừ điểm và nâng cấp lõi
                 rpgPlayer.getSkillData().setSkillLevel("BARD_UNSPENT_CORES", unspent - 1);
                 rpgPlayer.getSkillData().setSkillLevel("BARD_CORE_" + coreId, 1);
-                player.sendMessage("§a§lĐỘT PHÁ THÀNH CÔNG! §fBạn đã thức tỉnh: §d" + name);
+
+                // XÓA CACHE ĐỂ LẦN MUA SAU ĐƯỢC ROLL LẠI TỪ ĐẦU
+                player.removeMetadata("BARD_ROLLED_CORES", RPGCore.getInstance());
+
+                player.sendMessage("§a§lĐỘT PHÁ THÀNH CÔNG! §fBạn đã thức tỉnh Lõi: §d" + name);
                 player.playSound(player.getLocation(), org.bukkit.Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.5f);
+                player.closeInventory();
+            } else {
+                player.sendMessage("§cBạn không đủ điểm Đột Phá Lõi!");
                 player.closeInventory();
             }
         }

@@ -78,8 +78,9 @@ public class ItemManager {
         register(new ItemData("meat_pork", Rarity.COMMON, Category.MEAT, 1.0, Material.PORKCHOP, "Thịt Heo Rừng", null, "Thịt heo rừng hoang dã rất dai và chắc."));
         register(new ItemData("meat_mutton", Rarity.COMMON, Category.MEAT, 1.0, Material.MUTTON, "Thịt Cừu Non", null, "Mềm mại, thơm mùi cỏ non."));
         register(new ItemData("meat_chicken", Rarity.COMMON, Category.MEAT, 0.5, Material.CHICKEN, "Thịt Gà Ta", null, "Dai ngon và rất dễ chế biến."));
-        register(new ItemData("meat_rabbit", Rarity.COMMON, Category.MEAT, 0.25, Material.RABBIT, "Thịt Thỏ Đồng", null, "Thịt nạc, ít mỡ."));
+        register(new ItemData("meat_rabbit", Rarity.COMMON, Category.MEAT, 0.25, Material.RABBIT, "Thịt Thỏ Sống", null, "Thịt nạc, ít mỡ."));
         register(new ItemData("meat_wolf_bone", Rarity.COMMON, Category.MEAT, 0.25, Material.BONE, "Xương Sói", "Nấu: Nước hầm xương cung cấp 0.25 Điểm Gia vị", "Đoạn xương chứa rất nhiều tủy."));
+        register(new ItemData("meat_polar_bear_foot", Rarity.COMMON, Category.MEAT, 2.0, Material.RABBIT_FOOT, "Chân Gấu Tuyết", null, "Món móng gấu dày dặn béo ngậy, chứa lớp mỡ dày tích tụ qua mùa đông giá rét."));
 
         // --- 2. NHÓM HẢI SẢN ---
         register(new ItemData("fish_cod_small", Rarity.COMMON, Category.FISH, 0.25, Material.COD, "Cá Tuyết Nhỏ", null, "Một con cá tuyết bé xíu."));
@@ -304,6 +305,19 @@ public class ItemManager {
         register(new ItemData("misc_steel_string", Rarity.UNCOMMON, Category.MISC, 0.0, Material.STRING, "Sợi Tơ Thép", null, "Cứng cáp lạ thường, cực kỳ bền bỉ."));
         register(new ItemData("misc_wolf_fang", Rarity.UNCOMMON, Category.MISC, 0.0, Material.IRON_NUGGET, "Nanh Sói", null, "Một chiếc nanh vô cùng sắc nhọn."));
         register(new ItemData("misc_leather_pouch_piece", Rarity.COMMON, Category.MISC, 0.0, Material.ARMADILLO_SCUTE, "Mảnh Túi Da Đạo Tặc", null, "Một mảnh da cắt ra từ túi của bọn Đạo Tặc."));
+        register(new ItemData("misc_dark_wood", Rarity.UNCOMMON, Category.MISC, 0.0, Material.DARK_OAK_LOG, "Gỗ Quý Rừng Sâu", null, "Một loại gỗ đặc ruột tỏa ra mùi thơm hắc.", "Được Sơn Tặc đốn hạ sâu trong rừng già."));
+        register(new ItemData("misc_feral_sinew", Rarity.RARE, Category.MISC, 0.0, Material.STRING, "Gân Thú Hoang", null, "Sợi gân vô cùng dẻo dai và đàn hồi.", "Chuyên dùng để kéo căng những cây cung", "săn mồi chết chóc của Sơn Tặc Cung Thủ."));
+        register(new ItemData("misc_sand_flea_shell", Rarity.COMMON, Category.MISC, 0.0, Material.PHANTOM_MEMBRANE, "Vỏ Rận Cát", null, "Lớp vỏ mỏng dai, thô ráp bám đầy bụi cát Sa mạc."));
+        register(new ItemData("misc_pure_sand", Rarity.RARE, Category.MISC, 0.0, Material.SUGAR, "Cát Tinh Khiết", null, "Những hạt cát lấp lánh phản chiếu ánh sáng dịu nhẹ,", "ẩn chứa bên trong một lượng mạt ma thuật thuần khiết."));
+        register(new ItemData("misc_scorpion_tail", Rarity.COMMON, Category.MISC, 0.0, Material.PRISMARINE_SHARD, "Đuôi Bò Cạp", null, "Chiếc đuôi cong vút mang chiếc móc sắc lẻm của bầy bò cạp Sa mạc."));
+        register(new ItemData("misc_scorpion_venom", Rarity.EPIC, Category.MISC, 0.0, Material.DRAGON_BREATH, "Nọc Độc Bò Cạp", null, "Giọt tinh chất độc tố đậm đặc màu tím sẫm chiết xuất từ tuyến độc.", "Chuyên dùng để tinh luyện vũ khí ám sát cấp cao."));
+        register(new ItemData("misc_sand_wolf_bone", Rarity.UNCOMMON, Category.MISC, 0.0, Material.BONE, "Xương Sói Cát", null, "Khúc xương khô trắng của loài sói hoang mạc,", "cực kỳ cứng cáp do hấp thụ khoáng chất từ địa hình cát gắt gao."));
+        register(new ItemData("misc_sand_wolf_hide", Rarity.RARE, Category.MISC, 0.0, Material.LEATHER, "Da Sói Cát", null, "Tấm da sói dày dặn và chống chịu nhiệt độ cao cực tốt,", "thường được giới thợ săn lùng sục ráo riết để may trang bị chống nóng."));
+        register(new ItemData("misc_sand_wolf_fang", Rarity.EPIC, Category.MISC, 0.0, Material.IRON_NUGGET, "Nanh Sói Cát Cổ Đại", null, "Chiếc nanh sói sắc bén tột độ mang theo sát khí,", "chứa đựng sức mạnh bầy đàn hung tợn của thủ lĩnh hoang mạc sa mạc."));
+        register(new ItemData("misc_polar_bear_hide", Rarity.COMMON, Category.MISC, 0.0, Material.LEATHER, "Da Gấu Tuyết", null, "Tấm da lông gấu trắng muốt, cực kỳ dày và có khả năng giữ ấm cơ thể tuyệt vời."));
+        register(new ItemData("misc_rabbit_tail_fur", Rarity.COMMON, Category.MISC, 0.0, Material.SNOWBALL, "Lông Đuôi Thỏ", null, "Một chùm lông đuôi thỏ trắng muốt, vô cùng mềm mại và giữ nhiệt tốt."));
+        register(new ItemData("misc_frozen_bone", Rarity.COMMON, Category.MISC, 0.0, Material.BONE, "Xương Băng Giá", null, "Một khúc xương lạnh buốt, dường như không bao giờ tan chảy."));
+        register(new ItemData("misc_frozen_soul", Rarity.EPIC, Category.MISC, 0.0, Material.LIGHT_BLUE_DYE, "Linh Hồn Băng Giá", null, "Mảnh linh hồn lạnh toát của các cựu pháp sư,", "vẫn không ngừng tỏa ra mạt sương giá lập lòe sau khi chết."));
 
         register(new ItemData("misc_blacksmith_scrap", Rarity.UNCOMMON, Category.MISC, 0.0, Material.IRON_NUGGET, "Mạt Thợ Rèn", null, "Những mảnh vụn ma thuật xót lại khi đập đồ thất bại.", "Tích lũy đủ số lượng, chúng mang sức mạnh", "thần bí giúp đột phá trang bị thành công."));
         register(new ItemData("misc_job_change_card", Rarity.EPIC, Category.MISC, 0.0, Material.NAME_TAG, "Thẻ Học Nghề", null, "Giấy phép đặc biệt từ Hiệp hội Nghề nghiệp.", "Sẽ tự động tiêu hao khi bạn chọn đổi nghề."));

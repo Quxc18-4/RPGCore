@@ -16,7 +16,6 @@ public class UpbeatMelody implements IMelody {
     public void cast(Player player, RPGPlayer rpgPlayer, Location targetLocation) {
         double radius = 5.0 * ToneModifier.getEchoRadiusMultiplier(player, rpgPlayer);
         long durationTicks = (long) ((6.0 * 20.0) * ToneModifier.getLowDurationMultiplier(player));
-        int sharpCount = ToneModifier.getSharpToneCount(player);
 
         // Thay thế MelodyUtils.playArpeggio bằng:
         float[] pitches = {1.0f, 1.0f, 1.2f, 1.5f, 1.5f, 1.8f};
@@ -31,10 +30,6 @@ public class UpbeatMelody implements IMelody {
 
                 MelodyUtils.applyTimedBuff(ally, rpgAlly, "BARD_UPBEAT_BUFF", durationTicks, true);
                 MelodyUtils.drawTargetFeedback(ally, Particle.WAX_ON);
-
-                if (sharpCount > 0) {
-                    MelodyUtils.applyTimedBuff(ally, rpgAlly, "BARD_SHARP_BUFF", durationTicks, false);
-                }
             }
         }
         MelodyUtils.processGlobalPerks(player, rpgPlayer, targetLocation, radius, durationTicks);

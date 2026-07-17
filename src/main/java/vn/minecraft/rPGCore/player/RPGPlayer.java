@@ -77,6 +77,14 @@ public class RPGPlayer {
         this.currentResource = defaultClass.getMaxResource();
         this.attributeData = new PlayerAttributeData(this);
         this.skillData = new PlayerSkillData();
+        // ---> THÊM ĐOẠN CODE NÀY VÀO ĐÂY (TRƯỚC DẤU ĐÓNG NGOẶC CỦA HÀM) <---
+        // ==========================================
+        // [TÂN THỦ]: KHỞI TẠO CẤP ĐỘ VÀ KỸ NĂNG CƠ BẢN
+        // ==========================================
+        if (this.bukkitPlayer.getLevel() == 0) {
+            this.bukkitPlayer.setLevel(1);
+            this.skillData.setSkillPoints(1); // Cấp sẵn 1 SP để học chiêu đầu tiên
+        }
     }
 
     public PlayerAttributeData getAttributeData() { return attributeData; }

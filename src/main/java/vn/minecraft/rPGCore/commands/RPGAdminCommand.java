@@ -9,6 +9,8 @@ import org.bukkit.entity.Player;
 import vn.minecraft.rPGCore.player.PlayerManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 
+import static vn.minecraft.rPGCore.managers.StatusEffectManager.applyAntiHeal;
+
 public class RPGAdminCommand implements CommandExecutor {
 
     private final PlayerManager playerManager;
@@ -65,6 +67,20 @@ public class RPGAdminCommand implements CommandExecutor {
 
                 sender.sendMessage(ChatColor.AQUA + "Đã tăng 1 cấp cho " + target.getName() + " (Giữ nguyên tiến độ).");
                 break;
+            case "antiheal":
+                if (args.length < 3) {
+                    sender.sendMessage(ChatColor.RED + "Sử dụng: /rpgadmin antiheal <player> <ticks>");
+                    return true;
+                }
+                try {
+                    int durationTicks = Integer.parseInt(args[2]);
+                    // Kích hoạt hàm xử lý vết thương sâu trực tiếp lên mục tiêu
+                    applyAntiHeal(target, durationTicks);
+                    sender.sendMessage(ChatColor.GREEN + "Đã áp dụng Vết thương sâu lên " + target.getName() + " trong " + durationTicks + " ticks.");
+                } catch (NumberFormatException e) {
+                    sender.sendMessage(ChatColor.RED + "Thời gian ticks truyền vào phải là một số nguyên!");
+                }
+                break;
 
             default:
                 sendUsage(sender);
@@ -78,5 +94,6 @@ public class RPGAdminCommand implements CommandExecutor {
         sender.sendMessage(ChatColor.YELLOW + "=== RPG Admin Commands ===");
         sender.sendMessage(ChatColor.WHITE + "/rpgadmin giveexp <player> <amount>");
         sender.sendMessage(ChatColor.WHITE + "/rpgadmin levelup <player>");
+        sender.sendMessage(ChatColor.WHITE + "/rpgadmin antiheal <player> <ticks>");
     }
 }

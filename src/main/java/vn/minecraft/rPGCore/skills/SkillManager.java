@@ -4,10 +4,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.checkerframework.checker.units.qual.C;
 import vn.minecraft.rPGCore.skills.archer.*;
 import vn.minecraft.rPGCore.skills.assassin.*;
-import vn.minecraft.rPGCore.skills.bard.CrescendoBlast;
-import vn.minecraft.rPGCore.skills.bard.MaestroJourney;
-import vn.minecraft.rPGCore.skills.bard.ScatteringChords;
-import vn.minecraft.rPGCore.skills.bard.WanderingMinstrel;
+import vn.minecraft.rPGCore.skills.bard.*;
 import vn.minecraft.rPGCore.skills.mage.*;
 import vn.minecraft.rPGCore.skills.mage.fusion.FusionEngine;
 import vn.minecraft.rPGCore.skills.summoner.*;
@@ -100,6 +97,9 @@ public class SkillManager {
         registerSkill(new ScatteringChords());
         registerSkill(new WanderingMinstrel());
         registerSkill(new CrescendoBlast());
+        registerSkill(new HealingAnthem());
+        registerSkill(new PiercingAnthem());
+        registerSkill(new MarchingAnthem());
     }
 
     public void registerSkill(ISkill skill) {

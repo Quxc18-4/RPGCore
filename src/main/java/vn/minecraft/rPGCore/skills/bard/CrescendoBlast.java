@@ -32,7 +32,7 @@ public class CrescendoBlast implements ISkill {
     public String getId() { return "bard_crescendo_blast"; }
 
     @Override
-    public String getName() { return "Khúc Ca Chấn Động"; }
+    public String getName() { return "Giai Điệu Rung Chấn"; }
 
     @Override
     public String getRequiredClass() { return "bard"; }
@@ -41,10 +41,14 @@ public class CrescendoBlast implements ISkill {
     public Material getIcon() { return Material.GOAT_HORN; }
 
     @Override
-    public int getMaxLevel() { return 6; } // Tối đa 6 cấp
+    public int getMaxLevel() { return 6; }
 
     @Override
     public int getUpgradeCost(int currentLevel) { return 1; }
+
+    // [RÀNG BUỘC MỚI]: Yêu cầu cấp độ 9
+    @Override
+    public int getRequiredPlayerLevel() { return 9; }
 
     @Override
     public Map<String, Integer> getRequiredSkills() { return Collections.emptyMap(); }
@@ -54,7 +58,6 @@ public class CrescendoBlast implements ISkill {
 
     @Override
     public long getCooldown(int level) {
-        // Hồi chiêu 12s, giảm dần còn 9.5s ở max level
         return (long) ((12.0 - (level * 0.5)) * 1000);
     }
 
@@ -63,10 +66,11 @@ public class CrescendoBlast implements ISkill {
 
     @Override
     public List<String> getDescription(Player player, int level) {
-        int displayLevel = Math.max(1, level); // Đảm bảo cấp 0 vẫn hiển thị chỉ số cấp 1
+        int displayLevel = Math.max(1, level);
 
-        int dmgPercent = 130 + (displayLevel * 20); // Base 150% ở Cấp 1, Max 250% ở Cấp 6
-        double stunDuration = 0.9 + (displayLevel * 0.1); // Base 1.0s ở Cấp 1, Max 1.5s ở Cấp 6
+        // [CÂN BẰNG MỚI]: Base 280%, +20% mỗi cấp (Max 380%)
+        int dmgPercent = 260 + (displayLevel * 20);
+        double stunDuration = 0.9 + (displayLevel * 0.1);
 
         return Arrays.asList(
                 "§7Thổi mạnh vào nhạc cụ, phát ra một luồng",
@@ -87,54 +91,47 @@ public class CrescendoBlast implements ISkill {
         if (!handleCostAndCooldown(player, rpgPlayer, level)) return false;
 
         // 1. CHUẨN BỊ CHỈ SỐ SÁT THƯƠNG VÀ KHỐNG CHẾ
-        double highToneMultiplier = ToneModifier.getHighToneMultiplier(player);
-        int sharpToneCount = ToneModifier.getSharpToneCount(player);
+        // [TÍCH HỢP PHASE 1]: Truyền ToneType.HIGH để tính luôn Âm kích nổ vào sát thương
+        double highToneMultiplier = ToneModifier.getHighToneMultiplier(player, ToneType.HIGH);
+        int sharpToneCount = ToneModifier.getSharpToneCount(player, ToneType.HIGH);
 
-        double dmgMulti = (1.3 + (level * 0.2)) * highToneMultiplier;
+        // Base Damage: 2.6 + (0.2 * level) -> Level 1 là 2.8 (280%)
+        double dmgMulti = (2.6 + (level * 0.2)) * highToneMultiplier;
         double extraMagicPen = sharpToneCount * 10.0;
 
-        // Thời gian choáng tính bằng Tick (20 Ticks = 1s)
         double stunSeconds = 0.9 + (level * 0.1);
         int stunTicks = (int) (stunSeconds * 20);
 
-        // 2. KHU VỰC ĐIỀU PHỐI GIAI ĐIỆU (GDD BARD)
+        // 2. KHU VỰC ĐIỀU PHỐI GIAI ĐIỆU
         int maxCapacity = rpgPlayer.getSkillData().getSkillLevel("BARD_CORE_8") > 0 ? 4 : 3;
         List<ToneType> currentTones = ToneManager.getCurrentTones(player);
         boolean isMelodyTriggered = (currentTones.size() + 1) >= maxCapacity && MelodyUtils.canTriggerMelody(player);
 
-        // LÕI 2: Hơi Thở Của Gió (Hồi Mana nếu HP > 90%)
         boolean triggeredCore2 = false;
         if (isMelodyTriggered && rpgPlayer.getSkillData().getSkillLevel("BARD_CORE_2") > 0) {
             if (player.getHealth() / rpgPlayer.getTotalMaxHealth() > 0.90) {
-                rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() + getManaCost(level)); // Hoàn trả Mana
+                rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() + getManaCost(level));
                 triggeredCore2 = true;
             }
         }
 
-        // 3. TOÁN HỌC VECTOR: TÍNH TOÁN HƯỚNG QUÉT PHẲNG (FLAT YAW)
+        // 3. TOÁN HỌC VECTOR
         double searchRadius = 6.0;
         Location eyeLoc = player.getEyeLocation();
         Vector playerDir = eyeLoc.getDirection();
-
-        // [ĐÃ SỬA] Ép trục Y về 0 để chiêu luôn bay song song mặt đất
         playerDir.setY(0).normalize();
 
-        // Âm thanh xuất chiêu
         player.getWorld().playSound(eyeLoc, Sound.ENTITY_WARDEN_SONIC_BOOM, 0.8f, 1.2f);
-        player.getWorld().playSound(eyeLoc, Sound.ITEM_GOAT_HORN_SOUND_0, 1.0f, 1.5f);
+        //player.getWorld().playSound(eyeLoc, Sound.ITEM_GOAT_HORN_SOUND_0, 1.0f, 1.5f);
 
-        // Vẽ Particle hình nón phía trước mặt dựa trên hướng đã làm phẳng
         drawConeParticles(player, searchRadius, playerDir);
 
         List<LivingEntity> hitTargets = new ArrayList<>();
-
         for (Entity e : player.getNearbyEntities(searchRadius, searchRadius, searchRadius)) {
             if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) {
-                // Vector nối từ người chơi đến mục tiêu (cũng phải ép Y về 0 để tính góc quét chính xác)
                 Vector dirToTarget = e.getLocation().toVector().subtract(player.getLocation().toVector());
                 dirToTarget.setY(0).normalize();
 
-                // Toán học Vector: Góc quét 90 độ (45 độ mỗi bên). cos(45 độ) ~ 0.707
                 if (playerDir.dot(dirToTarget) >= 0.707) {
                     hitTargets.add((LivingEntity) e);
                 }
@@ -149,14 +146,9 @@ public class CrescendoBlast implements ISkill {
             CombatManager.applySkillDamage(player, target, dmg);
             player.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
 
-            // Đẩy lùi văng ra xa (Knockback)
             Vector knockback = playerDir.clone().multiply(1.5).setY(0.4);
             target.setVelocity(knockback);
-
-            // [ĐÃ SỬA]: Dùng Slow cường độ cực cao (Amplifier 10) để trói chân quái vật mà không triệt tiêu Vector Knockback
             StatusEffectManager.applySlow(target, stunTicks, 1.0, 10);
-
-            // Hạt vỡ khi trúng chiêu
             player.getWorld().spawnParticle(Particle.SONIC_BOOM, target.getLocation().add(0, 1, 0), 1);
         }
 
@@ -171,13 +163,9 @@ public class CrescendoBlast implements ISkill {
             ToneManager.addTone(player, rpgPlayer, ToneType.HIGH);
         }
 
-        // 6. TÍNH TOÁN COOLDOWN THỦ CÔNG (ĐỂ ÁP DỤNG LÕI 2 & LÕI 9)
+        // 6. TÍNH TOÁN COOLDOWN
         long finalCd = getFinalCooldown(rpgPlayer, getCooldown(level));
-
-        if (triggeredCore2) {
-            finalCd = (long) (finalCd * 0.8);
-        }
-
+        if (triggeredCore2) finalCd = (long) (finalCd * 0.8);
         if (player.hasMetadata("BARD_ETERNAL_MELODY_TRIGGERED")) {
             finalCd = finalCd / 2;
             player.removeMetadata("BARD_ETERNAL_MELODY_TRIGGERED", RPGCore.getInstance());

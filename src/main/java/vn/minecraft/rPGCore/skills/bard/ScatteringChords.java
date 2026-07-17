@@ -46,7 +46,10 @@ public class ScatteringChords implements ISkill {
     @Override
     public List<String> getDescription(Player player, int level) {
         int displayLevel = Math.max(1, level);
-        int totalDmg = 50 + ((displayLevel - 1) * 8);
+
+        // [CÂN BẰNG MỚI]: Base 50%, tăng 10% mỗi cấp (Max 140% ở cấp 10)
+        int totalDmg = 40 + (displayLevel * 10);
+
         return Arrays.asList(
                 "§7Thổi lên 1 giai điệu, phóng sóng âm",
                 "§7tự động săn lùng 3 kẻ địch gần nhất.",
@@ -62,13 +65,10 @@ public class ScatteringChords implements ISkill {
 
     @Override
     public boolean execute(Player player, RPGPlayer rpgPlayer, int level) {
-        String cdKey = "CD_" + getId();
-        if (player.hasMetadata(cdKey)) {
-            if (System.currentTimeMillis() < player.getMetadata(cdKey).get(0).asLong()) return false;
-        }
+        if (!handleCostAndCooldown(player, rpgPlayer, level)) return false;
 
         // ==========================================
-        // MASTER FLOW: KIỂM TRA NỔ GIAI ĐIỆU (GDD)
+        // KHU VỰC ĐIỀU PHỐI GIAI ĐIỆU
         // ==========================================
         int maxCapacity = rpgPlayer.getSkillData().getSkillLevel("BARD_CORE_8") > 0 ? 4 : 3;
         List<ToneType> currentTones = ToneManager.getCurrentTones(player);
@@ -77,42 +77,26 @@ public class ScatteringChords implements ISkill {
         boolean canExplode = MelodyUtils.canTriggerMelody(player);
 
         boolean triggeredCore2 = false;
-        double cost = getManaCost(level);
         if (willTriggerMelody && canExplode && rpgPlayer.getSkillData().getSkillLevel("BARD_CORE_2") > 0) {
             double hpPercent = player.getHealth() / rpgPlayer.getTotalMaxHealth();
             if (hpPercent > 0.90) {
-                cost = 0;
+                rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() + getManaCost(level));
                 triggeredCore2 = true;
                 player.sendMessage("§d§l[Hơi Thở Của Gió] §fThi triển không tốn Năng lượng!");
             }
         }
 
-        if (rpgPlayer.getCurrentResource() < cost) return false;
-        rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - cost);
-
-        ToneManager.addTone(player, rpgPlayer, ToneType.ECHO);
-
-        if (willTriggerMelody) {
-            if (canExplode) {
-                new UpbeatMelody().cast(player, rpgPlayer, player.getLocation());
-                ToneManager.consumeTones(player, rpgPlayer);
-                MelodyUtils.setMelodyCooldown(player);
-            } else {
-                long remaining = (player.getMetadata("BARD_MELODY_GCD").get(0).asLong() - System.currentTimeMillis()) / 1000;
-                player.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR,
-                        net.md_5.bungee.api.chat.TextComponent.fromLegacyText("§c§l[!] §fGiai điệu đang hồi: §e" + remaining + "s"));
-            }
-        }
-
         // ==========================================
-        // GÂY SÁT THƯƠNG KỸ NĂNG
+        // GÂY SÁT THƯƠNG KỸ NĂNG (Tích hợp Trigger Tone: ECHO)
         // ==========================================
-        double highToneMultiplier = ToneModifier.getHighToneMultiplier(player);
-        double echoRadiusMultiplier = ToneModifier.getEchoRadiusMultiplier(player, rpgPlayer);
-        int sharpToneCount = ToneModifier.getSharpToneCount(player);
+        double highToneMultiplier = ToneModifier.getHighToneMultiplier(player, ToneType.ECHO);
+        double echoRadiusMultiplier = ToneModifier.getEchoRadiusMultiplier(player, rpgPlayer, ToneType.ECHO);
+        int sharpToneCount = ToneModifier.getSharpToneCount(player, ToneType.ECHO);
 
         double searchRadius = 10.0 * echoRadiusMultiplier;
-        double dmgMulti = (0.5 + ((level - 1) * 0.08)) * highToneMultiplier;
+
+        // Base Damage: 0.4 + (0.1 * level) -> Level 1 là 0.5 (50%), Level 10 là 1.4 (140%)
+        double dmgMulti = (0.4 + (level * 0.10)) * highToneMultiplier;
         double extraMagicPen = sharpToneCount * 10.0;
 
         List<LivingEntity> validTargets = new ArrayList<>();
@@ -128,35 +112,44 @@ public class ScatteringChords implements ISkill {
         player.getWorld().playSound(player.getLocation(), Sound.ITEM_TRIDENT_THROW, 1.0f, 1.8f);
         player.getWorld().playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 1.0f, 0.8f);
 
-        // Bắn từng Tên lửa sóng âm tới các mục tiêu
         for (LivingEntity target : finalTargets) {
             launchSonicProjectile(player, rpgPlayer, target, dmgMulti, extraMagicPen);
         }
 
-        long finalCd = getCooldown(level);
-        double cdrPercent = rpgPlayer.getTotalStatsMap().getOrDefault("Giảm hồi chiêu", 0.0);
-        finalCd = (long) (finalCd * (1.0 - (cdrPercent / 100.0)));
-        if (triggeredCore2) finalCd = (long) (finalCd * 0.8);
+        // Hoàn tất chu trình Âm & Giai điệu
+        if (willTriggerMelody) {
+            if (canExplode) {
+                new UpbeatMelody().cast(player, rpgPlayer, player.getLocation());
+                ToneManager.consumeTones(player, rpgPlayer);
+                MelodyUtils.setMelodyCooldown(player);
+            } else {
+                long remaining = (player.getMetadata("BARD_MELODY_GCD").get(0).asLong() - System.currentTimeMillis()) / 1000;
+                player.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR,
+                        net.md_5.bungee.api.chat.TextComponent.fromLegacyText("§c§l[!] §fGiai điệu đang hồi: §e" + remaining + "s"));
+            }
+        } else {
+            ToneManager.addTone(player, rpgPlayer, ToneType.ECHO);
+        }
 
+        // Cập nhật Cooldown thủ công
+        long finalCd = getFinalCooldown(rpgPlayer, getCooldown(level));
+        if (triggeredCore2) finalCd = (long) (finalCd * 0.8);
         if (player.hasMetadata("BARD_ETERNAL_MELODY_TRIGGERED")) {
             finalCd = finalCd / 2;
             player.removeMetadata("BARD_ETERNAL_MELODY_TRIGGERED", RPGCore.getInstance());
         }
 
-        player.setMetadata(cdKey, new FixedMetadataValue(RPGCore.getInstance(), System.currentTimeMillis() + finalCd));
+        player.setMetadata("CD_" + getId(), new FixedMetadataValue(RPGCore.getInstance(), System.currentTimeMillis() + finalCd));
+        startCooldownNotifier(player, finalCd);
         return true;
     }
 
-    // ==========================================
-    // TÊN LỬA SÓNG ÂM (SONA'S BEAM STYLE)
-    // ==========================================
     private void launchSonicProjectile(Player player, RPGPlayer rpgPlayer, LivingEntity target, double dmgMulti, double extraMagicPen) {
         Location start = player.getEyeLocation().add(0, -0.2, 0);
         Vector startVec = start.toVector();
 
-        // Điểm uốn (Control Point) để tạo quỹ đạo cong nịnh mắt
         double randomX = (Math.random() - 0.5) * 4.0;
-        double randomY = 1.0 + (Math.random() * 2.0); // Ép đường đạn luôn có xu hướng vút lên trên một chút rồi mới cắm xuống
+        double randomY = 1.0 + (Math.random() * 2.0);
         double randomZ = (Math.random() - 0.5) * 4.0;
         Vector controlVec = startVec.clone().midpoint(target.getLocation().toVector()).add(new Vector(randomX, randomY, randomZ));
 
@@ -164,21 +157,17 @@ public class ScatteringChords implements ISkill {
 
         new org.bukkit.scheduler.BukkitRunnable() {
             double t = 0.0;
-            double speed = 0.08; // Tốc độ đạn (Mất khoảng ~12 Ticks để trúng đích)
+            double speed = 0.08;
 
             @Override
             public void run() {
-                // Hủy nếu quái chết, người chơi thoát, hoặc đạn bay hết chu kỳ
                 if (t >= 1.0 || !target.isValid() || target.isDead() || !player.isOnline()) {
-
-                    // [SÁT THƯƠNG KHI CHẠM ĐÍCH]: Đạn nổ mới mất máu
                     if (target.isValid() && !target.isDead()) {
                         double dmg = CombatManager.calculateDamage(player, rpgPlayer, target, dmgMulti, extraMagicPen, true, false);
                         player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(RPGCore.getInstance(), true));
                         CombatManager.applySkillDamage(player, target, dmg);
                         player.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
 
-                        // Âm thanh và Vụ nổ khi đạn ghim vào người
                         target.getWorld().playSound(target.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_HIT, 1.0f, 1.5f);
                         target.getWorld().spawnParticle(Particle.ENCHANTED_HIT, target.getLocation().add(0, 1, 0), 15, 0.3, 0.3, 0.3, 0.1);
                     }
@@ -186,27 +175,19 @@ public class ScatteringChords implements ISkill {
                     return;
                 }
 
-                // Cập nhật vị trí kẻ địch liên tục (Nếu nó đang chạy trốn)
                 Vector endVec = target.getLocation().add(0, target.getHeight() / 2, 0).toVector();
-
-                // Toán học Bezier Curve: Nội suy vị trí hiện tại của viên đạn
                 double u = 1 - t;
                 Vector currentPos = startVec.clone().multiply(u * u)
                         .add(controlVec.clone().multiply(2 * u * t))
                         .add(endVec.clone().multiply(t * t));
 
                 Location loc = new Location(player.getWorld(), currentPos.getX(), currentPos.getY(), currentPos.getZ());
-
-                // Vẽ Lõi Đạn (Khối sáng xanh dương)
                 loc.getWorld().spawnParticle(Particle.DUST_COLOR_TRANSITION, loc, 3, 0.1, 0.1, 0.1, 0, dust);
-                // Vẽ Đuôi Đạn (Các nốt nhạc rớt lại phía sau)
                 loc.getWorld().spawnParticle(Particle.NOTE, loc, 1, Math.random(), 0, 0, 1);
 
-                // Hiệu ứng "Vuốt Sóng Âm" mỏng xuất hiện ngắt quãng
                 if (t % 0.2 < speed) {
                     loc.getWorld().spawnParticle(Particle.SWEEP_ATTACK, loc, 1, 0, 0, 0, 0);
                 }
-
                 t += speed;
             }
         }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);

@@ -16,7 +16,6 @@ public class AegisMelody implements IMelody {
     public void cast(Player player, RPGPlayer rpgPlayer, Location targetLocation) {
         double radius = 5.0 * ToneModifier.getEchoRadiusMultiplier(player, rpgPlayer);
         long durationTicks = (long) ((6.0 * 20.0) * ToneModifier.getLowDurationMultiplier(player));
-        int sharpCount = ToneModifier.getSharpToneCount(player);
 
         // Thay thế MelodyUtils.playArpeggio bằng:
         float[] pitches = {1.0f, 1.25f, 1.0f, 1.25f, 1.0f, 0.7f};
@@ -29,10 +28,6 @@ public class AegisMelody implements IMelody {
                 Player ally = (Player) e;
                 MelodyUtils.applyTimedBuff(ally, null, BardClass.META_AEGIS_BUFF, durationTicks, false);
                 MelodyUtils.drawTargetFeedback(ally, Particle.TOTEM_OF_UNDYING);
-
-                if (sharpCount > 0) {
-                    MelodyUtils.applyTimedBuff(ally, null, "BARD_SHARP_BUFF", durationTicks, false);
-                }
             }
         }
         MelodyUtils.processGlobalPerks(player, rpgPlayer, targetLocation, radius, durationTicks);

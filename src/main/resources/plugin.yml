@@ -11,7 +11,7 @@ commands:
   rpgadmin:
     description: Lệnh quản trị hệ thống RPG
     permission: rpgcore.admin
-    usage: /rpgadmin <giveexp|levelup> <player> [amount]
+    usage: /rpgadmin <giveexp|levelup|antiheal>> <player> [amount/ticks]
   attr:
     description: Mở menu nâng cấp chỉ số nhân vật (STR, INT, VIT...)
     aliases: [ stats, chiso ]
