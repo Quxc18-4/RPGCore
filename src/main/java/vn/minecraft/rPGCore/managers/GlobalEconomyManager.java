@@ -120,13 +120,12 @@ public class GlobalEconomyManager {
     }
 
     // ==========================================
-    // 2. THUẬT TOÁN ĐỘ SÂU THỊ TRƯỜNG (MARKET DEPTH)
+    // 2. THUẬT TOÁN ĐỘ SÂU THỊ TRƯỜNG (CÓ TRỌNG SỐ)
     // ==========================================
     private void calculateCurrentPrice(String itemId, EconomyData data) {
         ItemManager.ItemData itemData = plugin.getItemManager().getItemData(itemId);
         if (itemData == null) return;
 
-        // Xác định Threshold (Ngưỡng chênh lệch để đổi 1% giá) dựa trên Rarity
         int threshold = 1000;
         switch (itemData.rarity) {
             case UNCOMMON: threshold = 500; break;
@@ -136,11 +135,14 @@ public class GlobalEconomyManager {
             case LEGENDARY: threshold = 2; break;
         }
 
+        // [TỐI ƯU 1]: Áp dụng Trọng số Cầu (Demand Weight). Mặc định 1 lượt Mua có giá trị bằng 5 lượt Bán
+        double demandWeight = 5.0;
+        long weightedBought = (long) (data.totalBought * demandWeight);
+
         // Tính toán cán cân Cung - Cầu
-        long netFlow = data.totalBought - data.totalSold;
+        long netFlow = weightedBought - data.totalSold;
         double percentChange = (double) netFlow / threshold;
 
-        // Giới hạn biên độ tối đa là +/- 50%
         if (percentChange > 50.0) percentChange = 50.0;
         if (percentChange < -50.0) percentChange = -50.0;
 
@@ -189,20 +191,25 @@ public class GlobalEconomyManager {
         }, 200L, 200L); // Quét mỗi 10 giây
     }
 
+    // ==========================================
+    // 4. CHỐT SỔ LÚC 00:00 (CÓ CƠ CHẾ LÃNG QUÊN)
+    // ==========================================
     public void processDailyClosing() {
         for (Map.Entry<String, EconomyData> entry : marketData.entrySet()) {
             String id = entry.getKey();
             EconomyData data = entry.getValue();
 
-            // Cộng dồn giao dịch trong ngày vào tổng lịch sử
             data.totalBought += data.pendingBought;
             data.totalSold += data.pendingSold;
 
-            // Reset dữ liệu ngày
             data.pendingBought = 0;
             data.pendingSold = 0;
 
-            // Tính toán giá mới cho ngày hôm sau
+            // [TỐI ƯU 2]: Cơ chế "Lãng quên" (Giảm xóc thị trường)
+            // Trừ đi 5% tổng giao dịch lịch sử mỗi ngày để giá dần hồi phục về Base Price nếu không ai mua bán
+            data.totalBought = (long) (data.totalBought * 0.95);
+            data.totalSold = (long) (data.totalSold * 0.95);
+
             calculateCurrentPrice(id, data);
             saveToDBAsync(id, data);
         }

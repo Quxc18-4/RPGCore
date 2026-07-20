@@ -66,3 +66,9 @@ commands:
   forgotpw:
     description: Khôi phục mật khẩu tự động
     usage: /forgotpw <email@haha.com>
+  kit:
+    description: Nhận Gói Quà
+  adminkit:
+    description: Quản lý phần quà Admin
+    permission: rpgcore.admin
+    permission-message: §cBan không có quyền sử dụng lệnh này!

@@ -46,6 +46,8 @@ public final class RPGCore extends JavaPlugin {
     private NPCManager npcManager;
     private GlobalEconomyManager globalEconomyManager;
 
+    private RewardManager rewardManager;
+
     @Override
     public void onEnable() {
         instance = this;
@@ -97,6 +99,7 @@ public final class RPGCore extends JavaPlugin {
         this.mountDataManager = new MountDataManager(this, this.mountManager);
 
         this.backpackManager = new BackpackManager(this);
+        this.rewardManager = new RewardManager(this);
 
         JobRegister.registerAllJobs();
         JobLeaderboard.updateLeaderboards();
@@ -157,6 +160,7 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new TrinketRandomCraftGUI(), this);
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.ui.TrinketRecipeCraftGUI(), this);
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.skills.bard.BardCoreGUI(), this);
+        getServer().getPluginManager().registerEvents(new RewardListener(this), this);
 
         new RegenTask(playerManager, bossBarManager).runTaskTimer(this, 0L, 20L);
 
@@ -177,6 +181,12 @@ public final class RPGCore extends JavaPlugin {
         getCommand("login").setExecutor(authCmd);
         getCommand("register").setExecutor(authCmd);
         getCommand("forgotpw").setExecutor(authCmd);
+
+        RewardCommand rewardCmd = new RewardCommand(this);
+        getCommand("kit").setExecutor(rewardCmd);
+        getCommand("kit").setTabCompleter(rewardCmd);      // THÊM DÒNG NÀY
+        getCommand("adminkit").setExecutor(rewardCmd);
+        getCommand("adminkit").setTabCompleter(rewardCmd); // THÊM DÒNG NÀY
 
         if (this.getCommand("bal") != null) {
             this.getCommand("bal").setExecutor(new BalanceCommand(this, playerManager, currencyManager));
@@ -283,4 +293,5 @@ public final class RPGCore extends JavaPlugin {
     public GlobalEconomyManager getGlobalEconomyManager() {
         return this.globalEconomyManager;
     }
+    public RewardManager getRewardManager() { return rewardManager; }
 }
