@@ -1,29 +1,30 @@
 package vn.minecraft.rPGCore.managers;
 
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.ReplaceOptions;
+import org.bson.Document;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.util.io.BukkitObjectInputStream;
+import org.bukkit.util.io.BukkitObjectOutputStream;
+import vn.minecraft.rPGCore.database.MongoManager;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.util.*;
 
 public class ShopManager {
 
     private final JavaPlugin plugin;
     private final CurrencyManager currencyManager;
-    private File file;
-    private FileConfiguration config;
+    private final MongoCollection<Document> collection;
 
-    // Cấu trúc mới: ShopID -> Page -> Slot -> ShopItem
+    // Cấu trúc: ShopID -> Page -> Slot -> ShopItem
     private final Map<String, Map<Integer, Map<Integer, ShopItem>>> shops = new HashMap<>();
 
     public static class ShopItem {
@@ -41,59 +42,70 @@ public class ShopManager {
     public ShopManager(JavaPlugin plugin, CurrencyManager currencyManager) {
         this.plugin = plugin;
         this.currencyManager = currencyManager;
-        setupFile();
+        // Kết nối tới Collection shops
+        this.collection = MongoManager.getInstance().getDatabase().getCollection("shops");
+        loadShopsFromDB();
     }
 
-    private void setupFile() {
-        file = new File(plugin.getDataFolder(), "shop.yml");
-        if (!file.exists()) {
-            try { file.getParentFile().mkdirs(); file.createNewFile(); }
-            catch (IOException e) { e.printStackTrace(); }
-        }
-        config = YamlConfiguration.loadConfiguration(file);
-        loadShopFromFile();
-    }
-
-    private void loadShopFromFile() {
+    // ==========================================
+    // ĐỌC DỮ LIỆU TỪ MONGODB (Thay cho YAML cũ)
+    // ==========================================
+    private void loadShopsFromDB() {
         shops.clear();
-        if (!config.contains("shops")) return;
-
-        for (String shopId : config.getConfigurationSection("shops").getKeys(false)) {
+        for (Document doc : collection.find()) {
+            String shopId = doc.getString("_id");
             shops.put(shopId, new HashMap<>());
 
-            for (String pageStr : config.getConfigurationSection("shops." + shopId).getKeys(false)) {
+            Document pagesDoc = (Document) doc.get("data");
+            if (pagesDoc == null) continue;
+
+            for (String pageStr : pagesDoc.keySet()) {
                 int page = Integer.parseInt(pageStr);
                 shops.get(shopId).put(page, new HashMap<>());
 
-                for (String slotStr : config.getConfigurationSection("shops." + shopId + "." + page).getKeys(false)) {
+                Document slotsDoc = (Document) pagesDoc.get(pageStr);
+                for (String slotStr : slotsDoc.keySet()) {
                     int slot = Integer.parseInt(slotStr);
-                    ItemStack item = config.getItemStack("shops." + shopId + "." + page + "." + slot + ".item");
-                    long sellPrice = config.getLong("shops." + shopId + "." + page + "." + slot + ".sellPrice");
-                    long buyPrice = config.getLong("shops." + shopId + "." + page + "." + slot + ".buyPrice");
+                    Document itemDoc = (Document) slotsDoc.get(slotStr);
 
-                    shops.get(shopId).get(page).put(slot, new ShopItem(item, sellPrice, buyPrice));
+                    ItemStack item = itemFromBase64(itemDoc.getString("item"));
+                    long sell = itemDoc.getLong("sellPrice");
+                    long buy = itemDoc.getLong("buyPrice");
+
+                    if (item != null) {
+                        shops.get(shopId).get(page).put(slot, new ShopItem(item, sell, buy));
+                    }
                 }
             }
         }
+        plugin.getLogger().info("Đã tải dữ liệu Cửa hàng từ MongoDB.");
     }
 
-    public void saveShopToFile() {
-        config.set("shops", null);
-        for (Map.Entry<String, Map<Integer, Map<Integer, ShopItem>>> shopEntry : shops.entrySet()) {
-            String shopId = shopEntry.getKey();
-            for (Map.Entry<Integer, Map<Integer, ShopItem>> pageEntry : shopEntry.getValue().entrySet()) {
-                int page = pageEntry.getKey();
-                for (Map.Entry<Integer, ShopItem> slotEntry : pageEntry.getValue().entrySet()) {
-                    int slot = slotEntry.getKey();
-                    ShopItem sItem = slotEntry.getValue();
+    // ==========================================
+    // LƯU DỮ LIỆU XUỐNG MONGODB (Hàm đang bị thiếu)
+    // ==========================================
+    public void saveShopToDB(String shopId) {
+        if (!shops.containsKey(shopId)) return;
 
-                    config.set("shops." + shopId + "." + page + "." + slot + ".item", sItem.item);
-                    config.set("shops." + shopId + "." + page + "." + slot + ".sellPrice", sItem.sellPrice);
-                    config.set("shops." + shopId + "." + page + "." + slot + ".buyPrice", sItem.buyPrice);
-                }
+        Document dataDoc = new Document();
+        for (Map.Entry<Integer, Map<Integer, ShopItem>> pageEntry : shops.get(shopId).entrySet()) {
+            Document slotsDoc = new Document();
+            for (Map.Entry<Integer, ShopItem> slotEntry : pageEntry.getValue().entrySet()) {
+                ShopItem sItem = slotEntry.getValue();
+                slotsDoc.append(String.valueOf(slotEntry.getKey()), new Document()
+                        .append("item", itemToBase64(sItem.item))
+                        .append("sellPrice", sItem.sellPrice)
+                        .append("buyPrice", sItem.buyPrice));
             }
+            dataDoc.append(String.valueOf(pageEntry.getKey()), slotsDoc);
         }
-        try { config.save(file); } catch (IOException e) { e.printStackTrace(); }
+
+        Document shopDoc = new Document("_id", shopId).append("data", dataDoc);
+
+        // Chạy bất đồng bộ để không kẹt Server khi Admin save shop
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            collection.replaceOne(Filters.eq("_id", shopId), shopDoc, new ReplaceOptions().upsert(true));
+        });
     }
 
     public void saveShopItem(String shopId, int page, int slot, ItemStack item, long sellPrice, long buyPrice) {
@@ -112,61 +124,39 @@ public class ShopManager {
         return shops.get(shopId).get(page).get(slot);
     }
 
-    // [MỚI]: Thêm hàm kiểm tra xem có trang tiếp theo không
     public boolean hasPage(String shopId, int page) {
         return shops.containsKey(shopId) && shops.get(shopId).containsKey(page) && !shops.get(shopId).get(page).isEmpty();
     }
 
-    // SỬA: TẠO UI CHO ADMIN (Đánh dấu Hàng Mua / Bán)
+    // ==========================================
+    // CÁC HÀM UI (Giữ nguyên y hệt code của bạn)
+    // ==========================================
+    // ==========================================
+    // TẠO UI CHO ADMIN (Rút gọn còn 1 hàng - 9 ô)
+    // ==========================================
     public Inventory openAdminGUI(String shopId, String shopName, int page) {
-        // Cắt bớt tên nếu quá dài để tránh lỗi UI
         String safeName = shopName.length() > 20 ? shopName.substring(0, 20) : shopName;
-        Inventory inv = Bukkit.createInventory(null, 45, "§0§l" + safeName + " | Tr " + page);
+        // Rút gọn kích thước Inventory xuống còn 9
+        Inventory inv = Bukkit.createInventory(null, 9, "§0§l" + safeName + " | Tr " + page);
 
-        ItemStack blackGlass = createGlass(Material.BLACK_STAINED_GLASS_PANE, "§0");
-        for (int i = 0; i < 9; i++) inv.setItem(i, blackGlass);
-        for (int i = 36; i < 45; i++) inv.setItem(i, blackGlass);
-        inv.setItem(17, getPaginationButton(shopId, page, true));
+        // Ô số 8 (cuối cùng) là nút Chuyển Trang
+        inv.setItem(8, getPaginationButton(shopId, page, true));
 
-        // ==========================================
-        // [MỚI] ĐÁNH DẤU HÀNG MUA / BÁN Ở Ô RÌA
-        // ==========================================
-        // Hàng 3 (Ô 26): Giá Shop BÁN cho người chơi -> Kính Đỏ
-        ItemStack sellLabel = createGlass(Material.RED_STAINED_GLASS_PANE, "§c§lGIÁ BÁN (Shop Bán)");
-        org.bukkit.inventory.meta.ItemMeta sellMeta = sellLabel.getItemMeta();
-        sellMeta.setLore(java.util.Arrays.asList("§7Giá mà người chơi phải trả", "§7để MUA vật phẩm này."));
-        sellLabel.setItemMeta(sellMeta);
-        inv.setItem(26, sellLabel);
-
-        // Hàng 4 (Ô 35): Giá Shop MUA của người chơi -> Kính Xanh
-        ItemStack buyLabel = createGlass(Material.GREEN_STAINED_GLASS_PANE, "§a§lGIÁ MUA (Shop Thu Mua)");
-        org.bukkit.inventory.meta.ItemMeta buyMeta = buyLabel.getItemMeta();
-        buyMeta.setLore(java.util.Arrays.asList("§7Giá mà người chơi nhận được", "§7khi BÁN vật phẩm này cho Shop."));
-        buyLabel.setItemMeta(buyMeta);
-        inv.setItem(35, buyLabel);
-
-        // Load vật phẩm đã lưu
+        // Load vật phẩm đã lưu (Tối đa 8 item từ ô 0 -> 7)
         if (shops.containsKey(shopId) && shops.get(shopId).containsKey(page)) {
             for (int i = 0; i < 8; i++) {
                 ShopItem sItem = shops.get(shopId).get(page).get(i);
                 if (sItem != null) {
-                    // Đặt vật phẩm chính vào Hàng 2
-                    inv.setItem(i + 9, sItem.item);
-
-                    // [FIX LỖI] Đặt lại Tiền vật lý vào Hàng 3 (Giá Bán) và Hàng 4 (Giá Mua)
-                    if (sItem.sellPrice > 0) {
-                        inv.setItem(i + 18, currencyManager.createCurrencyStackFromValue(sItem.sellPrice));
-                    }
-                    if (sItem.buyPrice > 0) {
-                        inv.setItem(i + 27, currencyManager.createCurrencyStackFromValue(sItem.buyPrice));
-                    }
+                    inv.setItem(i, sItem.item); // Chỉ lưu và hiển thị Item, không cần hiển thị giá
                 }
             }
         }
         return inv;
     }
 
-    // SỬA: TẠO UI CHO NGƯỜI CHƠI (Hiển thị đúng tên NPC)
+    // ==========================================
+    // TẠO UI CHO NGƯỜI CHƠI (Tự động lấy giá từ GlobalEconomy)
+    // ==========================================
     public Inventory openPlayerGUI(org.bukkit.entity.Player player, String shopId, String shopName, int page) {
         String safeName = shopName.length() > 20 ? shopName.substring(0, 20) : shopName;
         Inventory inv = Bukkit.createInventory(null, 27, "§0§l" + safeName + " | Tr " + page);
@@ -180,36 +170,37 @@ public class ShopManager {
             for (int i = 0; i < 8; i++) {
                 ShopItem sItem = shops.get(shopId).get(page).get(i);
                 if (sItem != null) {
-                    if (sItem.sellPrice <= 0 && sItem.buyPrice <= 0) continue;
+                    // MÓC NỐI VỚI GLOBAL ECONOMY ĐỂ LẤY GIÁ
+                    long currentSellPrice = vn.minecraft.rPGCore.RPGCore.getInstance().getGlobalEconomyManager().getBuyPrice(sItem.item);  // Giá Shop Bán -> Người mua
+                    long currentBuyPrice = vn.minecraft.rPGCore.RPGCore.getInstance().getGlobalEconomyManager().getSellPrice(sItem.item);  // Giá Shop Mua -> Người bán
+
+                    if (currentSellPrice <= 0 && currentBuyPrice <= 0) continue;
+
                     ItemStack displayItem = sItem.item.clone();
                     ItemMeta meta = displayItem.getItemMeta();
                     List<String> lore = meta.hasLore() ? meta.getLore() : new ArrayList<>();
-
-                    // Lấy % Sale của Thương nhân
                     double discount = vn.minecraft.rPGCore.jobs.types.MerchantJob.getBargainDiscount(player);
 
                     lore.add("");
 
-                    // SHOP BÁN -> THƯƠNG NHÂN MUA (Được giảm giá)
-                    if (sItem.sellPrice > 0) {
-                        long finalSellPrice = sItem.sellPrice - (long)(sItem.sellPrice * discount);
+                    if (currentSellPrice > 0) {
+                        long finalSellPrice = currentSellPrice - (long)(currentSellPrice * discount);
                         if (discount > 0) {
-                            lore.add("§8▶ Giá gốc: §m" + currencyManager.formatCurrency(sItem.sellPrice));
+                            lore.add("§8▶ Giá thị trường: §m" + currencyManager.formatCurrency(currentSellPrice));
                             lore.add("§e▶ Bạn mua: " + currencyManager.formatCurrency(finalSellPrice) + " §a(-" + (int)(discount*100) + "%) §7(Click Phải)");
                         } else {
-                            lore.add("§e▶ Mua: " + currencyManager.formatCurrency(sItem.sellPrice) + " §7(Click Phải)");
+                            lore.add("§e▶ Mua: " + currencyManager.formatCurrency(currentSellPrice) + " §7(Click Phải)");
                         }
                         meta.getPersistentDataContainer().set(new org.bukkit.NamespacedKey(plugin, "shop_final_sell"), org.bukkit.persistence.PersistentDataType.LONG, finalSellPrice);
                     }
 
-                    // SHOP MUA -> THƯƠNG NHÂN BÁN (Được tăng giá)
-                    if (sItem.buyPrice > 0) {
-                        long finalBuyPrice = sItem.buyPrice + (long)(sItem.buyPrice * discount);
+                    if (currentBuyPrice > 0) {
+                        long finalBuyPrice = currentBuyPrice + (long)(currentBuyPrice * discount);
                         if (discount > 0) {
-                            lore.add("§8▶ Shop thu gốc: §m" + currencyManager.formatCurrency(sItem.buyPrice));
+                            lore.add("§8▶ Shop thu gốc: §m" + currencyManager.formatCurrency(currentBuyPrice));
                             lore.add("§a▶ Bạn bán được: " + currencyManager.formatCurrency(finalBuyPrice) + " §a(+" + (int)(discount*100) + "%) §7(Click Trái)");
                         } else {
-                            lore.add("§a▶ Bán: " + currencyManager.formatCurrency(sItem.buyPrice) + " §7(Click Trái)");
+                            lore.add("§a▶ Bán: " + currencyManager.formatCurrency(currentBuyPrice) + " §7(Click Trái)");
                         }
                         meta.getPersistentDataContainer().set(new org.bukkit.NamespacedKey(plugin, "shop_final_buy"), org.bukkit.persistence.PersistentDataType.LONG, finalBuyPrice);
                     }
@@ -243,5 +234,28 @@ public class ShopManager {
         meta.setDisplayName(name);
         item.setItemMeta(meta);
         return item;
+    }
+
+    // ==========================================
+    // CÔNG CỤ CHUYỂN ĐỔI ITEM <-> CHUỖI BASE64
+    // ==========================================
+    private String itemToBase64(ItemStack item) {
+        try {
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            BukkitObjectOutputStream dataOutput = new BukkitObjectOutputStream(outputStream);
+            dataOutput.writeObject(item);
+            dataOutput.close();
+            return Base64.getEncoder().encodeToString(outputStream.toByteArray());
+        } catch (Exception e) { return ""; }
+    }
+
+    private ItemStack itemFromBase64(String data) {
+        try {
+            ByteArrayInputStream inputStream = new ByteArrayInputStream(Base64.getDecoder().decode(data));
+            BukkitObjectInputStream dataInput = new BukkitObjectInputStream(inputStream);
+            ItemStack item = (ItemStack) dataInput.readObject();
+            dataInput.close();
+            return item;
+        } catch (Exception e) { return null; }
     }
 }

@@ -1,16 +1,16 @@
 package vn.minecraft.rPGCore.jobs.core;
 
+import com.mongodb.client.MongoCollection;
+import org.bson.Document;
 import org.bukkit.Bukkit;
-import org.bukkit.OfflinePlayer;
-import org.bukkit.configuration.file.YamlConfiguration;
-import vn.minecraft.rPGCore.RPGCore;
+import vn.minecraft.rPGCore.database.MongoManager;
 
-import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class JobLeaderboard {
 
+    // Danh sách tĩnh (Cache) để hiển thị trong GUI
     private static final Map<String, List<LeaderboardEntry>> topPlayers = new HashMap<>();
 
     public static class LeaderboardEntry {
@@ -26,26 +26,32 @@ public class JobLeaderboard {
     }
 
     public static void updateLeaderboards() {
-        Bukkit.getLogger().info("[RPGCore] Đang cập nhật Bảng Xếp Hạng Nghề Nghiệp...");
-        File dataDir = new File(RPGCore.getInstance().getDataFolder(), "job_data");
-        if (!dataDir.exists() || dataDir.listFiles() == null) return;
+        Bukkit.getLogger().info("[RPGCore] Đang cập nhật Bảng Xếp Hạng Nghề Nghiệp từ MongoDB...");
+
+        MongoCollection<Document> jobsCollection = MongoManager.getInstance().getDatabase().getCollection("player_jobs");
+
+        // MỚI: Lấy tên người chơi từ Collection "player_accounts" (AuthManager) để tránh lag server do OfflinePlayer
+        MongoCollection<Document> accountsCollection = MongoManager.getInstance().getDatabase().getCollection("player_accounts");
 
         Map<String, List<LeaderboardEntry>> tempMap = new HashMap<>();
 
-        for (File file : dataDir.listFiles()) {
-            if (!file.getName().endsWith(".yml")) continue;
-            YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
-
-            String jobId = config.getString("currentJob", "NONE");
-            if (jobId.equals("NONE")) continue;
+        // Quét tất cả Document trên MongoDB
+        for (Document doc : jobsCollection.find()) {
+            String jobId = doc.getString("currentJob");
+            if (jobId == null || jobId.equals("NONE")) continue;
 
             try {
-                UUID uuid = UUID.fromString(file.getName().replace(".yml", ""));
-                OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(uuid);
-                String playerName = offlinePlayer.getName() != null ? offlinePlayer.getName() : "Unknown";
+                String uuidStr = doc.getString("_id");
 
-                int level = config.getInt("levels." + jobId, 1);
-                double exp = config.getDouble("exps." + jobId, 0);
+                // Truy vấn tên từ AuthManager
+                Document accountDoc = accountsCollection.find(new Document("_id", uuidStr)).first();
+                String playerName = (accountDoc != null && accountDoc.getString("playerName") != null) ? accountDoc.getString("playerName") : "Người chơi ẩn";
+
+                Document levels = (Document) doc.get("levels");
+                Document exps = (Document) doc.get("exps");
+
+                int level = (levels != null && levels.getInteger(jobId) != null) ? levels.getInteger(jobId) : 1;
+                double exp = (exps != null && exps.get(jobId) != null) ? ((Number) exps.get(jobId)).doubleValue() : 0.0;
 
                 tempMap.computeIfAbsent(jobId.toUpperCase(), k -> new ArrayList<>())
                         .add(new LeaderboardEntry(playerName, level, exp));
@@ -60,7 +66,7 @@ public class JobLeaderboard {
                     .collect(Collectors.toList());
             topPlayers.put(jobId, sorted);
         }
-        Bukkit.getLogger().info("[RPGCore] Đã cập nhật xong Bảng Xếp Hạng!");
+        Bukkit.getLogger().info("[RPGCore] Đã cập nhật xong Bảng Xếp Hạng Nghề Nghiệp!");
     }
 
     public static List<LeaderboardEntry> getTop10(String jobId) {

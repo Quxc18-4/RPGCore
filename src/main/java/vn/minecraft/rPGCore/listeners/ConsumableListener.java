@@ -16,28 +16,26 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.entity.Player;
-import org.bukkit.util.io.BukkitObjectInputStream;
-import org.bukkit.util.io.BukkitObjectOutputStream;
 import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.managers.BoredomManager;
 import vn.minecraft.rPGCore.managers.CookingManager;
 import vn.minecraft.rPGCore.managers.ItemManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class ConsumableListener implements Listener {
 
+    private final RPGCore plugin; // 1. Khai báo biến
     private final ItemManager itemManager;
     private final BoredomManager boredomManager;
     private final CookingManager cookingManager;
     private final Map<UUID, Long> consumeCooldowns = new HashMap<>();
     private final Map<UUID, String> activeBags = new HashMap<>();
 
-    public ConsumableListener(ItemManager itemManager, BoredomManager boredomManager, CookingManager cookingManager) {
+    // 2. Cập nhật Constructor để nhận 'plugin' vào
+    public ConsumableListener(RPGCore plugin, ItemManager itemManager, BoredomManager boredomManager, CookingManager cookingManager) {
+        this.plugin = plugin;
         this.itemManager = itemManager;
         this.boredomManager = boredomManager;
         this.cookingManager = cookingManager;
@@ -150,7 +148,7 @@ public class ConsumableListener implements Listener {
             // LOGIC KÍCH HOẠT: GIẤY PHÉP MỞ RỘNG CHUỒNG
             // ==========================================
             else if (itemId.equals("misc_stable_expansion")) {
-                vn.minecraft.rPGCore.mounts.data.PlayerMountProfile profile = RPGCore.getInstance().getMountManager().getLoadedProfilesMap().get(player.getUniqueId());
+                vn.minecraft.rPGCore.mounts.data.PlayerMountProfile profile = plugin.getMountManager().getLoadedProfilesMap().get(player.getUniqueId());
                 if (profile != null) {
                     int currentSlots = profile.getUnlockedSlots();
                     if (currentSlots >= 9) { // Giới hạn tối đa (Ví dụ 9 ô chuồng)
@@ -159,7 +157,9 @@ public class ConsumableListener implements Listener {
                     }
 
                     profile.setUnlockedSlots(currentSlots + 1);
-                    RPGCore.getInstance().getMountDataManager().saveProfile(player.getUniqueId());
+                    RPGCore.getInstance().getMountDataManager().saveProfile(player.getUniqueId(), true, false);
+                    // DESPAWN ACTIVE MOUNT
+                    plugin.getMountManager().despawnMount(player, false);
 
                     player.sendMessage("§a§l[Chuồng Ngựa] §fBạn đã mở rộng thành công, hiện có thể chứa tối đa §e" + (currentSlots + 1) + " §fThú cưỡi!");
                     player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
@@ -374,7 +374,7 @@ public class ConsumableListener implements Listener {
             // LOGIC MỞ GÓI THÚ CƯỠI VÀO CHUỒNG (GIẢI NÉN)
             // ==========================================
             else if (itemId.equals("misc_mount_packaged")) {
-                vn.minecraft.rPGCore.mounts.data.PlayerMountProfile profile = RPGCore.getInstance().getMountManager().getProfile(player.getUniqueId());
+                vn.minecraft.rPGCore.mounts.data.PlayerMountProfile profile = plugin.getMountManager().getProfile(player.getUniqueId());
 
                 // Tìm slot trống ưu tiên từ 1 -> 2 -> 3
                 int emptySlot = -1;
@@ -407,7 +407,9 @@ public class ConsumableListener implements Listener {
 
                 // Lưu vào chuồng
                 profile.setMountAt(emptySlot, mountData);
-                RPGCore.getInstance().getMountDataManager().saveProfile(player.getUniqueId());
+                RPGCore.getInstance().getMountDataManager().saveProfile(player.getUniqueId(), true, false);
+                // DESPAWN ACTIVE MOUNT
+                plugin.getMountManager().despawnMount(player, false);
 
                 player.sendMessage("§a§l[Chuồng Ngựa] §fĐã thêm §e" + arch.getDisplayName() + " §fvào ô chuồng số §b" + emptySlot + "!");
                 player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_HORSE_ARMOR, 1f, 1f);

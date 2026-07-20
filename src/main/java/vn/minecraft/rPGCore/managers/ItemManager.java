@@ -335,12 +335,12 @@ public class ItemManager {
         register(new ItemData("bag_armor_epic", Rarity.EPIC, Category.MISC, 0.0, Material.BUNDLE, "Túi Phòng Cụ Sử Thi", null, "Chuột phải để mở nhận 1 Giáp Phẩm chất Epic.", "Cấp độ giáp bằng với cấp của bạn."));
 
         // --- 11. TINH THỂ ---
-        register(new ItemData("crystal_fire", Rarity.EPIC, Category.MISC, 0.0, Material.BLAZE_POWDER, "Ngọn Lửa Khởi Nguyên", "Thức tỉnh Nguyên Tố Lửa", "Vật phẩm bí ẩn chứa đựng sức mạnh nguyên tố."));
-        register(new ItemData("crystal_water", Rarity.EPIC, Category.MISC, 0.0, Material.HEART_OF_THE_SEA, "Nước Mắt Nữ Thần", "Thức tỉnh Nguyên Tố Nước", "Vật phẩm bí ẩn chứa đựng sức mạnh nguyên tố."));
-        register(new ItemData("crystal_nature", Rarity.EPIC, Category.MISC, 0.0, Material.OAK_SAPLING, "Mầm Cây Thế Giới", "Thức tỉnh Nguyên Tố Tự Nhiên", "Vật phẩm bí ẩn chứa đựng sức mạnh nguyên tố."));
-        register(new ItemData("crystal_wind", Rarity.EPIC, Category.MISC, 0.0, Material.WIND_CHARGE, "Hơi Tàn Của Tinh Linh Gió", "Thức tỉnh Nguyên Tố Gió", "Vật phẩm bí ẩn chứa đựng sức mạnh nguyên tố."));
-        register(new ItemData("crystal_light", Rarity.EPIC, Category.MISC, 0.0, Material.NETHER_STAR, "Hào Quang Ánh Sáng", "Thức tỉnh Nguyên Tố Ánh Sáng", "Vật phẩm bí ẩn chứa đựng sức mạnh nguyên tố."));
-        register(new ItemData("crystal_dark", Rarity.EPIC, Category.MISC, 0.0, Material.ECHO_SHARD, "Tinh Thể Hỗn Độn", "Thức tỉnh Nguyên Tố Bóng Tối", "Vật phẩm bí ẩn chứa đựng sức mạnh nguyên tố."));
+        register(new ItemData("crystal_fire", Rarity.MYTHIC, Category.MISC, 0.0, Material.BLAZE_POWDER, "Ngọn Lửa Khởi Nguyên", "Thức tỉnh Nguyên Tố Lửa", "Vật phẩm bí ẩn chứa đựng sức mạnh nguyên tố."));
+        register(new ItemData("crystal_water", Rarity.MYTHIC, Category.MISC, 0.0, Material.HEART_OF_THE_SEA, "Nước Mắt Nữ Thần", "Thức tỉnh Nguyên Tố Nước", "Vật phẩm bí ẩn chứa đựng sức mạnh nguyên tố."));
+        register(new ItemData("crystal_nature", Rarity.MYTHIC, Category.MISC, 0.0, Material.OAK_SAPLING, "Mầm Cây Thế Giới", "Thức tỉnh Nguyên Tố Tự Nhiên", "Vật phẩm bí ẩn chứa đựng sức mạnh nguyên tố."));
+        register(new ItemData("crystal_wind", Rarity.MYTHIC, Category.MISC, 0.0, Material.WIND_CHARGE, "Hơi Tàn Của Tinh Linh Gió", "Thức tỉnh Nguyên Tố Gió", "Vật phẩm bí ẩn chứa đựng sức mạnh nguyên tố."));
+        register(new ItemData("crystal_light", Rarity.MYTHIC, Category.MISC, 0.0, Material.NETHER_STAR, "Hào Quang Ánh Sáng", "Thức tỉnh Nguyên Tố Ánh Sáng", "Vật phẩm bí ẩn chứa đựng sức mạnh nguyên tố."));
+        register(new ItemData("crystal_dark", Rarity.MYTHIC, Category.MISC, 0.0, Material.ECHO_SHARD, "Tinh Thể Hỗn Độn", "Thức tỉnh Nguyên Tố Bóng Tối", "Vật phẩm bí ẩn chứa đựng sức mạnh nguyên tố."));
 
         // --- 12. ĐẦU BẾP & TINH TÚY ẨM THỰC ---
         register(new ItemData("misc_culinary_essence", Rarity.EPIC, Category.MISC, 0.0, Material.GLOWSTONE_DUST, "Tinh Túy Ẩm Thực", null, "Kết tinh từ những món ăn tuyệt hảo.", "Được giới sành ăn săn lùng gắt gao."));

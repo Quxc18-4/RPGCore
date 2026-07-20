@@ -1,7 +1,10 @@
 package vn.minecraft.rPGCore.managers;
 
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.ReplaceOptions;
+import org.bson.Document;
 import org.bukkit.*;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -16,10 +19,9 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 import vn.minecraft.rPGCore.brewing.BrewingEngine;
 import vn.minecraft.rPGCore.brewing.PotionData;
+import vn.minecraft.rPGCore.database.MongoManager;
 import vn.minecraft.rPGCore.managers.ItemManager.ItemData;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.*;
 
 public class BrewingManager implements Listener {
@@ -27,7 +29,9 @@ public class BrewingManager implements Listener {
     private final JavaPlugin plugin;
     private final ItemManager itemManager;
     private final BrewingEngine engine;
-    private final File folder;
+
+    // [MỚI]: Collection trên MongoDB
+    private final MongoCollection<Document> collection;
 
     public static final String GUI_NAME = "§5§lVạc Pha Chế Thần Bí";
 
@@ -45,8 +49,9 @@ public class BrewingManager implements Listener {
         this.itemManager = itemManager;
         this.engine = new BrewingEngine();
 
-        this.folder = new File(plugin.getDataFolder(), "potions");
-        if (!folder.exists()) folder.mkdirs();
+        // Kết nối tới Collection 'potions'
+        this.collection = MongoManager.getInstance().getDatabase().getCollection("potions");
+
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
 
@@ -78,7 +83,6 @@ public class BrewingManager implements Listener {
             event.setCancelled(true);
             Player player = event.getPlayer();
 
-            // [FIX GHOST ITEM KHI MỞ VẠC]
             org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, player::updateInventory, 1L);
 
             long now = System.currentTimeMillis();
@@ -94,7 +98,6 @@ public class BrewingManager implements Listener {
     public void onBrewingInventoryDrag(InventoryDragEvent event) {
         if (!event.getView().getTitle().equals(GUI_NAME)) return;
 
-        // [FIX GHOST ITEM KHI KÉO THẢ NHIỀU Ô]
         org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> ((Player) event.getWhoClicked()).updateInventory(), 1L);
 
         for (int slot : event.getRawSlots()) {
@@ -142,7 +145,6 @@ public class BrewingManager implements Listener {
         ItemStack waterItem = inv.getItem(WATER_SLOT);
         if (waterItem != null && waterItem.getType() != Material.AIR) {
             String wId = itemManager.getItemId(waterItem);
-            // [CẬP NHẬT] Hỗ trợ nhận diện Bình Sứ Nạp Nước
             if (wId != null && (wId.startsWith("water_") || wId.startsWith("alch_thermal_flask_water"))) {
                 ingredients.add(itemManager.getItemData(wId));
             } else {
@@ -150,7 +152,6 @@ public class BrewingManager implements Listener {
             }
         }
 
-        // 1. Quét 6 ô Thảo dược chính
         for (int s : HERB_SLOTS) {
             ItemStack i = inv.getItem(s);
             if (i != null && i.getType() != Material.AIR) {
@@ -159,7 +160,6 @@ public class BrewingManager implements Listener {
             }
         }
 
-        // 2. Quét 3 ô Điều vị (Ép kiểu SPICE để lách hệ thống trừ tỉ lệ)
         for (int s : SPICE_SLOTS) {
             ItemStack i = inv.getItem(s);
             if (i != null && i.getType() != Material.AIR) {
@@ -171,7 +171,6 @@ public class BrewingManager implements Listener {
             }
         }
 
-        // 3. Quét Dung môi
         ItemStack solvItem = inv.getItem(SOLVENT_SLOT);
         if (solvItem != null && solvItem.getType() != Material.AIR) {
             String id = itemManager.getItemId(solvItem);
@@ -208,9 +207,6 @@ public class BrewingManager implements Listener {
         if (!event.getView().getTitle().equals(GUI_NAME)) return;
 
         Player player = (Player) event.getWhoClicked();
-
-        // [FIX GHOST ITEM TỔNG LỰC CHO MỌI THAO TÁC CLICK TRONG GUI]
-        // Đặt ở ngay đầu hàm, mọi thao tác trả về (return) bên dưới đều sẽ được đồng bộ an toàn!
         org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, player::updateInventory, 1L);
 
         if (event.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY || event.getClick().isKeyboardClick() || event.getClick() == ClickType.DOUBLE_CLICK) {
@@ -233,7 +229,6 @@ public class BrewingManager implements Listener {
             ItemData data = itemManager.getItemData(cursorId);
 
             if (slot == WATER_SLOT) {
-                // [CẬP NHẬT] Nhận diện Bình sứ
                 boolean isWater = cursorId != null && (cursorId.startsWith("water_") || cursorId.startsWith("alch_thermal_flask_water"));
                 boolean isCustomPotion = cursor.hasItemMeta() && cursor.getItemMeta().getPersistentDataContainer().has(new org.bukkit.NamespacedKey(plugin, "potion_uuid"), PersistentDataType.STRING);
 
@@ -242,29 +237,30 @@ public class BrewingManager implements Listener {
                     player.updateInventory(); return;
                 }
                 if (isCustomPotion) {
-                    String uuid = cursor.getItemMeta().getPersistentDataContainer().get(new org.bukkit.NamespacedKey(plugin, "potion_uuid"), PersistentDataType.STRING);
-                    PotionData old = loadPotionFromFile(uuid);
-                    if (old == null || old.isEnhanced || old.isRuined) {
-                        event.setCancelled(true); player.sendMessage("§c§l[!] §cThuốc bị lỗi, hỏng hoặc đã được Cường Hóa!");
-                        player.updateInventory(); return;
+                    // [ĐÃ FIX LỖI LAG]: Đọc trực tiếp từ NBT thay vì gọi MongoDB!
+                    int isRuined = cursor.getItemMeta().getPersistentDataContainer().getOrDefault(new org.bukkit.NamespacedKey(plugin, "potion_ruined"), PersistentDataType.INTEGER, 0);
+                    int isEnhanced = cursor.getItemMeta().getPersistentDataContainer().getOrDefault(new org.bukkit.NamespacedKey(plugin, "potion_enhanced"), PersistentDataType.INTEGER, 0);
+
+                    if (isRuined == 1 || isEnhanced == 1) {
+                        event.setCancelled(true);
+                        player.sendMessage("§c§l[!] §cThuốc bị lỗi, hỏng hoặc đã được Cường Hóa!");
+                        player.updateInventory();
+                        return;
                     }
                 }
             } else if (slot == 10 || slot == 11 || slot == 12 || slot == 19 || slot == 20 || slot == 21) {
-                // [SỬA LỖI]: Báo lỗi nếu đặt sai đồ, CẤM đặt Dung Môi vào ô Thảo Dược
                 if (data == null || data.category != ItemManager.Category.HERB || data.id.startsWith("herb_solvent_")) {
                     event.setCancelled(true);
                     player.sendMessage("§c§l[!] §cÔ này chỉ dành riêng cho Thảo Dược Chính!");
                     player.updateInventory(); return;
                 }
             } else if (slot == 37 || slot == 38 || slot == 39) {
-                // [SỬA LỖI]: Báo lỗi nếu đặt sai, CẤM đặt Dung Môi vào ô Gia Vị
                 if (data == null || (data.category != ItemManager.Category.SPICE && data.category != ItemManager.Category.HERB) || data.id.startsWith("herb_solvent_")) {
                     event.setCancelled(true);
                     player.sendMessage("§c§l[!] §cÔ này chỉ dành cho Gia vị hoặc Thảo mộc khử vị!");
                     player.updateInventory(); return;
                 }
             } else if (slot == SOLVENT_SLOT) {
-                // [SỬA LỖI]: CHỐT CỨNG chỉ nhận các món có ID Dung Môi
                 if (data == null || !data.id.startsWith("herb_solvent_")) {
                     event.setCancelled(true);
                     player.sendMessage("§c§l[!] §cÔ này chỉ dành riêng cho Dung Môi!");
@@ -277,7 +273,6 @@ public class BrewingManager implements Listener {
 
         Bukkit.getScheduler().runTaskLater(plugin, () -> updateBrewButton(inv, player), 1L);
 
-        // NÚT BẤM NẤU THUỐC
         if (slot == BUTTON_SLOT) {
             event.setCancelled(true);
             player.updateInventory();
@@ -308,7 +303,7 @@ public class BrewingManager implements Listener {
                 ingredients.add(itemManager.getItemData(waterId));
             } else {
                 oldUuidToDelete = waterItem.getItemMeta().getPersistentDataContainer().get(new org.bukkit.NamespacedKey(plugin, "potion_uuid"), PersistentDataType.STRING);
-                basePotion = loadPotionFromFile(oldUuidToDelete);
+                basePotion = loadPotionFromDB(oldUuidToDelete); // ĐỔI TÊN HÀM
             }
 
             boolean hasHerb = false;
@@ -323,7 +318,6 @@ public class BrewingManager implements Listener {
                 player.sendMessage("§c§l[!] §cVui lòng bỏ ít nhất 1 Thảo dược!"); return;
             }
 
-            // BẰNG ĐOẠN CODE ÉP KIỂU NÀY:
             for (int s : SPICE_SLOTS) {
                 if (inv.getItem(s) != null && inv.getItem(s).getType() != Material.AIR) {
                     ItemData original = itemManager.getItemData(itemManager.getItemId(inv.getItem(s)));
@@ -339,31 +333,14 @@ public class BrewingManager implements Listener {
 
             PotionData resultData = engine.evaluate(ingredients, player, basePotion);
 
-            // ==========================================
-            // [FIX CHÍNH THỨC]: TẨY RỬA DỮ LIỆU KHI NẤU HỎNG (Chặn kế thừa Tag)
-            // ==========================================
             if (resultData.isRuined) {
-                // 1. Xóa toàn bộ chỉ số để làm nhẹ file save yml (thuốc hỏng thì không có tác dụng)
                 resultData.customStats.clear();
                 resultData.potionEffects.clear();
-
-                // 2. Xóa sạch các Tag "Tốt" được kế thừa từ bình thuốc gốc,
-                // và xóa luôn chữ [Kinh Tởm] dư thừa do engine tạo ra để nhường chỗ cho UI tự xếp.
-                resultData.flavorTags.removeIf(tag ->
-                        tag.contains("Cân Bằng") ||
-                                tag.contains("Hoàn Hảo") ||
-                                tag.contains("Cường Hóa") ||
-                                tag.contains("Song Sinh") ||
-                                tag.toLowerCase().contains("kinh tởm")
-                );
+                resultData.flavorTags.removeIf(tag -> tag.contains("Cân Bằng") || tag.contains("Hoàn Hảo") || tag.contains("Cường Hóa") || tag.contains("Song Sinh") || tag.toLowerCase().contains("kinh tởm"));
             }
 
-            // ==========================================
-            // LOGIC ÁP DỤNG ĐẠO CỤ CHUYÊN NGÀNH
-            // ==========================================
             if (isThermalFlask) {
                 resultData.toxicityPoints *= 0.8;
-                // [CẬP NHẬT MỚI]: Nhồi thông tin Bình Sứ vào file cấu hình của Potion
                 resultData.specialEffects.add("THERMAL_FLASK");
             }
 
@@ -373,37 +350,29 @@ public class BrewingManager implements Listener {
             }
 
             if (spoon != null) {
-                // Muôi Bạc buff 5% sức mạnh toàn bộ Stats
                 for (String stat : resultData.customStats.keySet()) {
                     resultData.customStats.put(stat, resultData.customStats.get(stat) * 1.05);
                 }
-                reduceToolDurability(player, spoon, 30); // Giới hạn 30 lần
+                reduceToolDurability(player, spoon, 30);
             }
 
-            savePotionToFile(resultData);
+            savePotionToDB(resultData); // ĐỔI TÊN HÀM LƯU
 
             vn.minecraft.rPGCore.jobs.core.JobManager.processAlchemistBrewExp(player, resultData, ingredients);
 
-            if (oldUuidToDelete != null) deletePotionFile(oldUuidToDelete);
+            if (oldUuidToDelete != null) deletePotionFromDB(oldUuidToDelete); // ĐỔI TÊN HÀM XÓA
 
-            // [CẬP NHẬT MỚI]: Xử lý tiêu hao Nước Nền (Tiêu hao luôn bình sứ, không trả lại Vạc)
             waterItem.setAmount(waterItem.getAmount() - 1);
 
-            // Xử lý tiêu hao Nước Nền
             if (isThermalFlask) {
-                // Biến đổi lại thành bình sứ rỗng và trả lại Vạc
                 ItemStack emptyFlask = itemManager.buildItem("alch_thermal_flask_empty", 1);
                 inv.setItem(WATER_SLOT, emptyFlask);
-            } else {
-                waterItem.setAmount(waterItem.getAmount() - 1);
             }
 
-            // Xử lý tiêu hao các nguyên liệu khác
             for (int s : HERB_SLOTS) if (inv.getItem(s) != null) inv.getItem(s).setAmount(inv.getItem(s).getAmount() - 1);
             for (int s : SPICE_SLOTS) if (inv.getItem(s) != null) inv.getItem(s).setAmount(inv.getItem(s).getAmount() - 1);
             if (inv.getItem(SOLVENT_SLOT) != null) inv.getItem(SOLVENT_SLOT).setAmount(inv.getItem(SOLVENT_SLOT).getAmount() - 1);
 
-            // Hiệu ứng và Cập nhật Quest
             if (resultData.isRuined) {
                 player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 0.5f, 0.5f);
                 player.getWorld().spawnParticle(org.bukkit.Particle.CAMPFIRE_SIGNAL_SMOKE, player.getLocation().add(0, 1, 0), 10, 0.2, 0.2, 0.2, 0);
@@ -412,7 +381,6 @@ public class BrewingManager implements Listener {
                 player.getWorld().spawnParticle(Particle.WITCH, player.getLocation().add(0, 1, 0), 20, 0.3, 0.3, 0.3, 0);
             }
 
-            // Xử lý Dung Môi Song Sinh (Nhân đôi kết quả)
             ItemStack outputItem = buildPotionItem(resultData);
             if (resultData.flavorTags.contains("§d[Song Sinh]")) {
                 outputItem.setAmount(2);
@@ -430,6 +398,12 @@ public class BrewingManager implements Listener {
 
         org.bukkit.NamespacedKey uuidKey = new org.bukkit.NamespacedKey(plugin, "potion_uuid");
         meta.getPersistentDataContainer().set(uuidKey, PersistentDataType.STRING, data.potionUuid);
+
+        // [BỔ SUNG]: Gắn thẳng cờ (Flag) vào NBT để kiểm tra siêu tốc không cần DB
+        org.bukkit.NamespacedKey ruinedKey = new org.bukkit.NamespacedKey(plugin, "potion_ruined");
+        meta.getPersistentDataContainer().set(ruinedKey, PersistentDataType.INTEGER, data.isRuined ? 1 : 0);
+        org.bukkit.NamespacedKey enhancedKey = new org.bukkit.NamespacedKey(plugin, "potion_enhanced");
+        meta.getPersistentDataContainer().set(enhancedKey, PersistentDataType.INTEGER, data.isEnhanced ? 1 : 0);
 
         List<String> lore = new ArrayList<>();
         lore.add("§8[ Phân loại: Dược Phẩm ]");
@@ -519,35 +493,21 @@ public class BrewingManager implements Listener {
             }
         }
 
-        // ==========================================
-        // [FIX CHÍNH THỨC]: GỘP TAGS KHÔNG CÁCH DÒNG (Safety Layer)
-        // ==========================================
         List<String> cleanTags = new ArrayList<>();
         for (String t : data.flavorTags) {
             if (t != null && !t.trim().isEmpty()) {
                 String tag = t.trim();
-
-                // Khóa an toàn 2 lớp: Chặn hiển thị các tag tốt nếu lỡ lọt vào thuốc hỏng
                 if (data.isRuined && (tag.contains("Cân Bằng") || tag.contains("Hoàn Hảo") || tag.contains("Cường Hóa") || tag.contains("Song Sinh") || tag.toLowerCase().contains("kinh tởm"))) {
                     continue;
                 }
-
-                if (!cleanTags.contains(tag)) {
-                    cleanTags.add(tag);
-                }
+                if (!cleanTags.contains(tag)) cleanTags.add(tag);
             }
         }
 
         if (!cleanTags.isEmpty() || !bottomTags.isEmpty()) {
-            lore.add(""); // Tạo duy nhất 1 dòng trống để tách phần Tags với phần Chỉ Số
-
-            if (!cleanTags.isEmpty()) {
-                lore.addAll(cleanTags); // Add [Mờ Mắt] (nếu có)
-            }
-
-            if (!bottomTags.isEmpty()) {
-                lore.add(String.join(" ", bottomTags)); // Add [Đựng trong Bình Sứ] [Kinh tởm]
-            }
+            lore.add("");
+            if (!cleanTags.isEmpty()) lore.addAll(cleanTags);
+            if (!bottomTags.isEmpty()) lore.add(String.join(" ", bottomTags));
         }
 
         meta.setLore(lore);
@@ -561,44 +521,85 @@ public class BrewingManager implements Listener {
         return item;
     }
 
-    public void savePotionToFile(PotionData data) {
-        // [Giữ nguyên code save cũ]
-        File file = new File(folder, data.potionUuid + ".yml");
-        YamlConfiguration config = new YamlConfiguration();
-        config.set("name", data.name); config.set("durationMinutes", data.durationMinutes);
-        config.set("toxicityPoints", data.toxicityPoints); config.set("isRuined", data.isRuined);
-        config.set("isManaPotion", data.isManaPotion); config.set("isEnhanced", data.isEnhanced);
-        config.set("colorR", data.colorR); config.set("colorG", data.colorG); config.set("colorB", data.colorB);
-        config.set("flavorTags", data.flavorTags); config.set("specialEffects", data.specialEffects); config.set("potionEffects", data.potionEffects);
-        for (String stat : data.customStats.keySet()) config.set("stats." + stat, data.customStats.get(stat));
-        try { config.save(file); } catch (IOException ignored) {}
+    // ==========================================
+    // BỘ 3 HÀM TƯƠNG TÁC MONGODB (Thay thế File IO cũ)
+    // ==========================================
+    public void savePotionToDB(PotionData data) {
+        Document doc = new Document("_id", data.potionUuid)
+                .append("name", data.name)
+                .append("durationMinutes", data.durationMinutes)
+                .append("toxicityPoints", data.toxicityPoints)
+                .append("isRuined", data.isRuined)
+                .append("isManaPotion", data.isManaPotion)
+                .append("isEnhanced", data.isEnhanced)
+                .append("colorR", data.colorR)
+                .append("colorG", data.colorG)
+                .append("colorB", data.colorB)
+                .append("flavorTags", data.flavorTags)
+                .append("specialEffects", data.specialEffects)
+                .append("potionEffects", data.potionEffects)
+                .append("customStats", data.customStats);
+
+        // Lưu thông tin ngầm, không ảnh hưởng đến Main Thread
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            collection.replaceOne(Filters.eq("_id", data.potionUuid), doc, new ReplaceOptions().upsert(true));
+        });
     }
 
-    public PotionData loadPotionFromFile(String uuid) {
-        // [Giữ nguyên code load cũ]
-        File file = new File(folder, uuid + ".yml");
-        if (!file.exists()) return null;
-        YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
+    public PotionData loadPotionFromDB(String uuid) {
+        // Đọc dữ liệu lên đồng bộ để uống tức thì
+        Document config = collection.find(Filters.eq("_id", uuid)).first();
+        if (config == null) return null;
+
         PotionData data = new PotionData(uuid);
-        data.name = config.getString("name"); data.durationMinutes = config.getInt("durationMinutes");
-        data.toxicityPoints = config.getDouble("toxicityPoints"); data.isRuined = config.getBoolean("isRuined");
-        data.isManaPotion = config.getBoolean("isManaPotion"); data.isEnhanced = config.getBoolean("isEnhanced");
-        data.colorR = config.getInt("colorR", 50); data.colorG = config.getInt("colorG", 50); data.colorB = config.getInt("colorB", 200);
-        data.flavorTags = config.getStringList("flavorTags"); data.specialEffects = config.getStringList("specialEffects"); data.potionEffects = config.getStringList("potionEffects");
-        if (config.contains("stats")) {
-            for (String key : config.getConfigurationSection("stats").getKeys(false)) data.customStats.put(key, config.getDouble("stats." + key));
+        data.name = config.getString("name");
+        data.durationMinutes = config.getInteger("durationMinutes", 10);
+        data.toxicityPoints = config.getDouble("toxicityPoints");
+        data.isRuined = config.getBoolean("isRuined", false);
+        data.isManaPotion = config.getBoolean("isManaPotion", false);
+        data.isEnhanced = config.getBoolean("isEnhanced", false);
+        data.colorR = config.getInteger("colorR", 50);
+        data.colorG = config.getInteger("colorG", 50);
+        data.colorB = config.getInteger("colorB", 200);
+
+        data.flavorTags = config.getList("flavorTags", String.class);
+        if (data.flavorTags == null) data.flavorTags = new ArrayList<>();
+
+        data.specialEffects = config.getList("specialEffects", String.class);
+        if (data.specialEffects == null) data.specialEffects = new ArrayList<>();
+
+        data.potionEffects = config.getList("potionEffects", String.class);
+        if (data.potionEffects == null) data.potionEffects = new ArrayList<>();
+
+        Document statsDoc = (Document) config.get("customStats");
+        if (statsDoc != null) {
+            for (String key : statsDoc.keySet()) {
+                data.customStats.put(key, statsDoc.getDouble(key));
+            }
         }
         return data;
     }
 
-    public void deletePotionFile(String uuid) { File file = new File(folder, uuid + ".yml"); if (file.exists()) file.delete(); }
+    public void deletePotionFromDB(String uuid) {
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            collection.deleteOne(Filters.eq("_id", uuid));
+        });
+    }
 
-    // ==========================================
-    // HÀM HELPER: DỊCH SỐ SANG CHỮ LA MÃ
-    // ==========================================
     private String getRomanNumeral(int level) {
         String[] romans = {"", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"};
         if (level > 0 && level <= 10) return romans[level];
         return String.valueOf(level);
+    }
+    // Hàm chuẩn để trừ Item trong GUI mà không tạo ra "Bóng ma"
+    private void consumeItemSafe(Inventory inv, int slot) {
+        ItemStack item = inv.getItem(slot);
+        if (item != null && item.getType() != Material.AIR) {
+            if (item.getAmount() > 1) {
+                item.setAmount(item.getAmount() - 1);
+            } else {
+                inv.setItem(slot, null); // Xóa sạch không để lại tàn dư
+            }
+        }
     }
 }

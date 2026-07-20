@@ -1,20 +1,22 @@
 package vn.minecraft.rPGCore.commands;
 
+import com.mongodb.client.MongoCollection;
+import org.bson.Document;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+import vn.minecraft.rPGCore.database.MongoManager;
 import vn.minecraft.rPGCore.managers.CurrencyManager;
 import vn.minecraft.rPGCore.player.PlayerManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 
-import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 public class BalanceCommand implements CommandExecutor {
 
@@ -42,37 +44,31 @@ public class BalanceCommand implements CommandExecutor {
         }
 
         // ==========================================
-        // 1. LỆNH: /bal top (Xem top 10 đại gia)
+        // 1. LỆNH: /bal top (ĐÃ SỬA: ĐỌC TỪ MONGODB)
         // ==========================================
         if (args[0].equalsIgnoreCase("top")) {
             sender.sendMessage("§6§lBẢNG XẾP HẠNG PHÚ HÀO SERVER");
 
-            // Đọc thẳng từ file players.yml để lấy cả người offline
-            File file = new File(plugin.getDataFolder(), "players.yml");
-            if (!file.exists()) return true;
-            FileConfiguration config = YamlConfiguration.loadConfiguration(file);
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                MongoCollection<Document> collection = MongoManager.getInstance().getDatabase().getCollection("players");
 
-            Map<String, Long> topBalances = new HashMap<>();
-            for (String uuidStr : config.getKeys(false)) {
-                long bal = config.getLong(uuidStr + ".balance", 0L);
-                if (bal > 0) {
+                // Truy vấn MongoDB: Sắp xếp theo "balance" giảm dần (-1) và giới hạn 10 người
+                List<Document> topDocs = collection.find().sort(new Document("balance", -1)).limit(10).into(new ArrayList<>());
+
+                int count = 1;
+                for (Document doc : topDocs) {
+                    long bal = doc.getLong("balance") != null ? doc.getLong("balance") : 0L;
+                    if (bal <= 0) continue;
+
+                    String uuidStr = doc.getString("_id");
                     try {
                         OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(UUID.fromString(uuidStr));
                         String name = offlinePlayer.getName() != null ? offlinePlayer.getName() : "Người chơi ẩn";
-                        topBalances.put(name, bal);
+                        sender.sendMessage("§e#" + count + " §f" + name + " §8- " + currencyManager.formatCurrency(bal));
+                        count++;
                     } catch (Exception ignored) {}
                 }
-            }
-
-            // Sắp xếp Map giảm dần
-            List<Map.Entry<String, Long>> list = new ArrayList<>(topBalances.entrySet());
-            list.sort((o1, o2) -> o2.getValue().compareTo(o1.getValue()));
-
-            int count = 1;
-            for (Map.Entry<String, Long> entry : list) {
-                sender.sendMessage("§e#" + count + " §f" + entry.getKey() + " §8- " + currencyManager.formatCurrency(entry.getValue()));
-                if (count++ >= 10) break;
-            }
+            });
             return true;
         }
 
@@ -120,7 +116,7 @@ public class BalanceCommand implements CommandExecutor {
                 RPGPlayer rpgTarget = playerManager.getRPGPlayer(target.getUniqueId());
                 if (rpgTarget != null) {
                     long currentBal = rpgTarget.getBalance();
-                    long newBal = Math.max(0, currentBal + amount); // Không cho phép âm tiền
+                    long newBal = Math.max(0, currentBal + amount);
                     rpgTarget.setBalance(newBal);
 
                     sender.sendMessage("§aĐã thay đổi số dư của " + target.getName() + " thành " + currencyManager.formatCurrency(newBal));

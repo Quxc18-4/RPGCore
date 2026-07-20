@@ -21,6 +21,7 @@ import vn.minecraft.rPGCore.player.PlayerManager;
 import vn.minecraft.rPGCore.skills.SkillManager;
 import vn.minecraft.rPGCore.ui.*;
 import vn.minecraft.rPGCore.player.tasks.RegenTask;
+import vn.minecraft.rPGCore.database.MongoManager;
 
 public final class RPGCore extends JavaPlugin {
 
@@ -30,23 +31,26 @@ public final class RPGCore extends JavaPlugin {
 
     private BoredomManager boredomManager;
     private FoodBuffManager foodBuffManager;
-    private SkillManager skillManager; // [THÊM DÒNG NÀY VÀO ĐÂY]
-    private ItemManager itemManager; // [THÊM DÒNG NÀY]
+    private SkillManager skillManager;
+    private ItemManager itemManager;
     private FishingManager fishingManager;
     private BaitManager baitManager;
     private CurrencyManager currencyManager;
     private BackpackManager backpackManager;
 
-    // [HỆ THỐNG THÚ CƯỠI]
     private MountManager mountManager;
     private MountDataManager mountDataManager;
 
     private ToxicityManager toxicityManager;
     private AlchemistBuffManager alchemistBuffManager;
+    private NPCManager npcManager;
+    private GlobalEconomyManager globalEconomyManager;
 
     @Override
     public void onEnable() {
         instance = this;
+        MongoManager.init(this);
+        AuthManager authManager = new AuthManager(this);
         ClassManager classManager = new ClassManager(this);
         classManager.loadClasses();
 
@@ -57,37 +61,28 @@ public final class RPGCore extends JavaPlugin {
         this.skillManager = new SkillManager(this);
         SkillUIManager skillUI = new SkillUIManager(playerManager, skillManager);
         BlacksmithGUI blacksmithGUI = new BlacksmithGUI();
-        // ==========================================
-        // [MỚI]: KHỞI TẠO HỆ THỐNG TRANG SỨC (TRINKET)
-        // ==========================================
         TrinketManager trinketManager = new TrinketManager();
+        this.itemManager = new ItemManager(this);
         TrinketForgeGUI trinketForgeGUI = new TrinketForgeGUI(this.itemManager);
 
-        this.itemManager = new ItemManager(this);
-
-        // [MỚI CHÈN VÀO]: Load toàn bộ trang sức cố định từ thư mục trinkets/
         FixedTrinketManager.getInstance().loadAll();
         FixedEquipmentManager.getInstance().loadAll();
 
-        // Khởi tạo Engine và Cooking Manager ĐÚNG THỨ TỰ
-        vn.minecraft.rPGCore.cooking.CookingEngine cookingEngine = new vn.minecraft.rPGCore.cooking.CookingEngine();
+        CookingEngine cookingEngine = new CookingEngine();
         CookingManager cookingManager = new CookingManager(this, this.itemManager, cookingEngine);
 
         this.boredomManager = new BoredomManager(this);
         this.foodBuffManager = new FoodBuffManager(this);
 
-        // [MỚI]: KHỞI TẠO HỆ THỐNG DƯỢC SƯ
         this.toxicityManager = new ToxicityManager(this);
         this.alchemistBuffManager = new AlchemistBuffManager(this);
         BrewingManager brewingManager = new BrewingManager(this, this.itemManager);
 
-        //SchemaManager.loadSchemas();
-
-        // [MỚI]: KHỞI TẠO MANAGER CHO NGÂN HÀNG & CỬA HÀNG
         this.currencyManager = new CurrencyManager(this);
+        this.globalEconomyManager = new GlobalEconomyManager(this);
         ShopManager shopManager = new ShopManager(this, currencyManager);
-        // [MỚI]: KHỞI TẠO BANK MANAGER
         BankManager bankManager = new BankManager(currencyManager);
+        this.npcManager = new vn.minecraft.rPGCore.managers.NPCManager(this);
 
         ArrowRecipeManager arrowRecipeManager = new ArrowRecipeManager(this);
         ArrowCraftingUI arrowCraftingUI = new ArrowCraftingUI(playerManager, arrowRecipeManager);
@@ -96,7 +91,6 @@ public final class RPGCore extends JavaPlugin {
         CropManager cropManager = new CropManager(this, this.itemManager);
 
         this.fishingManager = new FishingManager(this, this.itemManager);
-        // [MỚI]: Khởi tạo BaitManager
         this.baitManager = new BaitManager(this, this.itemManager);
 
         this.mountManager = new MountManager(this);
@@ -112,6 +106,7 @@ public final class RPGCore extends JavaPlugin {
         MountStableGUI mountStableGUI = new MountStableGUI(this);
         MountStorageGUI mountStorageGUI = new MountStorageGUI();
 
+        getServer().getPluginManager().registerEvents(new AuthListener(authManager), this);
         getServer().getPluginManager().registerEvents(new PlayerListener(playerManager, bossBarManager), this);
         getServer().getPluginManager().registerEvents(new ClassGUIListener(playerManager, bossBarManager, classManager), this);
         getServer().getPluginManager().registerEvents(new EquipmentListener(playerManager), this);
@@ -124,27 +119,20 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new DurabilityListener(playerManager), this);
         getServer().getPluginManager().registerEvents(blacksmithGUI, this);
 
-        // [MỚI CHÈN VÀO]: Đăng ký Cổng Menu Lò Rèn và Tráp Phân Rã
         getServer().getPluginManager().registerEvents(new EquipmentMenuGUI(), this);
         getServer().getPluginManager().registerEvents(new EquipmentStrongboxGUI(), this);
-
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.ui.EquipmentCategoryGUI(), this);
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.ui.EquipmentRecipeCraftGUI(), this);
-        // Đăng ký Listener Trang Sức
+
         getServer().getPluginManager().registerEvents(trinketManager, this);
         getServer().getPluginManager().registerEvents(trinketForgeGUI, this);
         getServer().getPluginManager().registerEvents(cookingManager, this);
         getServer().getPluginManager().registerEvents(new FoodListener(this, this.boredomManager, this.foodBuffManager), this);
-        // ĐĂNG KÝ LISTENER DƯỢC SƯ
-        //getServer().getPluginManager().registerEvents(brewingManager, this);
         getServer().getPluginManager().registerEvents(new PotionListener(this, brewingManager), this);
-        // [MỚI]: ĐĂNG KÝ BANK LISTENER
         getServer().getPluginManager().registerEvents(new BankListener(this, bankManager, currencyManager, playerManager), this);
-        // [MỚI]: ĐĂNG KÝ SỰ KIỆN CHO CỬA HÀNG (SHOP)
-        getServer().getPluginManager().registerEvents(new ShopListener(shopManager, currencyManager, playerManager), this);
+        getServer().getPluginManager().registerEvents(new ShopListener(shopManager, currencyManager), this);
         getServer().getPluginManager().registerEvents(elementRotationGUI, this);
-        // Đăng ký Listener cho Hệ thống Vật phẩm tiêu hao (Bình máu, Tinh thể...)
-        getServer().getPluginManager().registerEvents(new ConsumableListener(this.itemManager, this.boredomManager, cookingManager), this);
+        getServer().getPluginManager().registerEvents(new ConsumableListener(this, this.itemManager, this.boredomManager, cookingManager), this);
         getServer().getPluginManager().registerEvents(new JobManager.JobDataListener(), this);
         getServer().getPluginManager().registerEvents(new JobSelectionGUI(), this);
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.jobs.gui.QuestBoardGUI(), this);
@@ -152,32 +140,26 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new CropProtectionListener(), this);
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.jobs.gui.JobShopGUI(), this);
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.jobs.gui.JobSkillTreeGUI(), this);
-        // Đăng ký Listener cho GUI Xếp hạng
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.jobs.gui.JobLeaderboardGUI(), this);
         getServer().getPluginManager().registerEvents(cropManager, this);
         getServer().getPluginManager().registerEvents(new FishingListener(this.fishingManager, this.itemManager), this);
         getServer().getPluginManager().registerEvents(new BaitCrafterGUI(this.itemManager, this.baitManager), this);
         getServer().getPluginManager().registerEvents(new MerchantListener(this), this);
-        // [MỚI CHÈN]: Đăng ký bộ thu hoạch thảo dược tự nhiên
         getServer().getPluginManager().registerEvents(new HerbHarvestListener(this.itemManager), this);
         getServer().getPluginManager().registerEvents(new AlchemistToolListener(this.itemManager), this);
         getServer().getPluginManager().registerEvents(new LostRecipeListener(), this);
-        // Đăng ký Listener
-        getServer().getPluginManager().registerEvents(this.mountDataManager, this); // Bắt sự kiện Join/Quit để load JSON
+        getServer().getPluginManager().registerEvents(this.mountDataManager, this);
         getServer().getPluginManager().registerEvents(mountStableGUI, this);
         getServer().getPluginManager().registerEvents(mountStorageGUI, this);
         getServer().getPluginManager().registerEvents(new MountListener(this.mountManager, mountStorageGUI), this);
         getServer().getPluginManager().registerEvents(new WaterFetchListener(this.itemManager), this);
         getServer().getPluginManager().registerEvents(new TrinketMenuGUI(), this);
         getServer().getPluginManager().registerEvents(new TrinketRandomCraftGUI(), this);
-        // [MỚI CHÈN VÀO]: Đăng ký Listener cho Giao diện Ghép Công Thức
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.ui.TrinketRecipeCraftGUI(), this);
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.skills.bard.BardCoreGUI(), this);
 
         new RegenTask(playerManager, bossBarManager).runTaskTimer(this, 0L, 20L);
 
-        // Chạy bộ đếm Reset Nhiệm vụ mỗi 5 phút (6000 ticks).
-        // Nếu bạn muốn đúng 1 tiếng thì đổi số 6000 thành 72000 nhé!
         new vn.minecraft.rPGCore.jobs.core.JobResetTask().runTaskTimerAsynchronously(this, 6000L, 6000L);
 
         getCommand("class").setExecutor(new ClassCommand(classManager, classGUI));
@@ -191,7 +173,11 @@ public final class RPGCore extends JavaPlugin {
         getCommand("ig").setExecutor(new ItemAdminCommand(this.itemManager));
         getCommand("job").setExecutor(new vn.minecraft.rPGCore.jobs.commands.JobCommand());
 
-        // [MỚI]: ĐĂNG KÝ LỆNH NGÂN HÀNG (/bal)
+        AuthCommand authCmd = new AuthCommand(authManager);
+        getCommand("login").setExecutor(authCmd);
+        getCommand("register").setExecutor(authCmd);
+        getCommand("forgotpw").setExecutor(authCmd);
+
         if (this.getCommand("bal") != null) {
             this.getCommand("bal").setExecutor(new BalanceCommand(this, playerManager, currencyManager));
         } else {
@@ -207,20 +193,16 @@ public final class RPGCore extends JavaPlugin {
             getLogger().warning("Khong the tim thay lenh /eq trong plugin.yml!");
         }
         if (this.getCommand("spawnnpc") != null) {
-            this.getCommand("spawnnpc").setExecutor(new SpawnNPCCommand());
+            this.getCommand("spawnnpc").setExecutor(new SpawnNPCCommand(this));
         }
-        // ĐĂNG KÝ LỆNH DUMMY
         if (this.getCommand("dummy") != null) {
             this.getCommand("dummy").setExecutor(new DummyCommand());
         }
-
-        // Đăng ký lệnh /h
         if (this.getCommand("h") != null) {
             this.getCommand("h").setExecutor(new vn.minecraft.rPGCore.mounts.commands.MountCommand(this.mountManager, mountStableGUI));
         } else {
             getLogger().warning("Khong the tim thay lenh /h trong plugin.yml!");
         }
-
         if (this.getCommand("tforge") != null) {
             this.getCommand("tforge").setExecutor(trinketForgeGUI);
         }
@@ -229,103 +211,76 @@ public final class RPGCore extends JavaPlugin {
 
         getLogger().info("RPGCore đã được bật thành công!");
 
-        for (org.bukkit.entity.Player player : org.bukkit.Bukkit.getOnlinePlayers()) {
-            if (playerManager.getRPGPlayer(player.getUniqueId()) == null) {
-                vn.minecraft.rPGCore.player.RPGPlayer rpgPlayer = playerManager.loadPlayer(player);
-                bossBarManager.createBars(player, rpgPlayer);
+        // ==========================================
+        // [ĐÃ FIX]: CƠ CHẾ AN TOÀN KHI DÙNG LỆNH /reload
+        // Đuổi toàn bộ người chơi đang online ra sảnh để họ Join và Login lại từ đầu
+        // Chống tuyệt đối lỗi bất đồng bộ Dữ Liệu và vượt tường lửa Auth!
+        // ==========================================
+        if (!Bukkit.getOnlinePlayers().isEmpty()) {
+            for (org.bukkit.entity.Player player : Bukkit.getOnlinePlayers()) {
+                player.kickPlayer("§c§lHỆ THỐNG CẬP NHẬT\n\n§fServer vừa được tải lại (Reload).\n§fVui lòng kết nối lại để đảm bảo an toàn dữ liệu!");
             }
         }
 
-        // [Dự phòng]: Load Data cho những người đang online (Nếu dùng lệnh /reload)
-        for (org.bukkit.entity.Player p : org.bukkit.Bukkit.getOnlinePlayers()) {
-            vn.minecraft.rPGCore.jobs.core.JobManager.loadPlayerData(p.getUniqueId());
-        }
-
-        // Setup lặp lại mỗi 2 giờ (2 giờ = 120 phút = 7200 giây = 144,000 Ticks)
         Bukkit.getScheduler().runTaskTimerAsynchronously(this,
                 vn.minecraft.rPGCore.jobs.core.JobLeaderboard::updateLeaderboards,
                 144000L, 144000L);
+
+        // ==========================================
+        // HỆ THỐNG AUTO-SAVE (MỖI 5 PHÚT)
+        // ==========================================
+        Bukkit.getScheduler().runTaskTimer(this, () -> {
+            if (this.mountDataManager != null) {
+                this.mountDataManager.saveAll(true, false);
+            }
+            if (this.playerManager != null) {
+                this.playerManager.saveAllPlayers(true);
+            }
+            vn.minecraft.rPGCore.jobs.core.JobManager.saveAll(true);
+
+            getLogger().info("§a[Auto-Save] Đã lưu dữ liệu người chơi và thú cưỡi thành công!");
+        }, 6000L, 6000L);
     }
 
     @Override
     public void onDisable() {
         if (playerManager != null) {
-            playerManager.saveAllPlayers();
+            playerManager.saveAllPlayers(false);
         }
-        // [MỚI]: Lưu toàn bộ dữ liệu Nghề Phụ
-        vn.minecraft.rPGCore.jobs.core.JobManager.saveAll();
 
-        // =========================================================
-        // [HỆ THỐNG THÚ CƯỠI]: LƯU JSON VÀ THU HỒI NGỰA KHI TẮT SERVER
-        // =========================================================
+        vn.minecraft.rPGCore.jobs.core.JobManager.saveAll(false);
+
         if (this.mountDataManager != null) {
-            this.mountDataManager.saveAll();
+            this.mountDataManager.saveAll(false, true);
         }
         if (this.mountManager != null) {
             this.mountManager.despawnAllActiveMounts();
         }
-        // =========================================================
 
         getLogger().info("RPGCore da tat va luu du lieu an toan.");
+
+        if (MongoManager.getInstance() != null) {
+            MongoManager.getInstance().close();
+        }
     }
 
-    public static RPGCore getInstance() {
-        return instance;
-    }
-
-    // [MỚI THÊM]: Mở cửa cho các Manager khác lấy dữ liệu người chơi
-    public PlayerManager getPlayerManager() {
-        return this.playerManager;
-    }
-
-    public FoodBuffManager getFoodBuffManager() {
-        return this.foodBuffManager;
-    }
-
-    public BoredomManager getBoredomManager() {
-        return this.boredomManager;
-    }
-
+    public static RPGCore getInstance() { return instance; }
+    public PlayerManager getPlayerManager() { return this.playerManager; }
+    public FoodBuffManager getFoodBuffManager() { return this.foodBuffManager; }
+    public BoredomManager getBoredomManager() { return this.boredomManager; }
     public SkillManager getSkillManager() { return this.skillManager; }
-
-    public vn.minecraft.rPGCore.ui.BossBarManager getBossBarManager() {
-        return this.bossBarManager;
-    }
-
-    public ItemManager getItemManager() {
-        return this.itemManager;
-    }
-
-    // 4. THÊM HÀM GETTER NÀY NỮA
-    public FishingManager getFishingManager() {
-        return fishingManager;
-    }
-    // [MỚI]: Thêm Getter cho BaitManager
-    public BaitManager getBaitManager() {
-        return baitManager;
-    }
-
-    // Thêm xuống cuối cùng của file RPGCore.java
-    public vn.minecraft.rPGCore.mounts.managers.MountManager getMountManager() {
-        return this.mountManager;
-    }
-
-    public vn.minecraft.rPGCore.mounts.managers.MountDataManager getMountDataManager() {
-        return this.mountDataManager;
-    }
-    public CurrencyManager getCurrencyManager() {
-        return this.currencyManager;
-    }
-    // Thêm hàm Getter xuống dưới cùng:
-    public BackpackManager getBackpackManager() {
-        return backpackManager;
-    }
-
-    public vn.minecraft.rPGCore.managers.ToxicityManager getToxicityManager() {
-        return this.toxicityManager;
-    }
-
-    public vn.minecraft.rPGCore.managers.AlchemistBuffManager getAlchemistBuffManager() {
-        return this.alchemistBuffManager;
+    public BossBarManager getBossBarManager() { return this.bossBarManager; }
+    public ItemManager getItemManager() { return this.itemManager; }
+    public FishingManager getFishingManager() { return fishingManager; }
+    public BaitManager getBaitManager() { return baitManager; }
+    public MountManager getMountManager() { return this.mountManager; }
+    public MountDataManager getMountDataManager() { return this.mountDataManager; }
+    public CurrencyManager getCurrencyManager() { return this.currencyManager; }
+    public BackpackManager getBackpackManager() { return backpackManager; }
+    public ToxicityManager getToxicityManager() { return this.toxicityManager; }
+    public AlchemistBuffManager getAlchemistBuffManager() { return this.alchemistBuffManager; }
+    public NPCManager getNpcManager() { return this.npcManager; }
+    public GlobalEconomyManager getGlobalEconomyManager() {
+        return this.globalEconomyManager;
     }
 }

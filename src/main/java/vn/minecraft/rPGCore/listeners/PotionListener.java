@@ -51,7 +51,7 @@ public class PotionListener implements Listener {
 
         String potionUuid = meta.getPersistentDataContainer().get(UUID_KEY, PersistentDataType.STRING);
 
-        PotionData data = brewingManager.loadPotionFromFile(potionUuid);
+        PotionData data = brewingManager.loadPotionFromDB(potionUuid);
         if (data == null) {
             player.sendMessage("§cBình thuốc này đã hết hạn hoặc bị lỗi!");
             event.setCancelled(true); // Hủy không cho uống nữa
@@ -77,7 +77,7 @@ public class PotionListener implements Listener {
         if (data.isRuined) {
             player.addPotionEffect(new PotionEffect(PotionEffectType.NAUSEA, 200, 1));
             player.sendMessage("§cỌe... Đau bụng quá!");
-            brewingManager.deletePotionFile(potionUuid);
+            brewingManager.deletePotionFromDB(potionUuid);
             return;
         }
 
@@ -132,7 +132,7 @@ public class PotionListener implements Listener {
             }
         }
 
-        brewingManager.deletePotionFile(potionUuid);
+        brewingManager.deletePotionFromDB(potionUuid);
     }
 
     // ==========================================

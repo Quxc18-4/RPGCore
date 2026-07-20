@@ -258,7 +258,7 @@ public class MountStableGUI implements Listener {
                         vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.MERCHANT_SPEND, finalVal);
                         vn.minecraft.rPGCore.jobs.core.JobManager.processMerchantExp(player, finalVal);
 
-                        plugin.getMountDataManager().saveProfile(player.getUniqueId());
+                        plugin.getMountDataManager().saveProfile(player.getUniqueId(), true, false);
                         player.sendMessage("§a[Hệ thống] Đã mở khóa thành công Ô số " + targetSlot + "!");
                         player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
                         openMainStable(player);
@@ -337,7 +337,7 @@ public class MountStableGUI implements Listener {
                 }
 
                 profile.setMountAt(targetSlot, newMount);
-                plugin.getMountDataManager().saveProfile(player.getUniqueId());
+                plugin.getMountDataManager().saveProfile(player.getUniqueId(), true, false);
 
                 player.sendMessage("§aBạn đã mua thành công: §l" + finalArch.getDisplayName());
                 player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f);
@@ -398,7 +398,7 @@ public class MountStableGUI implements Listener {
                 if (slot == 15) mount.setTierCooldown(curTier + 1);
                 if (slot == 16) mount.setTierStorage(curTier + 1);
 
-                plugin.getMountDataManager().saveProfile(player.getUniqueId());
+                plugin.getMountDataManager().saveProfile(player.getUniqueId(), true, false);
                 player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_USE, 1f, 1f);
                 player.sendMessage("§a[Chuồng Ngựa] Nâng cấp thành công lên Bậc " + (curTier + 1) + "!");
                 openDetailGUI(player, targetSlot);

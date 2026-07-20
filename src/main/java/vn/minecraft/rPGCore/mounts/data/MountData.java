@@ -78,4 +78,6 @@ public class MountData {
         long timePassed = System.currentTimeMillis() - deathTimestamp;
         return Math.max(0, finalCooldownMs - timePassed);
     }
+    public long getDeathTimestamp() { return this.deathTimestamp; }
+    public void setDeathTimestamp(long deathTimestamp) { this.deathTimestamp = deathTimestamp; }
 }

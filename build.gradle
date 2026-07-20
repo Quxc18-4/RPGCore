@@ -1,6 +1,8 @@
 plugins {
     id 'java'
     id("xyz.jpenilla.run-paper") version "2.3.1"
+    // Thêm Shadow plugin để hỗ trợ build các thư viện 'implementation'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
 }
 
 group = 'vn.minecraft'
@@ -31,13 +33,16 @@ dependencies {
     // Khai báo FAWE
     compileOnly 'com.fastasyncworldedit:FastAsyncWorldEdit-Core:2.11.2'
     compileOnly 'com.fastasyncworldedit:FastAsyncWorldEdit-Bukkit:2.11.2'
+
+    // --- [MỚI] THƯ VIỆN MONGODB & BẢO MẬT ---
+    // Dùng 'implementation' để Gradle gói kèm vào file build cuối cùng
+    implementation 'org.mongodb:mongodb-driver-sync:4.11.1'
+    implementation 'org.mindrot:jbcrypt:0.4'
+    implementation 'com.sun.mail:javax.mail:1.6.2'
 }
 
 tasks {
     runServer {
-        // Configure the Minecraft version for our task.
-        // This is the only required configuration besides applying the plugin.
-        // Your plugin's jar (or shadowJar if present) will be used automatically.
         minecraftVersion("1.21")
     }
 }
@@ -60,15 +65,16 @@ tasks.withType(JavaCompile).configureEach {
     }
 }
 
-// Tạo một task mới để copy file
+// ========================================================
+// SỬA Ở ĐÂY: COPY FILE TỪ SHADOW JAR THAY VÌ JAR THƯỜNG
+// ========================================================
 tasks.register('copyToOtherProjects') {
-    // Đảm bảo task này chỉ chạy SAU KHI task 'build' (hoặc 'jar') đã hoàn thành
-    dependsOn('build')
+    // Đảm bảo task này chỉ chạy SAU KHI task 'shadowJar' đã hoàn thành
+    dependsOn('shadowJar')
 
     doLast {
-        // Lấy đường dẫn tới file JAR vừa được build ra
-        // Nếu bạn dùng shadowJar (đóng gói thư viện) thì đổi 'jar' thành 'shadowJar'
-        def sourceJar = jar.archiveFile.get().asFile
+        // [QUAN TRỌNG]: Lấy đường dẫn tới file SHADOW JAR (có chứa MongoDB)
+        def sourceJar = shadowJar.archiveFile.get().asFile
 
         // 1. Copy sang RPGDens
         copy {
@@ -88,12 +94,13 @@ tasks.register('copyToOtherProjects') {
             into "C:/Users/Pon/IdeaProjects/RPGParty/libs"
         }
 
-        println "[RPGCore] Đã copy tự động file JAR sang các project vệ tinh!"
+        println "[RPGCore] Đã copy tự động file SHADOW JAR sang các project vệ tinh!"
     }
 }
 
-// Lệnh này giúp Gradle tự động nối task copy vào sau mỗi lần bạn chạy lệnh 'build'
-build.finalizedBy(copyToOtherProjects)
+// Đảm bảo khi bạn bấm chạy 'build', nó sẽ tự động chạy 'shadowJar' và sau đó kích hoạt task copy
+build.dependsOn(shadowJar)
+shadowJar.finalizedBy(copyToOtherProjects)
 
 processResources {
     def props = [version: version]

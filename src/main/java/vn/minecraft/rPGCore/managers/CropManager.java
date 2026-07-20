@@ -1,5 +1,9 @@
 package vn.minecraft.rPGCore.managers;
 
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.ReplaceOptions;
+import org.bson.Document;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -12,8 +16,6 @@ import org.bukkit.block.data.Waterlogged;
 import org.bukkit.block.data.type.CaveVines;
 import org.bukkit.block.data.type.Cocoa;
 import org.bukkit.block.data.type.SeaPickle;
-import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -26,16 +28,17 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import vn.minecraft.rPGCore.database.MongoManager;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.*;
 
 public class CropManager implements Listener {
 
     private final JavaPlugin plugin;
     private final ItemManager itemManager;
-    private final File cropsFolder;
+
+    // [MỚI]: Collection trên MongoDB
+    private final MongoCollection<Document> collection;
 
     private final Map<Location, CropData> activeCrops = new HashMap<>();
     private final long BASE_GROW_TIME_MS = 14400000L; // 4 Tiếng
@@ -61,67 +64,100 @@ public class CropManager implements Listener {
     public CropManager(JavaPlugin plugin, ItemManager itemManager) {
         this.plugin = plugin;
         this.itemManager = itemManager;
-        this.cropsFolder = new File(plugin.getDataFolder(), "crops");
-        if (!cropsFolder.exists()) cropsFolder.mkdirs();
+
+        // Kết nối tới Collection 'crops'
+        this.collection = MongoManager.getInstance().getDatabase().getCollection("crops");
+
         loadAllCrops();
         startRayTraceScanner();
         startVisualUpdater();
     }
 
     // ==========================================
-    // CƠ SỞ DỮ LIỆU
+    // CƠ SỞ DỮ LIỆU (MONGODB)
     // ==========================================
     private void loadAllCrops() {
         activeCrops.clear();
-        File[] files = cropsFolder.listFiles((dir, name) -> name.endsWith(".yml"));
-        if (files == null) return;
+        int count = 0;
 
-        for (File file : files) {
-            FileConfiguration config = YamlConfiguration.loadConfiguration(file);
+        for (Document doc : collection.find()) {
             UUID owner;
-            try { owner = UUID.fromString(file.getName().replace(".yml", "")); } catch (Exception e) { continue; }
+            try {
+                owner = UUID.fromString(doc.getString("_id"));
+            } catch (Exception e) {
+                continue;
+            }
 
-            if (config.contains("locations")) {
-                for (String locStr : config.getConfigurationSection("locations").getKeys(false)) {
-                    String path = "locations." + locStr;
-                    String seedId = config.getString(path + ".seedId");
-                    long plantTime = config.getLong(path + ".plantTime");
-                    int harvestsLeft = config.getInt(path + ".harvestsLeft", 1);
-                    int maxHarvests = config.getInt(path + ".maxHarvests", 1);
-                    long reqTime = config.getLong(path + ".reqTime", BASE_GROW_TIME_MS);
+            Document locations = (Document) doc.get("locations");
+            if (locations != null) {
+                for (String locStr : locations.keySet()) {
+                    Document cropDoc = (Document) locations.get(locStr);
+
+                    String seedId = cropDoc.getString("seedId");
+
+                    // Xử lý ép kiểu số an toàn từ MongoDB
+                    long plantTime = cropDoc.get("plantTime") instanceof Number ? ((Number) cropDoc.get("plantTime")).longValue() : 0L;
+                    int harvestsLeft = cropDoc.getInteger("harvestsLeft", 1);
+                    int maxHarvests = cropDoc.getInteger("maxHarvests", 1);
+                    long reqTime = cropDoc.get("reqTime") instanceof Number ? ((Number) cropDoc.get("reqTime")).longValue() : BASE_GROW_TIME_MS;
 
                     String[] parts = locStr.split(",");
                     if (parts.length == 4) {
                         try {
                             org.bukkit.World world = Bukkit.getWorld(parts[0]);
-                            Location loc = new Location(world, Double.parseDouble(parts[1]), Double.parseDouble(parts[2]), Double.parseDouble(parts[3]));
-                            if (world != null) activeCrops.put(loc, new CropData(owner, seedId, plantTime, harvestsLeft, maxHarvests, reqTime));
+                            if (world != null) {
+                                Location loc = new Location(world, Double.parseDouble(parts[1]), Double.parseDouble(parts[2]), Double.parseDouble(parts[3]));
+                                activeCrops.put(loc, new CropData(owner, seedId, plantTime, harvestsLeft, maxHarvests, reqTime));
+                                count++;
+                            }
                         } catch (Exception ignored) {}
                     }
                 }
             }
         }
+        plugin.getLogger().info("Đã tải " + count + " dữ liệu Cây trồng từ MongoDB.");
     }
 
-    private void saveCropForPlayer(UUID uuid) {
-        File file = new File(cropsFolder, uuid.toString() + ".yml");
-        FileConfiguration config = new YamlConfiguration();
+    private void saveCropForPlayer(UUID uuid, boolean isAsync) {
+        Document locationsDoc = new Document();
 
         for (Map.Entry<Location, CropData> entry : activeCrops.entrySet()) {
             if (entry.getValue().owner.equals(uuid)) {
                 Location loc = entry.getKey();
                 String locStr = loc.getWorld().getName() + "," + loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ();
-                config.set("locations." + locStr + ".seedId", entry.getValue().seedId);
-                config.set("locations." + locStr + ".plantTime", entry.getValue().plantTime);
-                config.set("locations." + locStr + ".harvestsLeft", entry.getValue().harvestsLeft);
-                config.set("locations." + locStr + ".maxHarvests", entry.getValue().maxHarvests);
-                config.set("locations." + locStr + ".reqTime", entry.getValue().requiredTime);
+
+                Document cropDoc = new Document("seedId", entry.getValue().seedId)
+                        .append("plantTime", entry.getValue().plantTime)
+                        .append("harvestsLeft", entry.getValue().harvestsLeft)
+                        .append("maxHarvests", entry.getValue().maxHarvests)
+                        .append("reqTime", entry.getValue().requiredTime);
+
+                locationsDoc.append(locStr, cropDoc);
             }
         }
-        try {
-            if (config.getConfigurationSection("locations") == null) { if (file.exists()) file.delete(); }
-            else config.save(file);
-        } catch (IOException e) { e.printStackTrace(); }
+
+        final boolean noCropsLeft = locationsDoc.isEmpty();
+
+        // 1. NẾU CHẠY NGẦM (Dùng khi người chơi đang online / Thoát game bình thường)
+        if (isAsync) {
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                if (noCropsLeft) {
+                    collection.deleteOne(Filters.eq("_id", uuid.toString()));
+                } else {
+                    Document doc = new Document("_id", uuid.toString()).append("locations", locationsDoc);
+                    collection.replaceOne(Filters.eq("_id", uuid.toString()), doc, new ReplaceOptions().upsert(true));
+                }
+            });
+        }
+        // 2. NẾU CHẠY ĐỒNG BỘ (Bắt buộc dùng khi tắt Server để chống Crash)
+        else {
+            if (noCropsLeft) {
+                collection.deleteOne(Filters.eq("_id", uuid.toString()));
+            } else {
+                Document doc = new Document("_id", uuid.toString()).append("locations", locationsDoc);
+                collection.replaceOne(Filters.eq("_id", uuid.toString()), doc, new ReplaceOptions().upsert(true));
+            }
+        }
     }
 
     // ==========================================
@@ -143,26 +179,23 @@ public class CropManager implements Listener {
 
             Block rootCropBlock = getRootCropBlock(clickedBlock);
 
-            // --- 1. DÙNG PHÂN BÓN & BÌNH TƯỚI ---
             if (rootCropBlock != null && itemId != null && (itemId.equals("misc_fertilizer") || itemId.equals("misc_watering_can"))) {
                 event.setCancelled(true);
                 handleFertilizer(player, rootCropBlock, itemId, handItem);
                 return;
             }
 
-            // --- 2. THU HOẠCH ---
             if (rootCropBlock != null) {
                 if (itemId != null && itemId.equals("tool_harvest_hoe")) {
                     event.setCancelled(true);
                     handleHarvest(player, rootCropBlock);
                 } else {
-                    event.setCancelled(true); // Bắt buộc khóa Event lại để Vanilla không drop hạt bậy bạ
+                    event.setCancelled(true);
                     player.sendMessage("§cBạn phải dùng §eCuốc Thu Hoạch §cđể lấy nông sản mà không làm đứt rễ!");
                 }
                 return;
             }
 
-            // --- 3. GIEO HẠT ---
             if (itemId != null && itemId.startsWith("seed_")) {
                 BlockFace clickedFace = event.getBlockFace();
 
@@ -199,13 +232,12 @@ public class CropManager implements Listener {
                     }
 
                     activeCrops.put(targetBlock.getLocation(), new CropData(player.getUniqueId(), itemId, System.currentTimeMillis(), harvests, harvests, reqTime));
-                    saveCropForPlayer(player.getUniqueId());
+                    saveCropForPlayer(player.getUniqueId(), true);
 
                     if (player.getGameMode() != org.bukkit.GameMode.CREATIVE) handItem.setAmount(handItem.getAmount() - 1);
                     player.playSound(player.getLocation(), Sound.ITEM_CROP_PLANT, 1f, 1f);
                     player.sendMessage("§aĐã gieo hạt! Thời gian chín: " + (reqTime / 3600000) + " Tiếng.");
 
-                    // [HOOK QUEST]: Gieo Mầm Sự Sống
                     try {
                         vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.PLANT_SEED);
                     } catch (Exception ignored) {}
@@ -215,19 +247,18 @@ public class CropManager implements Listener {
     }
 
     // ==========================================
-    // LOGIC PHÂN BÓN & TƯỚI NƯỚC (CÓ ĐỘ BỀN)
+    // LOGIC PHÂN BÓN & TƯỚI NƯỚC
     // ==========================================
     private void handleFertilizer(Player player, Block rootBlock, String itemId, ItemStack handItem) {
         org.bukkit.inventory.meta.ItemMeta meta = handItem.getItemMeta();
         org.bukkit.NamespacedKey duraKey = new org.bukkit.NamespacedKey(plugin, "farming_tool_durability");
 
-        // Cài đặt số lần dùng tối đa
         int maxDura = itemId.equals("misc_watering_can") ? 20 : 10;
         int currentDura = meta.getPersistentDataContainer().getOrDefault(duraKey, org.bukkit.persistence.PersistentDataType.INTEGER, maxDura);
 
         if (itemId.equals("misc_watering_can")) {
             CropData data = activeCrops.get(rootBlock.getLocation());
-            data.plantTime -= 3600000L; // Giảm 1 tiếng
+            data.plantTime -= 3600000L;
             player.getWorld().spawnParticle(Particle.SPLASH, rootBlock.getLocation().add(0.5, 1, 0.5), 30, 0.3, 0.3, 0.3);
             player.playSound(rootBlock.getLocation(), Sound.BLOCK_WATER_AMBIENT, 1f, 1f);
             player.sendMessage("§bĐã tưới nước! Thời gian được rút ngắn 1 tiếng.");
@@ -239,8 +270,8 @@ public class CropManager implements Listener {
                         Location loc = rootBlock.getLocation().add(x, y, z);
                         if (activeCrops.containsKey(loc)) {
                             CropData data = activeCrops.get(loc);
-                            if (x == 0 && y == 0 && z == 0) data.plantTime -= 7200000L; // Giảm 2 tiếng
-                            else data.plantTime -= 3600000L; // Giảm 1 tiếng
+                            if (x == 0 && y == 0 && z == 0) data.plantTime -= 7200000L;
+                            else data.plantTime -= 3600000L;
                         }
                     }
                 }
@@ -253,9 +284,8 @@ public class CropManager implements Listener {
                 vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.USE_FERTILIZER);
             } catch (Exception ignored) {}
         }
-        saveCropForPlayer(player.getUniqueId());
+        saveCropForPlayer(player.getUniqueId(), true);
 
-        // --- TRỪ ĐỘ BỀN VÀ CẬP NHẬT LORE ---
         if (player.getGameMode() != org.bukkit.GameMode.CREATIVE) {
             currentDura--;
             if (currentDura <= 0) {
@@ -305,7 +335,6 @@ public class CropManager implements Listener {
         ItemStack activeHat = null;
         boolean isHelmet = false;
 
-        // Kiểm tra xem nón đang nằm ở đâu
         if (itemManager.getItemId(helmet) != null && itemManager.getItemId(helmet).equals("armor_farmer_hat")) {
             activeHat = helmet;
             isHelmet = true;
@@ -317,25 +346,20 @@ public class CropManager implements Listener {
             hatBuff = 0.10;
             player.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, loc.clone().add(0.5, 1, 0.5), 10, 0.2, 0.2, 0.2);
 
-            // --- LOGIC TRỪ ĐỘ BỀN NÓN LÁ (300 LẦN) ---
             org.bukkit.inventory.meta.ItemMeta hatMeta = activeHat.getItemMeta();
             org.bukkit.NamespacedKey duraKey = new org.bukkit.NamespacedKey(plugin, "farmer_hat_durability");
 
-            // Lấy độ bền hiện tại (Nếu chưa có thì mặc định là 300)
             int currentDura = hatMeta.getPersistentDataContainer().getOrDefault(duraKey, org.bukkit.persistence.PersistentDataType.INTEGER, 300);
             currentDura--;
 
             if (currentDura <= 0) {
-                // Nón đã hỏng hoàn toàn
                 player.playSound(player.getLocation(), Sound.ENTITY_ITEM_BREAK, 1f, 1f);
                 player.sendMessage("§c§l[!] §fNón Lá Chân Truyền của bạn đã bị hỏng rách!");
                 if (isHelmet) player.getInventory().setHelmet(null);
                 else player.getInventory().setItemInOffHand(null);
             } else {
-                // Lưu lại độ bền mới vào Nón
                 hatMeta.getPersistentDataContainer().set(duraKey, org.bukkit.persistence.PersistentDataType.INTEGER, currentDura);
 
-                // Cập nhật lại dòng Lore hiển thị độ bền
                 List<String> lore = hatMeta.getLore();
                 if (lore != null) {
                     for (int i = 0; i < lore.size(); i++) {
@@ -371,7 +395,6 @@ public class CropManager implements Listener {
             if (!isMultiHarvest) {
                 double chanceYield = 0.20 + (0.20 * (jobLevel/50.0)) + hatBuff;
                 if (hasUlt3) chanceYield += 0.20;
-                // [FIX BUG TOÁN HỌC]: Đảm bảo nổ 2 hoặc 3 quả, không nổ 1 quả.
                 if (rand.nextDouble() < chanceYield) yield = 2 + rand.nextInt(2);
             } else {
                 double chanceYield = 0.10 + (0.10 * (jobLevel/50.0)) + hatBuff;
@@ -383,13 +406,11 @@ public class CropManager implements Listener {
         double seedRecovery = (jobLevel > 0) ? (0.70 + (0.30 * (jobLevel/50.0)) + hatBuff) : (0.20 + rand.nextDouble() * 0.10 + hatBuff);
         int seedYield = 0;
 
-        // [CÂN BẰNG]: Chỉ rớt hạt ở lần thu hoạch CUỐI CÙNG
         if (data.harvestsLeft <= 1) {
             if (rand.nextDouble() < seedRecovery) seedYield = 1;
             if (jobLevel > 0 && rand.nextDouble() < (0.05 + hatBuff)) seedYield = 2;
         }
 
-        // --- TRẢ THƯỞNG ---
         String finalRewardId;
         String fallbackId;
 
@@ -417,7 +438,6 @@ public class CropManager implements Listener {
             ItemStack seedItem = itemManager.buildItem(data.seedId, seedYield);
             if (seedItem != null) loc.getWorld().dropItemNaturally(loc.clone().add(0.5, 0.5, 0.5), seedItem);
 
-            // [HOOK QUEST]: Bậc Thầy Thu Hồi
             try {
                 for(int i=0; i<seedYield; i++) {
                     vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.RECOVER_SEED);
@@ -427,7 +447,6 @@ public class CropManager implements Listener {
 
         if (jobLevel > 0 && rand.nextDouble() < 0.3) {
             loc.getWorld().dropItemNaturally(loc.clone().add(0.5, 0.5, 0.5), itemManager.buildItem("misc_nature_essence", 1));
-            // [HOOK QUEST]: Thu Thập Tinh Chất
             try {
                 vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.COLLECT_NATURE_ESSENCE);
             } catch (Exception ignored) {}
@@ -435,11 +454,7 @@ public class CropManager implements Listener {
 
         player.playSound(loc, Sound.BLOCK_CROP_BREAK, 1f, 1f);
 
-        // =======================================================
-        // [ĐÃ BỔ SUNG]: CỘNG EXP NGHỀ KHI THU HOẠCH THÀNH CÔNG
-        // =======================================================
         try {
-            // [FIX BUG GẤP]: Chỉ cộng EXP nếu nghề đang kích hoạt là FARMER
             if (jobData != null && "FARMER".equals(jobData.getJobId())) {
                 double gainedExp = data.seedId.contains("magic_") ? 80.0 : 25.0;
                 if (qualitySuffix.equals("_uncommon")) gainedExp *= 1.5;
@@ -448,9 +463,7 @@ public class CropManager implements Listener {
                 vn.minecraft.rPGCore.jobs.core.JobManager.addExp(player, gainedExp);
             }
         } catch (Exception ignored) {}
-        // =======================================================
 
-        // --- HOOK CÁC SỰ KIỆN QUEST CHÍNH ---
         try {
             vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.HARVEST_CROP);
             if (data.seedId.contains("magic_")) {
@@ -461,7 +474,6 @@ public class CropManager implements Listener {
             }
         } catch (Exception ignored) {}
 
-        // --- XỬ LÝ KHÔNG GIAN ---
         Block fruitBlock = getFruitBlock(rootBlock, data.seedId);
         if (fruitBlock != null) {
             if (data.seedId.contains("kelp") || data.seedId.contains("cucumber")) fruitBlock.setType(Material.WATER);
@@ -471,7 +483,7 @@ public class CropManager implements Listener {
         if (data.harvestsLeft > 1) {
             data.harvestsLeft--;
             data.plantTime = System.currentTimeMillis();
-            saveCropForPlayer(player.getUniqueId());
+            saveCropForPlayer(player.getUniqueId(), true);
             if (rootBlock.getBlockData() instanceof org.bukkit.block.data.Ageable) {
                 org.bukkit.block.data.Ageable ageable = (org.bukkit.block.data.Ageable) rootBlock.getBlockData();
                 ageable.setAge(0); rootBlock.setBlockData(ageable);
@@ -484,7 +496,7 @@ public class CropManager implements Listener {
             activeCrops.remove(loc);
             if (data.seedId.contains("kelp") || data.seedId.contains("cucumber")) rootBlock.setType(Material.WATER);
             else rootBlock.setType(Material.AIR);
-            saveCropForPlayer(player.getUniqueId());
+            saveCropForPlayer(player.getUniqueId(), true);
             player.sendMessage("§aThu hoạch lứa cuối cùng! Cây đã tàn lụi, hãy trồng cây mới.");
         }
     }
@@ -598,7 +610,6 @@ public class CropManager implements Listener {
         Block block = event.getBlock();
         Player player = event.getPlayer();
 
-        // [MỚI]: Cho phép Admin (OP) đập bỏ thoải mái và xóa Data rác
         if (player.isOp() || player.hasPermission("rpgcore.admin")) {
             Block root = getRootCropBlock(block);
             if (root != null) {
@@ -609,8 +620,8 @@ public class CropManager implements Listener {
                 Block down = block.getRelative(BlockFace.DOWN);
                 if (activeCrops.containsKey(down.getLocation())) activeCrops.remove(down.getLocation());
             }
-            saveCropForPlayer(player.getUniqueId());
-            return; // Cho phép phá hủy, bỏ qua các bước check dưới
+            saveCropForPlayer(player.getUniqueId(), true);
+            return;
         }
 
         if (getRootCropBlock(block) != null) {
@@ -729,7 +740,7 @@ public class CropManager implements Listener {
             }
             if (forwarded) {
                 player.playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_CAST_SPELL, 1f, 1.5f);
-                saveCropForPlayer(player.getUniqueId());
+                saveCropForPlayer(player.getUniqueId(), true);
             }
         }
     }
@@ -759,7 +770,6 @@ public class CropManager implements Listener {
         }.runTaskTimer(plugin, 0L, 10L);
     }
 
-    // [ĐÃ SỬA]: Kiểm tra chặt chẽ BẮT BUỘC NGƯỜI CHƠI PHẢI ĐANG CHỌN NGHỀ FARMER
     private boolean hasUltimate(Player player, String ultId) {
         vn.minecraft.rPGCore.jobs.core.PlayerJobData data = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(player);
         return data != null && "FARMER".equals(data.getJobId()) && data.hasUnlockedSkill("FARMER", ultId.toUpperCase());

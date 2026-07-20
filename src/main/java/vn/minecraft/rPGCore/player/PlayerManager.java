@@ -1,57 +1,55 @@
 package vn.minecraft.rPGCore.player;
 
-import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.configuration.file.YamlConfiguration;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.ReplaceOptions;
+import org.bson.Document;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.util.io.BukkitObjectInputStream;
+import org.bukkit.util.io.BukkitObjectOutputStream;
 import vn.minecraft.rPGCore.classes.ClassManager;
 import vn.minecraft.rPGCore.classes.RPGClass;
+import vn.minecraft.rPGCore.database.MongoManager;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class PlayerManager {
-    private final Map<UUID, RPGPlayer> activePlayers = new HashMap<>();
+    // Chuyển sang ConcurrentHashMap để an toàn tuyệt đối khi Multi-threading
+    private final Map<UUID, RPGPlayer> activePlayers = new ConcurrentHashMap<>();
 
     private final JavaPlugin plugin;
     private final ClassManager classManager;
-    private File file;
-    private FileConfiguration config;
+    private final MongoCollection<Document> collection;
 
     public PlayerManager(JavaPlugin plugin, ClassManager classManager) {
         this.plugin = plugin;
         this.classManager = classManager;
-        setupFile();
+
+        // Móc nối vào Collection 'players' trên MongoDB
+        this.collection = MongoManager.getInstance().getDatabase().getCollection("players");
     }
 
-    private void setupFile() {
-        file = new File(plugin.getDataFolder(), "players.yml");
-        if (!file.exists()) {
-            try { file.getParentFile().mkdirs(); file.createNewFile(); }
-            catch (IOException e) { e.printStackTrace(); }
-        }
-        config = YamlConfiguration.loadConfiguration(file);
-    }
-
-    // --- CƠ CHẾ TẢI DỮ LIỆU KHI VÀO GAME ---
+    // --- CƠ CHẾ TẢI DỮ LIỆU KHI VÀO GAME (READ) ---
     public RPGPlayer loadPlayer(Player player) {
         UUID uuid = player.getUniqueId();
         RPGClass defaultClass = classManager.getClassById("commoner");
-
         RPGPlayer rpgPlayer = new RPGPlayer(player, defaultClass);
 
-        if (config.contains(uuid.toString())) {
-            String classId = config.getString(uuid + ".class");
-            double savedResource = config.getDouble(uuid + ".resource");
-            double savedExp = config.getDouble(uuid + ".exp", 0.0);
+        // Truy vấn dữ liệu từ MongoDB (Đọc đồng bộ lúc Join game)
+        Document doc = collection.find(Filters.eq("_id", uuid.toString())).first();
 
-            // Nạp dữ liệu tiền tệ
-            long savedBalance = config.getLong(uuid + ".balance", 0L);
+        if (doc != null) {
+            String classId = doc.getString("class");
+            double savedResource = doc.getDouble("resource");
+            double savedExp = doc.getDouble("exp") != null ? doc.getDouble("exp") : 0.0;
+            long savedBalance = doc.getLong("balance") != null ? doc.getLong("balance") : 0L;
+
             rpgPlayer.setBalance(savedBalance);
 
             RPGClass savedClass = classManager.getClassById(classId);
@@ -59,120 +57,247 @@ public class PlayerManager {
                 rpgPlayer.setClass(savedClass);
                 rpgPlayer.setCurrentResource(savedResource);
             }
-
             rpgPlayer.setCurrentExp(savedExp);
 
-            // Nạp dữ liệu Attribute (Gọi qua getAttributeData)
-            rpgPlayer.getAttributeData().setUnspentAttrPoints(config.getInt(uuid + ".attr.unspent", 0));
-            rpgPlayer.getAttributeData().setAttribute("STR", config.getInt(uuid + ".attr.STR", 0));
-            rpgPlayer.getAttributeData().setAttribute("INT", config.getInt(uuid + ".attr.INT", 0));
-            rpgPlayer.getAttributeData().setAttribute("VIT", config.getInt(uuid + ".attr.VIT", 0));
-            rpgPlayer.getAttributeData().setAttribute("AGI", config.getInt(uuid + ".attr.AGI", 0));
-            rpgPlayer.getAttributeData().setAttribute("LUK", config.getInt(uuid + ".attr.LUK", 0));
-
-            if (config.contains(uuid + ".elements")) {
-                rpgPlayer.setUnlockedElements(config.getStringList(uuid + ".elements"));
+            // Nạp dữ liệu Attribute
+            Document attrDoc = (Document) doc.get("attributes");
+            if (attrDoc != null) {
+                rpgPlayer.getAttributeData().setUnspentAttrPoints(attrDoc.getInteger("unspent", 0));
+                rpgPlayer.getAttributeData().setAttribute("STR", attrDoc.getInteger("STR", 0));
+                rpgPlayer.getAttributeData().setAttribute("INT", attrDoc.getInteger("INT", 0));
+                rpgPlayer.getAttributeData().setAttribute("VIT", attrDoc.getInteger("VIT", 0));
+                rpgPlayer.getAttributeData().setAttribute("AGI", attrDoc.getInteger("AGI", 0));
+                rpgPlayer.getAttributeData().setAttribute("LUK", attrDoc.getInteger("LUK", 0));
             }
 
-            // ==========================================
-            // [TRINKET]: Nạp dữ liệu 4 ô Trang sức
-            // ==========================================
-            for (int i = 0; i < 4; i++) {
-                if (config.contains(uuid + ".trinkets." + i)) {
-                    rpgPlayer.setTrinket(i, config.getItemStack(uuid + ".trinkets." + i));
+            // Nạp dữ liệu Nguyên tố (Dành cho Mage)
+            List<String> elements = doc.getList("elements", String.class);
+            if (elements != null) {
+                rpgPlayer.setUnlockedElements(elements);
+            }
+
+            // Nạp dữ liệu Trang sức (Giải mã từ Base64)
+            Document trinketsDoc = (Document) doc.get("trinkets");
+            if (trinketsDoc != null) {
+                for (int i = 0; i < 4; i++) {
+                    String base64Item = trinketsDoc.getString(String.valueOf(i));
+                    if (base64Item != null && !base64Item.isEmpty()) {
+                        rpgPlayer.setTrinket(i, itemFromBase64(base64Item));
+                    }
                 }
             }
+
+            // Nạp dữ liệu Kỹ năng & Combo
+            Document skillsDoc = (Document) doc.get("skills_data");
+            if (skillsDoc != null) {
+                rpgPlayer.getSkillData().setSkillPoints(skillsDoc.getInteger("sp", 0));
+
+                Document levels = (Document) skillsDoc.get("levels");
+                if (levels != null) {
+                    for (String skillId : levels.keySet()) {
+                        rpgPlayer.getSkillData().setSkillLevel(skillId, levels.getInteger(skillId));
+                    }
+                }
+
+                Document binds = (Document) skillsDoc.get("binds");
+                if (binds != null) {
+                    for (String combo : binds.keySet()) {
+                        rpgPlayer.getSkillData().bindCombo(combo, binds.getString(combo));
+                    }
+                }
+            }
+            // [MỚI CHÈN]: Phục hồi Túi đồ (Inventory + Armor + Offhand)
+            String invData = doc.getString("vanilla_inventory");
+            if (invData != null && !invData.isEmpty()) {
+                ItemStack[] restoredInv = itemArrayFromBase64(invData);
+                if (restoredInv.length > 0) {
+                    player.getInventory().setContents(restoredInv);
+                }
+            } else {
+                // Đảm bảo túi đồ trống nếu DB không có (Phòng trường hợp file World còn giữ đồ rác)
+                player.getInventory().clear();
+            }
+
+            // [MỚI CHÈN]: Phục hồi Ender Chest
+            String ecData = doc.getString("ender_chest");
+            if (ecData != null && !ecData.isEmpty()) {
+                ItemStack[] restoredEc = itemArrayFromBase64(ecData);
+                if (restoredEc.length > 0) {
+                    player.getEnderChest().setContents(restoredEc);
+                }
+            } else {
+                player.getEnderChest().clear();
+            }
         } else {
+            // Nếu là Tân thủ (Chưa có trên DB), xóa sạch túi đồ để tránh đồ rác từ World cũ
+            player.getInventory().clear();
+            player.getEnderChest().clear();
             rpgPlayer.setClass(defaultClass);
-        }
-
-        // NẠP HỆ THỐNG KỸ NĂNG VÀ COMBO (Gọi qua getSkillData)
-        rpgPlayer.getSkillData().setSkillPoints(config.getInt(uuid + ".sp", 0));
-
-        if (config.contains(uuid + ".skills")) {
-            for (String skillId : config.getConfigurationSection(uuid + ".skills").getKeys(false)) {
-                int level = config.getInt(uuid + ".skills." + skillId);
-                rpgPlayer.getSkillData().setSkillLevel(skillId, level);
-            }
-        }
-
-        if (config.contains(uuid + ".binds")) {
-            for (String combo : config.getConfigurationSection(uuid + ".binds").getKeys(false)) {
-                String skillId = config.getString(uuid + ".binds." + combo);
-                rpgPlayer.getSkillData().bindCombo(combo, skillId);
-            }
         }
 
         rpgPlayer.updateMaxStats();
         rpgPlayer.updateExpBar();
-        rpgPlayer.updateEquipmentStats(); // <-- THÊM DÒNG NÀY ĐỂ QUÉT CHỈ SỐ LÚC VỪA VÀO GAME
+        rpgPlayer.updateEquipmentStats();
 
         activePlayers.put(uuid, rpgPlayer);
         return rpgPlayer;
     }
 
-    // --- CƠ CHẾ LƯU DỮ LIỆU KHI THOÁT GAME ---
-    public void savePlayer(UUID uuid) {
+    // --- CƠ CHẾ LƯU DỮ LIỆU KHI THOÁT GAME (CREATE/UPDATE) ---
+    // [ĐÃ SỬA LỖI]: Cập nhật thành 3 tham số (Thêm removeFromRAM)
+    public void savePlayer(UUID uuid, boolean isAsync, boolean removeFromRAM) {
         RPGPlayer rpgPlayer = activePlayers.get(uuid);
         if (rpgPlayer != null) {
-            config.set(uuid + ".class", rpgPlayer.getCurrentClass().getId());
-            config.set(uuid + ".resource", rpgPlayer.getCurrentResource());
-            config.set(uuid + ".exp", rpgPlayer.getCurrentExp());
 
-            // Lưu dữ liệu tiền tệ
-            config.set(uuid + ".balance", rpgPlayer.getBalance());
+            // 1. Đóng gói Attribute
+            Document attrDoc = new Document("unspent", rpgPlayer.getAttributeData().getUnspentAttrPoints())
+                    .append("STR", rpgPlayer.getAttributeData().getAttribute("STR"))
+                    .append("INT", rpgPlayer.getAttributeData().getAttribute("INT"))
+                    .append("VIT", rpgPlayer.getAttributeData().getAttribute("VIT"))
+                    .append("AGI", rpgPlayer.getAttributeData().getAttribute("AGI"))
+                    .append("LUK", rpgPlayer.getAttributeData().getAttribute("LUK"));
 
-            // Lưu dữ liệu Attribute
-            config.set(uuid + ".attr.unspent", rpgPlayer.getAttributeData().getUnspentAttrPoints());
-            config.set(uuid + ".attr.STR", rpgPlayer.getAttributeData().getAttribute("STR"));
-            config.set(uuid + ".attr.INT", rpgPlayer.getAttributeData().getAttribute("INT"));
-            config.set(uuid + ".attr.VIT", rpgPlayer.getAttributeData().getAttribute("VIT"));
-            config.set(uuid + ".attr.AGI", rpgPlayer.getAttributeData().getAttribute("AGI"));
-            config.set(uuid + ".attr.LUK", rpgPlayer.getAttributeData().getAttribute("LUK"));
-
-            // [MỚI]: Lưu dữ liệu Nguyên tố (Dành cho Mage)
-            // Nếu list rỗng, YML sẽ tự động lưu là mảng rỗng `elements: []` rất gọn gàng.
-            config.set(uuid + ".elements", rpgPlayer.getUnlockedElements());
-
-            // [MỚI]: Lưu dữ liệu Nguyên tố (Dành cho Mage)
-            config.set(uuid + ".elements", rpgPlayer.getUnlockedElements());
-
-            // ==========================================
-            // [TRINKET]: Lưu dữ liệu Trang sức trực tiếp thành YAML ItemStack
-            // ==========================================
+            // 2. Đóng gói Trang sức (Mã hóa ra Base64)
+            Document trinketsDoc = new Document();
             for (int i = 0; i < 4; i++) {
                 ItemStack trinket = rpgPlayer.getTrinket(i);
-                config.set(uuid + ".trinkets." + i, trinket);
-                // Nếu trinket là null, config sẽ tự động xóa dòng đó (rất sạch sẽ)
+                if (trinket != null) {
+                    trinketsDoc.append(String.valueOf(i), itemToBase64(trinket));
+                }
             }
 
-            // LƯU HỆ THỐNG KỸ NĂNG VÀ COMBO
-            config.set(uuid + ".sp", rpgPlayer.getSkillData().getSkillPoints());
-
-            config.set(uuid + ".skills", null);
-            config.set(uuid + ".binds", null);
-
+            // 3. Đóng gói Kỹ năng và Combo
+            Document levelsDoc = new Document();
             for (Map.Entry<String, Integer> entry : rpgPlayer.getSkillData().getSkills().entrySet()) {
-                config.set(uuid + ".skills." + entry.getKey(), entry.getValue());
+                levelsDoc.append(entry.getKey(), entry.getValue());
             }
 
+            Document bindsDoc = new Document();
             for (Map.Entry<String, String> entry : rpgPlayer.getSkillData().getBinds().entrySet()) {
-                config.set(uuid + ".binds." + entry.getKey(), entry.getValue());
+                bindsDoc.append(entry.getKey(), entry.getValue());
             }
 
-            try { config.save(file); }
-            catch (IOException e) { e.printStackTrace(); }
+            Document skillsDoc = new Document("sp", rpgPlayer.getSkillData().getSkillPoints())
+                    .append("levels", levelsDoc)
+                    .append("binds", bindsDoc);
+
+            // 4. Lấy Túi Đồ và Ender Chest
+            Player bukkitPlayer = rpgPlayer.getBukkitPlayer();
+            String inventoryBase64 = "";
+            String enderChestBase64 = "";
+
+            if (bukkitPlayer != null && bukkitPlayer.isOnline()) {
+                inventoryBase64 = itemArrayToBase64(bukkitPlayer.getInventory().getContents());
+                enderChestBase64 = itemArrayToBase64(bukkitPlayer.getEnderChest().getContents());
+            }
+
+            // 5. Gộp tất cả vào Document Chính
+            Document mainDoc = new Document("_id", uuid.toString())
+                    .append("class", rpgPlayer.getCurrentClass().getId())
+                    .append("resource", rpgPlayer.getCurrentResource())
+                    .append("exp", rpgPlayer.getCurrentExp())
+                    .append("balance", rpgPlayer.getBalance())
+                    .append("attributes", attrDoc)
+                    .append("elements", rpgPlayer.getUnlockedElements())
+                    .append("trinkets", trinketsDoc)
+                    .append("skills_data", skillsDoc)
+                    .append("vanilla_inventory", inventoryBase64)
+                    .append("ender_chest", enderChestBase64);
+
+            // 6. XỬ LÝ LƯU (ĐỒNG BỘ HOẶC BẤT ĐỒNG BỘ)
+            if (isAsync) {
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                    collection.replaceOne(Filters.eq("_id", uuid.toString()), mainDoc, new ReplaceOptions().upsert(true));
+                });
+            } else {
+                // Chạy đồng bộ: Bắt buộc server chờ lưu xong mới được tắt
+                collection.replaceOne(Filters.eq("_id", uuid.toString()), mainDoc, new ReplaceOptions().upsert(true));
+            }
         }
-        activePlayers.remove(uuid);
+
+        // [QUAN TRỌNG]: Tách lệnh xóa RAM ra khỏi quá trình lưu
+        if (removeFromRAM) {
+            activePlayers.remove(uuid);
+        }
+    }
+
+    public void saveAllPlayers(boolean isAsync) {
+        for (UUID uuid : new ArrayList<>(activePlayers.keySet())) {
+            // Khi server Auto-save (5 phút/lần), ép tham số thứ 3 là FALSE để không bị xóa nhân vật
+            savePlayer(uuid, isAsync, false);
+        }
     }
 
     public RPGPlayer getRPGPlayer(UUID uuid) { return activePlayers.get(uuid); }
     public Set<UUID> getAllPlayerUUIDs() { return activePlayers.keySet(); }
 
-    public void saveAllPlayers() {
-        // Tạo một ArrayList mới để copy toàn bộ UUID ra, tránh lỗi khi vừa duyệt vừa xóa
-        for (UUID uuid : new java.util.ArrayList<>(activePlayers.keySet())) {
-            savePlayer(uuid);
+    // ============================================================
+    // CÔNG CỤ CHUYỂN ĐỔI ITEMSTACK <-> CHUỖI BASE64 CHO MONGODB
+    // ============================================================
+    private String itemToBase64(ItemStack item) {
+        if (item == null) return "";
+        try {
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            BukkitObjectOutputStream dataOutput = new BukkitObjectOutputStream(outputStream);
+            dataOutput.writeObject(item);
+            dataOutput.close();
+            return Base64.getEncoder().encodeToString(outputStream.toByteArray());
+        } catch (Exception e) {
+            plugin.getLogger().warning("Lỗi mã hóa Item Trinket sang Base64!");
+            return "";
+        }
+    }
+
+    private ItemStack itemFromBase64(String data) {
+        if (data == null || data.isEmpty()) return null;
+        try {
+            ByteArrayInputStream inputStream = new ByteArrayInputStream(Base64.getDecoder().decode(data));
+            BukkitObjectInputStream dataInput = new BukkitObjectInputStream(inputStream);
+            ItemStack item = (ItemStack) dataInput.readObject();
+            dataInput.close();
+            return item;
+        } catch (Exception e) {
+            plugin.getLogger().warning("Lỗi giải mã Item Trinket từ Base64!");
+            return null;
+        }
+    }
+
+    // ============================================================
+    // CÔNG CỤ CHUYỂN ĐỔI TOÀN BỘ TÚI ĐỒ (ARRAY) <-> CHUỖI BASE64
+    // ============================================================
+    private String itemArrayToBase64(ItemStack[] items) {
+        try {
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            BukkitObjectOutputStream dataOutput = new BukkitObjectOutputStream(outputStream);
+
+            dataOutput.writeInt(items.length);
+            for (ItemStack item : items) {
+                dataOutput.writeObject(item);
+            }
+            dataOutput.close();
+            return Base64.getEncoder().encodeToString(outputStream.toByteArray());
+        } catch (Exception e) {
+            plugin.getLogger().warning("Lỗi mã hóa Túi đồ sang Base64!");
+            return "";
+        }
+    }
+
+    private ItemStack[] itemArrayFromBase64(String data) {
+        if (data == null || data.isEmpty()) return new ItemStack[0];
+        try {
+            ByteArrayInputStream inputStream = new ByteArrayInputStream(Base64.getDecoder().decode(data));
+            BukkitObjectInputStream dataInput = new BukkitObjectInputStream(inputStream);
+
+            int size = dataInput.readInt();
+            ItemStack[] items = new ItemStack[size];
+            for (int i = 0; i < size; i++) {
+                items[i] = (ItemStack) dataInput.readObject();
+            }
+            dataInput.close();
+            return items;
+        } catch (Exception e) {
+            plugin.getLogger().warning("Lỗi giải mã Túi đồ từ Base64!");
+            return new ItemStack[0];
         }
     }
 }

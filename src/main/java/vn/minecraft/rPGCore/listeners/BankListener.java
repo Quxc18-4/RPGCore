@@ -9,6 +9,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.managers.BankManager;
@@ -31,17 +32,35 @@ public class BankListener implements Listener {
     }
 
     // ==========================================
-    // 1. CLICK VÀO NPC NGÂN HÀNG
+    // 1. CLICK VÀO NPC NGÂN HÀNG (Hỗ trợ MongoDB + Chống Đúp)
     // ==========================================
     @EventHandler
     public void onNPCClick(PlayerInteractEntityEvent event) {
+        // Chặn lỗi mở GUI 2 lần
+        if (event.getHand() != EquipmentSlot.HAND) return;
+
         if (event.getRightClicked() instanceof LivingEntity) {
             LivingEntity npc = (LivingEntity) event.getRightClicked();
             String name = npc.getCustomName();
+            boolean isBanker = false;
 
-            // Check nếu tên NPC là "Thủ Quỹ" hoặc "Ngân Hàng"
-            if (name != null && (name.contains("Thủ Quỹ") || name.contains("Ngân Hàng"))) {
+            // KIỂM TRA 1: Đọc từ thẻ ngầm của NPCManager (MongoDB)
+            org.bukkit.NamespacedKey npcKey = plugin.getNpcManager().NPC_SHOP_KEY;
+            if (npc.getPersistentDataContainer().has(npcKey, org.bukkit.persistence.PersistentDataType.STRING)) {
+                String shopId = npc.getPersistentDataContainer().get(npcKey, org.bukkit.persistence.PersistentDataType.STRING);
+                if (shopId != null && shopId.startsWith("bank_")) {
+                    isBanker = true;
+                }
+            }
+            // KIỂM TRA 2: Cơ chế đổi tên thủ công cũ
+            else if (name != null && (name.contains("Thủ Quỹ") || name.contains("Ngân Hàng"))) {
+                isBanker = true;
+            }
+
+            if (isBanker) {
                 event.setCancelled(true);
+                npc.setCollidable(false); // Xóa va chạm vật lý để chống đẩy NPC
+
                 Player player = event.getPlayer();
                 RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
 
@@ -60,7 +79,7 @@ public class BankListener implements Listener {
         String title = event.getView().getTitle();
         if (!title.startsWith("§0§lNGÂN HÀNG") && !title.startsWith("§0§lRÚT TIỀN")) return;
 
-        event.setCancelled(true); // Ngăn lấy đồ trong GUI
+        event.setCancelled(true);
         if (event.getCurrentItem() == null) return;
 
         Player player = (Player) event.getWhoClicked();
@@ -69,19 +88,17 @@ public class BankListener implements Listener {
 
         int slot = event.getRawSlot();
 
-        // --- MENU CHÍNH ---
         if (title.equals("§0§lNGÂN HÀNG TRUNG ƯƠNG")) {
-            if (slot == 11) { // NÚT NẠP TẤT CẢ
+            if (slot == 11) {
                 currencyManager.depositAll(player, rpgPlayer);
-                player.openInventory(bankManager.openBankMainUI(player, rpgPlayer.getBalance())); // Reload UI
+                player.openInventory(bankManager.openBankMainUI(player, rpgPlayer.getBalance()));
             }
-            else if (slot == 15) { // NÚT RÚT TIỀN (Mở UI Rút)
+            else if (slot == 15) {
                 player.openInventory(bankManager.openWithdrawUI(rpgPlayer.getBalance()));
             }
         }
-        // --- MENU RÚT TIỀN ---
         else if (title.equals("§0§lRÚT TIỀN MẶT")) {
-            if (slot == 26) { // Quay lại
+            if (slot == 26) {
                 player.openInventory(bankManager.openBankMainUI(player, rpgPlayer.getBalance()));
                 return;
             }
@@ -113,11 +130,8 @@ public class BankListener implements Listener {
         if (!(event.getEntity() instanceof Player)) return;
 
         ItemStack item = event.getItem().getItemStack();
-        // Nếu nhặt trúng Vật phẩm Tiền tệ
         if (currencyManager.getCurrencyValue(item) > 0) {
             Player player = (Player) event.getEntity();
-
-            // Delay 1 tick để item thực sự chạy vào rương rồi mới nén
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 currencyManager.compressCurrency(player);
             }, 1L);

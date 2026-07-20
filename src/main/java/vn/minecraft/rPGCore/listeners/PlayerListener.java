@@ -369,10 +369,13 @@ public class PlayerListener implements Listener {
     }
 
     // --- CÁC SỰ KIỆN CŨ GIỮ NGUYÊN (Không đổi) ---
-    @EventHandler public void onPlayerJoin(PlayerJoinEvent event) {
-        Player player = event.getPlayer();
-        RPGPlayer rpgPlayer = playerManager.loadPlayer(player);
-        bossBarManager.createBars(player, rpgPlayer);
+    @EventHandler
+    public void onPlayerJoin(PlayerJoinEvent event) {
+        // XÓA DÒNG NÀY: playerManager.loadPlayer(player);
+        // XÓA DÒNG NÀY: bossBarManager.createBars(player, rpgPlayer);
+
+        // Chỉ để lại thông báo chào mừng cơ bản hoặc không làm gì cả.
+        // Việc load dữ liệu sẽ được chuyển sang AuthManager thực hiện sau khi login thành công.
     }
 
     @EventHandler
@@ -380,18 +383,35 @@ public class PlayerListener implements Listener {
         Player player = event.getPlayer();
         RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
 
-        // Dọn dẹp Summoner
-        if (rpgPlayer != null && rpgPlayer.getCurrentClass() instanceof vn.minecraft.rPGCore.classes.impl.SummonerClass) {
-            ((vn.minecraft.rPGCore.classes.impl.SummonerClass) rpgPlayer.getCurrentClass()).clearAllPets(player);
-        }
+        // Chỉ lưu nếu họ đã đăng nhập (đang tồn tại trong activePlayers)
+        if (rpgPlayer != null) {
+            if (rpgPlayer.getCurrentClass() instanceof vn.minecraft.rPGCore.classes.impl.SummonerClass) {
+                ((vn.minecraft.rPGCore.classes.impl.SummonerClass) rpgPlayer.getCurrentClass()).clearAllPets(player);
+            }
 
-        // [MỚI]: Dọn dẹp trạng thái bay khi thoát game - KHÔNG cho Safe Fall (Phòng trường hợp lạm dụng thoát game khi rớt)
-        if (player.hasMetadata("RPGCore_Hovering")) {
-            vn.minecraft.rPGCore.managers.StatusEffectManager.removeCustomHover(player, false);
-        }
+            // Dọn dẹp trạng thái bay
+            if (player.hasMetadata("RPGCore_Hovering")) {
+                vn.minecraft.rPGCore.managers.StatusEffectManager.removeCustomHover(player, false);
+            }
 
-        bossBarManager.removeBars(player);
-        playerManager.savePlayer(player.getUniqueId());
+            bossBarManager.removeBars(player);
+
+            // ==========================================
+            // QUAN TRỌNG: GỌI LƯU CẢ 3 HỆ THỐNG CÙNG LÚC
+            // ==========================================
+
+            // 1. Lưu dữ liệu Người chơi (Túi đồ, Chỉ số, Class...)
+            playerManager.savePlayer(player.getUniqueId(), true, true);
+
+            // 2. Lưu dữ liệu Nghề nghiệp (Job)
+            vn.minecraft.rPGCore.jobs.core.JobManager.savePlayerData(player.getUniqueId(), true);
+
+            // 3. Lưu dữ liệu Thú cưỡi (Mount) và Xóa rác trên RAM (Tham số thứ 3 là true)
+            vn.minecraft.rPGCore.RPGCore.getInstance().getMountDataManager().saveProfile(player.getUniqueId(), true, true);
+
+            // Thu hồi thú cưỡi nếu đang gọi ra ngoài
+            vn.minecraft.rPGCore.RPGCore.getInstance().getMountManager().despawnMount(player, false);
+        }
     }
 
     @EventHandler public void onVanillaRegen(EntityRegainHealthEvent event) {

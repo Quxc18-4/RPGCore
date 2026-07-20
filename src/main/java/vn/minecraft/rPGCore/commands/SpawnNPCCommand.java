@@ -1,13 +1,23 @@
 package vn.minecraft.rPGCore.commands;
 
+import org.bukkit.Location;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Villager;
+import vn.minecraft.rPGCore.RPGCore;
+
+import java.util.UUID;
 
 public class SpawnNPCCommand implements CommandExecutor {
+
+    private final RPGCore plugin;
+
+    // Cập nhật Constructor để lấy plugin
+    public SpawnNPCCommand(RPGCore plugin) {
+        this.plugin = plugin;
+    }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
@@ -20,51 +30,62 @@ public class SpawnNPCCommand implements CommandExecutor {
         }
 
         if (args.length == 0) {
-            player.sendMessage("§cHDSD: /spawnnpc <bank|weapon|food|general>");
+            player.sendMessage("§cHDSD: /spawnnpc <weapon|food|general|fisher|alchemist|mount|trinket|bank>");
             return true;
         }
 
-        // 1. Triệu hồi Dân làng tại vị trí của Admin
-        Villager npc = (Villager) player.getWorld().spawnEntity(player.getLocation(), EntityType.VILLAGER);
-
-        // 2. Ép các thuộc tính "Trấn Phái" của NPC
-
-        // npc.setAI(false); // XÓA HOẶC COMMENT DÒNG NÀY ĐI ĐỂ BẬT LẠI NÃO CHO NPC
-
-        // THÊM 2 DÒNG NÀY VÀO ĐỂ ÉP TỐC ĐỘ VỀ 0 VÀ CHỐNG ĐẨY
-        npc.getAttribute(org.bukkit.attribute.Attribute.MOVEMENT_SPEED).setBaseValue(0.0);
-        npc.setCollidable(false);
-
-        npc.setInvulnerable(true);
-        npc.setCustomNameVisible(true);
-        npc.setSilent(true);
-
-        // 3. Xóa toàn bộ công thức Trade Vanilla để tránh bị kẹt UI
-        java.util.List<org.bukkit.inventory.MerchantRecipe> emptyRecipes = new java.util.ArrayList<>();
-        npc.setRecipes(emptyRecipes);
-
-        // 4. Phân loại NPC theo tham số lệnh
         String type = args[0].toLowerCase();
+        String name;
+        String shopPrefix;
+
+        // Phân loại 7 Thương Nhân dựa trên ItemManager
         switch (type) {
-            case "bank":
-                npc.setCustomName("§b§lNgân Hàng");
-                npc.setProfession(Villager.Profession.LIBRARIAN); // Mặc đồ Thủ thư (đeo kính)
-                break;
             case "weapon":
-                npc.setCustomName("§c§lThương Nhân Vũ Khí");
-                npc.setProfession(Villager.Profession.WEAPONSMITH); // Mặc đồ Thợ rèn (đeo tạp dề đen)
+                name = "§c§lThương Nhân Vũ Khí";
+                shopPrefix = "shop_weapon";
                 break;
             case "food":
-                npc.setCustomName("§a§lThương Nhân Thực Phẩm");
-                npc.setProfession(Villager.Profession.BUTCHER); // Mặc đồ Đồ tể (đeo băng đô)
+                name = "§a§lThương Nhân Thực Phẩm";
+                shopPrefix = "shop_food";
+                break;
+            case "fisher":
+                name = "§b§lThương Nhân Ngư Cụ";
+                shopPrefix = "shop_fisher";
+                break;
+            case "alchemist":
+                name = "§d§lThương Nhân Dược Liệu";
+                shopPrefix = "shop_alchemist";
+                break;
+            case "mount":
+                name = "§6§lThương Nhân Thú Cưỡi";
+                shopPrefix = "shop_mount";
+                break;
+            case "trinket":
+                name = "§5§lThương Nhân Trang Sức";
+                shopPrefix = "shop_trinket";
+                break;
+            case "bank":
+                name = "§b§lNgân Hàng Trung Ương";
+                shopPrefix = "bank";
                 break;
             default:
-                npc.setCustomName("§e§lThương Nhân Tạp Hóa");
-                npc.setProfession(Villager.Profession.FARMER); // Mặc đồ Nông dân (đội nón rơm)
+                name = "§e§lThương Nhân Tạp Hóa";
+                shopPrefix = "shop_general";
                 break;
         }
 
-        player.sendMessage("§aĐã triệu hồi NPC [" + npc.getCustomName() + "§a] thành công!");
+        // Tạo ID duy nhất cho NPC và Shop để lưu vào MongoDB
+        String shortUUID = UUID.randomUUID().toString().substring(0, 6);
+        String npcId = "npc_" + shortUUID;
+        String shopId = shopPrefix + "_" + shortUUID;
+        Location loc = player.getLocation();
+
+        // Gọi NPCManager để tạo thực thể và LƯU THẲNG XUỐNG MONGODB
+        plugin.getNpcManager().createNPC(npcId, name, EntityType.VILLAGER, loc, shopId);
+
+        player.sendMessage("§aĐã triệu hồi và lưu DB thành công: [" + name + "§a]");
+        player.sendMessage("§7Mã Shop: §f" + shopId);
+        player.sendMessage("§e► Hãy click chuột phải vào NPC để Setup mặt hàng!");
         return true;
     }
 }

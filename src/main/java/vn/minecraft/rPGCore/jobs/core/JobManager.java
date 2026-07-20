@@ -1,21 +1,27 @@
 package vn.minecraft.rPGCore.jobs.core;
 
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.ReplaceOptions;
+import org.bson.Document;
 import org.bukkit.Bukkit;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import vn.minecraft.rPGCore.database.MongoManager;
 
-import java.io.File;
 import java.util.*;
-
-import static java.lang.Math.round;
 
 public class JobManager {
     private static final Map<String, RPGJob> registeredJobs = new HashMap<>();
     private static final Map<UUID, PlayerJobData> playerData = new HashMap<>();
+
+    // Lấy Collection từ MongoDB
+    private static MongoCollection<Document> getCollection() {
+        return MongoManager.getInstance().getDatabase().getCollection("player_jobs");
+    }
 
     public static void registerJob(RPGJob job) {
         registeredJobs.put(job.getId().toUpperCase(), job);
@@ -25,7 +31,6 @@ public class JobManager {
         return registeredJobs.values();
     }
 
-    // Đã thay đổi: Gọi loadPlayerData nếu chưa có
     public static PlayerJobData getPlayerData(Player player) {
         UUID uuid = player.getUniqueId();
         if (!playerData.containsKey(uuid)) {
@@ -47,7 +52,6 @@ public class JobManager {
     // CÔNG THỨC TÍNH EXP YÊU CẦU CỦA NGHỀ
     // ==========================================
     public static double getRequiredJobExp(int currentLevel) {
-        // Công thức: Cấp 1: 550, Cấp 10: 5500, Cấp 50: 125500
         return (Math.pow(currentLevel, 2) * 50) + 500;
     }
 
@@ -57,41 +61,33 @@ public class JobManager {
     public static void addExp(Player player, double amount) {
         PlayerJobData data = getPlayerData(player);
         RPGJob job = getPlayerJob(player);
-
-        if (job == null) return; // Không có dòng chặn maxLevel nữa
+        if (job == null) return;
 
         int currentLevel = data.getLevel();
         int maxLevel = job.getMaxLevel();
 
-        // 1. Cộng EXP vào Data
         double currentExp = data.getExp() + amount;
         data.setExp(job.getId(), currentExp);
         player.sendMessage("§a[Nghề Phụ] §fBạn vừa nhận được §e" + String.format("%.1f", amount) + " EXP §fnghề §b" + job.getName() + "§f!");
 
-        // 2. Logic kiểm tra Level Up hoặc Đổi JP
         boolean leveledUp = false;
         int jpGained = 0;
         double requiredExp = getRequiredJobExp(currentLevel);
 
         while (currentExp >= requiredExp) {
             currentExp -= requiredExp;
-
             if (currentLevel < maxLevel) {
-                // Chưa max -> Thăng cấp bình thường
                 currentLevel++;
                 leveledUp = true;
                 requiredExp = getRequiredJobExp(currentLevel);
             } else {
-                // Đã max cấp 50 -> Quy đổi thành Điểm Kỹ Năng (JP)
                 jpGained++;
-                requiredExp = getRequiredJobExp(maxLevel); // Mốc EXP yêu cầu giữ nguyên ở cấp 50
+                requiredExp = getRequiredJobExp(maxLevel);
             }
         }
 
-        // 3. Cập nhật lại số EXP còn dư
         data.setExp(job.getId(), currentExp);
 
-        // 4. Thông báo Thăng Cấp
         if (leveledUp) {
             data.setLevel(job.getId(), currentLevel);
             player.sendMessage("");
@@ -101,7 +97,6 @@ public class JobManager {
             player.playSound(player.getLocation(), org.bukkit.Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f);
         }
 
-        // 5. Thông báo Nhận Điểm Kỹ Năng (JP)
         if (jpGained > 0) {
             data.addJobPoints(job.getId(), jpGained);
             player.sendMessage("");
@@ -113,104 +108,103 @@ public class JobManager {
     }
 
     // ==========================================
-    // [MỚI]: HỆ THỐNG LƯU TRỮ (SAVE / LOAD YML)
+    // [MỚI]: HỆ THỐNG LƯU TRỮ MONGODB
     // ==========================================
     public static void loadPlayerData(UUID uuid) {
-        File file = new File(vn.minecraft.rPGCore.RPGCore.getInstance().getDataFolder() + "/job_data", uuid.toString() + ".yml");
-        if (!file.exists()) {
-            playerData.put(uuid, new PlayerJobData());
-            return;
-        }
-
-        YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
+        Document doc = getCollection().find(Filters.eq("_id", uuid.toString())).first();
         PlayerJobData data = new PlayerJobData();
 
-        data.setJobId(config.getString("currentJob", "NONE"));
-        data.addBlacksmithScraps(config.getInt("scraps", 0));
+        if (doc != null) {
+            data.setJobId(doc.getString("currentJob") != null ? doc.getString("currentJob") : "NONE");
+            data.addBlacksmithScraps(doc.getInteger("scraps", 0));
 
-        if (config.contains("levels")) for (String key : config.getConfigurationSection("levels").getKeys(false)) data.setLevel(key, config.getInt("levels." + key));
-        if (config.contains("exps")) for (String key : config.getConfigurationSection("exps").getKeys(false)) data.setExp(key, config.getDouble("exps." + key));
-        if (config.contains("questProgress")) for (String key : config.getConfigurationSection("questProgress").getKeys(false)) data.setQuestProgress(key, config.getInt("questProgress." + key));
-        if (config.contains("questClaimed")) for (String key : config.getConfigurationSection("questClaimed").getKeys(false)) data.setQuestClaimed(key, config.getBoolean("questClaimed." + key));
+            // Load Maps
+            Document levels = (Document) doc.get("levels");
+            if (levels != null) for (String k : levels.keySet()) data.setLevel(k, levels.getInteger(k));
 
-        // [MỚI]: LOAD ĐIỂM JP VÀ KỸ NĂNG
-        if (config.contains("jobPoints")) for (String key : config.getConfigurationSection("jobPoints").getKeys(false)) data.setJobPoints(key, config.getInt("jobPoints." + key));
-        if (config.contains("unlockedSkills")) {
-            for (String key : config.getConfigurationSection("unlockedSkills").getKeys(false)) {
-                for (String skillId : config.getStringList("unlockedSkills." + key)) data.unlockSkill(key, skillId);
+            Document exps = (Document) doc.get("exps");
+            if (exps != null) for (String k : exps.keySet()) data.setExp(k, ((Number) exps.get(k)).doubleValue());
+
+            Document qProgress = (Document) doc.get("questProgress");
+            if (qProgress != null) for (String k : qProgress.keySet()) data.setQuestProgress(k, qProgress.getInteger(k));
+
+            Document qClaimed = (Document) doc.get("questClaimed");
+            if (qClaimed != null) for (String k : qClaimed.keySet()) data.setQuestClaimed(k, qClaimed.getBoolean(k));
+
+            Document jPoints = (Document) doc.get("jobPoints");
+            if (jPoints != null) for (String k : jPoints.keySet()) data.setJobPoints(k, jPoints.getInteger(k));
+
+            Document uSkills = (Document) doc.get("unlockedSkills");
+            if (uSkills != null) {
+                for (String k : uSkills.keySet()) {
+                    List<String> skills = uSkills.getList(k, String.class);
+                    if (skills != null) for (String s : skills) data.unlockSkill(k, s);
+                }
             }
-        }
 
-        // LOAD LỊCH SỬ MUA HÀNG SHOP
-        if (config.contains("shopPurchases")) {
-            for (String key : config.getConfigurationSection("shopPurchases").getKeys(false)) {
-                data.getShopMonthlyPurchases().put(key, config.getInt("shopPurchases." + key));
+            Document sPurchases = (Document) doc.get("shopPurchases");
+            if (sPurchases != null) {
+                for (String k : sPurchases.keySet()) data.getShopMonthlyPurchases().put(k, sPurchases.getInteger(k));
             }
+
+            data.setLastMonthlyShopReset(doc.get("lastMonthlyShopReset") != null ? ((Number) doc.get("lastMonthlyShopReset")).longValue() : System.currentTimeMillis());
+            data.setActiveDailyQuests(doc.getList("activeDaily", String.class) != null ? doc.getList("activeDaily", String.class) : new ArrayList<>());
+            data.setActiveWeeklyQuests(doc.getList("activeWeekly", String.class) != null ? doc.getList("activeWeekly", String.class) : new ArrayList<>());
+            data.setDailyMilestone(doc.getInteger("dailyMilestone", 0));
+            data.setLastDailyReset(doc.get("lastDailyReset") != null ? ((Number) doc.get("lastDailyReset")).longValue() : System.currentTimeMillis());
+            data.setLastWeeklyReset(doc.get("lastWeeklyReset") != null ? ((Number) doc.get("lastWeeklyReset")).longValue() : System.currentTimeMillis());
+            data.setMerchantAccumulatedCoins(doc.get("merchantAccumulatedCoins") != null ? ((Number) doc.get("merchantAccumulatedCoins")).longValue() : 0L);
         }
-        data.setLastMonthlyShopReset(config.getLong("lastMonthlyShopReset", System.currentTimeMillis()));
-
-        data.setActiveDailyQuests(config.getStringList("activeDaily"));
-        data.setActiveWeeklyQuests(config.getStringList("activeWeekly"));
-        data.setDailyMilestone(config.getInt("dailyMilestone", 0));
-
-        data.setLastDailyReset(config.getLong("lastDailyReset", System.currentTimeMillis()));
-        data.setLastWeeklyReset(config.getLong("lastWeeklyReset", System.currentTimeMillis()));
-
-        // LOAD DỮ LIỆU TÍCH LŨY TIỀN THƯƠNG NHÂN
-        data.setMerchantAccumulatedCoins(config.getLong("merchantAccumulatedCoins", 0L));
 
         playerData.put(uuid, data);
     }
 
-    public static void savePlayerData(UUID uuid) {
+    // ==========================================
+    // [ĐÃ SỬA]: Thêm tham số isAsync
+    // ==========================================
+    public static void savePlayerData(UUID uuid, boolean isAsync) {
         PlayerJobData data = playerData.get(uuid);
         if (data == null) return;
 
-        File dir = new File(vn.minecraft.rPGCore.RPGCore.getInstance().getDataFolder(), "job_data");
-        if (!dir.exists()) dir.mkdirs();
+        Document doc = new Document("_id", uuid.toString())
+                .append("currentJob", data.getJobId())
+                .append("scraps", data.getBlacksmithScraps())
+                .append("levels", new Document(data.getJobLevelsMap()))
+                .append("exps", new Document(data.getJobExpsMap()))
+                .append("questProgress", new Document(data.getQuestProgressMap()))
+                .append("questClaimed", new Document(data.getQuestClaimedMap()))
+                .append("jobPoints", new Document(data.getJobPointsMap()))
+                .append("unlockedSkills", new Document(data.getUnlockedSkillsMap()))
+                .append("shopPurchases", new Document(data.getShopMonthlyPurchases()))
+                .append("lastMonthlyShopReset", data.getLastMonthlyShopReset())
+                .append("activeDaily", data.getActiveDailyQuests())
+                .append("activeWeekly", data.getActiveWeeklyQuests())
+                .append("dailyMilestone", data.getDailyMilestone())
+                .append("lastDailyReset", data.getLastDailyReset())
+                .append("lastWeeklyReset", data.getLastWeeklyReset())
+                .append("merchantAccumulatedCoins", data.getMerchantAccumulatedCoins());
 
-        File file = new File(dir, uuid.toString() + ".yml");
-        YamlConfiguration config = new YamlConfiguration();
-
-        config.set("currentJob", data.getJobId());
-        config.set("scraps", data.getBlacksmithScraps());
-
-        for (Map.Entry<String, Integer> entry : data.getJobLevelsMap().entrySet()) config.set("levels." + entry.getKey(), entry.getValue());
-        for (Map.Entry<String, Double> entry : data.getJobExpsMap().entrySet()) config.set("exps." + entry.getKey(), entry.getValue());
-        for (Map.Entry<String, Integer> entry : data.getQuestProgressMap().entrySet()) config.set("questProgress." + entry.getKey(), entry.getValue());
-        for (Map.Entry<String, Boolean> entry : data.getQuestClaimedMap().entrySet()) config.set("questClaimed." + entry.getKey(), entry.getValue());
-
-        // [MỚI]: SAVE ĐIỂM JP VÀ KỸ NĂNG
-        for (Map.Entry<String, Integer> entry : data.getJobPointsMap().entrySet()) config.set("jobPoints." + entry.getKey(), entry.getValue());
-        for (Map.Entry<String, List<String>> entry : data.getUnlockedSkillsMap().entrySet()) config.set("unlockedSkills." + entry.getKey(), entry.getValue());
-
-        // SAVE LỊCH SỬ MUA HÀNG SHOP
-        for (Map.Entry<String, Integer> entry : data.getShopMonthlyPurchases().entrySet()) {
-            config.set("shopPurchases." + entry.getKey(), entry.getValue());
+        // Nếu isAsync = true -> Chạy ngầm không làm lag server
+        if (isAsync) {
+            Bukkit.getScheduler().runTaskAsynchronously(vn.minecraft.rPGCore.RPGCore.getInstance(), () -> {
+                getCollection().replaceOne(Filters.eq("_id", uuid.toString()), doc, new ReplaceOptions().upsert(true));
+            });
         }
-
-        config.set("lastMonthlyShopReset", data.getLastMonthlyShopReset());
-        config.set("activeDaily", data.getActiveDailyQuests());
-        config.set("activeWeekly", data.getActiveWeeklyQuests());
-        config.set("dailyMilestone", data.getDailyMilestone());
-
-        config.set("lastDailyReset", data.getLastDailyReset());
-        config.set("lastWeeklyReset", data.getLastWeeklyReset());
-
-        // SAVE DỮ LIỆU TÍCH LŨY TIỀN THƯƠNG NHÂN
-        config.set("merchantAccumulatedCoins", data.getMerchantAccumulatedCoins());
-
-        try { config.save(file); } catch (Exception e) { e.printStackTrace(); }
+        // Nếu isAsync = false -> Ép chạy đồng bộ (bắt server chờ lưu xong mới tắt)
+        else {
+            getCollection().replaceOne(Filters.eq("_id", uuid.toString()), doc, new ReplaceOptions().upsert(true));
+        }
     }
 
-    public static void saveAll() {
+    // [ĐÃ SỬA]: Cập nhật lại saveAll để dùng cho lệnh tắt Server
+    public static void saveAll(boolean isAsync) {
         for (UUID uuid : playerData.keySet()) {
-            savePlayerData(uuid);
+            savePlayerData(uuid, isAsync);
         }
     }
 
     // ==========================================
-    // [MỚI]: TỰ ĐỘNG LƯU KHI NGƯỜI CHƠI THOÁT GAME
+    // TỰ ĐỘNG LƯU KHI NGƯỜI CHƠI THOÁT GAME
     // ==========================================
     public static class JobDataListener implements Listener {
         @EventHandler
@@ -218,17 +212,16 @@ public class JobManager {
             Player player = event.getPlayer();
             loadPlayerData(player.getUniqueId());
 
-            // Tự động kiểm tra và bốc nhiệm vụ nếu là ngày mới hoặc người chơi chưa có quest
             Bukkit.getScheduler().runTaskLater(vn.minecraft.rPGCore.RPGCore.getInstance(), () -> {
                 vn.minecraft.rPGCore.jobs.core.JobQuestManager.checkAndResetQuests(player);
-            }, 20L); // Delay 1 giây (20 Ticks) cho an toàn lúc đăng nhập
+            }, 20L);
         }
 
         @EventHandler
         public void onQuit(PlayerQuitEvent event) {
             UUID uuid = event.getPlayer().getUniqueId();
-            savePlayerData(uuid);
-            playerData.remove(uuid); // Xóa khỏi RAM để chống rò rỉ bộ nhớ
+            savePlayerData(uuid, true); // Thêm chữ true
+            playerData.remove(uuid);
         }
     }
 
@@ -248,44 +241,27 @@ public class JobManager {
         return (job != null) ? job.getFreshnessMultiplier(getPlayerJobLevel(player)) : 1.0;
     }
 
-    // =========================================================================
-    // HÀM TÍNH TOÁN EXP & CHỨNG NHẬN GIAO DỊCH (TÍCH LŨY QUA PLAYERJOBDATA)
-    // =========================================================================
     public static void processMerchantExp(Player player, long amount) {
         PlayerJobData data = getPlayerData(player);
         if (data == null || !data.getJobId().equalsIgnoreCase("MERCHANT")) return;
-
         int level = data.getLevel("MERCHANT");
-
-        // 1. TÍNH TOÁN EXP NGHỀ NGHIỆP
         double expPerCoin = 0.1 + (level * 0.002);
         double totalExp = amount * expPerCoin;
         addExp(player, totalExp);
 
-        // 2. LOGIC RỚT CHỨNG NHẬN TÍCH LŨY DÒNG TIỀN
         long currentAcc = data.getMerchantAccumulatedCoins();
         long totalCoins = currentAcc + amount;
-
-        // Đổi ra số lượng đơn vị Vàng luân chuyển (1 Vàng = 4096 Đồng)
         long goldUnits = totalCoins / 4096;
         long leftoverCoins = totalCoins % 4096;
 
-        // Ghi lại số tiền lẻ chưa đủ 1 Vàng vào bộ nhớ data nghề nghiệp để tích lũy cho lần sau
         data.setMerchantAccumulatedCoins(leftoverCoins);
 
-        // Nếu tổng số tiền tích lũy từ các giao dịch trước đạt đủ mốc từ 1 Vàng trở lên
         if (goldUnits > 0) {
-            // Cân bằng lại tỉ lệ: Cấp * 0.5% cho mỗi 1 Vàng. Tối đa 25.0% ở Cấp 50.
             double tokenDropChance = Math.min(level * 0.5, 25.0);
             double totalExpected = goldUnits * (tokenDropChance / 100.0);
-
-            // Thuật toán xúc xắc an toàn (Ví dụ: 1.25 -> Chắc chắn 1, có 25% nhận thêm cái thứ 2)
             int tokens = (int) totalExpected;
-            if (Math.random() < (totalExpected - tokens)) {
-                tokens++;
-            }
+            if (Math.random() < (totalExpected - tokens)) tokens++;
 
-            // Tiến hành cấp Chứng Nhận Thương Nhân nếu trúng thưởng
             if (tokens > 0) {
                 org.bukkit.inventory.ItemStack tokenItem = vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager().buildItem("misc_merchant_token", tokens);
                 if (tokenItem != null) {
@@ -299,30 +275,21 @@ public class JobManager {
             }
         }
     }
-    // =========================================================================
-    // HÀM TÍNH TOÁN EXP & CƠ CHẾ RỚT ĐỒ CHO NGHỀ DƯỢC SƯ (ALCHEMIST)
-    // =========================================================================
 
     public static void tryDropManaEssence(Player player, double baseChance) {
         PlayerJobData data = getPlayerData(player);
         if (data == null || !data.getJobId().equalsIgnoreCase("ALCHEMIST")) return;
-
         int level = data.getLevel("ALCHEMIST");
         double finalChance = baseChance + (level * 0.1);
 
         if (Math.random() * 100.0 <= finalChance) {
             vn.minecraft.rPGCore.managers.ItemManager im = vn.minecraft.rPGCore.RPGCore.getInstance().getItemManager();
             org.bukkit.inventory.ItemStack essenceItem = im.buildItem("essence_mana", 1);
-
             if (essenceItem != null) {
                 java.util.HashMap<Integer, org.bukkit.inventory.ItemStack> leftOver = player.getInventory().addItem(essenceItem);
-                for (org.bukkit.inventory.ItemStack drop : leftOver.values()) {
-                    player.getWorld().dropItemNaturally(player.getLocation(), drop);
-                }
+                for (org.bukkit.inventory.ItemStack drop : leftOver.values()) player.getWorld().dropItemNaturally(player.getLocation(), drop);
                 player.sendMessage("§b§l[Tinh Tế] §fTrong lúc làm việc, bạn đã tích tụ thành công §b+1 Tinh Chất Ma Lực§f!");
                 player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.2f);
-
-                // [SỬA LỖI]: Gọi đúng hàm handleAction để đẩy tiến độ Quest Tích lũy Tinh Chất (WEEKLY_ALCH_2)
                 vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.COLLECT_MANA_ESSENCE, 1);
             }
         }
@@ -332,9 +299,8 @@ public class JobManager {
         PlayerJobData data = getPlayerData(player);
         if (data == null || !data.getJobId().equalsIgnoreCase("ALCHEMIST")) return;
 
-        double baseExp = 15.0; // Base hái thuốc
+        double baseExp = 15.0;
         double multiplier = 1.0;
-
         if (rarity != null) {
             switch (rarity.toUpperCase()) {
                 case "COMMON": multiplier = 1.1; break;
@@ -343,34 +309,24 @@ public class JobManager {
                 case "EPIC": multiplier = 1.75; break;
                 case "MYTHIC": multiplier = 2.0; break;
                 case "LEGENDARY": multiplier = 2.5; break;
-                default: multiplier = 1.0; break;
             }
         }
-
-        // 1. Cấp EXP trực tiếp
         addExp(player, baseExp * multiplier);
-
-        // 2. [MỚI]: Đẩy tiến độ Nhiệm vụ Hái thuốc Tổng Quát (DAILY_ALCH_1)
         vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.GATHER_ITEM, 1);
-
-        // 3. [MỚI]: Đẩy tiến độ Nhiệm vụ Hái thuốc RARE trở lên (WEEKLY_ALCH_1)
         if (rarity != null && (rarity.equalsIgnoreCase("RARE") || rarity.equalsIgnoreCase("EPIC") || rarity.equalsIgnoreCase("MYTHIC") || rarity.equalsIgnoreCase("LEGENDARY"))) {
             vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.ALCH_HARVEST_RARE, 1);
         }
     }
 
-    // Đã thêm tham số List<ItemData> ingredients vào hàm để chấm điểm EXP
     public static void processAlchemistBrewExp(Player player, vn.minecraft.rPGCore.brewing.PotionData result, List<vn.minecraft.rPGCore.managers.ItemManager.ItemData> ingredients) {
         PlayerJobData data = getPlayerData(player);
         if (data == null || !data.getJobId().equalsIgnoreCase("ALCHEMIST")) return;
 
-        double finalExp = 15.0; // Base EXP thành công (Giống Đầu Bếp)
-
+        double finalExp = 15.0;
         if (result.isRuined) {
-            finalExp = 10.0; // Base EXP thất bại (Giống Đầu Bếp)
+            finalExp = 10.0;
             vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.BREW_FAIL, 1);
         } else {
-            // CỘNG DỒN EXP DỰA TRÊN ĐỘ HIẾM CỦA THẢO DƯỢC (Tương tự hệ thống Cooking)
             if (ingredients != null) {
                 for (vn.minecraft.rPGCore.managers.ItemManager.ItemData itemData : ingredients) {
                     if (itemData == null || itemData.rarity == null) continue;
@@ -384,24 +340,17 @@ public class JobManager {
                     }
                 }
             }
-
-            // Thưởng thêm 15% tổng EXP nếu đạt chuẩn Cân bằng / Cường hóa
-            // (Đây là nét đặc trưng riêng của Dược Sư so với Đầu Bếp)
             double flavorBonus = 1.0;
             if (result.flavorTags.contains("§a[Cân Bằng Hoàn Hảo]")) flavorBonus += 0.15;
             if (result.isEnhanced) flavorBonus += 0.15;
-
             finalExp *= flavorBonus;
 
             vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.BREW_SUCCESS, 1);
-
             if (result.flavorTags.contains("§a[Cân Bằng Hoàn Hảo]") || result.isEnhanced) {
                 vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.BREW_PERFECT, 1);
             }
         }
-
         vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.BREW_ANY, 1);
-
         addExp(player, Math.max(5.0, finalExp));
     }
 }
