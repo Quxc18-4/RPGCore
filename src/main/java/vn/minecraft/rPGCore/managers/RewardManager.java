@@ -250,4 +250,81 @@ public class RewardManager {
             return items;
         } catch (Exception e) { return new ItemStack[0]; }
     }
+
+    // Lấy array quà (Dành cho UI đọc thông tin)
+    public ItemStack[] getMonthlyRewardsArray(int day) {
+        return monthlyRewards.get(day);
+    }
+
+    // Mở GUI điểm danh (Chạy Async để lấy DB)
+    public void openMonthlyGUI(Player player) {
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            Document doc = playersCollection.find(Filters.eq("_id", player.getUniqueId().toString())).first();
+            int progress = 0;
+            long lastClaim = 0L;
+
+            if (doc != null) {
+                // getInteger thì có hỗ trợ giá trị mặc định
+                progress = doc.getInteger("monthly_progress", 0);
+
+                // getLong thì KHÔNG hỗ trợ, phải tự check null
+                Long dbLastClaim = doc.getLong("monthly_last_claim");
+                lastClaim = (dbLastClaim != null) ? dbLastClaim : 0L;
+            }
+
+            // Kiểm tra xem giờ hiện tại và giờ nhận lần cuối có cùng 1 ngày (Lịch VN) không?
+            java.time.ZoneId vnZone = java.time.ZoneId.of("Asia/Ho_Chi_Minh");
+            java.time.LocalDate lastDate = java.time.Instant.ofEpochMilli(lastClaim).atZone(vnZone).toLocalDate();
+            java.time.LocalDate today = java.time.LocalDate.now(vnZone);
+
+            boolean canClaim = !lastDate.equals(today) && lastClaim != 0L;
+            if (lastClaim == 0L) canClaim = true; // Chưa nhận bao giờ
+
+            int finalProgress = progress;
+            boolean finalCanClaim = canClaim;
+
+            // Đồng bộ về Main Thread để mở GUI
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                vn.minecraft.rPGCore.ui.MonthlyRewardGUI.open(player, finalProgress, finalCanClaim);
+            });
+        });
+    }
+
+    // Xử lý phát quà điểm danh
+    public void claimMonthlyReward(Player player, int dayToClaim) {
+        ItemStack[] rewards = getMonthlyRewardsArray(dayToClaim);
+        if (rewards == null || rewards.length == 0) {
+            player.sendMessage("§c§l[!] §cQuà ngày này chưa được Admin setup!");
+            return;
+        }
+
+        // Check xem túi đồ có đủ chỗ không
+        int emptySlots = 0;
+        for (ItemStack item : player.getInventory().getStorageContents()) {
+            if (item == null || item.getType() == Material.AIR) emptySlots++;
+        }
+        if (emptySlots < rewards.length) {
+            player.sendMessage("§c§l[!] §cTúi đồ đầy! Hãy chừa ít nhất §e" + rewards.length + " §cô trống.");
+            return;
+        }
+
+        // Phát quà
+        for (ItemStack item : rewards) { player.getInventory().addItem(item.clone()); }
+        player.sendMessage("§a§l[!] §aBạn đã điểm danh thành công Ngày §e" + dayToClaim + "§a!");
+        player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
+
+        // Lưu Database
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            int newProgress = (dayToClaim == 31) ? 0 : dayToClaim; // Nhận đủ 31 ngày thì Reset về 0
+            long now = System.currentTimeMillis();
+
+            Document updateDoc = new Document("$set", new Document("monthly_progress", newProgress)
+                    .append("monthly_last_claim", now));
+
+            playersCollection.updateOne(Filters.eq("_id", player.getUniqueId().toString()), updateDoc, new com.mongodb.client.model.UpdateOptions().upsert(true));
+
+            // Cập nhật lại UI sau khi nhận thành công
+            Bukkit.getScheduler().runTask(plugin, () -> openMonthlyGUI(player));
+        });
+    }
 }

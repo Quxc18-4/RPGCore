@@ -118,6 +118,14 @@ public class RewardCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        // ==========================================
+        // LỆNH ĐIỂM DANH (/diemdanh)
+        // ==========================================
+        if (command.getName().equalsIgnoreCase("diemdanh")) {
+            rm.openMonthlyGUI(player);
+            return true;
+        }
+
         return true;
     }
 

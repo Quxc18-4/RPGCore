@@ -72,3 +72,5 @@ commands:
     description: Quản lý phần quà Admin
     permission: rpgcore.admin
     permission-message: §cBan không có quyền sử dụng lệnh này!
+  diemdanh:
+    description: Mở bảng điểm danh nhận quà hàng ngày

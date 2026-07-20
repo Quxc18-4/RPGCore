@@ -187,6 +187,7 @@ public final class RPGCore extends JavaPlugin {
         getCommand("kit").setTabCompleter(rewardCmd);      // THÊM DÒNG NÀY
         getCommand("adminkit").setExecutor(rewardCmd);
         getCommand("adminkit").setTabCompleter(rewardCmd); // THÊM DÒNG NÀY
+        getCommand("diemdanh").setExecutor(rewardCmd); // THÊM DÒNG NÀY
 
         if (this.getCommand("bal") != null) {
             this.getCommand("bal").setExecutor(new BalanceCommand(this, playerManager, currencyManager));

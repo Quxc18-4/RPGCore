@@ -79,6 +79,7 @@ public class MonthlyRewardGUI {
         if (rewards != null && rewards.length > 0) {
             lore.add(" ");
             lore.add("§f§nPhần thưởng gồm:");
+            lore.add(" ");
             for (ItemStack rw : rewards) {
                 String rwName = (rw.hasItemMeta() && rw.getItemMeta().hasDisplayName())
                         ? rw.getItemMeta().getDisplayName() : rw.getType().name();

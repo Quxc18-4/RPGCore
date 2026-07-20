@@ -1,12 +1,14 @@
 package vn.minecraft.rPGCore.listeners;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.inventory.ItemStack;
 import vn.minecraft.rPGCore.RPGCore;
 
 public class RewardListener implements Listener {
@@ -76,6 +78,34 @@ public class RewardListener implements Listener {
             // Nếu click vào các ô trống còn lại -> ÉP MỞ KHÓA ĐỂ ĐẶT QUÀ
             else {
                 event.setCancelled(false);
+            }
+        }
+    }
+    @EventHandler
+    public void onInventoryClick(InventoryClickEvent event) {
+        org.bukkit.inventory.InventoryHolder holder = event.getInventory().getHolder();
+
+        // CHỈ KIỂM TRA NẾU TÚI ĐỒ LÀ CUSTOM GUI CỦA CHÚNG TA
+        if (holder instanceof vn.minecraft.rPGCore.ui.CustomGUI) {
+            vn.minecraft.rPGCore.ui.CustomGUI gui = (vn.minecraft.rPGCore.ui.CustomGUI) holder;
+
+            // Bắt sự kiện cho GUI Điểm Danh của Người chơi
+            if (gui.getGuiId().equals("MONTHLY_USER_GUI")) {
+                event.setCancelled(true); // Khóa kéo thả
+
+                Player player = (Player) event.getWhoClicked();
+                ItemStack clicked = event.getCurrentItem();
+
+                if (clicked != null && clicked.getType() == Material.LIME_STAINED_GLASS_PANE) {
+                    // Trích xuất "Ngày" từ Tên của Kính (Ví dụ: "§a§lNgày 14 (Nhấn để nhận)")
+                    try {
+                        String cleanName = org.bukkit.ChatColor.stripColor(clicked.getItemMeta().getDisplayName());
+                        String number = cleanName.replaceAll("[^0-9]", ""); // Lọc lấy số
+                        int day = Integer.parseInt(number);
+
+                        plugin.getRewardManager().claimMonthlyReward(player, day);
+                    } catch (Exception ignored) {}
+                }
             }
         }
     }
