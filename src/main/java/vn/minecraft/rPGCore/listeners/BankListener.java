@@ -5,6 +5,7 @@ import org.bukkit.Sound;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -34,7 +35,7 @@ public class BankListener implements Listener {
     // ==========================================
     // 1. CLICK VÀO NPC NGÂN HÀNG (Hỗ trợ MongoDB + Chống Đúp)
     // ==========================================
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onNPCClick(PlayerInteractEntityEvent event) {
         // Chặn lỗi mở GUI 2 lần
         if (event.getHand() != EquipmentSlot.HAND) return;
