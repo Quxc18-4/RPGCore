@@ -33,12 +33,18 @@ public class NPCManager {
         public String shopId;
         public UUID currentEntityId;
 
-        public ShopNPC(String id, String name, EntityType type, Location location, String shopId) {
+        // [NÂNG CẤP]: Liên kết sở hữu và lãnh thổ
+        public UUID ownerId;
+        public UUID waystoneId;
+
+        public ShopNPC(String id, String name, EntityType type, Location location, String shopId, UUID ownerId, UUID waystoneId) {
             this.id = id;
             this.name = name;
             this.type = type;
             this.location = location;
             this.shopId = shopId;
+            this.ownerId = ownerId;
+            this.waystoneId = waystoneId;
         }
     }
 
@@ -61,14 +67,21 @@ public class NPCManager {
 
             Document locDoc = (Document) doc.get("location");
             World world = Bukkit.getWorld(locDoc.getString("world"));
-            if (world == null) continue; // Bỏ qua nếu World chưa được load
+            if (world == null) continue;
 
             Location loc = new Location(
                     world, locDoc.getDouble("x"), locDoc.getDouble("y"), locDoc.getDouble("z"),
                     locDoc.getDouble("yaw").floatValue(), locDoc.getDouble("pitch").floatValue()
             );
 
-            ShopNPC npc = new ShopNPC(id, name, type, loc, shopId);
+            // [NÂNG CẤP]: Đọc dữ liệu Owner và Waystone
+            String ownerStr = doc.getString("owner_id");
+            UUID ownerId = (ownerStr != null && !ownerStr.isEmpty()) ? UUID.fromString(ownerStr) : null;
+
+            String waystoneStr = doc.getString("waystone_id");
+            UUID waystoneId = (waystoneStr != null && !waystoneStr.isEmpty()) ? UUID.fromString(waystoneStr) : null;
+
+            ShopNPC npc = new ShopNPC(id, name, type, loc, shopId, ownerId, waystoneId);
             String uuidStr = doc.getString("current_entity_uuid");
             if (uuidStr != null && !uuidStr.isEmpty()) {
                 npc.currentEntityId = UUID.fromString(uuidStr);
@@ -91,22 +104,31 @@ public class NPCManager {
                 .append("entity_type", npc.type.name())
                 .append("shop_id", npc.shopId)
                 .append("location", locDoc)
-                .append("current_entity_uuid", npc.currentEntityId != null ? npc.currentEntityId.toString() : "");
+                .append("current_entity_uuid", npc.currentEntityId != null ? npc.currentEntityId.toString() : "")
+                // [NÂNG CẤP]: Lưu dữ liệu Owner và Waystone
+                .append("owner_id", npc.ownerId != null ? npc.ownerId.toString() : "")
+                .append("waystone_id", npc.waystoneId != null ? npc.waystoneId.toString() : "");
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             collection.replaceOne(Filters.eq("_id", npc.id), doc, new ReplaceOptions().upsert(true));
         });
     }
 
-    // Hàm dùng cho Lệnh /spawnnpc sau này
+    // [GIỮ NGUYÊN]: Dùng cho lệnh /spawnnpc của Admin (Chủ sở hữu là Server)
     public void createNPC(String id, String name, EntityType type, Location loc, String shopId) {
-        ShopNPC npc = new ShopNPC(id, name, type, loc, shopId);
+        ShopNPC npc = new ShopNPC(id, name, type, loc, shopId, null, null);
+        npcs.put(id, npc);
+        spawnNPC(npc);
+    }
+
+    // [MỚI]: Dùng cho hệ thống Waystone
+    public void createPlayerNPC(String id, String name, EntityType type, Location loc, String shopId, UUID ownerId, UUID waystoneId) {
+        ShopNPC npc = new ShopNPC(id, name, type, loc, shopId, ownerId, waystoneId);
         npcs.put(id, npc);
         spawnNPC(npc);
     }
 
     public void spawnNPC(ShopNPC npc) {
-        // Dọn dẹp xác cũ nếu còn kẹt lại
         if (npc.currentEntityId != null) {
             Entity oldEntity = Bukkit.getEntity(npc.currentEntityId);
             if (oldEntity != null) oldEntity.remove();
@@ -116,42 +138,62 @@ public class NPCManager {
         entity.setCustomName(npc.name);
         entity.setCustomNameVisible(true);
 
-        // Gắn thẻ ID Shop ẩn vào người NPC
         entity.getPersistentDataContainer().set(NPC_SHOP_KEY, PersistentDataType.STRING, npc.shopId);
 
         if (entity instanceof LivingEntity) {
             LivingEntity living = (LivingEntity) entity;
-            living.setAI(false); // Đứng yên
-            living.setInvulnerable(true); // Bất tử
-            living.setRemoveWhenFarAway(false); // Không bị despawn khi người chơi đi xa
-            living.setCollidable(false); // Không bị đẩy lùi
+            living.setAI(false);
+            living.setInvulnerable(true);
+            living.setRemoveWhenFarAway(false);
+            living.setCollidable(false);
         }
 
         npc.currentEntityId = entity.getUniqueId();
-        saveNPC(npc); // Lưu lại UUID mới xuống DB
+        saveNPC(npc);
+    }
+
+    // [MỚI]: API Xử lý tìm kiếm và Xóa NPC
+    public ShopNPC getNPCByEntityUUID(UUID entityId) {
+        for (ShopNPC npc : npcs.values()) {
+            if (entityId.equals(npc.currentEntityId)) {
+                return npc;
+            }
+        }
+        return null;
+    }
+
+    public void removeNPC(String npcId) {
+        ShopNPC npc = npcs.remove(npcId);
+        if (npc != null) {
+            if (npc.currentEntityId != null) {
+                Entity entity = Bukkit.getEntity(npc.currentEntityId);
+                if (entity != null) entity.remove();
+            }
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                collection.deleteOne(Filters.eq("_id", npcId));
+            });
+        }
     }
 
     private void startTrackerTask() {
-        // Chạy kiểm tra định kỳ mỗi 10 giây (200 ticks)
         Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             for (ShopNPC npc : npcs.values()) {
                 if (npc.currentEntityId == null) {
                     spawnNPC(npc);
                     continue;
                 }
-
                 Entity entity = Bukkit.getEntity(npc.currentEntityId);
-
                 if (entity == null || entity.isDead()) {
-                    // Cảnh báo: NPC chết hoặc bị mất tích -> Hồi sinh!
                     spawnNPC(npc);
                 } else {
-                    // NPC còn sống, check xem có đi dạo lệch quá 2 block không
                     if (entity.getLocation().distanceSquared(npc.location) > 4.0) {
                         entity.teleport(npc.location);
                     }
                 }
             }
         }, 200L, 200L);
+    }
+    public ShopNPC getNPCById(String id) {
+        return npcs.get(id);
     }
 }

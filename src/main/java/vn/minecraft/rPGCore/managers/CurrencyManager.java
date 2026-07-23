@@ -197,4 +197,52 @@ public class CurrencyManager {
 
         return true;
     }
+
+    // ==========================================
+    // THANH TOÁN THÔNG MINH (TIỀN MẶT + NGÂN HÀNG)
+    // ==========================================
+    public boolean processSmartPayment(org.bukkit.entity.Player player, vn.minecraft.rPGCore.player.RPGPlayer rpgPlayer, long amountRequired) {
+        if (amountRequired <= 0) return true;
+
+        // 1. Kiểm tra tiền mặt trong túi đồ
+        long physicalCash = getTotalPhysicalCurrency(player);
+
+        // Trường hợp 1: Tiền mặt đủ trả toàn bộ
+        if (physicalCash >= amountRequired) {
+            return takePhysicalCurrency(player, amountRequired);
+        }
+
+        // 2. Nếu tiền mặt không đủ, tính số tiền còn thiếu cần rút từ Ngân hàng
+        long deficit = amountRequired - physicalCash;
+        long bankBalance = rpgPlayer.getBalance();
+
+        // Trường hợp 2: Tổng tài sản (Tiền mặt + Ngân hàng) không đủ
+        if (bankBalance < deficit) {
+            return false;
+        }
+
+        // Trường hợp 3: Tổng tài sản đủ -> Vét sạch tiền mặt và trừ nốt phần thiếu vào Ngân hàng
+        if (physicalCash > 0) {
+            takePhysicalCurrency(player, physicalCash);
+        }
+
+        // Sử dụng chuẩn xác hàm withdraw() từ mã nguồn RPGPlayer của bạn
+        rpgPlayer.withdraw(deficit);
+
+        player.sendMessage("§e[Giao Dịch] §fĐã trừ §a" + formatCurrency(deficit) + " §ftừ Ngân hàng do thiếu tiền mặt.");
+
+        return true;
+    }
+
+    // ==========================================
+    // KIỂM TRA ĐỦ TIỀN KHÔNG (DÙNG CHO GUI)
+    // ==========================================
+    public boolean canAffordSmart(org.bukkit.entity.Player player, vn.minecraft.rPGCore.player.RPGPlayer rpgPlayer, long amountRequired) {
+        if (amountRequired <= 0) return true;
+        long physicalCash = getTotalPhysicalCurrency(player);
+        if (physicalCash >= amountRequired) return true;
+
+        long deficit = amountRequired - physicalCash;
+        return rpgPlayer.getBalance() >= deficit;
+    }
 }

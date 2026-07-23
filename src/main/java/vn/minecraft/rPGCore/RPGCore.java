@@ -37,6 +37,7 @@ public final class RPGCore extends JavaPlugin {
     private BaitManager baitManager;
     private CurrencyManager currencyManager;
     private BackpackManager backpackManager;
+    private ShopManager shopManager; // [THÊM DÒNG NÀY]
 
     private MountManager mountManager;
     private MountDataManager mountDataManager;
@@ -82,7 +83,7 @@ public final class RPGCore extends JavaPlugin {
 
         this.currencyManager = new CurrencyManager(this);
         this.globalEconomyManager = new GlobalEconomyManager(this);
-        ShopManager shopManager = new ShopManager(this, currencyManager);
+        this.shopManager = new ShopManager(this, currencyManager); // [SỬA LẠI DÒNG NÀY]
         BankManager bankManager = new BankManager(currencyManager);
         this.npcManager = new vn.minecraft.rPGCore.managers.NPCManager(this);
 
@@ -295,4 +296,5 @@ public final class RPGCore extends JavaPlugin {
         return this.globalEconomyManager;
     }
     public RewardManager getRewardManager() { return rewardManager; }
+    public ShopManager getShopManager() { return this.shopManager; }
 }
