@@ -5,6 +5,7 @@ import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.ReplaceOptions;
 import org.bson.Document;
 import org.bukkit.Bukkit;
+import org.bukkit.GameRule;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -30,7 +31,6 @@ public class PlayerManager {
     public PlayerManager(JavaPlugin plugin, ClassManager classManager) {
         this.plugin = plugin;
         this.classManager = classManager;
-
         // Móc nối vào Collection 'players' trên MongoDB
         this.collection = MongoManager.getInstance().getDatabase().getCollection("players");
     }
@@ -48,6 +48,10 @@ public class PlayerManager {
             String classId = doc.getString("class");
             double savedResource = doc.getDouble("resource");
             double savedExp = doc.getDouble("exp") != null ? doc.getDouble("exp") : 0.0;
+
+            // [ĐỒNG BỘ LEVEL]: Lấy dữ liệu Level từ DB
+            int savedLevel = doc.getInteger("level") != null ? doc.getInteger("level") : 1;
+
             long savedBalance = doc.getLong("balance") != null ? doc.getLong("balance") : 0L;
 
             rpgPlayer.setBalance(savedBalance);
@@ -57,7 +61,10 @@ public class PlayerManager {
                 rpgPlayer.setClass(savedClass);
                 rpgPlayer.setCurrentResource(savedResource);
             }
+
             rpgPlayer.setCurrentExp(savedExp);
+            // [ĐỒNG BỘ LEVEL]: Bơm Level vào cho người chơi
+            rpgPlayer.setLevel(savedLevel);
 
             // Nạp dữ liệu Attribute
             Document attrDoc = (Document) doc.get("attributes");
@@ -139,12 +146,16 @@ public class PlayerManager {
         rpgPlayer.updateExpBar();
         rpgPlayer.updateEquipmentStats();
 
+        // ==========================================
+        // [AUTO KEEP INVENTORY]: Ép luật bảo vệ đồ cho World hiện tại
+        // ==========================================
+        player.getWorld().setGameRule(org.bukkit.GameRules.KEEP_INVENTORY, true);
+
         activePlayers.put(uuid, rpgPlayer);
         return rpgPlayer;
     }
 
     // --- CƠ CHẾ LƯU DỮ LIỆU KHI THOÁT GAME (CREATE/UPDATE) ---
-    // [ĐÃ SỬA LỖI]: Cập nhật thành 3 tham số (Thêm removeFromRAM)
     public void savePlayer(UUID uuid, boolean isAsync, boolean removeFromRAM) {
         RPGPlayer rpgPlayer = activePlayers.get(uuid);
         if (rpgPlayer != null) {
@@ -194,6 +205,7 @@ public class PlayerManager {
             // 5. Gộp tất cả vào Document Chính
             Document mainDoc = new Document("_id", uuid.toString())
                     .append("class", rpgPlayer.getCurrentClass().getId())
+                    .append("level", rpgPlayer.getLevel()) // [ĐỒNG BỘ LEVEL]: Lưu xuống DB
                     .append("resource", rpgPlayer.getCurrentResource())
                     .append("exp", rpgPlayer.getCurrentExp())
                     .append("balance", rpgPlayer.getBalance())

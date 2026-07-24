@@ -97,6 +97,12 @@ public class RPGPlayer {
     public void setCurrentExp(double exp) { this.currentExp = exp; }
     public PlayerStats getStats() { return currentStats; }
 
+    // ==========================================
+    // [MỚI]: GETTER/SETTER CHO CẤP ĐỘ (LEVEL)
+    // ==========================================
+    public int getLevel() { return this.bukkitPlayer.getLevel(); }
+    public void setLevel(int level) { this.bukkitPlayer.setLevel(level); }
+
     // 2. Hàm KÍCH HOẠT (Reset) đồng hồ giao tranh
     // Bất cứ khi nào người chơi đánh/bị đánh, ta sẽ gọi hàm này.
     public void setInCombat() {

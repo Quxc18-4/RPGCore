@@ -35,7 +35,7 @@ public class BankListener implements Listener {
     // ==========================================
     // 1. CLICK VÀO NPC NGÂN HÀNG (Hỗ trợ MongoDB + Chống Đúp)
     // ==========================================
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onNPCClick(PlayerInteractEntityEvent event) {
         // Chặn lỗi mở GUI 2 lần
         if (event.getHand() != EquipmentSlot.HAND) return;

@@ -2,6 +2,10 @@ package vn.minecraft.rPGCore;
 
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
+import vn.minecraft.rPGCore.auctionhouse.commands.AuctionCommand;
+import vn.minecraft.rPGCore.auctionhouse.listeners.AuctionGUIListener;
+import vn.minecraft.rPGCore.auctionhouse.managers.AuctionManager;
+import vn.minecraft.rPGCore.auctionhouse.tasks.AuctionTaxTask;
 import vn.minecraft.rPGCore.classes.ClassManager;
 import vn.minecraft.rPGCore.commands.*;
 import vn.minecraft.rPGCore.cooking.CookingEngine;
@@ -48,6 +52,8 @@ public final class RPGCore extends JavaPlugin {
     private GlobalEconomyManager globalEconomyManager;
 
     private RewardManager rewardManager;
+    private AuctionManager auctionManager;
+    private AuctionGUIListener auctionGUIListener;
 
     @Override
     public void onEnable() {
@@ -101,6 +107,8 @@ public final class RPGCore extends JavaPlugin {
 
         this.backpackManager = new BackpackManager(this);
         this.rewardManager = new RewardManager(this);
+        this.auctionManager = new AuctionManager(this);
+        this.auctionGUIListener = new AuctionGUIListener(this);
 
         JobRegister.registerAllJobs();
         JobLeaderboard.updateLeaderboards();
@@ -162,6 +170,7 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.ui.TrinketRecipeCraftGUI(), this);
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.skills.bard.BardCoreGUI(), this);
         getServer().getPluginManager().registerEvents(new RewardListener(this), this);
+        getServer().getPluginManager().registerEvents(this.auctionGUIListener, this);
 
         new RegenTask(playerManager, bossBarManager).runTaskTimer(this, 0L, 20L);
 
@@ -189,6 +198,10 @@ public final class RPGCore extends JavaPlugin {
         getCommand("adminkit").setExecutor(rewardCmd);
         getCommand("adminkit").setTabCompleter(rewardCmd); // THÊM DÒNG NÀY
         getCommand("diemdanh").setExecutor(rewardCmd); // THÊM DÒNG NÀY
+
+        AuctionCommand ahCmd = new AuctionCommand(this);
+        getCommand("ah").setExecutor(ahCmd);
+        getCommand("ahc").setExecutor(ahCmd);
 
         if (this.getCommand("bal") != null) {
             this.getCommand("bal").setExecutor(new BalanceCommand(this, playerManager, currencyManager));
@@ -252,6 +265,7 @@ public final class RPGCore extends JavaPlugin {
 
             getLogger().info("§a[Auto-Save] Đã lưu dữ liệu người chơi và thú cưỡi thành công!");
         }, 6000L, 6000L);
+        new AuctionTaxTask(this).runTaskTimer(this, 20L * 60 * 30, 20L * 60 * 30);
     }
 
     @Override
@@ -297,4 +311,8 @@ public final class RPGCore extends JavaPlugin {
     }
     public RewardManager getRewardManager() { return rewardManager; }
     public ShopManager getShopManager() { return this.shopManager; }
+    public AuctionManager getAuctionManager() { return auctionManager; }
+    public AuctionGUIListener getAuctionGUIListener() {
+        return this.auctionGUIListener;
+    }
 }

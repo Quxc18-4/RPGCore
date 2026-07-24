@@ -74,3 +74,9 @@ commands:
     permission-message: §cBan không có quyền sử dụng lệnh này!
   diemdanh:
     description: Mở bảng điểm danh nhận quà hàng ngày
+  ah:
+    description: "Mở giao diện Chợ hoặc Bán nhanh"
+    usage: "/ah hoặc /ah <giá>"
+  ahc:
+    description: "Đăng bán vật phẩm có xác nhận"
+    usage: "/ahc <giá>"

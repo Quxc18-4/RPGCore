@@ -42,16 +42,62 @@ public class ShopListener implements Listener {
     }
 
     // ==========================================
-    // 1. CLICK VÀO NPC
+    // 1. CLICK VÀO NPC (ĐÃ CẬP NHẬT TÍNH NĂNG XÓA CHO ADMIN)
     // ==========================================
     @EventHandler
     public void onNPCClick(PlayerInteractEntityEvent event) {
         if (event.getHand() != EquipmentSlot.HAND) return;
 
+        Player player = event.getPlayer();
+
+        // ------------------------------------------
+        // [MỚI]: KIỂM TRA SHIFT + CLICK (THU HỒI NPC TAY KHÔNG)
+        // ------------------------------------------
+        if (player.isSneaking()) {
+            if (event.getRightClicked() instanceof LivingEntity) {
+                // Lấy dữ liệu NPC từ Core để kiểm tra ID Chủ sở hữu
+                vn.minecraft.rPGCore.managers.NPCManager.ShopNPC npcData =
+                        vn.minecraft.rPGCore.RPGCore.getInstance().getNpcManager().getNPCByEntityUUID(event.getRightClicked().getUniqueId());
+
+                // NẾU ĐÂY LÀ NPC HỆ THỐNG (Không có ownerId)
+                if (npcData != null && npcData.ownerId == null) {
+                    if (player.hasPermission("rpgcore.admin")) {
+                        ItemStack mainHand = player.getInventory().getItemInMainHand();
+
+                        // Yêu cầu Admin phải CẦM TAY KHÔNG mới được xóa (Chống trượt tay)
+                        if (mainHand == null || mainHand.getType() == Material.AIR) {
+                            event.setCancelled(true);
+
+                            // 1. Xóa sạch dữ liệu Shop khỏi MongoDB
+                            try {
+                                org.bson.Document query = new org.bson.Document("_id", npcData.shopId);
+                                vn.minecraft.rPGCore.database.MongoManager.getInstance().getDatabase().getCollection("shops").deleteOne(query);
+                            } catch (Exception e) {
+                                vn.minecraft.rPGCore.RPGCore.getInstance().getLogger().warning("Không thể xóa MongoDB Shop: " + e.getMessage());
+                            }
+
+                            // 2. Xóa Entity NPC khỏi Server
+                            vn.minecraft.rPGCore.RPGCore.getInstance().getNpcManager().removeNPC(npcData.id);
+
+                            player.sendMessage("§a§l[Hệ thống] §fĐã thu hồi NPC Server và dọn dẹp dữ liệu cửa hàng!");
+                            player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_BEACON_DEACTIVATE, 1f, 1f);
+                        }
+                    }
+                    // Đã là NPC Hệ thống thì kết thúc luôn, không đẩy sang cho RPGDens xử lý
+                    return;
+                }
+            }
+
+            // Nếu là NPC của người chơi (Có ownerId) -> Nhường quyền 100% cho NpcInteractListener của RPGDens!
+            return;
+        }
+
+        // ------------------------------------------
+        // [CŨ]: CLICK PHẢI BÌNH THƯỜNG -> MỞ GIAO DIỆN
+        // ------------------------------------------
         if (event.getRightClicked() instanceof LivingEntity) {
             LivingEntity npc = (LivingEntity) event.getRightClicked();
             String name = npc.getCustomName();
-            Player player = event.getPlayer();
 
             org.bukkit.persistence.PersistentDataContainer pdc = npc.getPersistentDataContainer();
             String shopId = null;
@@ -59,6 +105,10 @@ public class ShopListener implements Listener {
             org.bukkit.NamespacedKey newManagerKey = new org.bukkit.NamespacedKey(vn.minecraft.rPGCore.RPGCore.getInstance(), "npc_shop_id");
             if (pdc.has(newManagerKey, org.bukkit.persistence.PersistentDataType.STRING)) {
                 shopId = pdc.get(newManagerKey, org.bukkit.persistence.PersistentDataType.STRING);
+                // [NÉ NGÂN HÀNG]
+                if (shopId != null && shopId.startsWith("bank_")) {
+                    return;
+                }
             }
             else if (name != null && name.contains("Thương Nhân")) {
                 org.bukkit.NamespacedKey oldKey = new org.bukkit.NamespacedKey(vn.minecraft.rPGCore.RPGCore.getInstance(), "shop_id");

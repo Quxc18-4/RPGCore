@@ -245,4 +245,45 @@ public class CurrencyManager {
         long deficit = amountRequired - physicalCash;
         return rpgPlayer.getBalance() >= deficit;
     }
+
+    // ==========================================
+    // KIỂM TRA VÀ TRỪ TIỀN OFFLINE TỪ MONGODB
+    // ==========================================
+    public boolean processOfflinePayment(java.util.UUID uuid, long amountRequired) {
+        if (amountRequired <= 0) return true;
+
+        org.bukkit.entity.Player player = org.bukkit.Bukkit.getPlayer(uuid);
+
+        // Trường hợp 1: Người chơi đang Online -> Trừ thẳng vào RAM (RPGPlayer)
+        if (player != null && player.isOnline()) {
+            vn.minecraft.rPGCore.player.RPGPlayer rpgPlayer = vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager().getRPGPlayer(uuid);
+            if (rpgPlayer != null && rpgPlayer.getBalance() >= amountRequired) {
+                rpgPlayer.withdraw(amountRequired);
+                return true;
+            }
+            return false;
+        }
+        // Trường hợp 2: Người chơi Offline -> Query trực tiếp xuống MongoDB
+        else {
+            com.mongodb.client.MongoCollection<org.bson.Document> collection = vn.minecraft.rPGCore.database.MongoManager.getInstance().getDatabase().getCollection("players");
+            org.bson.Document doc = collection.find(com.mongodb.client.model.Filters.eq("_id", uuid.toString())).first();
+
+            if (doc != null) {
+                long currentBalance = 0L;
+                Object balObj = doc.get("balance");
+                if (balObj instanceof Number) {
+                    currentBalance = ((Number) balObj).longValue();
+                }
+
+                if (currentBalance >= amountRequired) {
+                    collection.updateOne(
+                            com.mongodb.client.model.Filters.eq("_id", uuid.toString()),
+                            com.mongodb.client.model.Updates.set("balance", currentBalance - amountRequired)
+                    );
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
 }
