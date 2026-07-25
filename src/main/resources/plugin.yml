@@ -80,3 +80,17 @@ commands:
   ahc:
     description: "Đăng bán vật phẩm có xác nhận"
     usage: "/ahc <giá>"
+  trade:
+    description: Lệnh giao dịch an toàn giữa người chơi.
+    usage: /trade <tên> | accept | deny
+  friend:
+    description: "Hệ thống bạn bè"
+    usage: "/friend <add/accept/remove/list> [tên]"
+    aliases: [ banbe, f ]
+  arena:
+    description: "Quản lý hệ thống bản đồ Đấu Trường (Dành cho Admin)"
+    usage: "/arena <create/delete/setspawn1/setspawn2> <tên map>"
+    permission: rpgcore.admin.arena
+  duel:
+    description: "Thách đấu người chơi khác một cách an toàn"
+    usage: "/duel <tên> | accept"

@@ -202,8 +202,10 @@ public class PlayerManager {
                 enderChestBase64 = itemArrayToBase64(bukkitPlayer.getEnderChest().getContents());
             }
 
+            String playerName = (bukkitPlayer != null && bukkitPlayer.isOnline()) ? bukkitPlayer.getName() : "Unknown";
             // 5. Gộp tất cả vào Document Chính
             Document mainDoc = new Document("_id", uuid.toString())
+                    .append("username", playerName)
                     .append("class", rpgPlayer.getCurrentClass().getId())
                     .append("level", rpgPlayer.getLevel()) // [ĐỒNG BỘ LEVEL]: Lưu xuống DB
                     .append("resource", rpgPlayer.getCurrentResource())

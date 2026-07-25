@@ -22,6 +22,13 @@ import vn.minecraft.rPGCore.mounts.managers.MountManager;
 import vn.minecraft.rPGCore.mounts.ui.MountStableGUI;
 import vn.minecraft.rPGCore.mounts.ui.MountStorageGUI;
 import vn.minecraft.rPGCore.player.PlayerManager;
+import vn.minecraft.rPGCore.playercommunication.listeners.DuelListener;
+import vn.minecraft.rPGCore.playercommunication.listeners.InteractMenuListener;
+import vn.minecraft.rPGCore.playercommunication.listeners.TradeGUIListener;
+import vn.minecraft.rPGCore.playercommunication.managers.ArenaManager;
+import vn.minecraft.rPGCore.playercommunication.managers.DuelManager;
+import vn.minecraft.rPGCore.playercommunication.managers.FriendManager;
+import vn.minecraft.rPGCore.playercommunication.managers.TradeManager;
 import vn.minecraft.rPGCore.skills.SkillManager;
 import vn.minecraft.rPGCore.ui.*;
 import vn.minecraft.rPGCore.player.tasks.RegenTask;
@@ -54,6 +61,11 @@ public final class RPGCore extends JavaPlugin {
     private RewardManager rewardManager;
     private AuctionManager auctionManager;
     private AuctionGUIListener auctionGUIListener;
+
+    private TradeManager tradeManager;
+    private FriendManager friendManager;
+    private ArenaManager arenaManager;
+    private DuelManager duelManager;
 
     @Override
     public void onEnable() {
@@ -109,6 +121,10 @@ public final class RPGCore extends JavaPlugin {
         this.rewardManager = new RewardManager(this);
         this.auctionManager = new AuctionManager(this);
         this.auctionGUIListener = new AuctionGUIListener(this);
+        this.tradeManager = new TradeManager(this);
+        this.friendManager = new FriendManager(this);
+        this.arenaManager = new ArenaManager(this);
+        this.duelManager = new DuelManager(this);
 
         JobRegister.registerAllJobs();
         JobLeaderboard.updateLeaderboards();
@@ -171,6 +187,9 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.skills.bard.BardCoreGUI(), this);
         getServer().getPluginManager().registerEvents(new RewardListener(this), this);
         getServer().getPluginManager().registerEvents(this.auctionGUIListener, this);
+        getServer().getPluginManager().registerEvents(new InteractMenuListener(this), this);
+        getServer().getPluginManager().registerEvents(new TradeGUIListener(this), this);
+        getServer().getPluginManager().registerEvents(new DuelListener(this), this);
 
         new RegenTask(playerManager, bossBarManager).runTaskTimer(this, 0L, 20L);
 
@@ -230,6 +249,28 @@ public final class RPGCore extends JavaPlugin {
         }
         if (this.getCommand("tforge") != null) {
             this.getCommand("tforge").setExecutor(trinketForgeGUI);
+        }
+        if (this.getCommand("trade") != null) {
+            this.getCommand("trade").setExecutor(new vn.minecraft.rPGCore.playercommunication.commands.TradeCommand(this));
+        } else {
+            getLogger().warning("Khong the tim thay lenh /trade trong plugin.yml!");
+        }
+        // Đăng ký lệnh Friend
+        if (this.getCommand("friend") != null) {
+            this.getCommand("friend").setExecutor(new vn.minecraft.rPGCore.playercommunication.commands.FriendCommand(this));
+        } else {
+            getLogger().warning("Khong the tim thay lenh /friend trong plugin.yml!");
+        }
+        if (this.getCommand("arena") != null) {
+            this.getCommand("arena").setExecutor(new vn.minecraft.rPGCore.playercommunication.commands.ArenaAdminCommand(this));
+        } else {
+            getLogger().warning("Khong the tim thay lenh /arena trong plugin.yml!");
+        }
+
+        if (this.getCommand("duel") != null) {
+            this.getCommand("duel").setExecutor(new vn.minecraft.rPGCore.playercommunication.commands.DuelCommand(this));
+        } else {
+            getLogger().warning("Khong the tim thay lenh /duel trong plugin.yml!");
         }
 
         vn.minecraft.rPGCore.classes.impl.bard.BardGlobalManager.startEngine();
@@ -314,5 +355,18 @@ public final class RPGCore extends JavaPlugin {
     public AuctionManager getAuctionManager() { return auctionManager; }
     public AuctionGUIListener getAuctionGUIListener() {
         return this.auctionGUIListener;
+    }
+    public TradeManager getTradeManager() {
+        return this.tradeManager;
+    }
+    public FriendManager getFriendManager() {
+        return this.friendManager;
+    }
+    public ArenaManager getArenaManager() {
+        return this.arenaManager;
+    }
+
+    public DuelManager getDuelManager() {
+        return this.duelManager;
     }
 }
