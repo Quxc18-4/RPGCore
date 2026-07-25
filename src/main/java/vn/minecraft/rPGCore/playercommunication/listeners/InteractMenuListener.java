@@ -52,15 +52,15 @@ public class InteractMenuListener implements Listener {
         Inventory inv = Bukkit.createInventory(gui, 9, "§0Tương tác: §8" + target.getName());
 
         // [ĐÃ SỬA]: Cấu trúc nút mới theo yêu cầu
-        inv.setItem(0, createItem(Material.IRON_CHESTPLATE, "§a§lKiểm Tra Trang Bị", "§7Xem trang bị của " + target.getName()));
-        inv.setItem(1, createItem(Material.BOOK, "§b§lKiểm Tra Chỉ Số", "§7Xem thông số sức mạnh."));
-        inv.setItem(2, createItem(Material.PAPER, "§d§lNhắn Tin Mật", "§7Gửi tin nhắn riêng."));
-        inv.setItem(3, createItem(Material.POPPY, "§e§lBạn Bè", "§7Quản lý quan hệ hảo hữu."));
-        inv.setItem(4, createItem(Material.IRON_SWORD, "§6§lTổ Đội", "§7Mời vào Party của bạn."));
-        inv.setItem(5, createItem(Material.SHIELD, "§9§lBang Hội", "§7Mời tham gia Bang hội."));
-        inv.setItem(6, createItem(Material.GOLD_INGOT, "§e§lGiao Dịch", "§7Trao đổi vật phẩm & Tiền tệ an toàn."));
-        inv.setItem(7, createItem(Material.LODESTONE, "§a§lKhách Mời Lãnh Thổ", "§7Cấp quyền thao tác trong nhà (Waystone)."));
-        inv.setItem(8, createItem(Material.DIAMOND_SWORD, "§c§lThách Đấu (Duel)", "§7Chuyển tới Đấu Trường.", "§7(Sát thương giảm 80%, không rớt đồ)"));
+        inv.setItem(0, createItem(Material.BOOK, "§a§lKiểm Tra Trang Bị", "§7Xem trang bị của " + target.getName()));
+        inv.setItem(1, createItem(Material.BOOK, "§b§lKiểm Tra Chỉ Số", "§7Xem chỉ số của " + target.getName()));
+        inv.setItem(2, createItem(Material.WRITABLE_BOOK, "§d§lNhắn Tin Mật", "§7Gửi tin nhắn riêng cho " + target.getName()));
+        inv.setItem(3, createItem(Material.POPPY, "§e§lBạn Bè", "§7Gửi lời mời kết bạn tới " + target.getName()));
+        inv.setItem(4, createItem(Material.SHIELD, "§6§lTổ Đội", "§7Mời tham gia Party của bạn."));
+        inv.setItem(5, createItem(Material.END_CRYSTAL, "§9§lBang Hội", "§7Mời tham gia Bang hội của bạn."));
+        inv.setItem(6, createItem(Material.GOLD_INGOT, "§e§lGiao Dịch", "§7Gửi lời mời trao đổi vật phẩm với " + target.getName()));
+        inv.setItem(7, createItem(Material.LODESTONE, "§a§lKhách Mời Lãnh Thổ", "§7Cấp quyền hạn người chơi trong Lãnh thổ của bạn."));
+        inv.setItem(8, createItem(Material.ENDER_EYE, "§c§lThách Đấu", "§7Gửi lời thách đấu"));
 
         player.openInventory(inv);
         player.playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, 1f, 1f);

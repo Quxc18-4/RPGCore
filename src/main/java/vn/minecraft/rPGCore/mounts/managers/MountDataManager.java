@@ -37,7 +37,8 @@ public class MountDataManager implements Listener {
     // LƯU TOÀN BỘ SERVER (Dùng khi Tắt Server hoặc Auto-save)
     // ===============================================
     public void saveAll(boolean isAsync, boolean removeFromRAM) {
-        for (UUID uuid : mountManager.getLoadedProfilesMap().keySet()) {
+        // [FIX]: Bọc keySet() vào ArrayList để tạo bản sao, tránh ConcurrentModificationException
+        for (UUID uuid : new java.util.ArrayList<>(mountManager.getLoadedProfilesMap().keySet())) {
             saveProfile(uuid, isAsync, removeFromRAM);
         }
         if (!isAsync) {
