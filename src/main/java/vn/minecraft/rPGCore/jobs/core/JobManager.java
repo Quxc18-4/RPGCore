@@ -312,7 +312,9 @@ public class JobManager {
             }
         }
         addExp(player, baseExp * multiplier);
-        vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.GATHER_ITEM, 1);
+        // [ĐÃ SỬA]: Chỉ gọi ALCH_HARVEST_ANY thay vì GATHER_ITEM
+        vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.ALCH_HARVEST_ANY, 1);
+
         if (rarity != null && (rarity.equalsIgnoreCase("RARE") || rarity.equalsIgnoreCase("EPIC") || rarity.equalsIgnoreCase("MYTHIC") || rarity.equalsIgnoreCase("LEGENDARY"))) {
             vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.ALCH_HARVEST_RARE, 1);
         }

@@ -111,7 +111,7 @@ public class AuctionCommand implements CommandExecutor {
 
             // 3. Thông báo
             player.sendMessage("§a§l[Chợ Đen] §fĐã đăng bán §e" + itemName + " §fvới giá §a" + plugin.getCurrencyManager().formatCurrency(price) + "§f!");
-            player.sendMessage("§7Vật phẩm sẽ được bảo vệ trong §c15 phút đầu tiên §7(Không ai có thể mua).");
+            player.sendMessage("§7Vật phẩm sẽ được bảo vệ trong §c5 phút đầu tiên §7(Không ai có thể mua).");
             player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_VILLAGER_TRADE, 1f, 1f);
         }
     }

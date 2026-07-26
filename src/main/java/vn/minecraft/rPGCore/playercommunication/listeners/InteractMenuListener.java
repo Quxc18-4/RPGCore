@@ -84,7 +84,7 @@ public class InteractMenuListener implements Listener {
                     player.performCommand("profile " + targetName);
                     break;
                 case 1:
-                    player.performCommand("stats " + targetName); // Bác thay bằng lệnh check chỉ số thực tế của bác
+                    player.performCommand("profile stats " + targetName); // Bác thay bằng lệnh check chỉ số thực tế của bác
                     break;
                 case 2:
                     // [ĐÃ SỬA]: Gửi TextComponent Clickable để bù đắp hạn chế của Minecraft

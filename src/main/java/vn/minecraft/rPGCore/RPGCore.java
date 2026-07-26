@@ -311,6 +311,14 @@ public final class RPGCore extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        // ==========================================
+        // [TASK MỚI]: KÍCH HOẠT LỆNH GIẢI CỨU NGƯỜI CHƠI TRONG ĐẤU TRƯỜNG
+        // Phải gọi TRƯỚC KHI lưu dữ liệu playerManager để Player trở về tọa độ gốc
+        // ==========================================
+        if (this.duelManager != null) {
+            this.duelManager.forceEndAllDuels();
+        }
+
         if (playerManager != null) {
             playerManager.saveAllPlayers(false);
         }

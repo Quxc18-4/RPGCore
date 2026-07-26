@@ -318,13 +318,40 @@ public class TradeGUIListener implements Listener {
     }
 
     private void executeTrade(TradeSession session) {
-        session.setCompleted(true); // Đánh dấu hoàn tất
-
-        // [FIX DUP DATA]: Bắt buộc phải lưu Lịch Sử Giao Dịch TRƯỚC KHI trút đồ vào túi!
-        plugin.getTradeManager().saveTradeHistory(session);
-
         Player p1 = Bukkit.getPlayer(session.getPlayer1Id());
         Player p2 = Bukkit.getPlayer(session.getPlayer2Id());
+
+        // ==========================================
+        // [TASK MỚI]: PRE-CHECK CHỐNG TRÀN TÚI ĐỒ (INVENTORY FULL)
+        // ==========================================
+        if (p1 != null && p2 != null) {
+            int p1IncomingCount = getIncomingItemCount(session.getInventory(), TradeSession.P2_SLOTS);
+            int p2IncomingCount = getIncomingItemCount(session.getInventory(), TradeSession.P1_SLOTS);
+
+            if (getFreeSlots(p1) < p1IncomingCount || getFreeSlots(p2) < p2IncomingCount) {
+                session.setCompleted(true); // Đánh dấu hoàn tất để ngắt log phụ
+
+                // Trả đồ của ai về nhà nấy
+                returnItemsTo(p1, session.getInventory(), TradeSession.P1_SLOTS);
+                returnItemsTo(p2, session.getInventory(), TradeSession.P2_SLOTS);
+
+                plugin.getTradeManager().getActiveTrades().remove(session.getPlayer1Id());
+                plugin.getTradeManager().getActiveTrades().remove(session.getPlayer2Id());
+
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    p1.closeInventory();
+                    p2.closeInventory();
+                    p1.sendMessage("§c§l[!] §cTúi đồ của một trong hai người không đủ chỗ trống để nhận đồ!");
+                    p2.sendMessage("§c§l[!] §cTúi đồ của một trong hai người không đủ chỗ trống để nhận đồ!");
+                    p1.playSound(p1.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
+                    p2.playSound(p2.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
+                });
+                return; // Ngắt ngang, không giao dịch nữa
+            }
+        }
+
+        session.setCompleted(true);
+        plugin.getTradeManager().saveTradeHistory(session);
 
         returnItemsTo(p2, session.getInventory(), TradeSession.P1_SLOTS);
         returnItemsTo(p1, session.getInventory(), TradeSession.P2_SLOTS);
@@ -345,6 +372,31 @@ public class TradeGUIListener implements Listener {
             }
         });
     }
+
+    // ==========================================
+    // HÀM HỖ TRỢ ĐẾM Ô TRỐNG
+    // ==========================================
+    private int getFreeSlots(Player player) {
+        int free = 0;
+        // Chỉ đếm 36 ô chính của túi đồ, không đếm ô giáp
+        for (ItemStack item : player.getInventory().getStorageContents()) {
+            if (item == null || item.getType() == Material.AIR) {
+                free++;
+            }
+        }
+        return free;
+    }
+
+    private int getIncomingItemCount(Inventory inv, Set<Integer> slots) {
+        int count = 0;
+        for (int slot : slots) {
+            ItemStack item = inv.getItem(slot);
+            if (item != null && item.getType() != Material.AIR) count++;
+        }
+        return count;
+    }
+
+    // ... (Giữ nguyên các hàm scheduleSummaryUpdate và returnItemsTo ở dưới)
 
     // ==========================================
     // HÓA ĐƠN & TIỆN ÍCH

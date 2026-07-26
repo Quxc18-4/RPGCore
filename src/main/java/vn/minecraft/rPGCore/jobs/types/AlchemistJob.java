@@ -24,7 +24,7 @@ public class AlchemistJob extends RPGJob {
         // ==========================================
         // DAILY QUESTS (NHIỆM VỤ NGÀY)
         // ==========================================
-        questPool.put("DAILY_ALCH_1", new AdvancedQuest("DAILY_ALCH_1", "Thu Hoạch Đầu Mùa", "Thu thập thành công 10 cây Thảo dược bất kỳ ngoài tự nhiên.", 10, QuestAction.GATHER_ITEM, null));
+        questPool.put("DAILY_ALCH_1", new AdvancedQuest("DAILY_ALCH_1", "Thu Hoạch Đầu Mùa", "Thu thập thành công 10 cây Thảo dược bất kỳ ngoài tự nhiên.", 10, QuestAction.ALCH_HARVEST_ANY, null));
         questPool.put("DAILY_ALCH_2", new AdvancedQuest("DAILY_ALCH_2", "Dược Sư Kiên Trì", "Nấu thuốc thất bại (Ra thuốc [Kinh tởm]) 2 lần.", 2, QuestAction.BREW_FAIL, null));
         questPool.put("DAILY_ALCH_3", new AdvancedQuest("DAILY_ALCH_3", "Thử Nghiệm Dung Môi", "Tiến hành thực hiện nấu thuốc 5 lần (Bất kể thành bại).", 5, QuestAction.BREW_ANY, null));
         questPool.put("DAILY_ALCH_4", new AdvancedQuest("DAILY_ALCH_4", "Tay Nghề Thành Thục", "Nấu thuốc thành công xuất sắc 3 lần.", 3, QuestAction.BREW_SUCCESS, null));

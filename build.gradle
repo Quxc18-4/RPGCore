@@ -66,32 +66,38 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 // ========================================================
-// SỬA Ở ĐÂY: COPY FILE TỪ SHADOW JAR THAY VÌ JAR THƯỜNG
+// TASK: TỰ ĐỘNG COPY SHADOW JAR SANG CÁC PROJECT VỆ TINH
 // ========================================================
 tasks.register('copyToOtherProjects') {
-    // Đảm bảo task này chỉ chạy SAU KHI task 'shadowJar' đã hoàn thành
-    dependsOn('shadowJar')
+    // Sử dụng tasks.named để Gradle bắt buộc phải chờ task shadowJar chạy xong trước
+    dependsOn tasks.named('shadowJar')
 
     doLast {
-        // [QUAN TRỌNG]: Lấy đường dẫn tới file SHADOW JAR (có chứa MongoDB)
-        def sourceJar = shadowJar.archiveFile.get().asFile
+        // Lấy đường dẫn tới file shadowJar một cách an toàn
+        def sourceJar = tasks.named('shadowJar').get().archiveFile.get().asFile
 
-        // 1. Copy sang RPGDens
+        // 1. Copy sang RPGQuests
+        copy {
+            from sourceJar
+            into "C:/Users/Pon/IdeaProjects/RPGQuests/libs"
+        }
+
+        // 2. Copy sang RPGDens
         copy {
             from sourceJar
             into "C:/Users/Pon/IdeaProjects/RPGDens/libs"
-        }
-
-        // 2. Copy sang RPGGuild
-        copy {
-            from sourceJar
-            into "C:/Users/Pon/IdeaProjects/RPGGuild/libs"
         }
 
         // 3. Copy sang RPGParty
         copy {
             from sourceJar
             into "C:/Users/Pon/IdeaProjects/RPGParty/libs"
+        }
+
+        // 4. Copy sang RPGGuild
+        copy {
+            from sourceJar
+            into "C:/Users/Pon/IdeaProjects/RPGGuild/libs"
         }
 
         println "[RPGCore] Đã copy tự động file SHADOW JAR sang các project vệ tinh!"

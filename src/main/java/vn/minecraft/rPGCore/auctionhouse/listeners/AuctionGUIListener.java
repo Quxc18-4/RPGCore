@@ -42,7 +42,7 @@ public class AuctionGUIListener implements Listener {
     private final Map<UUID, String> activeSearches = new ConcurrentHashMap<>();
     private final Map<UUID, Boolean> pendingSearchInput = new ConcurrentHashMap<>();
 
-    private final long PROTECTION_TIME = 15L * 60 * 1000; // 15 Phút (Mili-giây)
+    private final long PROTECTION_TIME = 5L * 60 * 1000; // 5 Phút (Mili-giây)
     private final NamespacedKey ahKey; // Chìa khóa giấu ID
 
     public AuctionGUIListener(RPGCore plugin) {
@@ -301,7 +301,7 @@ public class AuctionGUIListener implements Listener {
                             ? itemToSell.getItemMeta().getDisplayName() : itemToSell.getType().name();
 
                     player.sendMessage("§a§l[Chợ Đen] §fĐã đăng bán §e" + itemName + " §fvới giá §a" + plugin.getCurrencyManager().formatCurrency(price) + "§f!");
-                    player.sendMessage("§7Vật phẩm sẽ được bảo vệ trong §c15 phút đầu tiên §7(Không ai có thể mua).");
+                    player.sendMessage("§7Vật phẩm sẽ được bảo vệ trong §c5 phút đầu tiên §7(Không ai có thể mua).");
                     player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_TRADE, 1f, 1f);
                 }
                 player.closeInventory();
@@ -343,7 +343,7 @@ public class AuctionGUIListener implements Listener {
                     player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
                     openMainMenu(player, 1);
                 } else {
-                    player.sendMessage("§c§l[!] §cBạn không đủ tài sản (Tiền mặt + Ngân hàng) để mua món này!");
+                    player.sendMessage("§c§l[!] §cBạn không đủ tài sản (Tiền mặt / Ngân hàng) để mua món này!");
                     player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
                 }
             }

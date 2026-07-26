@@ -5,11 +5,14 @@ import org.bukkit.Location;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.Player;
 import org.bukkit.metadata.FixedMetadataValue;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.managers.StatusEffectManager;
 import vn.minecraft.rPGCore.playercommunication.models.Arena;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.UUID;
 
@@ -17,9 +20,12 @@ public class DuelManager {
     private final RPGCore plugin;
 
     private final Map<UUID, UUID> duelRequests = new HashMap<>();
-    private final Map<UUID, Location> oldLocations = new HashMap<>(); // Lưu tọa độ cũ để trả về
-    private final Map<UUID, Arena> activeDuels = new HashMap<>();     // Trạng thái đang bận
-    private final Map<UUID, UUID> duelOpponents = new HashMap<>();    // Biết ai đang đánh với ai
+    private final Map<UUID, Location> oldLocations = new HashMap<>();
+    private final Map<UUID, Arena> activeDuels = new HashMap<>();
+    private final Map<UUID, UUID> duelOpponents = new HashMap<>();
+
+    // [TASK MỚI]: Lưu bộ đếm giờ Timeout
+    private final Map<UUID, BukkitTask> duelTimeouts = new HashMap<>();
 
     public DuelManager(RPGCore plugin) {
         this.plugin = plugin;
@@ -72,11 +78,9 @@ public class DuelManager {
         activeDuels.put(p1.getUniqueId(), arena);
         activeDuels.put(p2.getUniqueId(), arena);
 
-        // Gắn cờ Metadata để Listener xử lý sát thương
         p1.setMetadata("IN_DUEL", new FixedMetadataValue(plugin, true));
         p2.setMetadata("IN_DUEL", new FixedMetadataValue(plugin, true));
 
-        // Hồi máu, thanh tẩy hiệu ứng trước khi đánh
         preparePlayerForDuel(p1);
         preparePlayerForDuel(p2);
 
@@ -85,6 +89,36 @@ public class DuelManager {
 
         p1.sendMessage("§e§lTRẬN ĐẤU BẮT ĐẦU! §fBạn đang đối đầu với §c" + p2.getName());
         p2.sendMessage("§e§lTRẬN ĐẤU BẮT ĐẦU! §fBạn đang đối đầu với §c" + p1.getName());
+
+        // ==========================================
+        // [TASK MỚI]: BỘ ĐẾM 5 PHÚT (TIMEOUT)
+        // ==========================================
+        BukkitTask timeoutTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                endDuelDraw(p1, p2);
+            }
+        }.runTaskLater(plugin, 20L * 60 * 5); // 5 phút (6000 ticks)
+
+        duelTimeouts.put(p1.getUniqueId(), timeoutTask);
+    }
+
+    // Xử lý khi Hết Giờ (Hòa)
+    private void endDuelDraw(Player p1, Player p2) {
+        Arena arena = activeDuels.remove(p1.getUniqueId());
+        if (arena != null) arena.setOccupied(false);
+        activeDuels.remove(p2.getUniqueId());
+        duelOpponents.remove(p1.getUniqueId());
+        duelOpponents.remove(p2.getUniqueId());
+
+        if (p1 != null && p1.isOnline()) {
+            p1.sendMessage("§e§lHÒA NHAU! §fTrận đấu vượt quá 5 phút nên bị hủy bỏ.");
+            restorePlayerAfterDuel(p1);
+        }
+        if (p2 != null && p2.isOnline()) {
+            p2.sendMessage("§e§lHÒA NHAU! §fTrận đấu vượt quá 5 phút nên bị hủy bỏ.");
+            restorePlayerAfterDuel(p2);
+        }
     }
 
     public void endDuel(Player loser, Player winner, boolean disconnected) {
@@ -103,7 +137,7 @@ public class DuelManager {
         }
 
         restorePlayerAfterDuel(winner);
-        restorePlayerAfterDuel(loser); // Xử lý khôi phục trạng thái cho kẻ thua
+        restorePlayerAfterDuel(loser);
     }
 
     public void preparePlayerForDuel(Player p) {
@@ -113,10 +147,8 @@ public class DuelManager {
         p.setFoodLevel(20);
         p.setFireTicks(0);
 
-        // Hồi full Năng Lượng/Nộ Khí chuẩn theo RPGPlayer
         vn.minecraft.rPGCore.player.RPGPlayer rpgP = plugin.getPlayerManager().getRPGPlayer(p.getUniqueId());
         if (rpgP != null) {
-            // Sử dụng hàm tổng quát Resource thay vì Mana
             rpgP.setCurrentResource(rpgP.getTotalMaxResource());
         }
     }
@@ -124,11 +156,35 @@ public class DuelManager {
     public void restorePlayerAfterDuel(Player p) {
         if (p == null || !p.isOnline()) return;
 
+        // Xóa bộ đếm 5 phút nếu trận đấu kết thúc sớm
+        BukkitTask t = duelTimeouts.remove(p.getUniqueId());
+        if (t != null) t.cancel();
+
         p.removeMetadata("IN_DUEL", plugin);
-        preparePlayerForDuel(p); // Thanh tẩy hiệu ứng và hồi máu 1 lần nữa sau trận
+        preparePlayerForDuel(p);
 
         Location oldLoc = oldLocations.remove(p.getUniqueId());
         if (oldLoc != null) p.teleport(oldLoc);
+    }
+
+    // ==========================================
+    // [TASK MỚI]: BỘ GIẢI CỨU KHI SERVER TẮT ĐỘT NGỘT
+    // ==========================================
+    public void forceEndAllDuels() {
+        for (UUID playerId : new HashSet<>(activeDuels.keySet())) {
+            Player p = Bukkit.getPlayer(playerId);
+            if (p != null && p.isOnline()) {
+                p.sendMessage("§c§l[!] §cMáy chủ đang tắt/khởi động lại. Trận đấu buộc phải kết thúc!");
+                restorePlayerAfterDuel(p); // Ép dịch chuyển về chỗ cũ
+            }
+        }
+
+        // Dọn dẹp sạch sẽ RAM
+        activeDuels.clear();
+        duelOpponents.clear();
+        oldLocations.clear();
+        duelTimeouts.values().forEach(BukkitTask::cancel);
+        duelTimeouts.clear();
     }
 
     public UUID getOpponent(UUID playerId) { return duelOpponents.get(playerId); }

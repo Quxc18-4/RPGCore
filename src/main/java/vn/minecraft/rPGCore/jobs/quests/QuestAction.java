@@ -52,5 +52,6 @@ public enum QuestAction {
     BREW_ANY,              // Tiến hành nấu thuốc (Bất kể thành bại)
     ALCH_HARVEST_RARE,     // Thu hoạch thảo dược RARE trở lên
     COLLECT_MANA_ESSENCE,  // Tích lũy Tinh Chất Ma Lực
-    BREW_PERFECT           // Chế tạo ra thuốc Hoàn Hảo / Cường Hóa
+    BREW_PERFECT,           // Chế tạo ra thuốc Hoàn Hảo / Cường Hóa
+    ALCH_HARVEST_ANY
 }
