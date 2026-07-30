@@ -329,10 +329,23 @@ public class ItemManager {
         register(new ItemData("bag_weapon_uncommon", Rarity.UNCOMMON, Category.MISC, 0.0, Material.BUNDLE, "Túi Vũ Khí Hiếm", null, "Chuột phải để mở nhận 1 Vũ khí Phẩm chất Uncommon.", "Cấp độ vũ khí bằng với cấp của bạn."));
         register(new ItemData("bag_weapon_rare", Rarity.RARE, Category.MISC, 0.0, Material.BUNDLE, "Túi Vũ Khí Tuyệt Đỉnh", null, "Chuột phải để mở nhận 1 Vũ khí Phẩm chất Rare.", "Cấp độ vũ khí bằng với cấp của bạn."));
         register(new ItemData("bag_weapon_epic", Rarity.EPIC, Category.MISC, 0.0, Material.BUNDLE, "Túi Vũ Khí Sử Thi", null, "Chuột phải để mở nhận 1 Vũ khí Phẩm chất Epic.", "Cấp độ vũ khí bằng với cấp của bạn."));
+        register(new ItemData("bag_weapon_mythical", Rarity.MYTHIC, Category.MISC, 0.0, Material.BUNDLE, "Túi Vũ Khí Thần Thoại", null, "Chuột phải để mở nhận 1 Vũ khí Phẩm chất Mythical.", "Cấp độ vũ khí bằng với cấp của bạn."));
+        register(new ItemData("bag_weapon_heroic", Rarity.MYTHIC, Category.MISC, 0.0, Material.BUNDLE, "Túi Vũ Khí Anh Hùng", null, "Chuột phải để mở nhận 1 Vũ khí Phẩm chất Heroic.", "Cấp độ vũ khí bằng với cấp của bạn."));
+
         register(new ItemData("bag_armor_common", Rarity.COMMON, Category.MISC, 0.0, Material.BUNDLE, "Túi Phòng Cụ Thường", null, "Chuột phải để mở nhận 1 Giáp Phẩm chất Common.", "Cấp độ giáp bằng với cấp của bạn."));
         register(new ItemData("bag_armor_uncommon", Rarity.UNCOMMON, Category.MISC, 0.0, Material.BUNDLE, "Túi Phòng Cụ Hiếm", null, "Chuột phải để mở nhận 1 Giáp Phẩm chất Uncommon.", "Cấp độ giáp bằng với cấp của bạn."));
         register(new ItemData("bag_armor_rare", Rarity.RARE, Category.MISC, 0.0, Material.BUNDLE, "Túi Phòng Cụ Tuyệt Đỉnh", null, "Chuột phải để mở nhận 1 Giáp Phẩm chất Rare.", "Cấp độ giáp bằng với cấp của bạn."));
         register(new ItemData("bag_armor_epic", Rarity.EPIC, Category.MISC, 0.0, Material.BUNDLE, "Túi Phòng Cụ Sử Thi", null, "Chuột phải để mở nhận 1 Giáp Phẩm chất Epic.", "Cấp độ giáp bằng với cấp của bạn."));
+        register(new ItemData("bag_armor_mythical", Rarity.MYTHIC, Category.MISC, 0.0, Material.BUNDLE, "Túi Phòng Cụ Thần Thoại", null, "Chuột phải để mở nhận 1 Giáp Phẩm chất Mythical.", "Cấp độ giáp bằng với cấp của bạn."));
+        register(new ItemData("bag_armor_heroic", Rarity.MYTHIC, Category.MISC, 0.0, Material.BUNDLE, "Túi Phòng Cụ Anh Hùng", null, "Chuột phải để mở nhận 1 Giáp Phẩm chất Heroic.", "Cấp độ giáp bằng với cấp của bạn."));
+
+        // [MỚI]: TÚI TRANG SỨC (TRINKETS)
+        register(new ItemData("bag_trinket_common", Rarity.COMMON, Category.MISC, 0.0, Material.BUNDLE, "Túi Trang Sức Thường", null, "Chuột phải để mở nhận 1 Trang Sức Phẩm chất Common.", "Cấp độ bằng với cấp của bạn."));
+        register(new ItemData("bag_trinket_uncommon", Rarity.UNCOMMON, Category.MISC, 0.0, Material.BUNDLE, "Túi Trang Sức Hiếm", null, "Chuột phải để mở nhận 1 Trang Sức Phẩm chất Uncommon.", "Cấp độ bằng với cấp của bạn."));
+        register(new ItemData("bag_trinket_rare", Rarity.RARE, Category.MISC, 0.0, Material.BUNDLE, "Túi Trang Sức Tuyệt Đỉnh", null, "Chuột phải để mở nhận 1 Trang Sức Phẩm chất Rare.", "Cấp độ bằng với cấp của bạn."));
+        register(new ItemData("bag_trinket_epic", Rarity.EPIC, Category.MISC, 0.0, Material.BUNDLE, "Túi Trang Sức Sử Thi", null, "Chuột phải để mở nhận 1 Trang Sức Phẩm chất Epic.", "Cấp độ bằng với cấp của bạn."));
+        register(new ItemData("bag_trinket_mythical", Rarity.MYTHIC, Category.MISC, 0.0, Material.BUNDLE, "Túi Trang Sức Thần Thoại", null, "Chuột phải để mở nhận 1 Trang Sức Phẩm chất Mythical.", "Cấp độ bằng với cấp của bạn."));
+        register(new ItemData("bag_trinket_heroic", Rarity.MYTHIC, Category.MISC, 0.0, Material.BUNDLE, "Túi Trang Sức Anh Hùng", null, "Chuột phải để mở nhận 1 Trang Sức Phẩm chất Heroic.", "Cấp độ bằng với cấp của bạn."));
 
         // --- 11. TINH THỂ ---
         register(new ItemData("crystal_fire", Rarity.MYTHIC, Category.MISC, 0.0, Material.BLAZE_POWDER, "Ngọn Lửa Khởi Nguyên", "Thức tỉnh Nguyên Tố Lửa", "Vật phẩm bí ẩn chứa đựng sức mạnh nguyên tố."));

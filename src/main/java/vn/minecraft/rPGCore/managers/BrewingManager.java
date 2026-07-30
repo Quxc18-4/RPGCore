@@ -358,6 +358,8 @@ public class BrewingManager implements Listener {
 
             savePotionToDB(resultData); // ĐỔI TÊN HÀM LƯU
 
+            Bukkit.getPluginManager().callEvent(new vn.minecraft.rPGCore.api.events.PlayerActionTrackEvent(player, "BREW", 1));
+
             vn.minecraft.rPGCore.jobs.core.JobManager.processAlchemistBrewExp(player, resultData, ingredients);
 
             if (oldUuidToDelete != null) deletePotionFromDB(oldUuidToDelete); // ĐỔI TÊN HÀM XÓA

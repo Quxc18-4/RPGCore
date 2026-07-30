@@ -430,7 +430,8 @@ public class FishingManager {
                 caughtItemId = getWeightedTreasure();
                 player.sendMessage("§6[Kho Báu] Bạn vừa kéo lên một vật phẩm giá trị!");
                 vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.FISH_TREASURE);
-
+                // Dưới dòng thông báo câu được Kho báu
+                Bukkit.getPluginManager().callEvent(new vn.minecraft.rPGCore.api.events.PlayerActionTrackEvent(player, "FISH", 1));
                 // [TÍNH EXP RƯƠNG]: Cố định 50 * hệ số hiếm
                 vn.minecraft.rPGCore.jobs.core.PlayerJobData jobData = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(player);
                 if (jobData != null && "FISHERMAN".equalsIgnoreCase(jobData.getJobId())) {
@@ -447,7 +448,8 @@ public class FishingManager {
                 caughtItemId = getWeightedTrash();
                 player.sendMessage("§7[Mắc Cạn] Chỉ là một món đồ vụn vặt trôi dạt...");
                 vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.FISH_TRASH);
-
+                // Dưới dòng thông báo câu được Rác
+                Bukkit.getPluginManager().callEvent(new vn.minecraft.rPGCore.api.events.PlayerActionTrackEvent(player, "FISH", 1));
                 // [TÍNH EXP RÁC]: Mặc định 15 EXP
                 vn.minecraft.rPGCore.jobs.core.PlayerJobData jobData = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(player);
                 if (jobData != null && "FISHERMAN".equalsIgnoreCase(jobData.getJobId())) {
@@ -488,7 +490,8 @@ public class FishingManager {
                 vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.FISH_CATCH);
                 boolean isLargeOrMutant = caughtItemId.contains("large") || caughtItemId.contains("mutant");
                 vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.FISH_CATCH, currentBiome, isLargeOrMutant);
-
+                // Dưới dòng báo cáo FISH_CATCH (Cá)
+                Bukkit.getPluginManager().callEvent(new vn.minecraft.rPGCore.api.events.PlayerActionTrackEvent(player, "FISH", 1));
                 // [CHỐT CHẶN NGHỀ NGƯ DÂN]: Lấy dữ liệu Job lên trước để bao bọc cả phần thưởng Nước Mắt và EXP
                 vn.minecraft.rPGCore.jobs.core.PlayerJobData jobData = vn.minecraft.rPGCore.jobs.core.JobManager.getPlayerData(player);
                 if (jobData != null && "FISHERMAN".equalsIgnoreCase(jobData.getJobId())) {

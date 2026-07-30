@@ -466,6 +466,7 @@ public class CropManager implements Listener {
 
         try {
             vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.HARVEST_CROP);
+            Bukkit.getPluginManager().callEvent(new vn.minecraft.rPGCore.api.events.PlayerActionTrackEvent(player, "HARVEST", 1));
             if (data.seedId.contains("magic_")) {
                 vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.HARVEST_MAGIC_CROP);
             }

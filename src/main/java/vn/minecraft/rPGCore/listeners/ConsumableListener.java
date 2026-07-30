@@ -419,13 +419,6 @@ public class ConsumableListener implements Listener {
             if (consumed) consumeCooldowns.put(player.getUniqueId(), now + 1500L);
         }
 
-        else if (itemId.equals("potion_hp_1")) {
-            double healAmount = rpgPlayer.getTotalMaxHealth() * 0.10;
-            rpgPlayer.heal(healAmount);
-            player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_GENERIC_DRINK, 1f, 1f);
-            player.getWorld().spawnParticle(org.bukkit.Particle.HEART, player.getLocation().add(0, 2, 0), 5, 0.3, 0.3, 0.3, 0);
-            consumed = true;
-        }
         else if (itemId.startsWith("crystal_")) {
             if (!rpgPlayer.getCurrentClass().getId().equalsIgnoreCase("mage")) {
                 player.sendMessage("§cChỉ Pháp Sư mới có thể hấp thụ Tinh Thể Nguyên Tố!"); return;
@@ -439,22 +432,46 @@ public class ConsumableListener implements Listener {
             player.playSound(player.getLocation(), org.bukkit.Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f);
             consumed = true;
         }
-        else if (itemId.startsWith("bag_weapon_") || itemId.startsWith("bag_armor_")) {
-            String type = itemId.startsWith("bag_weapon_") ? "weapon" : "armor";
-            String typeName = type.equals("weapon") ? "Vũ Khí" : "Phòng Cụ";
+        else if (itemId.startsWith("bag_weapon_") || itemId.startsWith("bag_armor_") || itemId.startsWith("bag_trinket_")) {
+            String type;
+            String typeName;
+
+            if (itemId.startsWith("bag_weapon_")) {
+                type = "weapon"; typeName = "Vũ Khí";
+            } else if (itemId.startsWith("bag_armor_")) {
+                type = "armor"; typeName = "Phòng Cụ";
+            } else {
+                // Tự động random 1 trong 3 loại trang sức (Nhẫn, Dây Chuyền, Vòng Tay)
+                String[] trinketTypes = {"ring", "necklace", "bracelet"};
+                type = trinketTypes[new Random().nextInt(trinketTypes.length)];
+                typeName = "Trang Sức";
+            }
+
             int tierIndex = 0;
             if (itemId.endsWith("uncommon")) tierIndex = 1;
             else if (itemId.endsWith("rare")) tierIndex = 2;
             else if (itemId.endsWith("epic")) tierIndex = 3;
+            else if (itemId.endsWith("mythical")) tierIndex = 4;
+            else if (itemId.endsWith("heroic")) tierIndex = 5;
 
             int playerLevel = player.getLevel();
             if (playerLevel <= 0) playerLevel = 1;
 
             player.sendMessage("§a§l[!] §fĐang mở Túi " + typeName + "...");
-            ItemStack gachaItem = vn.minecraft.rPGCore.commands.EquipmentCommand.createGachaItem(type, playerLevel, null, tierIndex, null, -1, -1);
-            player.getInventory().addItem(gachaItem);
-            player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_FIREWORK_ROCKET_BLAST, 1f, 1f);
-            consumed = true;
+            ItemStack gachaItem;
+
+            // Nếu là túi Trang Sức thì gọi TrinketGenerator, nếu là Giáp/Vũ khí thì gọi EquipmentCommand
+            if (itemId.startsWith("bag_trinket_")) {
+                gachaItem = vn.minecraft.rPGCore.managers.TrinketGenerator.createTrinket(type, playerLevel, null, tierIndex, -1);
+            } else {
+                gachaItem = vn.minecraft.rPGCore.commands.EquipmentCommand.createGachaItem(type, playerLevel, null, tierIndex, null, -1, -1);
+            }
+
+            if (gachaItem != null) {
+                player.getInventory().addItem(gachaItem);
+                player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_FIREWORK_ROCKET_BLAST, 1f, 1f);
+                consumed = true;
+            }
         }
 
         if (consumed) {
@@ -468,6 +485,7 @@ public class ConsumableListener implements Listener {
                     offHandItem.setAmount(offHandItem.getAmount() - 1);
                 }
             }
+            Bukkit.getPluginManager().callEvent(new vn.minecraft.rPGCore.api.events.PlayerActionTrackEvent(player, "CONSUME", 1));
         }
     }
 

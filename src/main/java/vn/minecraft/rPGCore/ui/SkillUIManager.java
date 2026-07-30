@@ -299,8 +299,16 @@ public class SkillUIManager implements Listener {
 
                         int upgradeCost = skill.getUpgradeCost(currentLevel);
 
-                        // Lấy yêu cầu để check lại lần nữa khi click
                         boolean canUpgrade = true;
+
+                        // ==========================================
+                        // [VÁ LỖI]: KIỂM TRA LẠI LEVEL CỦA NGƯỜI CHƠI
+                        // ==========================================
+                        if (player.getLevel() < skill.getRequiredPlayerLevel()) {
+                            canUpgrade = false;
+                        }
+
+                        // Lấy yêu cầu để check lại lần nữa khi click
                         if (skill.getRequiredSkills() != null) {
                             for (Map.Entry<String, Integer> req : skill.getRequiredSkills().entrySet()) {
                                 if (rpgPlayer.getSkillData().getSkillLevel(req.getKey()) < req.getValue()) {

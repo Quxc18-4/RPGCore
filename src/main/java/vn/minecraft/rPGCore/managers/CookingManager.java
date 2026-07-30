@@ -353,6 +353,9 @@ public class CookingManager implements Listener {
         loc.getWorld().spawnParticle(Particle.FIREWORK, loc.clone().add(0.5, 0.8, 0.5), 15, 0.2, 0.2, 0.2, 0.1);
 
         activePots.put(loc, new FinishedPot(resultItem, finalScoops, pColor));
+        if (cook != null) {
+            Bukkit.getPluginManager().callEvent(new vn.minecraft.rPGCore.api.events.PlayerActionTrackEvent(cook, "COOK", 1));
+        }
     }
 
     public ItemStack buildFoodItem(FoodItemData data, NutritionStats stats) {

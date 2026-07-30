@@ -1,9 +1,6 @@
 package vn.minecraft.rPGCore.listeners;
 
-import org.bukkit.ChatColor;
-import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
-import org.bukkit.Sound;
+import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -225,5 +222,6 @@ public class FoodListener implements Listener {
 
         // [MỚI]: BÁO CÁO HÀNH ĐỘNG ĂN CHO HỆ THỐNG NHIỆM VỤ
         vn.minecraft.rPGCore.jobs.core.JobQuestManager.handleAction(player, vn.minecraft.rPGCore.jobs.quests.QuestAction.CONSUME_FOOD);
+        Bukkit.getPluginManager().callEvent(new vn.minecraft.rPGCore.api.events.PlayerActionTrackEvent(player, "CONSUME", 1));
     }
 }

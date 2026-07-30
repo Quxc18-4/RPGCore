@@ -77,11 +77,12 @@ public class PlayerManager {
                 rpgPlayer.getAttributeData().setAttribute("LUK", attrDoc.getInteger("LUK", 0));
             }
 
-            // Nạp dữ liệu Nguyên tố (Dành cho Mage)
+            // Nạp dữ liệu Nguyên tố (Dành cho Mage) - [ĐÃ VÁ LỖI NULLPOINTER]
             List<String> elements = doc.getList("elements", String.class);
-            if (elements != null) {
-                rpgPlayer.setUnlockedElements(elements);
+            if (elements == null) {
+                elements = new ArrayList<>(); // Nếu DB trả về null, nhét ngay 1 cái list rỗng vào!
             }
+            rpgPlayer.setUnlockedElements(elements);
 
             // Nạp dữ liệu Trang sức (Giải mã từ Base64)
             Document trinketsDoc = (Document) doc.get("trinkets");
