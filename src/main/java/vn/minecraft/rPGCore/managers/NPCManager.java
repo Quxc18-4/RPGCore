@@ -135,6 +135,10 @@ public class NPCManager {
         }
 
         Entity entity = npc.location.getWorld().spawnEntity(npc.location, npc.type);
+
+        // [QUAN TRỌNG NHẤT]: Cấm Minecraft lưu con NPC này vào file World
+        entity.setPersistent(false);
+
         entity.setCustomName(npc.name);
         entity.setCustomNameVisible(true);
 
@@ -178,11 +182,19 @@ public class NPCManager {
     private void startTrackerTask() {
         Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             for (ShopNPC npc : npcs.values()) {
+
+                // [LỚP KHIÊN]: Nếu Chunk chứa NPC chưa được Load, BỎ QUA KHÔNG KIỂM TRA GÌ HẾT!
+                if (!npc.location.getChunk().isLoaded()) {
+                    continue;
+                }
+
                 if (npc.currentEntityId == null) {
                     spawnNPC(npc);
                     continue;
                 }
+
                 Entity entity = Bukkit.getEntity(npc.currentEntityId);
+
                 if (entity == null || entity.isDead()) {
                     spawnNPC(npc);
                 } else {
