@@ -1,10 +1,13 @@
 package vn.minecraft.rPGCore.listeners;
 
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.*;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
@@ -25,10 +28,35 @@ public class AuthListener implements Listener {
         player.getInventory().clear();
         player.getEnderChest().clear();
 
+        // ==========================================
+        // [MỚI]: BẢO VỆ TÂN THỦ & CHỐNG CRASH CLIENT
+        // ==========================================
+        // Ép Scale máu ngay lập tức để chặn Minecraft vẽ hàng triệu tim gây giật lag
+        player.setHealthScale(20.0);
+        player.setHealthScaled(true);
+
+        // Bật chế độ Bất Tử (Spigot API)
+        player.setInvulnerable(true);
+
+        // Dịch chuyển cưỡng chế về Spawn của World mặc định
+        Location spawnLoc = Bukkit.getWorlds().get(0).getSpawnLocation();
+        player.teleport(spawnLoc);
+
         // 2. Ép họ phải đứng yên đọc thông báo
         player.sendMessage("§c§l[BẢO MẬT] §fVui lòng đăng nhập hoặc đăng ký để tiếp tục!");
         player.sendMessage("§7- Đăng nhập: /login <mật khẩu>");
         player.sendMessage("§7- Đăng ký: /register <mật khẩu> <email@gmail.com>");
+    }
+
+    // [MỚI]: Chặn TUYỆT ĐỐI mọi loại sát thương (Đói, Rơi, Lửa...) khi chưa login
+    @EventHandler
+    public void onDamage(EntityDamageEvent e) {
+        if (e.getEntity() instanceof Player) {
+            Player p = (Player) e.getEntity();
+            if (!authManager.isLoggedIn(p)) {
+                e.setCancelled(true);
+            }
+        }
     }
 
     @EventHandler

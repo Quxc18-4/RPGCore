@@ -75,6 +75,14 @@ public class AuthManager {
                 vn.minecraft.rPGCore.player.RPGPlayer rpgPlayer = vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager().loadPlayer(player);
                 vn.minecraft.rPGCore.RPGCore.getInstance().getBossBarManager().createBars(player, rpgPlayer);
                 player.sendMessage("§e[Hệ Thống] §fDữ liệu nhân vật và túi đồ đã tải thành công!");
+
+                // [MỚI]: Chờ 3 giây sau đó gỡ chế độ Bất tử
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    if (player.isOnline()) {
+                        player.setInvulnerable(false);
+                        player.sendMessage("§a§l[!] §aBảo vệ tân thủ đã kết thúc. Sẵn sàng chiến đấu!");
+                    }
+                }, 60L); // 60 Ticks = 3 Giây
             });
         });
     }
@@ -108,6 +116,14 @@ public class AuthManager {
                     vn.minecraft.rPGCore.player.RPGPlayer rpgPlayer = vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager().loadPlayer(player);
                     vn.minecraft.rPGCore.RPGCore.getInstance().getBossBarManager().createBars(player, rpgPlayer);
                     player.sendMessage("§e[Hệ Thống] §fDữ liệu nhân vật và túi đồ đã tải thành công!");
+
+                    // [MỚI]: Chờ 3 giây sau đó gỡ chế độ Bất tử
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        if (player.isOnline()) {
+                            player.setInvulnerable(false);
+                            player.sendMessage("§a§l[!] §aBảo vệ đăng nhập đã kết thúc. Sẵn sàng chiến đấu!");
+                        }
+                    }, 60L); // 60 Ticks = 3 Giây
                 });
 
             } else {

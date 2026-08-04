@@ -13,7 +13,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.util.io.BukkitObjectInputStream;
 import org.bukkit.util.io.BukkitObjectOutputStream;
-import org.yaml.snakeyaml.external.biz.base64Coder.Base64Coder;
 import vn.minecraft.rPGCore.mounts.data.MountData;
 
 import java.io.ByteArrayInputStream;
@@ -168,7 +167,7 @@ public class MountStorageGUI implements Listener {
     }
 
     // ==========================================
-    // HỆ THỐNG MÃ HÓA BUKKIT -> BASE64
+    // HỆ THỐNG MÀ HOÁ BUKKIT -> BASE64 (ĐÃ VÁ LỖI MONGODB)
     // ==========================================
     public String encodeItems(ItemStack[] items) {
         try {
@@ -180,7 +179,8 @@ public class MountStorageGUI implements Listener {
                 dataOutput.writeObject(item);
             }
             dataOutput.close();
-            return Base64Coder.encodeLines(outputStream.toByteArray());
+            // [FIX]: Sử dụng thư viện chuẩn của Java để xuất ra 1 dòng liền mạch
+            return java.util.Base64.getEncoder().encodeToString(outputStream.toByteArray());
         } catch (Exception e) {
             e.printStackTrace();
             return "";
@@ -189,7 +189,8 @@ public class MountStorageGUI implements Listener {
 
     public ItemStack[] decodeItems(String data) {
         try {
-            ByteArrayInputStream inputStream = new ByteArrayInputStream(Base64Coder.decodeLines(data));
+            // [FIX]: Decode bằng thư viện chuẩn của Java
+            ByteArrayInputStream inputStream = new ByteArrayInputStream(java.util.Base64.getDecoder().decode(data));
             BukkitObjectInputStream dataInput = new BukkitObjectInputStream(inputStream);
             ItemStack[] items = new ItemStack[dataInput.readInt()];
 

@@ -87,6 +87,15 @@ public class ToneManager {
     }
 
     public static void sendToneActionBar(Player player, List<ToneType> tones) {
+
+        // ==========================================
+        // [FIX]: NHƯỜNG ACTION BAR CHO MINIGAME CÂU CÁ
+        // Kiểm tra nếu người chơi đang câu cá thì không hiển thị Âm sắc của Bard
+        // ==========================================
+        if (vn.minecraft.rPGCore.RPGCore.getInstance().getFishingManager().isInMinigame(player)) {
+            return;
+        }
+
         StringBuilder sb = new StringBuilder("§d§l♫ ");
         for (int i = 0; i < tones.size(); i++) {
             switch (tones.get(i)) {

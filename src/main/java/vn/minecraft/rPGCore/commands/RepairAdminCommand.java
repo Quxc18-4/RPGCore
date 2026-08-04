@@ -85,7 +85,15 @@ public class RepairAdminCommand implements CommandExecutor {
                 stone = new ItemStack(Material.NETHER_STAR, amount);
                 meta = stone.getItemMeta();
                 meta.setDisplayName("§dĐá Nâng Cấp");
-                meta.setLore(List.of("§7Nguyên liệu dùng tại Lò Rèn", "§7để nâng cấp chỉ số trang bị."));
+
+                // Dùng Arrays.asList() hoặc ArrayList thay cho List.of() để an toàn hơn với Bukkit
+                meta.setLore(new java.util.ArrayList<>(java.util.Arrays.asList(
+                        "§7Nguyên liệu dùng tại Lò Rèn",
+                        "§7để nâng cấp chỉ số trang bị."
+                )));
+
+                // [CHỐT CHẶN QUAN TRỌNG NHẤT]: Gắn NBT Tag để chống lỗi rớt đồ
+                meta.getPersistentDataContainer().set(new org.bukkit.NamespacedKey(vn.minecraft.rPGCore.RPGCore.getInstance(), "rpg_item_id"), org.bukkit.persistence.PersistentDataType.STRING, "misc_upgrade_stone");
                 break;
             // ==========================================
             // [MỚI]: CASE 6 - TINH THỂ PHA LÊ (CHO TRANG SỨC)

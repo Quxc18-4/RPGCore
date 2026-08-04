@@ -356,7 +356,12 @@ public class BrewingManager implements Listener {
                 reduceToolDurability(player, spoon, 30);
             }
 
-            savePotionToDB(resultData); // ĐỔI TÊN HÀM LƯU
+            // ==========================================
+            // [FIX]: CHỈ LƯU VÀO DATABASE NẾU THUỐC KHÔNG BỊ HỎNG
+            // ==========================================
+            if (!resultData.isRuined) {
+                savePotionToDB(resultData);
+            }
 
             Bukkit.getPluginManager().callEvent(new vn.minecraft.rPGCore.api.events.PlayerActionTrackEvent(player, "BREW", 1));
 

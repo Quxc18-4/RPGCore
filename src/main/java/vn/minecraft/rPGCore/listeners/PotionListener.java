@@ -49,6 +49,17 @@ public class PotionListener implements Listener {
         Player player = event.getPlayer();
         UUID playerUuid = player.getUniqueId();
 
+        // ==========================================
+        // [FIX]: ĐỌC THUỐC HỎNG TỪ NBT (KHÔNG CẦN CHẠM TỚI DATABASE)
+        // ==========================================
+        org.bukkit.NamespacedKey ruinedKey = new org.bukkit.NamespacedKey(vn.minecraft.rPGCore.RPGCore.getInstance(), "potion_ruined");
+        if (meta.getPersistentDataContainer().getOrDefault(ruinedKey, PersistentDataType.INTEGER, 0) == 1) {
+            event.setReplacement(new ItemStack(Material.GLASS_BOTTLE)); // Trả lại vỏ chai rỗng
+            player.addPotionEffect(new PotionEffect(PotionEffectType.NAUSEA, 200, 1));
+            player.sendMessage("§cỌe... Mùi vị kinh tởm quá!");
+            return; // Dừng code ngay lập tức, không cho chọc xuống Database nữa!
+        }
+
         String potionUuid = meta.getPersistentDataContainer().get(UUID_KEY, PersistentDataType.STRING);
 
         PotionData data = brewingManager.loadPotionFromDB(potionUuid);
