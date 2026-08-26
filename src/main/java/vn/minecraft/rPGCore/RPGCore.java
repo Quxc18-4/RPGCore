@@ -125,6 +125,7 @@ public final class RPGCore extends JavaPlugin {
         this.friendManager = new FriendManager(this);
         this.arenaManager = new ArenaManager(this);
         this.duelManager = new DuelManager(this);
+        BuilderShopGUI builderShopGUI = new BuilderShopGUI();
 
         JobRegister.registerAllJobs();
         JobLeaderboard.updateLeaderboards();
@@ -190,6 +191,7 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new InteractMenuListener(this), this);
         getServer().getPluginManager().registerEvents(new TradeGUIListener(this), this);
         getServer().getPluginManager().registerEvents(new DuelListener(this), this);
+        getServer().getPluginManager().registerEvents(builderShopGUI, this);
 
         new RegenTask(playerManager, bossBarManager).runTaskTimer(this, 0L, 20L);
 
@@ -271,6 +273,13 @@ public final class RPGCore extends JavaPlugin {
             this.getCommand("duel").setExecutor(new vn.minecraft.rPGCore.playercommunication.commands.DuelCommand(this));
         } else {
             getLogger().warning("Khong the tim thay lenh /duel trong plugin.yml!");
+        }
+
+        // 2. Đăng ký Lệnh (Chèn chung chỗ với mớ getCommand đang có)
+        if (this.getCommand("shop") != null) {
+            this.getCommand("shop").setExecutor(builderShopGUI);
+        } else {
+            getLogger().warning("Khong the tim thay lenh /shop trong plugin.yml!");
         }
 
         vn.minecraft.rPGCore.classes.impl.bard.BardGlobalManager.startEngine();

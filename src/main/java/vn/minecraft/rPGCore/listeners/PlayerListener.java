@@ -4,6 +4,7 @@ import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.attribute.Attribute;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.*;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -147,7 +148,7 @@ public class PlayerListener implements Listener {
     // ==========================================
 // 3. CỔNG ĐIỀU PHỐI SÁT THƯƠNG
 // ==========================================
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onDealDamage(EntityDamageByEntityEvent event) {
 
         // ==========================================

@@ -96,3 +96,6 @@ commands:
   duel:
     description: "Thách đấu người chơi khác một cách an toàn"
     usage: "/duel <tên> | accept"
+  shop:
+    description: "Mở cửa hàng hệ thống"
+    aliases: [ "store" ]

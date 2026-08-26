@@ -79,6 +79,20 @@ public abstract class RPGClass {
     public double onTakeDamage(Player victim, RPGPlayer rpgVictim, LivingEntity attacker, double incomingDamage) {
         double damage = incomingDamage;
 
+        // 1. KIỂM TRA PVP: Nếu người đánh là Player hoặc Pet -> Bỏ qua vì calculateDamage của PvP đã trừ giáp rồi
+        boolean isPvP = (attacker instanceof Player) || (attacker != null && attacker.hasMetadata("Summoner_Pet"));
+
+        // 2. NẾU KHÔNG PHẢI PVP (Quái thường, Skill MythicMobs, Mechanic AOE không có attacker...) -> BẮT BUỘC TRỪ GIÁP
+        if (!isPvP) {
+            boolean isMagicAttack = (attacker != null && attacker.hasMetadata("Magic_Attack"));
+            double playerDefense = isMagicAttack ? rpgVictim.getTotalStatsMap().getOrDefault("Kháng phép", 0.0)
+                    : rpgVictim.getTotalStatsMap().getOrDefault("Giáp", 0.0);
+
+            // Trừ thẳng Giáp/Kháng phép
+            damage = Math.max(1.0, incomingDamage - playerDefense);
+        }
+
+        // 3. MÀNG LỌC % MIỄN THƯƠNG (Combat Modifiers)
         for (vn.minecraft.rPGCore.managers.CombatManager.ICombatModifier mod : vn.minecraft.rPGCore.managers.CombatManager.combatModifiers) {
             double reduction = mod.getIncomingDamageReduction(victim, attacker);
             damage *= (1.0 - reduction);

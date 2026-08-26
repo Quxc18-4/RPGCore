@@ -82,7 +82,8 @@ public class WarriorClass extends RPGClass {
     // ==========================================
     @Override
     public double onTakeDamage(Player victim, RPGPlayer rpgVictim, LivingEntity attacker, double incomingDamage) {
-        double finalDamage = incomingDamage;
+        // Gọi cha để nó trừ Giáp trước, xong xuôi mới mang xuống tính Parry
+        double finalDamage = super.onTakeDamage(victim, rpgVictim, attacker, incomingDamage);
 
         if (victim.hasMetadata("Warrior_Parry_Window")) {
             victim.removeMetadata("Warrior_Parry_Window", RPGCore.getInstance());
