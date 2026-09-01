@@ -1,7 +1,6 @@
 package vn.minecraft.rPGCore.ui;
 
 import org.bukkit.Bukkit;
-import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
 import org.bukkit.entity.Player;
@@ -14,76 +13,80 @@ import java.util.UUID;
 
 public class BossBarManager {
 
-    private final Map<UUID, BossBar> healthBars = new HashMap<>();
-    private final Map<UUID, BossBar> resourceBars = new HashMap<>();
+    // Gộp 2 map cũ thành 1 map duy nhất quản lý Status Bar
+    private final Map<UUID, BossBar> statusBars = new HashMap<>();
 
     public void createBars(Player player, RPGPlayer rpgPlayer) {
         UUID uuid = player.getUniqueId();
 
-        BossBar healthBar = Bukkit.createBossBar(
-                formatHealthTitle(rpgPlayer),
-                BarColor.RED,
-                BarStyle.SEGMENTED_10
-        );
-        healthBar.addPlayer(player);
-        healthBars.put(uuid, healthBar);
-
+        // Lấy thông tin ResourceType để quyết định màu sắc thanh bar
         ResourceType resType = rpgPlayer.getCurrentClass().getResourceType();
-        BossBar resourceBar = Bukkit.createBossBar(
-                formatResourceTitle(rpgPlayer),
+
+        BossBar statusBar = Bukkit.createBossBar(
+                formatStatusTitle(rpgPlayer),
                 resType.getColor(),
                 BarStyle.SEGMENTED_10
         );
-        resourceBar.addPlayer(player);
-        resourceBars.put(uuid, resourceBar);
+        statusBar.addPlayer(player);
+        statusBars.put(uuid, statusBar);
 
         updateBars(player, rpgPlayer);
     }
 
     public void updateBars(Player player, RPGPlayer rpgPlayer) {
         UUID uuid = player.getUniqueId();
-        if (!healthBars.containsKey(uuid) || !resourceBars.containsKey(uuid)) return;
+        if (!statusBars.containsKey(uuid)) return;
 
-        BossBar healthBar = healthBars.get(uuid);
-        BossBar resourceBar = resourceBars.get(uuid);
+        BossBar statusBar = statusBars.get(uuid);
 
-        healthBar.setTitle(formatHealthTitle(rpgPlayer));
-        // Đã đổi từ getBaseMaxHealth() sang getMaxHealth()
-        double hpProgress = rpgPlayer.getCurrentHealth() / rpgPlayer.getTotalMaxHealth();
-        healthBar.setProgress(Math.max(0.0, Math.min(1.0, hpProgress)));
+        // 1. Cập nhật Text kẹp 2 thông số
+        statusBar.setTitle(formatStatusTitle(rpgPlayer));
 
-        resourceBar.setTitle(formatResourceTitle(rpgPlayer));
-        resourceBar.setColor(rpgPlayer.getCurrentClass().getResourceType().getColor());
-        // Đã đổi từ getBaseMaxResource() sang getMaxResource()
-        // ĐỒNG BỘ: Sử dụng getTotalMaxResource() để bao gồm cả điểm INT
+        // 2. Giữ nguyên màu sắc theo config của ResourceType
+        statusBar.setColor(rpgPlayer.getCurrentClass().getResourceType().getColor());
+
+        // 3. Tụt thanh bar dựa trên tiến độ tiêu hao Năng lượng (Resource)
         double resProgress = rpgPlayer.getCurrentResource() / rpgPlayer.getTotalMaxResource();
-        resourceBar.setProgress(Math.max(0.0, Math.min(1.0, resProgress)));
+        statusBar.setProgress(Math.max(0.0, Math.min(1.0, resProgress)));
     }
 
     public void removeBars(Player player) {
         UUID uuid = player.getUniqueId();
-        if (healthBars.containsKey(uuid)) {
-            healthBars.get(uuid).removeAll();
-            healthBars.remove(uuid);
-        }
-        if (resourceBars.containsKey(uuid)) {
-            resourceBars.get(uuid).removeAll();
-            resourceBars.remove(uuid);
+        if (statusBars.containsKey(uuid)) {
+            statusBars.get(uuid).removeAll();
+            statusBars.remove(uuid);
         }
     }
 
-    private String formatHealthTitle(RPGPlayer p) {
-        // ĐỔI: p.getCurrentClass().getMaxHealth() -> p.getTotalMaxHealth()
-        return "§c❤ HP: " + (int)p.getCurrentHealth() + " / " + (int)p.getTotalMaxHealth();
-    }
-
-    private String formatResourceTitle(RPGPlayer p) {
+    // Hàm gộp Title hiển thị Máu và Năng lượng + Bổ sung Icon
+    private String formatStatusTitle(RPGPlayer p) {
         ResourceType type = p.getCurrentClass().getResourceType();
-        String colorCode = (type == ResourceType.MANA) ? "§b" : "§e";
-        String icon = (type == ResourceType.MANA) ? "✧" : "⚡";
+        String colorCode;
+        String icon;
 
-        // Đã đổi từ getBaseMaxResource() sang getMaxResource()
-        return colorCode + icon + " " + type.getName() + ": "
-                + (int)p.getCurrentResource() + " / " + (int)p.getTotalMaxResource();
+        // Phân loại Icon và Mã màu (Color Code) theo từng loại Resource
+        switch (type) {
+            case MANA:
+                colorCode = "§b";
+                icon = "✧";
+                break;
+            case RAGE:
+                colorCode = "§5"; // Tím, chuẩn với BarColor.PURPLE
+                icon = "⚔"; // Icon riêng cho RAGE
+                break;
+            case STAMINA:
+            default:
+                colorCode = "§e";
+                icon = "⚡";
+                break;
+        }
+
+        int curHp = (int) p.getCurrentHealth();
+        int maxHp = (int) p.getTotalMaxHealth();
+        int curRes = (int) p.getCurrentResource();
+        int maxRes = (int) p.getTotalMaxResource();
+
+        // Trả về định dạng: HP: xxxx/xxxx | Resource: xxxx/xxxx
+        return "§c❤ HP: " + curHp + "/" + maxHp + " §8| " + colorCode + icon + " " + type.getName() + ": " + curRes + "/" + maxRes;
     }
 }
