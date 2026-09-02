@@ -90,19 +90,19 @@ public class MobStatManager {
         // ==========================================
         double mobsToKill;
         if (level < 16) {
-            mobsToKill = 25.0 + (level * 5.0);          // Cấp 1 - 15: Khoảng 30 đến 100 con để lên cấp
+            mobsToKill = 25.0 + (level * 8.0);          // Cấp 1 - 15: Khoảng 33 đến 145 con để lên cấp
         } else if (level < 22) {
-            mobsToKill = 110.0 + ((level - 16) * 10.0);  // Cấp 16 - 21: Khoảng 110 đến 158 con
+            mobsToKill = 155.0 + ((level - 16) * 15.0);  // Cấp 16 - 21: Khoảng 155 đến 230 con
         } else if (level < 32) {
-            mobsToKill = 170.0 + ((level - 22) * 10.0); // Cấp 22 - 31: Khoảng 170 đến 270 con
+            mobsToKill = 250.0 + ((level - 22) * 18.0); // Cấp 22 - 31: Khoảng 250 đến 412 con
         } else if (level < 50) {
-            mobsToKill = 290.0 + ((level - 32) * 12.0);  // Cấp 32 - 49: Khoảng 290 đến ~415 con (Cực kỳ vừa vặn mốc 300-400 con ở tầm cấp 40 như bác muốn!)
+            mobsToKill = 450.0 + ((level - 32) * 25.0);  // Cấp 32 - 49: Khoảng 450 đến ~875 con (Cực kỳ vừa vặn mốc 300-400 con ở tầm cấp 40 như bác muốn!)
         } else if (level < 75) {
-            mobsToKill = 450.0 + ((level - 50) * 12.0); // Cấp 50 - 74: Giai đoạn cao cấp, tăng trưởng đều đặn
+            mobsToKill = 900.0 + ((level - 50) * 35.0); // Cấp 50 - 74: Khoảng 900 đến ~1740 con
         } else if (level < 101) {
-            mobsToKill = 750.0 + ((level - 75) * 18.0); // Cấp 75 - 100: Thử thách thực sự cho dân cày
+            mobsToKill = 2000.0 + ((level - 75) * 45.0); // Cấp 75 - 100: Khoảng 2000 đến ~3125 con
         } else {
-            mobsToKill = 1200.0 + ((level - 101) * 25.0); // Cấp 101 trở lên: End-game chí tôn
+            mobsToKill = 3500.0 + ((level - 101) * 75.0); // Cấp 101 trở lên:  Khoảng 3500 đến ~10925 con
         }
 
         double baseMobExp = reqExpForThisLevel / mobsToKill;
