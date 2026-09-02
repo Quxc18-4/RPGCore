@@ -79,6 +79,14 @@ public abstract class RPGClass {
     public double onTakeDamage(Player victim, RPGPlayer rpgVictim, LivingEntity attacker, double incomingDamage) {
         double damage = incomingDamage;
 
+        // ==========================================
+        // [CƠ CHẾ MỚI]: GHI ĐÈ SÁT THƯƠNG CỦA MYTHICMOBS
+        // Kéo sát thương Toán học từ Metadata ra để tính toán thay vì dùng 1 DMG của vỏ rỗng!
+        // ==========================================
+        if (attacker != null && attacker.hasMetadata("RPG_MOB_DAMAGE")) {
+            damage = attacker.getMetadata("RPG_MOB_DAMAGE").get(0).asDouble();
+        }
+
         // 1. KIỂM TRA PVP: Nếu người đánh là Player hoặc Pet -> Bỏ qua vì calculateDamage của PvP đã trừ giáp rồi
         boolean isPvP = (attacker instanceof Player) || (attacker != null && attacker.hasMetadata("Summoner_Pet"));
 
@@ -89,7 +97,7 @@ public abstract class RPGClass {
                     : rpgVictim.getTotalStatsMap().getOrDefault("Giáp", 0.0);
 
             // Trừ thẳng Giáp/Kháng phép
-            damage = Math.max(1.0, incomingDamage - playerDefense);
+            damage = Math.max(1.0, damage - playerDefense);
         }
 
         // 3. MÀNG LỌC % MIỄN THƯƠNG (Combat Modifiers)

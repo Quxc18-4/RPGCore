@@ -30,7 +30,12 @@ public class CombatManager {
         // Đưa các chỉ số bổ sung cơ bản từ Kỹ năng vào Map
         combatStats.put("Tỉ lệ chí mạng", combatStats.getOrDefault("Tỉ lệ chí mạng", 5.0) + extraCritRate);
         combatStats.put("Sát thương chí mạng", combatStats.getOrDefault("Sát thương chí mạng", 50.0) + extraCritDamage);
-        combatStats.put("Tỉ lệ xuyên giáp", combatStats.getOrDefault("Tỉ lệ xuyên giáp", 0.0) + extraArmorPen);
+        // [ĐÃ SỬA]: Phân luồng Xuyên Giáp và Xuyên Kháng Phép rõ ràng
+        if (isMagic) {
+            combatStats.put("Tỉ lệ xuyên kháng phép", combatStats.getOrDefault("Tỉ lệ xuyên kháng phép", 0.0) + extraArmorPen);
+        } else {
+            combatStats.put("Tỉ lệ xuyên giáp", combatStats.getOrDefault("Tỉ lệ xuyên giáp", 0.0) + extraArmorPen);
+        }
 
         // ==========================================
         // 2. [CHUẨN SOLID]: GỌI CLASS TỰ SỬA ĐỔI CHỈ SỐ LINH HOẠT
@@ -100,10 +105,18 @@ public class CombatManager {
         }
 
         double targetDefense = 0;
-        if (isMagic && target instanceof Player) {
-            RPGPlayer targetRpg = vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager().getRPGPlayer(target.getUniqueId());
-            if (targetRpg != null) targetDefense = targetRpg.getTotalStatsMap().getOrDefault("Kháng phép", 0.0);
-        } else if (!isMagic) {
+
+        if (isMagic) {
+            if (target instanceof Player) {
+                RPGPlayer targetRpg = vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager().getRPGPlayer(target.getUniqueId());
+                if (targetRpg != null) targetDefense = targetRpg.getTotalStatsMap().getOrDefault("Kháng phép", 0.0);
+            } else {
+                // ĐỌC KHÁNG PHÉP CỦA QUÁI VẬT TỪ METADATA
+                if (target.hasMetadata("RPG_Magic_Resist")) {
+                    targetDefense = target.getMetadata("RPG_Magic_Resist").get(0).asDouble();
+                }
+            }
+        } else {
             AttributeInstance armorAttr = target.getAttribute(Attribute.ARMOR);
             if (armorAttr != null) targetDefense = armorAttr.getValue();
         }
@@ -431,11 +444,18 @@ public class CombatManager {
 
         // 6. TRỪ PHÒNG THỦ VÀ PHÁ GIÁP
         double targetDefense = 0;
-        if (isMagicPet && target instanceof Player) {
-            RPGPlayer targetRpg = vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager().getRPGPlayer(target.getUniqueId());
-            if (targetRpg != null) targetDefense = targetRpg.getTotalStatsMap().getOrDefault("Kháng phép", 0.0);
-        } else if (!isMagicPet) {
-            org.bukkit.attribute.AttributeInstance armorAttr = target.getAttribute(org.bukkit.attribute.Attribute.ARMOR);
+        if (isMagicPet) {
+            if (target instanceof Player) {
+                RPGPlayer targetRpg = vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager().getRPGPlayer(target.getUniqueId());
+                if (targetRpg != null) targetDefense = targetRpg.getTotalStatsMap().getOrDefault("Kháng phép", 0.0);
+            } else {
+                // ĐỌC KHÁNG PHÉP CỦA QUÁI VẬT TỪ METADATA
+                if (target.hasMetadata("RPG_Magic_Resist")) {
+                    targetDefense = target.getMetadata("RPG_Magic_Resist").get(0).asDouble();
+                }
+            }
+        } else {
+            AttributeInstance armorAttr = target.getAttribute(Attribute.ARMOR);
             if (armorAttr != null) targetDefense = armorAttr.getValue();
         }
 

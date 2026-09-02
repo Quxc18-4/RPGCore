@@ -484,7 +484,31 @@ public class RPGPlayer {
 
     public double getRequiredExp() {
         int level = this.bukkitPlayer.getLevel();
-        return 500 + (level * 100) + Math.pow(level, 3) * level/4;
+
+        // 1. ĐƯỜNG CONG CƠ SỞ (Tăng trưởng mượt mà, không bị vọt lố)
+        double baseExp = 300 + (level * 150) + (Math.pow(level, 3.0) * 1.5);
+
+        // 2. HỆ SỐ NHÂN THEO GIAI ĐOẠN (Ép Hardcore theo Design của bác)
+        double stageMultiplier = 1.0; // Lv 1 - 15
+
+        if (level >= 16 && level < 22) {
+            stageMultiplier = 1.5;     // Hơi chững lại (1-2 tuần)
+        } else if (level >= 22 && level < 32) {
+            stageMultiplier = 3.0;     // Bắt đầu khó (> 2 tuần)
+        } else if (level >= 32 && level < 50) {
+            stageMultiplier = 6.0;     // Cao (1-2 tháng)
+        } else if (level >= 50 && level < 75) {
+            stageMultiplier = 15.0;    // Cày cuốc (3 tháng)
+        } else if (level >= 75 && level < 101) {
+            stageMultiplier = 30.0;    // Dài hạn (6 tháng)
+        } else if (level >= 101 && level < 150) {
+            stageMultiplier = 50.0;    // Rất dài hạn (1 năm)
+        } else if (level >= 150) {
+            stageMultiplier = 80.0;    // Tối thượng (2 năm)
+        }
+
+        // Ví dụ Cấp 180: Cần khoảng ~696 Triệu EXP để lên cấp
+        return baseExp * stageMultiplier;
     }
     public void addExp(double amount) {
         this.currentExp += amount;
@@ -513,7 +537,7 @@ public class RPGPlayer {
         this.currentExp = Math.max(0, this.currentExp - lostAmount);
         updateExpBar();
         this.bukkitPlayer.sendMessage("§c§l☠ BẠN ĐÃ TỬ VONG!");
-        this.bukkitPlayer.sendMessage("§cHình phạt cấp độ > 20: Mất §e" + (int)lostAmount + " EXP §c(30% tiến độ).");
+        this.bukkitPlayer.sendMessage("§cHình phạt cấp độ > 20: Mất §e" + (int)lostAmount + " EXP §c(15% tiến độ).");
     }
     public void heal(double amount) {
         if (!this.bukkitPlayer.isDead()) {

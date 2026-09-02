@@ -62,22 +62,18 @@ public class BossBarManager {
     private String formatStatusTitle(RPGPlayer p) {
         ResourceType type = p.getCurrentClass().getResourceType();
         String colorCode;
-        String icon;
 
         // Phân loại Icon và Mã màu (Color Code) theo từng loại Resource
         switch (type) {
             case MANA:
                 colorCode = "§b";
-                icon = "✧";
                 break;
             case RAGE:
                 colorCode = "§5"; // Tím, chuẩn với BarColor.PURPLE
-                icon = "⚔"; // Icon riêng cho RAGE
                 break;
             case STAMINA:
             default:
                 colorCode = "§e";
-                icon = "⚡";
                 break;
         }
 
@@ -87,6 +83,6 @@ public class BossBarManager {
         int maxRes = (int) p.getTotalMaxResource();
 
         // Trả về định dạng: HP: xxxx/xxxx | Resource: xxxx/xxxx
-        return "§c❤ HP: " + curHp + "/" + maxHp + " §8| " + colorCode + icon + " " + type.getName() + ": " + curRes + "/" + maxRes;
+        return "§cHP: " + curHp + "/" + maxHp + " §8| " + colorCode + " " + type.getName() + ": " + curRes + "/" + maxRes;
     }
 }

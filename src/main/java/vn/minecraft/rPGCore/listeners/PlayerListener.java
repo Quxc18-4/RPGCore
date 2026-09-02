@@ -430,7 +430,7 @@ public class PlayerListener implements Listener {
     }
     @EventHandler public void onPlayerDeath(org.bukkit.event.entity.PlayerDeathEvent event) {
         RPGPlayer rpgPlayer = playerManager.getRPGPlayer(event.getEntity().getUniqueId());
-        if (rpgPlayer != null && event.getEntity().getLevel() > 20) rpgPlayer.loseDeathExp(0.3);
+        if (rpgPlayer != null && event.getEntity().getLevel() > 20) rpgPlayer.loseDeathExp(0.15);
     }
     @EventHandler public void onEnvironmentDamage(EntityDamageEvent event) {
         // [Toàn bộ logic môi trường lửa/độc/rơi của bạn giữ nguyên, tôi không sửa gì thêm ở đây]
@@ -443,7 +443,7 @@ public class PlayerListener implements Listener {
                 long lastDmgTime = lastFireDamageTimers.getOrDefault(entity.getUniqueId(), 0L);
                 if (now - lastDmgTime < 500) { event.setCancelled(true); return; }
                 lastFireDamageTimers.put(entity.getUniqueId(), now);
-                event.setDamage(75.0);
+                event.setDamage(50.0);
                 isCustomDoT = true;
             }
             else if (cause == EntityDamageEvent.DamageCause.POISON || cause == EntityDamageEvent.DamageCause.WITHER) {
