@@ -84,23 +84,41 @@ public class MobStatManager {
         else if (level >= 150) stageMultiplier = 80.0;
 
         double reqExpForThisLevel = expBaseCurve * stageMultiplier;
-        double mobsToKill = 50.0 + (level * 20.0) + (Math.pow(level, 2) * 1.5);
+
+        // ==========================================
+        // ĐƯỜNG CONG TƯƠNG QUAN: MỐC GIẾT QUÁI ĐỒNG BỘ VỚI STAGE MULTIPLIER
+        // ==========================================
+        double mobsToKill;
+        if (level < 16) {
+            mobsToKill = 25.0 + (level * 5.0);          // Cấp 1 - 15: Khoảng 30 đến 100 con để lên cấp
+        } else if (level < 22) {
+            mobsToKill = 110.0 + ((level - 16) * 10.0);  // Cấp 16 - 21: Khoảng 110 đến 158 con
+        } else if (level < 32) {
+            mobsToKill = 170.0 + ((level - 22) * 10.0); // Cấp 22 - 31: Khoảng 170 đến 270 con
+        } else if (level < 50) {
+            mobsToKill = 290.0 + ((level - 32) * 12.0);  // Cấp 32 - 49: Khoảng 290 đến ~415 con (Cực kỳ vừa vặn mốc 300-400 con ở tầm cấp 40 như bác muốn!)
+        } else if (level < 75) {
+            mobsToKill = 450.0 + ((level - 50) * 12.0); // Cấp 50 - 74: Giai đoạn cao cấp, tăng trưởng đều đặn
+        } else if (level < 101) {
+            mobsToKill = 750.0 + ((level - 75) * 18.0); // Cấp 75 - 100: Thử thách thực sự cho dân cày
+        } else {
+            mobsToKill = 1200.0 + ((level - 101) * 25.0); // Cấp 101 trở lên: End-game chí tôn
+        }
+
         double baseMobExp = reqExpForThisLevel / mobsToKill;
 
         // ==========================================
         // [ĐÃ SỬA]: HỆ THỐNG ĐIỂM NGUY HIỂM TOÀN DIỆN (THREAT SCORE)
-        // Đánh giá dựa trên cả Máu, Sát Thương, Giáp và Kháng Phép (Trọng số 40-40-20)
         // ==========================================
         double hpScore = type.hp * stage.hp * role.hp * (1.0 + bonusHp);
         double dmgScore = type.dmg * stage.dmg * role.dmg * (1.0 + bonusDmg);
         double defScore = ((type.armor * stage.armor * role.armor * (1.0 + bonusArmor)) +
                 (type.mr * stage.mr * role.mr * (1.0 + bonusMr))) / 2.0;
 
-        // Cân bằng tỷ trọng: Sát thương và Máu quyết định 80% độ khó, Phòng thủ quyết định 20%
         double threatScore = (hpScore * 0.4) + (dmgScore * 0.4) + (defScore * 0.2);
 
         // ==========================================
-        // [ĐÃ SỬA]: HỆ SỐ EXP THEO CẤP BẬC (RANK) BÁC YÊU CẦU
+        // [ĐÃ SỬA]: HỆ SỐ EXP THEO CẤP BẬC (RANK)
         // ==========================================
         double rankExpBonus = 1.0;
         switch (rank) {
@@ -114,7 +132,7 @@ public class MobStatManager {
                 rankExpBonus = 20.0;
                 break;
             case WORLD_BOSS:
-                rankExpBonus = 100.0; // Boss thế giới auto x100 EXP
+                rankExpBonus = 100.0;
                 break;
             default:
                 rankExpBonus = 1.0;
@@ -123,11 +141,10 @@ public class MobStatManager {
 
         // Tích hợp toàn bộ: Base EXP * Độ nguy hiểm của Vị trí * Thưởng Cấp bậc
         double finalMobExp = baseMobExp * threatScore * rankExpBonus;
-
         mob.setMetadata("RPG_MOB_EXP", new FixedMetadataValue(RPGCore.getInstance(), finalMobExp));
 
         // ==========================================
-        // 7. [MỚI]: HỆ THỐNG TỰ ĐỘNG PHÂN LOẠI SÁT THƯƠNG (PHYSICAL vs MAGICAL)
+        // 7. [MỚI]: HỆ THỐNG TỰ ĐỘNG PHÂN LOẠI SÁT THƯƠNG
         // ==========================================
         boolean dealsMagicDamage = false;
 
