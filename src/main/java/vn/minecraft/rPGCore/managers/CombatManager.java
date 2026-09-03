@@ -139,8 +139,14 @@ public class CombatManager {
         double penToUse = isMagic ? finalMagicPen : finalArmorPen;
         targetDefense *= (1.0 - (penToUse / 100.0));
 
+        // ==========================================
+        // [CÔNG THỨC MỚI]: Giảm sát thương theo tỉ lệ % (Áp dụng cho PvP / PvE)
+        // ==========================================
+        double defenseMultiplier = 100.0 / (100.0 + targetDefense);
+        double reducedDamage = rawDamage * defenseMultiplier;
+
         // TÍNH SÁT THƯƠNG CUỐI CÙNG (Cộng lại phần True Damage đã bóc ra lúc nãy)
-        double finalDamage = Math.max(1.0, (Math.max(0.0, rawDamage - targetDefense) + trueDamagePortion) * dmgMultiplier);
+        double finalDamage = Math.max(1.0, (reducedDamage + trueDamagePortion) * dmgMultiplier);
 
         // Code Dummy Test
         if (target.getCustomName() != null && ChatColor.stripColor(target.getCustomName()).contains("Dummy")) {
@@ -477,8 +483,14 @@ public class CombatManager {
         double penToUse = isMagicPet ? petMagicPen : petArmorPen;
         targetDefense *= (1.0 - (penToUse / 100.0));
 
+        // ==========================================
+        // [CÔNG THỨC MỚI]: Giảm sát thương theo tỉ lệ % cho Đệ Tử
+        // ==========================================
+        double defenseMultiplier = 100.0 / (100.0 + targetDefense);
+        double reducedDamage = rawDamage * defenseMultiplier;
+
         // Tính sát thương cuối cùng
-        double finalDamage = Math.max(1.0, rawDamage - targetDefense);
+        double finalDamage = Math.max(1.0, reducedDamage);
 
         // ==========================================
         // 7. HÚT MÁU CHÉO & HIỆU ỨNG ĐÒN ĐÁNH (CỘNG HƯỞNG)

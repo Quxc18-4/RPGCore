@@ -13,13 +13,18 @@ public class MobStatManager {
     public static void injectDynamicStats(LivingEntity mob, int level, MobType type, MobStage stage, MobRole role, MobRank rank,
                                           double bonusHp, double bonusDmg, double bonusArmor, double bonusMr) {
 
+// ==========================================
+        // 1. CHỈ SỐ GỐC THEO CẤP (ĐÃ CÂN BẰNG LẠI)
         // ==========================================
-        // 1. CHỈ SỐ GỐC THEO CẤP
-        // ==========================================
-        double baseHp = 50 + (level * 20) + (Math.pow(level, 3.0) * 0.1);
-        double baseDmg = 60 + (level * 15) + (Math.pow(level, 2.2) * 0.1);
-        double baseArmor = (level - 1) * 1.35 + (Math.pow(level - 1, 2.2) * 0.1);
-        double baseMr = (level - 1) * 1.5 + (Math.pow(level - 1, 2.2) * 0.1);
+        // Máu (HP): Đổi từ hàm bậc 3 (^3.0) xuống bậc 2 (^2.0) để Máu không bị lạm phát ở late game
+        double baseHp = 50 + (level * 20) + (Math.pow(level, 2.0) * 1.5);
+
+        // Sát thương (DMG): Làm mượt lại một chút để quái không One-hit người chơi
+        double baseDmg = 20 + (level * 12) + (Math.pow(level, 1.8) * 0.5);
+
+        // Giáp & Kháng Phép: Đổi từ (^2.2) xuống (^1.5) để vũ khí của Player không bị "lỗi thời" quá nhanh
+        double baseArmor = (level - 1) * 2.0 + (Math.pow(level - 1, 1.2) * 0.8);
+        double baseMr = (level - 1) * 1.5 + (Math.pow(level - 1, 1.2) * 0.8);
 
         // ==========================================
         // 2. CHỒNG LỚP 4 TRỤ CỘT ENUM
@@ -123,16 +128,21 @@ public class MobStatManager {
         double rankExpBonus = 1.0;
         switch (rank) {
             case ELITE:
-                rankExpBonus = 3.0;
+                // Tinh anh: Trâu gấp 3-4 lần quái thường, sát thương to hơn.
+                rankExpBonus = 15.0;
                 break;
             case MINIBOSS:
-                rankExpBonus = 5.0;
+                // Miniboss: Mất 3-4 phút để giết (gấp 20-30 lần thời gian đánh quái).
+                // Cho x45 lần EXP để người chơi thấy "Đáng đồng tiền bát gạo"!
+                rankExpBonus = 45.0;
                 break;
             case REGION_BOSS:
-                rankExpBonus = 20.0;
+                // Boss Khu vực: Cần tổ đội 2-3 người đánh, mất 5-10 phút.
+                rankExpBonus = 150.0;
                 break;
             case WORLD_BOSS:
-                rankExpBonus = 100.0;
+                // Boss Thế giới: Cả server xúm vào đập.
+                rankExpBonus = 500.0;
                 break;
             default:
                 rankExpBonus = 1.0;

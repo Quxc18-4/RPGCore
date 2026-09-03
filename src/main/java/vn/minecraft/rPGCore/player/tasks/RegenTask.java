@@ -111,17 +111,17 @@ public class RegenTask extends BukkitRunnable {
             // ==========================================
             if (!hasFullnessBuff) {
                 if (foodLevel > 10) {
-                    player.setExhaustion(player.getExhaustion() + 0.05f); // Giảm từ 0.2 xuống 0.05
+                    player.setExhaustion(player.getExhaustion() + 0.01f); // Giảm từ 0.2 xuống 0.05
                 }
 
                 boolean isHealingNeeded = (player.getHealth() < maxHp) || (currentRes < maxRes);
                 if (isHealingNeeded && foodLevel > 0) {
-                    player.setExhaustion(player.getExhaustion() + 0.2f); // Giảm từ 1.4 xuống 0.2 (Rất chậm)
+                    player.setExhaustion(player.getExhaustion() + 0.05f); // Giảm từ 1.4 xuống 0.2 (Rất chậm)
                 }
             }
 
             if (foodLevel == 0) {
-                player.damage(maxHp * 0.05);
+                player.damage(maxHp * 0.03);
             }
 
             // ==========================================
@@ -129,19 +129,19 @@ public class RegenTask extends BukkitRunnable {
             // ==========================================
             double hpRegen = 0.0;
             double resourceRegen = 0.0;
-            double baseHpRegen = 20.0 + (2.0 * playerLevel);
+            double baseHpRegen = 50.0 + (10.0 * playerLevel);
 
             if (foodLevel >= 18) {
-                hpRegen = baseHpRegen + (maxHp * (inCombat ? 0.005 : 0.015));
-                resourceRegen = maxRes * 0.06; // [ĐÃ SỬA]: 8% -> 6%
+                hpRegen = baseHpRegen + (maxHp * (inCombat ? 0.01 : 0.05));
+                resourceRegen = maxRes * 0.15; // [ĐÃ SỬA]: 8% -> 6%
             }
             else if (foodLevel >= 12) {
                 hpRegen = baseHpRegen;
-                resourceRegen = maxRes * 0.04; // [ĐÃ SỬA]: 5% -> 4%
+                resourceRegen = maxRes * 0.1; // [ĐÃ SỬA]: 5% -> 4%
             }
             else if (foodLevel >= 4) {
                 hpRegen = baseHpRegen * 0.5;
-                resourceRegen = maxRes * 0.02; // [ĐÃ SỬA]: 2% -> 2%
+                resourceRegen = maxRes * 0.05; // [ĐÃ SỬA]: 2% -> 2%
             }
 
             // ==========================================

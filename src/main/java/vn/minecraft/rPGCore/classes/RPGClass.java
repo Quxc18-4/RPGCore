@@ -1,6 +1,7 @@
 package vn.minecraft.rPGCore.classes;
 
 import org.bukkit.Material;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -80,31 +81,57 @@ public abstract class RPGClass {
         double damage = incomingDamage;
 
         // ==========================================
-        // [CƠ CHẾ MỚI]: GHI ĐÈ SÁT THƯƠNG CỦA MYTHICMOBS
-        // Kéo sát thương Toán học từ Metadata ra để tính toán thay vì dùng 1 DMG của vỏ rỗng!
+        // 1. THUẬT TOÁN KHÔI PHỤC (DÙNG METADATA ĐỂ TRÁNH BỊ MM GHI ĐÈ)
         // ==========================================
-        if (attacker != null && attacker.hasMetadata("RPG_MOB_DAMAGE")) {
-            damage = attacker.getMetadata("RPG_MOB_DAMAGE").get(0).asDouble();
+        double mobBaseDmg = damage; // Mặc định tự bảo vệ
+
+        if (attacker != null) {
+            // Lấy sát thương từ Metadata - Vùng an toàn tuyệt đối
+            if (attacker.hasMetadata("RPG_MOB_DAMAGE")) {
+                mobBaseDmg = attacker.getMetadata("RPG_MOB_DAMAGE").get(0).asDouble();
+            }
+            // Fallback nếu không có Meta (Chỉ dùng cho quái Vanilla)
+            else if (attacker.getAttribute(org.bukkit.attribute.Attribute.ATTACK_DAMAGE) != null) {
+                mobBaseDmg = attacker.getAttribute(org.bukkit.attribute.Attribute.ATTACK_DAMAGE).getValue();
+            }
+
+            // Phân tích Multiplier
+            if (damage <= 15.0 && damage < (mobBaseDmg / 2.0)) {
+                double multiplier = (damage <= 0.0) ? 1.0 : damage;
+                damage = mobBaseDmg * multiplier;
+            } else {
+                damage = Math.max(damage, mobBaseDmg);
+            }
         }
 
-        // 1. KIỂM TRA PVP: Nếu người đánh là Player hoặc Pet -> Bỏ qua vì calculateDamage của PvP đã trừ giáp rồi
         boolean isPvP = (attacker instanceof Player) || (attacker != null && attacker.hasMetadata("Summoner_Pet"));
 
-        // 2. NẾU KHÔNG PHẢI PVP (Quái thường, Skill MythicMobs, Mechanic AOE không có attacker...) -> BẮT BUỘC TRỪ GIÁP
-        if (!isPvP) {
-            boolean isMagicAttack = (attacker != null && attacker.hasMetadata("Magic_Attack"));
+// ==========================================
+        // 2. PHÂN LỌC VẬT LÝ / PHÉP THUẬT & TRỪ GIÁP (CHUẨN MOBA)
+        // ==========================================
+        if (!isPvP && attacker != null) {
+            boolean isMagicAttack = attacker.hasMetadata("Magic_Attack");
             double playerDefense = isMagicAttack ? rpgVictim.getTotalStatsMap().getOrDefault("Kháng phép", 0.0)
                     : rpgVictim.getTotalStatsMap().getOrDefault("Giáp", 0.0);
 
-            // Trừ thẳng Giáp/Kháng phép
-            damage = Math.max(1.0, damage - playerDefense);
+            // Giảm sát thương theo % (Giáp càng to, sát thương nhận vào càng nhỏ)
+            double defenseMultiplier = 100.0 / (100.0 + playerDefense);
+            damage = damage * defenseMultiplier;
+
+            // Đảm bảo tối thiểu mất 1 máu
+            damage = Math.max(1.0, damage);
         }
 
-        // 3. MÀNG LỌC % MIỄN THƯƠNG (Combat Modifiers)
+        // 3. MÀNG LỌC % MIỄN THƯƠNG
         for (vn.minecraft.rPGCore.managers.CombatManager.ICombatModifier mod : vn.minecraft.rPGCore.managers.CombatManager.combatModifiers) {
             double reduction = mod.getIncomingDamageReduction(victim, attacker);
             damage *= (1.0 - reduction);
         }
+
+        // ==========================================
+        // [RADAR BẮT LỖI]: Bác BẮT BUỘC để dòng này lại để test nhé!
+        // ==========================================
+        //victim.sendMessage("§e[RADAR] Vào: " + incomingDamage + " | Gốc của quái: " + mobBaseDmg + " | Ra thực tế: " + damage);
 
         return Math.max(0.0, damage);
     }
@@ -217,7 +244,4 @@ public abstract class RPGClass {
 
     public boolean onSwapItem(Player player, RPGPlayer rpgPlayer, ItemStack weapon) { return false; }
 
-    public double onTakeDamage(Player victim, RPGPlayer rpgVictim, double incomingDamage) {
-        return incomingDamage; // Mặc định trả về nguyên vẹn, các class con như Warrior sẽ override lại để chia đôi (Parry)
-    }
 }
