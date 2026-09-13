@@ -320,14 +320,41 @@ public class PlayerListener implements Listener {
                 rpgVictim.setInCombat();
 
                 LivingEntity attackerEntity = null;
+                org.bukkit.entity.Entity rawAttacker = event.getDamager();
 
-                // Xử lý Lấy Attacker (Cả Cận chiến lẫn Bắn xa)
-                if (event.getDamager() instanceof LivingEntity) {
-                    attackerEntity = (LivingEntity) event.getDamager();
-                } else if (event.getDamager() instanceof Projectile) {
-                    org.bukkit.projectiles.ProjectileSource shooter = ((Projectile) event.getDamager()).getShooter();
+                // 1. XỬ LÝ ĐẠN ĐẠO (PROJECTILES) NHƯ CŨ
+                if (rawAttacker instanceof Projectile) {
+                    org.bukkit.projectiles.ProjectileSource shooter = ((Projectile) rawAttacker).getShooter();
                     if (shooter instanceof LivingEntity) {
                         attackerEntity = (LivingEntity) shooter;
+                    }
+                }
+                // 2. XỬ LÝ CẬN CHIẾN & [LỘT MẶT NẠ ARMOR STAND / ĐỆ TỬ]
+                else if (rawAttacker instanceof LivingEntity) {
+                    attackerEntity = (LivingEntity) rawAttacker; // Mặc định thủ phạm là kẻ trực tiếp đánh
+
+                    java.util.Optional<io.lumine.mythic.core.mobs.ActiveMob> amOpt = io.lumine.mythic.bukkit.MythicBukkit.inst().getMobManager().getActiveMob(rawAttacker.getUniqueId());
+
+                    if (amOpt.isPresent()) {
+                        io.lumine.mythic.core.mobs.ActiveMob am = amOpt.get();
+                        // 2a. Kiểm tra xem nó có Parent không (Cơ chế summon)
+                        if (am.getParent().isPresent()) {
+                            // [ĐÃ SỬA]: Gọi thẳng .getUniqueId() từ getParent().get()
+                            org.bukkit.entity.Entity parentEntity = org.bukkit.Bukkit.getEntity(am.getParent().get().getUniqueId());
+
+                            if (parentEntity instanceof LivingEntity && parentEntity.isValid()) {
+                                attackerEntity = (LivingEntity) parentEntity; // LỘT MẶT NẠ! Thủ phạm là con Boss!
+                            }
+                        }
+                        // 2b. Dự phòng: Kiểm tra Owner
+                        else if (am.getOwner().isPresent()) {
+                            // [ĐÃ SỬA]: Gọi thẳng .getUniqueId() từ getOwner().get()
+                            org.bukkit.entity.Entity ownerEntity = org.bukkit.Bukkit.getEntity(am.getOwner().get().getUniqueId());
+
+                            if (ownerEntity instanceof LivingEntity && ownerEntity.isValid()) {
+                                attackerEntity = (LivingEntity) ownerEntity; // LỘT MẶT NẠ!
+                            }
+                        }
                     }
                 }
 
@@ -366,8 +393,12 @@ public class PlayerListener implements Listener {
                         java.util.Objects.requireNonNull(victim.getAttribute(Attribute.ARMOR_TOUGHNESS)).setBaseValue(0.0);
                     }
 
-                    // 2. Xóa thời gian bất tử để chuẩn bị nhận sát thương thật
-                    victim.setNoDamageTicks(0);
+                    // 2. [FIX SÚNG MÁY SLIME]: Xóa thời gian bất tử
+                    // CHỈ xóa I-Frames đối với các đòn Kỹ năng (Hệ số initialDamage < 20.0).
+                    // VÀ TUYỆT ĐỐI BỎ QUA Slime/Magma Cube vì bọn này gây sát thương bằng va chạm!
+                    if (initialDamage <= 20.0 && !(attackerEntity instanceof org.bukkit.entity.Slime)) {
+                        victim.setNoDamageTicks(0);
+                    }
 
                     // 3. Gắn thẻ "VIP" cho nạn nhân
                     victim.setMetadata("RPG_Bypass_Damage", new org.bukkit.metadata.FixedMetadataValue(getInstance(), true));

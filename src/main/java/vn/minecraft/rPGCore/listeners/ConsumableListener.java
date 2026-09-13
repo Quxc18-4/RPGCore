@@ -60,7 +60,7 @@ public class ConsumableListener implements Listener {
         // [ĐÃ SỬA] - Xóa Lúa Mì Tinh Tú khỏi danh sách ăn ngay
         List<String> instantFoods = Arrays.asList("fat_milk", "spice_honey", "veg_apple", "veg_melon",
                 "veg_melon_uncommon", "veg_melon_rare", "veg_kelp_dried", "potion_digestion",
-                "potion_anti_anorexia", "misc_lunch_bag", "starch_bread", "magic_flame_beetroot",
+                "potion_anti_anorexia", "misc_lunch_bag", "starch_bread", "magic_flame_beetroot", "magic_healing_gland",
                 "magic_golden_melon", "magic_crystal_kelp", "magic_mana_potato", "magic_chaos_glow_berry",
                 "bag_seeds_common", "bag_seeds_magic", "misc_seed_pouch", "bag_fishing_rod_common",
                 "bag_fishing_rod_uncommon", "bag_fishing_rod_rare",
@@ -211,6 +211,12 @@ public class ConsumableListener implements Listener {
             else if (itemId.equals("starch_bread")) {
                 player.setFoodLevel(Math.min(20, player.getFoodLevel() + 8));
                 player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_GENERIC_EAT, 1f, 1f);
+                consumed = true;
+            }
+            else if (itemId.equals("magic_healing_gland")) {
+                rpgPlayer.heal(rpgPlayer.getTotalMaxHealth() * 0.08);
+                player.sendMessage("§e§l[!] §aTuyến tơ nhện giúp băng bó vết thương của bạn (+8% HP)!");
+                player.playSound(player.getLocation(), Sound.BLOCK_SNOW_BREAK, 1f, 1f);
                 consumed = true;
             }
             else if (itemId.equals("spice_honey")) {

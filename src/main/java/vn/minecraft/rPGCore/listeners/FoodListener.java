@@ -92,10 +92,10 @@ public class FoodListener implements Listener {
                 boredomManager.unban(uuid);
                 double cureAmount = (spicePoints / 0.5) * 3.0; // Mỗi 0.5 spice giảm 3%
                 boredomManager.reduceAnorexia(uuid, cureAmount);
-                player.sendMessage("§a[Thăng hoa] Hương vị siêu đậm đà đã phá vỡ sự chán ăn của bạn! (Giảm " + cureAmount + "% Điểm Tuyệt Thực)");
+                player.sendMessage("§aHương vị siêu đậm đà của món ăn đã phá vỡ sự chán ăn của bạn!");
             } else {
                 // Đồ ăn nhạt nhẽo -> Từ chối ăn luôn, KHÔNG tính độ tươi hay trừ item
-                player.sendMessage("§c✖ Cổ họng bạn từ chối nuốt! Bạn đang bị Tuyệt Thực. Hãy tìm một món siêu cay/đậm đà (Spice > 1.5) để giải ngấy!");
+                player.sendMessage("§cCổ họng bạn từ chối nuốt! Bạn không còn hứng thú ăn uống. Hãy tìm một món siêu cay/đậm đà để giải ngấy!");
                 player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_BURP, 1f, 0.5f);
                 return; // Dừng code tại đây
             }
@@ -104,10 +104,10 @@ public class FoodListener implements Listener {
             // Vòng quay Xổ số Ngấy (Khi chưa bị cấm thực)
             if (boredomChance > 0 && (Math.random() * 100 < boredomChance)) {
                 boredomManager.addStrikeAndPoints(uuid);
-                player.sendMessage("§eBạn cố nhồi nhét món này vào bụng... (+5% Điểm Tuyệt Thực)");
+                player.sendMessage("§eBạn cố nhồi nhét món này vào bụng của mình...");
 
                 if (boredomManager.isBanned(uuid)) {
-                    player.sendMessage("§c☠ BẠN ĐÃ BỊ TUYỆT THỰC DO ĂN QUÁ NGẤY! Cấm ăn đồ tự nấu!");
+                    player.sendMessage("§cBạn bị chán ăn do ăn quá nhiều đồ gây ngấy! Không thể ăn đồ tự nấu!");
                 }
             }
 
@@ -123,18 +123,19 @@ public class FoodListener implements Listener {
         // 3. KIỂM TRA ĐỘ TƯƠI (CHỈ CHẠY KHI ĐÃ ĐƯỢC PHÉP ĂN)
         // ==========================================
         if (ageInMinutes > maxFreshness) {
-            player.sendMessage("§cỌe... Món này đã thiu thối do để quá lâu!");
+            player.sendMessage("§cỌe... Món này đã ôi thiu do để quá lâu!");
             player.addPotionEffect(new PotionEffect(PotionEffectType.HUNGER, 300, 1));
             player.addPotionEffect(new PotionEffect(PotionEffectType.NAUSEA, 200, 0));
+            player.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 200, 0));
             consumeItem(player, item); // Vẫn mất item vì lỡ cắn thử
             return; // Ăn đồ thiu thì không nhận buff
         }
         else if (ageInMinutes <= maxFreshness * 0.15) {
-            player.sendMessage("§6Bạn húp một ngụm súp nóng hổi! (+2 Phút No Căng)");
+            player.sendMessage("§6Bạn húp một ngụm súp nóng hổi! Tuyệt!");
             baseDuration += 2;
         }
         else if (ageInMinutes >= maxFreshness * 0.75) {
-            player.sendMessage("§eMón súp đã nguội lạnh... Hiệu quả giảm đi một nửa.");
+            player.sendMessage("§eMón súp đã nguội lạnh... Độ ngon giảm đi một nửa.");
             effectMultiplier = 0.5;
             baseDuration = Math.max(1, baseDuration / 2);
         }

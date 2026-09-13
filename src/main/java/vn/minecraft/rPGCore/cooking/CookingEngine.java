@@ -132,7 +132,7 @@ public class CookingEngine {
             switch (id) {
                 // --- NHÓM 1: ĐỒ RỚT TỪ QUÁI VẬT (Giữ nguyên của bạn) ---
                 case "magic_blaze_powder": if (!isReversed) result.potionEffects.add("FIRE_RESISTANCE:0"); else { result.flavorTags.add("§c[Bỏng Rát]"); result.potionEffects.add("HUNGER:1"); } break;
-                case "magic_fermented_eye": double regen = 10.0 * magicMult; if (!isReversed) result.regenRate += regen; else result.potionEffects.add("POISON:" + (int) Math.min(4, magicMult/2)); break;
+                case "magic_healing_gland": double regen = 10.0 * magicMult; if (!isReversed) result.regenRate += regen; else result.potionEffects.add("POISON:" + (int) Math.min(4, magicMult/2)); break;
                 case "magic_pufferfish": if (!isReversed) result.potionEffects.add("WATER_BREATHING:0"); else { result.potionEffects.add("BLINDNESS:0"); result.potionEffects.add("SLOWNESS:1"); result.potionEffects.add("POISON:1"); } break;
                 case "magic_spider_eye": result.potionEffects.add("POISON:" + (isReversed ? 2 : 1)); break;
                 case "magic_toxic_blood": if (!isReversed) { result.potionEffects.add("POISON:" + (int) Math.min(4, magicMult)); result.potionEffects.add("WITHER:0"); result.flavorTags.add("§c[Kịch Độc]"); } else { result.bonusDmg += 10.0 * magicMult; result.flavorTags.add("§4[Sôi Máu]"); } break;

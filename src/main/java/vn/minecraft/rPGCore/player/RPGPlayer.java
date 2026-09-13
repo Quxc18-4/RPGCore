@@ -536,7 +536,7 @@ public class RPGPlayer {
         double lostAmount = this.currentExp * percentage;
         this.currentExp = Math.max(0, this.currentExp - lostAmount);
         updateExpBar();
-        this.bukkitPlayer.sendMessage("§c§l☠ BẠN ĐÃ TỬ VONG!");
+        this.bukkitPlayer.sendMessage("§c§lBẠN ĐÃ TỬ VONG!");
         this.bukkitPlayer.sendMessage("§cHình phạt cấp độ > 20: Mất §e" + (int)lostAmount + " EXP §c(15% tiến độ).");
     }
     public void heal(double amount) {
@@ -545,7 +545,7 @@ public class RPGPlayer {
             if (StatusEffectManager.isHealingBlocked(this.bukkitPlayer)) {
                 // Gửi Action Bar để tránh spam Chat
                 this.bukkitPlayer.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR,
-                        net.md_5.bungee.api.chat.TextComponent.fromLegacyText("§c☠ Bạn đang bị thương sâu, không thể hồi phục!"));
+                        net.md_5.bungee.api.chat.TextComponent.fromLegacyText("§cBạn đang bị vết thương sâu, không thể hồi phục!"));
                 return;
             }
 

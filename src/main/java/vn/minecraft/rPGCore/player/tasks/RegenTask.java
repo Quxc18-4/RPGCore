@@ -129,19 +129,19 @@ public class RegenTask extends BukkitRunnable {
             // ==========================================
             double hpRegen = 0.0;
             double resourceRegen = 0.0;
-            double baseHpRegen = 50.0 + (10.0 * playerLevel);
+            double baseHpRegen = 20.0 + (5.0 * playerLevel);
 
             if (foodLevel >= 18) {
-                hpRegen = baseHpRegen + (maxHp * (inCombat ? 0.01 : 0.05));
-                resourceRegen = maxRes * 0.15; // [ĐÃ SỬA]: 8% -> 6%
+                hpRegen = baseHpRegen + (maxHp * (inCombat ? 0.002 : 0.02));
+                resourceRegen = maxRes * 0.12;
             }
             else if (foodLevel >= 12) {
                 hpRegen = baseHpRegen;
-                resourceRegen = maxRes * 0.1; // [ĐÃ SỬA]: 5% -> 4%
+                resourceRegen = maxRes * 0.1;
             }
             else if (foodLevel >= 4) {
                 hpRegen = baseHpRegen * 0.5;
-                resourceRegen = maxRes * 0.05; // [ĐÃ SỬA]: 2% -> 2%
+                resourceRegen = maxRes * 0.05;
             }
 
             // ==========================================

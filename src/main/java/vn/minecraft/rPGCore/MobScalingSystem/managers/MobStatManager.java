@@ -17,14 +17,14 @@ public class MobStatManager {
         // 1. CHỈ SỐ GỐC THEO CẤP (ĐÃ CÂN BẰNG LẠI)
         // ==========================================
         // Máu (HP): Đổi từ hàm bậc 3 (^3.0) xuống bậc 2 (^2.0) để Máu không bị lạm phát ở late game
-        double baseHp = 50 + (level * 20) + (Math.pow(level, 2.0) * 1.5);
+        double baseHp = 50 + (level * 20) + (Math.pow(level, 2.2) * 1.6);
 
         // Sát thương (DMG): Làm mượt lại một chút để quái không One-hit người chơi
-        double baseDmg = 20 + (level * 12) + (Math.pow(level, 1.8) * 0.5);
+        double baseDmg = 30 + (level * 12) + (Math.pow(level, 2.0) * 0.8);
 
         // Giáp & Kháng Phép: Đổi từ (^2.2) xuống (^1.5) để vũ khí của Player không bị "lỗi thời" quá nhanh
         double baseArmor = (level - 1) * 2.0 + (Math.pow(level - 1, 1.2) * 0.8);
-        double baseMr = (level - 1) * 1.5 + (Math.pow(level - 1, 1.2) * 0.8);
+        double baseMr = (level - 1) * 2.0 + (Math.pow(level - 1, 1.2) * 0.8);
 
         // ==========================================
         // 2. CHỒNG LỚP 4 TRỤ CỘT ENUM

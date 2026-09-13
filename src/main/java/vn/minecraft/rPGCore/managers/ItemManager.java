@@ -273,13 +273,13 @@ public class ItemManager {
         // --- 8. NHÓM MA THUẬT ---
         register(new ItemData("magic_golden_carrot", Rarity.RARE, Category.MAGIC, 0.75, Material.GOLDEN_CARROT, "Cà Rốt Ma Thuật", "Cung cấp hiệu ứng Mắt Mèo", "Trồng bằng phép thuật."));
         register(new ItemData("magic_blaze_powder", Rarity.RARE, Category.MAGIC, 0.75, Material.BLAZE_POWDER, "Mảnh Quỷ Lửa", "Cung cấp hiệu ứng Kháng Lửa", "Nóng rực trên tay."));
-        register(new ItemData("magic_fermented_eye", Rarity.RARE, Category.MAGIC, 0.75, Material.FERMENTED_SPIDER_EYE, "Mắt Nhện Lên Men", "Cung cấp hiệu ứng Hồi Phục Cao", "Mùi vị cực kỳ kinh tởm."));
+        register(new ItemData("magic_healing_gland", Rarity.RARE, Category.MAGIC, 0.75, Material.FERMENTED_SPIDER_EYE, "Tuyến Tơ Nhện", "Cung cấp 10% tỉ lệ Hồi Phục", "Mùi vị cực kỳ kinh tởm."));
         register(new ItemData("magic_pufferfish", Rarity.RARE, Category.MAGIC, 0.75, Material.PUFFERFISH, "Cá Nóc Kịch Độc", "Cung cấp hiệu ứng Thở Dưới Nước", "Phải biết cách sơ chế mới dùng được."));
         register(new ItemData("magic_spider_eye", Rarity.UNCOMMON, Category.MAGIC, 0.75, Material.SPIDER_EYE, "Mắt Nhện Tinh Anh", "Dùng để hạ độc thức ăn.", "Trông khá tởm, nhưng chứa đầy chất độc."));
         register(new ItemData("magic_bat_wing", Rarity.RARE, Category.MAGIC, 0.75, Material.POTION, "Huyết Tinh", "Cung cấp thêm 10% tỉ lệ Hút Máu", "Máu của sinh vật bóng tối."));
         register(new ItemData("magic_glowstone", Rarity.RARE, Category.MAGIC, 0.75, Material.GLOWSTONE_DUST, "Bột Tiên", "Cung cấp 10% tỉ lệ Chí Mạng", "Bột phát sáng lấp lánh."));
-        register(new ItemData("magic_goblin_ear", Rarity.RARE, Category.MAGIC, 0.75, Material.TURTLE_SCUTE, "Tai Goblin", "Cung cấp 10% Tỉ lệ rớt đồ", "Một chiếc tai còn rỏ máu của Goblin."));
-        register(new ItemData("magic_toxic_blood", Rarity.UNCOMMON, Category.MAGIC, 0.75, Material.SLIME_BALL, "Máu Kịch Độc", "Dùng để hạ độc thức ăn.", "Thứ chất lỏng đặc sệt bốc mùi hôi thối."));
+        register(new ItemData("magic_goblin_ear", Rarity.RARE, Category.MAGIC, 0.75, Material.TURTLE_SCUTE, "Tai Goblin", "Cung cấp 10% tỉ lệ Rớt Đồ", "Một chiếc tai còn rỏ máu của Goblin."));
+        register(new ItemData("magic_toxic_blood", Rarity.RARE, Category.MAGIC, 0.75, Material.SLIME_BALL, "Máu Kịch Độc", "Dùng để hạ độc thức ăn.", "Thứ chất lỏng đặc sệt bốc mùi hôi thối."));
 
         // --- 8.1. NÔNG SẢN MA THUẬT (FARMER EXCLUSIVE) ---
         register(new ItemData("magic_golden_carrot", Rarity.EPIC, Category.MAGIC, 0.75, Material.GOLDEN_CARROT, "Cà Rốt Vàng Chói", "Nấu: Hiệu ứng Nhìn Trong Đêm", "Trồng bằng phép thuật."));
@@ -331,6 +331,7 @@ public class ItemManager {
         register(new ItemData("misc_fire_slime_core", Rarity.RARE, Category.MISC, 0.0, Material.MAGMA_CREAM, "Lõi Phát Nhiệt", null, "Kết tinh ma hạch từ hạch tâm có Slime Lửa", "Luôn tỏa nhiệt, có thể cảm nhận hơi nóng khi cầm."));
         register(new ItemData("misc_pointy_rock", Rarity.COMMON, Category.MISC, 0.0, Material.POINTED_DRIPSTONE, "Gai Đá", null, "Một mảnh gai đá nhọn rơi ra từ Slime Đá", "Không quá sắc bén nhưng vẫn đủ nhọn để gây sát thương."));
         register(new ItemData("misc_shining_stone", Rarity.EPIC, Category.MISC, 0.0, Material.EMERALD, "Đá Sắc Màu", null, "Loại đá quý hiếm, đầy màu sắc và có ma lực tuôn trào", "Do Slime tiêu thụ các loại đá quý mà kết tinh thành."));
+        register(new ItemData("misc_explosive_venom", Rarity.UNCOMMON, Category.MISC, 0.0, Material.GUNPOWDER, "Nọc Nổ", null, "Phần nọc độc chứa trong bụng của Nhện Nổ", "Hoạt tính mạnh mẽ đủ sức nổ tung tảng đá lớn."));
 
         register(new ItemData("misc_blacksmith_scrap", Rarity.UNCOMMON, Category.MISC, 0.0, Material.IRON_NUGGET, "Mạt Thợ Rèn", null, "Những mảnh vụn ma thuật xót lại khi đập đồ thất bại.", "Tích lũy đủ số lượng, chúng mang sức mạnh", "thần bí giúp đột phá trang bị thành công."));
         register(new ItemData("misc_job_change_card", Rarity.EPIC, Category.MISC, 0.0, Material.NAME_TAG, "Thẻ Học Nghề", null, "Giấy phép đặc biệt từ Hiệp hội Nghề nghiệp.", "Sẽ tự động tiêu hao khi bạn chọn đổi nghề."));
