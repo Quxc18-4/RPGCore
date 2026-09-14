@@ -2,6 +2,7 @@ package vn.minecraft.rPGCore;
 
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
+import vn.minecraft.rPGCore.api.events.IPartyProvider;
 import vn.minecraft.rPGCore.auctionhouse.commands.AuctionCommand;
 import vn.minecraft.rPGCore.auctionhouse.listeners.AuctionGUIListener;
 import vn.minecraft.rPGCore.auctionhouse.managers.AuctionManager;
@@ -66,6 +67,8 @@ public final class RPGCore extends JavaPlugin {
     private FriendManager friendManager;
     private ArenaManager arenaManager;
     private DuelManager duelManager;
+
+    private IPartyProvider partyProvider;
 
     @Override
     public void onEnable() {
@@ -385,5 +388,16 @@ public final class RPGCore extends JavaPlugin {
 
     public DuelManager getDuelManager() {
         return this.duelManager;
+    }
+    // ==========================================
+    // [THÊM 2 HÀM NÀY ĐỂ KẾT NỐI API VỚI RPGPARTY]
+    // ==========================================
+    public void setPartyProvider(vn.minecraft.rPGCore.api.events.IPartyProvider provider) {
+        this.partyProvider = provider;
+        getLogger().info("§a[API] Da ket noi thanh cong voi IPartyProvider!");
+    }
+
+    public vn.minecraft.rPGCore.api.events.IPartyProvider getPartyProvider() {
+        return this.partyProvider;
     }
 }

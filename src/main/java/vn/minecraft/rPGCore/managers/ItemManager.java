@@ -332,6 +332,8 @@ public class ItemManager {
         register(new ItemData("misc_pointy_rock", Rarity.COMMON, Category.MISC, 0.0, Material.POINTED_DRIPSTONE, "Gai Đá", null, "Một mảnh gai đá nhọn rơi ra từ Slime Đá", "Không quá sắc bén nhưng vẫn đủ nhọn để gây sát thương."));
         register(new ItemData("misc_shining_stone", Rarity.EPIC, Category.MISC, 0.0, Material.EMERALD, "Đá Sắc Màu", null, "Loại đá quý hiếm, đầy màu sắc và có ma lực tuôn trào", "Do Slime tiêu thụ các loại đá quý mà kết tinh thành."));
         register(new ItemData("misc_explosive_venom", Rarity.UNCOMMON, Category.MISC, 0.0, Material.GUNPOWDER, "Nọc Nổ", null, "Phần nọc độc chứa trong bụng của Nhện Nổ", "Hoạt tính mạnh mẽ đủ sức nổ tung tảng đá lớn."));
+        register(new ItemData("misc_venomous_fang", Rarity.EPIC, Category.MISC, 0.0, Material.GOAT_HORN, "Nanh Nhện Chúa", null, "Một đoạn nanh dài, chứa độc tố chết người", "Có thể chế tạo thành một vũ khí ám sát tuyệt vời."));
+        register(new ItemData("misc_spiderqueen_scale", Rarity.RARE, Category.MISC, 0.0, Material.FLINT, "Vảy Cứng", null, "Lớp vảy cứng cáp tựa như kim cương, đen tuyền", "Có ưu điểm giúp tăng thêm sức kháng vật lý cao."));
 
         register(new ItemData("misc_blacksmith_scrap", Rarity.UNCOMMON, Category.MISC, 0.0, Material.IRON_NUGGET, "Mạt Thợ Rèn", null, "Những mảnh vụn ma thuật xót lại khi đập đồ thất bại.", "Tích lũy đủ số lượng, chúng mang sức mạnh", "thần bí giúp đột phá trang bị thành công."));
         register(new ItemData("misc_job_change_card", Rarity.EPIC, Category.MISC, 0.0, Material.NAME_TAG, "Thẻ Học Nghề", null, "Giấy phép đặc biệt từ Hiệp hội Nghề nghiệp.", "Sẽ tự động tiêu hao khi bạn chọn đổi nghề."));
