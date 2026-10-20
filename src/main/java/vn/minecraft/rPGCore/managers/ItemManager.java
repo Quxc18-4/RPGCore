@@ -44,7 +44,7 @@ public class ItemManager {
         MEAT(ItemType.COOKING, "Thịt"), VEG(ItemType.COOKING, "Rau quả"),
         FISH(ItemType.COOKING, "Hải sản"), FAT(ItemType.COOKING, "Chất béo"),
         STARCH(ItemType.COOKING, "Tinh bột"), SPICE(ItemType.COOKING, "Gia vị"),
-        MONSTER(ItemType.COOKING, "Quái vật"), MAGIC(ItemType.MATERIAL, "Ma thuật"),
+        MONSTER(ItemType.COOKING, "Quái vật"), MAGIC(ItemType.COOKING, "Ma thuật"),
         MISC(ItemType.MATERIAL, "Khác"), COIN(ItemType.CURRENCY, "Tiền kim loại"),
         TOOL(ItemType.MATERIAL, "Công cụ"), BAIT_BASE(ItemType.MATERIAL, "Mồi nền"),
         BAIT_BUFF(ItemType.MATERIAL, "Mồi đặc biệt"), HERB(ItemType.MATERIAL, "Thảo dược");
@@ -179,15 +179,15 @@ public class ItemManager {
         register(new ItemData("bfish_golden_koi_large", Rarity.LEGENDARY, Category.FISH, 3.5, Material.TROPICAL_FISH, "Cá Koi Lớn", "Nấu: Cung cấp 2000 Máu tối đa", "Thủy quái truyền thuyết."));
         register(new ItemData("bfish_golden_koi_mutant", Rarity.LEGENDARY, Category.FISH, 3.75, Material.TROPICAL_FISH, "Cá Koi Cụ", "Nấu: Cung cấp 3000 Máu tối đa", "Thủy quái truyền thuyết."));
 
-        register(new ItemData("fish_time_weaver_small", Rarity.RARE, Category.FISH, 1.5, Material.TROPICAL_FISH, "Cá Dệt Nhỏ", null, ""));
+        register(new ItemData("fish_time_weaver_small", Rarity.RARE, Category.FISH, 1.5, Material.TROPICAL_FISH, "Cá Dệt Nhỏ", null, "Cá dệt thời không nhưng mà kích thước quá nhỏ."));
         register(new ItemData("bfish_time_weaver_med", Rarity.MYTHIC, Category.FISH, 2.0, Material.TROPICAL_FISH, "Cá Dệt Thời Gian", "Nấu: Cung cấp 15% tỉ lệ hồi chiêu", "Bơi xuyên thời gian."));
         register(new ItemData("bfish_time_weaver_large", Rarity.LEGENDARY, Category.FISH, 2.5, Material.TROPICAL_FISH, "Cá Dệt Lớn", "Nấu: Cung cấp 15% tỉ lệ hồi chiêu", "Bơi xuyên thời gian."));
         register(new ItemData("bfish_time_weaver_mutant", Rarity.LEGENDARY, Category.FISH, 2.75, Material.TROPICAL_FISH, "Cá Dệt Thần Thánh", "Nấu: Cung cấp 20% tỉ lệ hồi chiêu", "Bơi xuyên thời gian."));
 
-        register(new ItemData("fish_starfall_ray_small", Rarity.UNCOMMON, Category.FISH, 1.0, Material.PHANTOM_MEMBRANE, "Đuối Sao Nhỏ", null, ""));
+        register(new ItemData("fish_starfall_ray_small", Rarity.UNCOMMON, Category.FISH, 1.0, Material.PHANTOM_MEMBRANE, "Đuối Sao Nhỏ", null, "Cá Đuối Sao nhỏ xíu"));
         register(new ItemData("bfish_starfall_ray_med", Rarity.EPIC, Category.FISH, 1.5, Material.PHANTOM_MEMBRANE, "Cá Đuối Sao Băng", "Nấu: Cung cấp 30% tốc độ di chuyển", "Sức mạnh sao trời."));
-        register(new ItemData("bfish_starfall_ray_large", Rarity.MYTHIC, Category.FISH, 2.0, Material.PHANTOM_MEMBRANE, "Đuối Sao Lớn", "Nấu: Cung cấp 30% tốc độ di chuyển", ""));
-        register(new ItemData("bfish_starfall_ray_mutant", Rarity.LEGENDARY, Category.FISH, 2.25, Material.PHANTOM_MEMBRANE, "Đuối Sao Cụ", "Nấu: Cung cấp 50% tốc độ di chuyển", ""));
+        register(new ItemData("bfish_starfall_ray_large", Rarity.MYTHIC, Category.FISH, 2.0, Material.PHANTOM_MEMBRANE, "Đuối Sao Lớn", "Nấu: Cung cấp 30% tốc độ di chuyển", "Sức mạnh sao trời."));
+        register(new ItemData("bfish_starfall_ray_mutant", Rarity.LEGENDARY, Category.FISH, 2.25, Material.PHANTOM_MEMBRANE, "Đuối Sao Cụ", "Nấu: Cung cấp 50% tốc độ di chuyển", "Sức mạnh sao trời."));
 
         // --- 3. NHÓM RAU QUẢ & NÔNG SẢN ĐỘT BIẾN ---
         // [CÀ RỐT] Gốc 0.5 -> 0.75 -> 1.0
@@ -273,7 +273,7 @@ public class ItemManager {
         // --- 8. NHÓM MA THUẬT ---
         register(new ItemData("magic_golden_carrot", Rarity.RARE, Category.MAGIC, 0.75, Material.GOLDEN_CARROT, "Cà Rốt Ma Thuật", "Cung cấp hiệu ứng Mắt Mèo", "Trồng bằng phép thuật."));
         register(new ItemData("magic_blaze_powder", Rarity.RARE, Category.MAGIC, 0.75, Material.BLAZE_POWDER, "Mảnh Quỷ Lửa", "Cung cấp hiệu ứng Kháng Lửa", "Nóng rực trên tay."));
-        register(new ItemData("magic_healing_gland", Rarity.RARE, Category.MAGIC, 0.75, Material.FERMENTED_SPIDER_EYE, "Tuyến Tơ Nhện", "Cung cấp 10% tỉ lệ Hồi Phục", "Mùi vị cực kỳ kinh tởm."));
+        register(new ItemData("magic_healing_gland", Rarity.RARE, Category.MAGIC, 0.75, Material.FERMENTED_SPIDER_EYE, "Tuyến Tơ Nhện", "Dùng ngay: Hồi 8% HP | Nấu: Tăng 10% Tỉ lệ hồi phục", "Tơ mỏng nhẹ, dính và có tác dụng hồi phục cao."));
         register(new ItemData("magic_pufferfish", Rarity.RARE, Category.MAGIC, 0.75, Material.PUFFERFISH, "Cá Nóc Kịch Độc", "Cung cấp hiệu ứng Thở Dưới Nước", "Phải biết cách sơ chế mới dùng được."));
         register(new ItemData("magic_spider_eye", Rarity.UNCOMMON, Category.MAGIC, 0.75, Material.SPIDER_EYE, "Mắt Nhện Tinh Anh", "Dùng để hạ độc thức ăn.", "Trông khá tởm, nhưng chứa đầy chất độc."));
         register(new ItemData("magic_bat_wing", Rarity.RARE, Category.MAGIC, 0.75, Material.POTION, "Huyết Tinh", "Cung cấp thêm 10% tỉ lệ Hút Máu", "Máu của sinh vật bóng tối."));
