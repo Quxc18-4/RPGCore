@@ -100,6 +100,8 @@ public class SkillManager {
         registerSkill(new HealingAnthem());
         registerSkill(new PiercingAnthem());
         registerSkill(new MarchingAnthem());
+        registerSkill(new SirensChorus());
+        registerSkill(new EchoingMirage());
     }
 
     public void registerSkill(ISkill skill) {

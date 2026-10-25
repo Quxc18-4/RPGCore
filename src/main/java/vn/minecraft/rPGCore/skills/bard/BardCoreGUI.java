@@ -28,22 +28,25 @@ import java.util.List;
 
 public class BardCoreGUI implements Listener {
 
-    public static final String GUI_TITLE = "§8§lĐỘT PHÁ: NÂNG CẤP GIAI ĐIỆU";
+    public static final String GUI_TITLE = "§8§lĐỘT PHÁ: LÕI ÂM NHẠC";
     public static final String ADMIN_GUI_TITLE = "§c§lADMIN: ÉP LÕI (FORCE ADD)";
-    public static final String PREVIEW_GUI_TITLE = "§8§lXEM TRƯỚC: NÂNG CẤP";
+    public static final String PREVIEW_GUI_TITLE = "§8§lXEM TRƯỚC: HỆ THỐNG LÕI";
 
     private static final CoreData[] CORES = {
-            new CoreData(1, "Dư Âm Năng Lượng", "Khi Giai Điệu nổ, lập tức hồi cố định 50 Mana cho mọi đồng minh."),
-            new CoreData(2, "Hơi Thở Của Gió", "Nếu HP > 90% khi kích nổ Giai điệu: Kỹ năng đó tốn 0 Mana và giảm thêm 20% Hồi chiêu cuối."),
-            new CoreData(3, "Vang Vọng Tột Cùng", "Tăng vĩnh viễn mức mở rộng Bán kính của Âm Vang từ 50% lên 80% mỗi Âm."),
-            new CoreData(4, "Hợp Âm Dội Lại", "Khi Giai điệu nổ, tự động hoàn trả 1 Âm ngẫu nhiên vừa bị tiêu thụ vào bộ nhớ."),
-            new CoreData(5, "Bội Âm", "Mỗi Âm đang giữ +20% Tốc chạy & +15% Kháng Hiệu Ứng. (Mất đi khi tiêu thụ)."),
-            new CoreData(6, "Nghịch Âm", "Kẻ địch dính Giai điệu bị giảm 15% Kháng Phép và Giáp Vật lý."),
-            new CoreData(7, "Dấu Lặng Ngân", "Giai điệu Sự Sống thanh tẩy 1 Hiệu ứng xấu ngẫu nhiên cho đồng minh."),
+            new CoreData(1, "Dư Âm Năng Lượng", "Khi kích hoạt 1 Giai Điệu, lập tức hồi 50 Mana cho đồng minh lân cận."),
+            new CoreData(2, "Hơi Thở Của Gió", "Nếu HP lớn hơn 90% khi kích hoạt 1 Giai Điệu, Kỹ năng không tiêu hao Mana và giảm 20% Hồi chiêu."),
+            new CoreData(3, "Vang Vọng Tột Cùng", "Tăng vĩnh viễn bán kính nổ của Âm Vang thêm 30% / mỗi Âm."),
+            new CoreData(4, "Hợp Âm Dội Lại", "Khi kích hoạt 1 Giai Điệu, hoàn trả 1 Âm ngẫu nhiên vào giai điệu kế tiếp."),
+            new CoreData(5, "Bội Âm", "Mỗi Âm đang tích trữ tăng 20% Tốc chạy & 15% Kháng Hiệu Ứng."),
+            new CoreData(6, "Nghịch Âm", "Kẻ địch đứng trong phạm vi Giai Điệu bị giảm 15% Kháng Phép & Giáp."),
+            new CoreData(7, "Dấu Lặng Ngân", "Giai Điệu Sự Sống có thể thanh tẩy 1 Hiệu ứng xấu ngẫu nhiên cho đồng minh lân cận."),
             new CoreData(8, "Thiên Tài Âm Nhạc", "Tăng giới hạn lưu trữ từ 3 Âm lên tối đa 4 Âm."),
-            new CoreData(9, "Giai Điệu Vĩnh Cửu", "Giai điệu trúng từ 4 đồng minh trở lên lập tức giảm 50% Hồi chiêu của kỹ năng đó.")
+            new CoreData(9, "Giai Điệu Vĩnh Cửu", "Giai Điệu cộng hưởng từ 4 đồng minh trở lên lập tức giảm 50% Hồi chiêu Kỹ năng.")
     };
 
+    // ==========================================
+    // CÔNG CỤ TẠO KÍNH UI
+    // ==========================================
     private static ItemStack getFillerGlass() {
         ItemStack glass = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
         ItemMeta meta = glass.getItemMeta();
@@ -65,17 +68,17 @@ public class BardCoreGUI implements Listener {
         return glass;
     }
 
+    // ==========================================
+    // HỆ THỐNG CHAT TƯƠNG TÁC
+    // ==========================================
     public static void sendPreviewPrompt(Player player) {
         player.sendMessage("§c§l[!] §cBạn chưa có Điểm Nâng Cấp nào. Hãy di chuyển thêm!");
-
         TextComponent base = new TextComponent("§fBạn có muốn xem trước các Nâng Cấp của chức nghiệp không? ");
         TextComponent yesBtn = new TextComponent("§a§l[XEM TRƯỚC]");
         yesBtn.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/bardpreview"));
         yesBtn.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ComponentBuilder("§7Click để mở Bảng Nâng Cấp").create()));
 
-        // Đã xóa nút [KHÔNG]
         base.addExtra(yesBtn);
-
         player.spigot().sendMessage(base);
         player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
     }
@@ -120,6 +123,9 @@ public class BardCoreGUI implements Listener {
         player.openInventory(inv);
     }
 
+    // ==========================================
+    // 2. GUI CHỌN LÕI GACHA (27 Ô - Kính Đen)
+    // ==========================================
     public static void openSelectionMenu(Player player, RPGPlayer rpgPlayer) {
         boolean isAdmin = player.hasPermission("rpgcore.admin");
         int unspent = rpgPlayer.getSkillData().getSkillLevel("BARD_UNSPENT_CORES");
@@ -157,7 +163,7 @@ public class BardCoreGUI implements Listener {
 
             if (availableCores.isEmpty()) {
                 if (!isAdmin) {
-                    player.sendMessage("§aBạn đã mở khóa toàn bộ Nâng Cấp của Nhạc Sư!");
+                    player.sendMessage("§aBạn đã mở khóa toàn bộ Lõi Kỹ Năng của Nhạc Sư!");
                     return;
                 }
             } else {
@@ -177,8 +183,8 @@ public class BardCoreGUI implements Listener {
             ItemStack item = new ItemStack(Material.AMETHYST_CLUSTER);
             ItemMeta meta = item.getItemMeta();
             if (meta != null) {
-                meta.setDisplayName("§d§l[Nâng Cấp] §e" + core.name);
-                meta.setLore(Arrays.asList("§7" + core.description, "", "§a► Nhấp chuột để Thức Tỉnh Nâng Cấp này!"));
+                meta.setDisplayName("§d§l[Lõi Kỹ Năng] §e" + core.name);
+                meta.setLore(Arrays.asList("§7" + core.description, "", "§a► Nhấp chuột để Thức Tỉnh Lõi này!"));
                 item.setItemMeta(meta);
             }
             inv.setItem(slots[i], item);
@@ -194,8 +200,8 @@ public class BardCoreGUI implements Listener {
                         "",
                         "§eChuột Trái: §f+1 Điểm Đột Phá",
                         "§eShift + Trái: §fMở Bảng Ép Lõi",
-                        "§eChuột Phải: §fReset TOÀN BỘ (Lõi, Quãng Đường)",
-                        "§eShift + Phải: §fCộng Bước Chân (Nhập Số)"
+                        "§eChuột Phải: §fReset TOÀN BỘ",
+                        "§eShift + Phải: §fCộng Bước Chân"
                 ));
                 adminTool.setItemMeta(adminMeta);
             }
@@ -206,14 +212,20 @@ public class BardCoreGUI implements Listener {
         player.openInventory(inv);
     }
 
+    // ==========================================
+    // 3. GUI ADMIN FORCE ADD (Đồng bộ layout Preview)
+    // ==========================================
     public static void openAdminForceAddMenu(Player player, RPGPlayer rpgPlayer) {
         Inventory inv = Bukkit.createInventory(null, 27, ADMIN_GUI_TITLE);
-        ItemStack glass = getFillerGlass();
-        for (int i = 0; i < 27; i++) inv.setItem(i, glass);
 
         for (int i = 0; i < CORES.length; i++) {
             CoreData core = CORES[i];
             boolean isLearned = rpgPlayer.getSkillData().getSkillLevel("BARD_CORE_" + core.id) > 0;
+
+            ItemStack statusGlass = getStatusGlass(isLearned);
+            inv.setItem(i, statusGlass);
+            inv.setItem(i + 18, statusGlass);
+
             ItemStack item = new ItemStack(isLearned ? Material.ECHO_SHARD : Material.AMETHYST_SHARD);
             ItemMeta meta = item.getItemMeta();
             if (meta != null) {
@@ -221,12 +233,15 @@ public class BardCoreGUI implements Listener {
                 meta.setLore(Arrays.asList("§7" + core.description, "", isLearned ? "§a§l[ĐÃ HỌC]" : "§c§l[CHƯA HỌC]", "§eClick để Bật/Tắt Lõi này ngay lập tức!"));
                 item.setItemMeta(meta);
             }
-            inv.setItem(9 + i, item);
+            inv.setItem(i + 9, item);
         }
         player.playSound(player.getLocation(), Sound.BLOCK_ENDER_CHEST_OPEN, 1.0f, 1.5f);
         player.openInventory(inv);
     }
 
+    // ==========================================
+    // XỬ LÝ SỰ KIỆN CLICK
+    // ==========================================
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         Player player = (Player) event.getWhoClicked();
@@ -266,15 +281,15 @@ public class BardCoreGUI implements Listener {
                     rpgPlayer.getSkillData().setSkillLevel("BARD_DISTANCE", 0);
 
                     player.removeMetadata("BARD_ROLLED_CORES", RPGCore.getInstance());
-                    player.sendMessage("§c§l[ADMIN] §fĐã Reset sạch sẽ Lõi, Cache và Quãng đường (Đưa về 0)!");
+                    player.sendMessage("§c§l[ADMIN] §fĐã Reset sạch sẽ Lõi, Cache và Quãng đường!");
                     player.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.5f);
                     player.closeInventory();
                 }
                 else if (clickType == ClickType.SHIFT_RIGHT) {
                     player.closeInventory();
                     player.setMetadata("BARD_AWAITING_DISTANCE_INPUT", new FixedMetadataValue(RPGCore.getInstance(), true));
-                    player.sendMessage("§c§l[ADMIN] §fVui lòng nhập số Block (Quãng đường) muốn cộng thêm vào kênh Chat.");
-                    player.sendMessage("§7(Gõ §c'cancel' §7để hủy thao tác)");
+                    player.sendMessage("§c§l[ADMIN] §fVui lòng nhập số Block muốn cộng thêm khung Chat.");
+                    player.sendMessage("§7(Gõ §c'cancel' §7để hủy)");
                     player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.5f);
                 }
                 return;
@@ -327,6 +342,9 @@ public class BardCoreGUI implements Listener {
         }
     }
 
+    // ==========================================
+    // ĐÁNH CHẶN CHAT ADMIN
+    // ==========================================
     @EventHandler
     public void onAdminChatInput(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
@@ -356,7 +374,7 @@ public class BardCoreGUI implements Listener {
 
                         player.removeMetadata("BARD_AWAITING_DISTANCE_INPUT", RPGCore.getInstance());
                         player.sendMessage("§c§l[ADMIN] §fĐã cộng §e" + String.format("%,d", amount) + " Bước§f! (Tổng: " + String.format("%,d", currentDist + amount) + ")");
-                        player.sendMessage("§7§oHãy di chuyển 1 bước để hệ thống kiểm tra và trao mốc (nếu có).");
+                        player.sendMessage("§7§oHãy di chuyển để hệ thống kiểm tra và trao mốc (nếu có).");
                         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
                     }
                 });
