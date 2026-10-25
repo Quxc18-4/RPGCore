@@ -1,5 +1,9 @@
 package vn.minecraft.rPGCore.classes.impl.bard;
 
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.ComponentBuilder;
+import net.md_5.bungee.api.chat.HoverEvent;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.attribute.Attribute;
@@ -15,15 +19,32 @@ import java.util.UUID;
 
 public class BardGlobalManager {
 
-    // KHOÁ CHỐNG LAG KHI DÙNG LỆNH /RELOAD
     private static boolean isRunning = false;
 
     private static final Map<UUID, Location> lastLocations = new HashMap<>();
     private static final Map<UUID, Double> pendingDistances = new HashMap<>();
     private static final Map<UUID, Integer> toneTicks = new HashMap<>();
 
+    // 9 MỐC KHOẢNG CÁCH (MILESTONES) TƯƠNG ỨNG VỚI 9 LÕI
+    private static final int[] MILESTONES = {
+            5000, 50000, 200000, 500000, 1000000, 1800000, 2800000, 4000000, 5500000
+    };
+
+    // 9 DANH HIỆU LỊCH SỬ TƯƠNG ỨNG (Theo cấp độ nổi tiếng tăng dần)
+    private static final String[] TITLES = {
+            "Kẻ Hát Rong Lãng Du",          // Mốc 1
+            "Học Giả Âm Thanh",             // Mốc 2
+            "Nghệ Nhân Khúc Ca",            // Mốc 3
+            "Bậc Thầy Giao Hưởng",          // Mốc 4
+            "Nhạc Sư Cung Đình",            // Mốc 5
+            "Tiếng Hát Xé Trời",            // Mốc 6
+            "Giai Điệu Linh Hồn",           // Mốc 7
+            "Huyền Thoại Ngân Vang",        // Mốc 8
+            "Thần Đồng Âm Nhạc Vĩ Đại"      // Mốc 9
+    };
+
     public static void startEngine() {
-        if (isRunning) return; // Nếu đã chạy rồi thì khóa lại, chống nhân bản Task
+        if (isRunning) return;
         isRunning = true;
 
         new BukkitRunnable() {
@@ -43,9 +64,7 @@ public class BardGlobalManager {
 
                     UUID uuid = player.getUniqueId();
 
-                    // ==========================================
-                    // 1. HIỂN THỊ ACTION BAR (UI) THÔNG MINH
-                    // ==========================================
+                    // 1. GIAO DIỆN ÂM TIẾT
                     if (!player.hasMetadata("Is_Combo_Casting")) {
                         java.util.List<vn.minecraft.rPGCore.classes.impl.bard.tones.ToneType> currentTones = ToneManager.getCurrentTones(player);
                         if (!currentTones.isEmpty()) {
@@ -56,10 +75,7 @@ public class BardGlobalManager {
                         }
                     }
 
-                    // ==========================================
-                    // 2. NỘI TẠI: QUY ĐỔI TỐC ĐỘ (SIÊU TỐI ƯU CPU)
-                    // Lấy trực tiếp từ RAM, phớt lờ hoàn toàn mớ logic getTotalStatsMap nặng nề
-                    // ==========================================
+                    // 2. CHỈ SỐ NỘI TẠI
                     org.bukkit.attribute.AttributeInstance speedAttr = player.getAttribute(Attribute.MOVEMENT_SPEED);
                     if (speedAttr != null) {
                         double currentMs = (speedAttr.getValue() / 0.1) * 100.0;
@@ -74,15 +90,13 @@ public class BardGlobalManager {
                         player.setMetadata("BARD_OVERTONE_ACTIVE", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), true));
                     }
 
-                    // ==========================================
-                    // 3. ĐẾM KHOẢNG CÁCH (NERF MỐC MỚI)
-                    // ==========================================
+                    // 3. ĐẾM KHOẢNG CÁCH VÀ KIỂM TRA MỐC
                     Location currentLoc = player.getLocation();
                     Location lastLoc = lastLocations.get(uuid);
 
                     if (lastLoc != null && currentLoc.getWorld().equals(lastLoc.getWorld())) {
                         double dist = currentLoc.distance(lastLoc);
-                        if (dist > 0.1 && dist < 20.0) {
+                        if (dist > 0.1 && dist < 20.0) { // Chống cheat Teleport
                             double pending = pendingDistances.getOrDefault(uuid, 0.0) + dist;
                             if (pending >= 1.0) {
                                 int blocks = (int) pending;
@@ -92,6 +106,7 @@ public class BardGlobalManager {
                                 int newTotal = currentTotal + blocks;
                                 rpgPlayer.getSkillData().setSkillLevel("BARD_DISTANCE", newTotal);
 
+                                // GỌI HÀM CHECK MILESTONE ĐÃ ĐƯỢC LÀM LẠI
                                 checkMilestones(player, rpgPlayer, newTotal);
                             }
                             pendingDistances.put(uuid, pending);
@@ -99,10 +114,7 @@ public class BardGlobalManager {
                     }
                     lastLocations.put(uuid, currentLoc.clone());
 
-                    // ==========================================
-                    // 4. SINH ÂM TỰ ĐỘNG (NERF LÊN 15 GIÂY)
-                    // ==========================================
-                    // 15 giây = 30 chu kỳ (vì Task chạy 10 ticks = 0.5s/lần)
+                    // 4. SINH ÂM TỰ ĐỘNG
                     int ticks = player.hasMetadata("BARD_TONE_TIMER") ? player.getMetadata("BARD_TONE_TIMER").get(0).asInt() : 0;
                     ticks++;
                     if (ticks >= 30) {
@@ -116,26 +128,39 @@ public class BardGlobalManager {
                     player.setMetadata("BARD_TONE_TIMER", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), ticks));
                 }
             }
-        }.runTaskTimer(RPGCore.getInstance(), 20L, 10L); // 10 Ticks = 0.5s
+        }.runTaskTimer(RPGCore.getInstance(), 20L, 10L);
     }
 
+    // ==========================================
+    // LOGIC CHECK MỐC ĐÃ ĐƯỢC TỐI ƯU
+    // ==========================================
     private static void checkMilestones(Player player, RPGPlayer rpgPlayer, int distance) {
         vn.minecraft.rPGCore.player.data.PlayerSkillData data = rpgPlayer.getSkillData();
-        if (distance >= 5000 && data.getSkillLevel("BARD_MILESTONE_1") == 0) {
-            data.setSkillLevel("BARD_MILESTONE_1", 1); triggerPerkSelection(player, rpgPlayer, 1);
-        }
-        if (distance >= 50000 && data.getSkillLevel("BARD_MILESTONE_2") == 0) {
-            data.setSkillLevel("BARD_MILESTONE_2", 1); triggerPerkSelection(player, rpgPlayer, 2);
-        }
-        if (distance >= 200000 && data.getSkillLevel("BARD_MILESTONE_3") == 0) {
-            data.setSkillLevel("BARD_MILESTONE_3", 1); triggerPerkSelection(player, rpgPlayer, 3);
+
+        // Vòng lặp check đủ 9 mốc (Index từ 0 đến 8)
+        for (int i = 0; i < MILESTONES.length; i++) {
+            // "BARD_MILESTONE_1" tương ứng với index 0
+            String milestoneKey = "BARD_MILESTONE_" + (i + 1);
+
+            // Nếu đã vượt mốc VÀ chưa từng nhận phần thưởng mốc này
+            if (distance >= MILESTONES[i] && data.getSkillLevel(milestoneKey) == 0) {
+                // Đánh dấu đã nhận
+                data.setSkillLevel(milestoneKey, 1);
+                // Kích hoạt nhận thưởng và truyền Danh Hiệu (Tên) vào
+                triggerPerkSelection(player, rpgPlayer, TITLES[i]);
+            }
         }
     }
 
-    private static void triggerPerkSelection(Player player, RPGPlayer rpgPlayer, int tier) {
-        player.sendMessage("§d§l[Hành Trình Nhạc Sư] §fĐã đạt mốc §eTier " + tier + "§f!");
-        player.sendMessage("§aBạn có 1 Điểm Lõi Nâng Cấp. Bấm phím §b[F]§a để mở Menu Lõi!");
+    private static void triggerPerkSelection(Player player, RPGPlayer rpgPlayer, String title) {
+        player.sendMessage("");
+        player.sendMessage("§d§l[Hành Trình Nhạc Sư] §fDanh tiếng của bạn đã vang xa!");
+        player.sendMessage("§fĐạt danh hiệu: §e§l" + title);
+        player.sendMessage("§a+1 Điểm Nâng Cấp. Bấm phím §b[F] §ađể chọn nâng cấp!");
+        player.sendMessage("");
+
         player.playSound(player.getLocation(), org.bukkit.Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+
         int unspent = rpgPlayer.getSkillData().getSkillLevel("BARD_UNSPENT_CORES");
         rpgPlayer.getSkillData().setSkillLevel("BARD_UNSPENT_CORES", unspent + 1);
     }

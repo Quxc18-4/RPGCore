@@ -98,7 +98,7 @@ public class MarchingAnthem implements ISkill {
     }
 
     public double getManaDrainPerSecond(int level) {
-        return 10.0 + (level * 5.0); // Lv1: 15/s, Lv2: 20/s, Lv3: 25/s
+        return 20.0 + (level * 10.0); // Lv1: 15/s, Lv2: 20/s, Lv3: 25/s
     }
 
     @Override
@@ -122,7 +122,7 @@ public class MarchingAnthem implements ISkill {
                 "",
                 "§8▪ §fLoại Âm Tiết: §b[ Âm Vang ]",
                 "§8▪ §fLoại Giai Điệu: §a[ Can Trường ]",
-                "§8▪ §fPhạm vi: §e6 Block",
+                "§8▪ §fPhạm vi: §e8 Block",
                 "",
                 "§c[Thi Triển - Khúc Ca Xung Trận]",
                 "§f- Tiêu hao §b" + drain + " Mana/giây§f để duy trì Khúc Ca.",
@@ -194,8 +194,8 @@ public class MarchingAnthem implements ISkill {
     }
 
     private void startAuraTask(Player player, RPGPlayer rpgPlayer, int level, String cdKey, int drPercent, int msPercent) {
-        final double drainPerTick = getManaDrainPerSecond(level) / 2.0;
-        final double fixedRadius = 6.0; // Bán kính cứng tuyệt đối
+        final double drainPerTick = getManaDrainPerSecond(level) / 2;
+        final double fixedRadius = 8.0; // Bán kính cứng tuyệt đối
 
         new BukkitRunnable() {
             @Override
@@ -207,12 +207,12 @@ public class MarchingAnthem implements ISkill {
                 }
 
                 double currentMana = rpgPlayer.getCurrentResource();
-                if (currentMana < drainPerTick) {
-                    player.sendMessage("§c§l[-] §cĐã cạn Năng lượng! Khúc Ca Xung Trận bị ngắt.");
-                    deactivateAura(player, rpgPlayer, level, cdKey);
-                    this.cancel();
-                    return;
-                }
+//                if (currentMana < drainPerTick) {
+//                    player.sendMessage("§c§l[-] §cĐã cạn Năng lượng! Khúc Ca Xung Trận bị ngắt.");
+//                    deactivateAura(player, rpgPlayer, level, cdKey);
+//                    this.cancel();
+//                    return;
+//                }
                 rpgPlayer.setCurrentResource(currentMana - drainPerTick);
 
                 Location center = player.getLocation();
@@ -246,7 +246,7 @@ public class MarchingAnthem implements ISkill {
             player.removeMetadata(ACTIVE_METADATA, RPGCore.getInstance());
             if (player.isOnline()) {
                 player.getWorld().playSound(player.getLocation(), Sound.BLOCK_BEACON_DEACTIVATE, 1.0f, 1.0f);
-                player.sendMessage("§8§l[-] §7Đã ngừng Khúc Ca Xung Trận.");
+                player.sendMessage("§8§l[-] §7Đã hết hiệu quả của Khúc Ca Xung Trận.");
             }
         }
 

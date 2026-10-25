@@ -393,15 +393,16 @@ public class BardClass extends RPGClass {
 
     @Override
     public boolean onSwapItem(Player player, RPGPlayer rpgPlayer, org.bukkit.inventory.ItemStack weapon) {
-        // Kiểm tra xem người chơi có điểm Lõi trong Database không
         int unspent = rpgPlayer.getSkillData().getSkillLevel("BARD_UNSPENT_CORES");
-        if (unspent > 0) {
-            // Mở Menu Random 3 Lõi
+        boolean isAdmin = player.hasPermission("rpgcore.admin");
+
+        if (unspent > 0 || isAdmin) {
             vn.minecraft.rPGCore.skills.bard.BardCoreGUI.openSelectionMenu(player, rpgPlayer);
-            return true; // Hủy sự kiện văng vũ khí
+            return true;
         }
 
-        player.sendMessage("§cBạn chưa có Điểm Lõi Nâng Cấp nào. Hãy di chuyển thêm!");
+        // Bấm F nhưng không đủ điểm -> Gọi Prompt Preview
+        vn.minecraft.rPGCore.skills.bard.BardCoreGUI.sendPreviewPrompt(player);
         return true;
     }
 }

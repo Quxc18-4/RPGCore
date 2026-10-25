@@ -440,7 +440,8 @@ public class SkillUIManager implements Listener {
                     org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS,
                     org.bukkit.inventory.ItemFlag.HIDE_UNBREAKABLE,
                     ItemFlag.HIDE_ADDITIONAL_TOOLTIP,
-                    ItemFlag.HIDE_ARMOR_TRIM
+                    ItemFlag.HIDE_ARMOR_TRIM,
+                    ItemFlag.HIDE_PLACED_ON
             );
 
             item.setItemMeta(meta);

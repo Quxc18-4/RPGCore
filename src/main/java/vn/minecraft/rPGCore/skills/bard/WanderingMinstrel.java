@@ -60,22 +60,32 @@ public class WanderingMinstrel implements ISkill {
                 "§7Sự vất vả trên hành trình được đền đáp.",
                 "",
                 "§e[Nội Tại - Giai Điệu Ngân Vang]",
-                "§f- Tích lũy Khoảng cách di chuyển để nhận Lõi Nâng cấp.",
-                "§f- Có thể mang tối đa §e3 Lõi§f cùng lúc.",
-                "§f- Phím tắt Mở Bảng Lõi: §b[F] (Đổi tay)§f.",
+                "§f- Tích lũy Khoảng cách di chuyển để nhận Nâng cấp.",
+                "§f- Có thể chọn tối đa §e9 Nâng Cấp§f.",
+                "§f- Phím tắt Mở Bảng Nâng Cấp: §b[F]§f. §8*Khi đang cầm vũ khí",
                 "",
-                "§a[Tiến Trình Hành Trình]",
+                "§a[Tiến Độ Hành Trình]",
                 "§f- Quãng đường đã đi: §e" + currentDist + " §fBlocks.",
-                "§f- Mốc nhận thưởng: §65.000 §f/ §650.000 §f/ §6200.000§f.",
+                "§f- Mốc tăng tiến: §65.000 §f/ §650.000 §f/ §6200.000 §f/ §6500.000§f",
+                        "§61.000.000 §f/ §62.800.000 §f/ §64.000.000 §f/ §65.500.000§f.",
                 "",
-                "§d§l[!] §fĐiểm Lõi Nâng Cấp đang có: §d" + unspentCores
+                "§d§l[!] §fĐiểm Nâng Cấp đang có: §d" + unspentCores
         );
     }
 
     @Override
     public boolean execute(Player player, RPGPlayer rpgPlayer, int level) {
-        // Trả về true để được ghi nhận vào hệ thống.
-        // Mọi vòng lặp đếm khoảng cách đã được MaestroJourney gánh vác ngầm từ cấp 1.
+        int unspent = rpgPlayer.getSkillData().getSkillLevel("BARD_UNSPENT_CORES");
+        boolean isAdmin = player.hasPermission("rpgcore.admin");
+
+        if (unspent > 0 || isAdmin) {
+            player.closeInventory(); // Đóng bảng skill
+            vn.minecraft.rPGCore.skills.bard.BardCoreGUI.openSelectionMenu(player, rpgPlayer);
+        } else {
+            player.closeInventory(); // Phải đóng bảng skill thì người chơi mới đọc được chat
+            vn.minecraft.rPGCore.skills.bard.BardCoreGUI.sendPreviewPrompt(player);
+        }
+
         return true;
     }
 }
