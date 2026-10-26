@@ -1,6 +1,9 @@
 package vn.minecraft.rPGCore.skills.bard;
 
-import org.bukkit.*;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -9,11 +12,12 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.classes.impl.bard.melodies.MelodyUtils;
-import vn.minecraft.rPGCore.classes.impl.bard.melodies.MirageMelody; // Giả định class kích hoạt Ảo Ảnh
+import vn.minecraft.rPGCore.classes.impl.bard.melodies.MirageMelody;
 import vn.minecraft.rPGCore.classes.impl.bard.tones.ToneManager;
 import vn.minecraft.rPGCore.classes.impl.bard.tones.ToneModifier;
 import vn.minecraft.rPGCore.classes.impl.bard.tones.ToneType;
 import vn.minecraft.rPGCore.managers.CombatManager;
+import vn.minecraft.rPGCore.managers.StatusEffectManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 import vn.minecraft.rPGCore.skills.ISkill;
 
@@ -52,7 +56,11 @@ public class EchoingMirage implements ISkill {
     public double getManaCost(int level) { return 35.0 + (level * 5.0); }
 
     @Override
-    public long getCooldown(int level) { return (long) ((14.0 - level) * 1000); }
+    public long getCooldown(int level) {
+        // Cũ: 14.0 - level (13s -> 9s)
+        // Mới: 20.0 - level (19s -> 15s)
+        return (long) ((20.0 - level) * 1000);
+    }
 
     @Override
     public List<String> getDescription(int level) { return getDescription(null, level); }
@@ -60,154 +68,278 @@ public class EchoingMirage implements ISkill {
     @Override
     public List<String> getDescription(Player player, int level) {
         int displayLevel = Math.max(1, level);
-
-        int dashDmg = 60 + (displayLevel * 20); // Lướt: 80% -> 160%
-        int explosionDmg = 130 + (displayLevel * 30); // Nổ: 160% -> 280%
+        int bounceDmg = 60 + (displayLevel * 20);
+        int headStompBonus = 60;
 
         return Arrays.asList(
-                "§7Hóa thân thành những nốt nhạc ảo ảnh,",
-                "§7cắt xuyên qua chiến trường để lại tàn dư.",
+                "§7Hòa mình vào giai điệu, biến cơ thể",
+                "§7thành một quả bom âm thanh nảy liên tục.",
                 "",
                 "§8▪ §fLoại Âm Tiết: §c[ Âm Sắc ]",
                 "§8▪ §fLoại Giai Điệu: §a[ Ảo Ảnh ]",
                 "",
-                "§c[Thi Triển - Cung Đàn Lưu Ảnh]",
-                "§f- Lướt nhanh về phía trước, gây §c" + dashDmg + "% ST Phép",
-                "§f  lên những kẻ địch bị xuyên qua.",
-                "§f- Để lại một Lưu Ảnh tại vị trí xuất phát.",
-                "§f- Sau 1.2s, Lưu Ảnh phát nổ gây §c" + explosionDmg + "% ST Phép§f.",
+                "§c[Thi Triển - Vũ Điệu Lưu Ảnh]",
+                "§f- Bật nhảy tối đa §e3 Nhịp§f. Mỗi lần đáp đất gây",
+                "§f  §c" + bounceDmg + "% ST Phép§f xung quanh.",
+                "§f- Đạp trúng đầu kẻ địch gây thêm §c" + headStompBonus + "% ST Phép§f",
+                "§f  đồng thời §eTrói chân (Choáng)§f nạn nhân trong 2s.",
+                "§f- §e§l[Tuyệt Kỹ]:§f Nếu nhịp thứ 3 Đạp Đầu thành công,",
+                "§f  nhận thêm §bNhịp Nảy thứ 4 §f(Không sát thương).",
                 "",
                 "§a[Cộng Hưởng Giai Điệu - Ảo Ảnh]",
-                "§f- Lập tức Tàng hình trong 2s.",
-                "§f- Xóa bỏ mọi sự chú ý (Aggro) của quái vật."
+                "§f- Ở lần đáp đất cuối cùng, bùng nổ đẩy lùi mọi kẻ địch,",
+                "§f  Tàng hình tuyệt đối 2s và xóa bỏ Aggro."
         );
     }
 
     @Override
     public boolean execute(Player player, RPGPlayer rpgPlayer, int level) {
-        // [SIÊU HÀM]: Tự động xử lý Mana, Cooldown, Set 4 Magical
         if (!handleCostAndCooldown(player, rpgPlayer, level)) return false;
 
-        // ==========================================
-        // 1. ĐIỀU PHỐI ÂM SẮC & GIAI ĐIỆU
-        // ==========================================
         int maxCapacity = rpgPlayer.getSkillData().getSkillLevel("BARD_CORE_8") > 0 ? 4 : 3;
         List<ToneType> currentTones = ToneManager.getCurrentTones(player);
-        boolean isMelodyTriggered = (currentTones.size() + 1) >= maxCapacity && MelodyUtils.canTriggerMelody(player);
+        final boolean isMelodyTriggered = (currentTones.size() + 1) >= maxCapacity && MelodyUtils.canTriggerMelody(player);
 
         if (isMelodyTriggered && rpgPlayer.getSkillData().getSkillLevel("BARD_CORE_2") > 0) {
             if (player.getHealth() / rpgPlayer.getTotalMaxHealth() > 0.90) {
-                // Hoàn lại Mana vì Hơi Thở Của Gió (Do hàm handleCostAndCooldown đã lỡ trừ trước)
                 rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() + getManaCost(level));
                 player.sendMessage("§d§l[Hơi Thở Của Gió] §fThi triển không tốn Năng lượng!");
             }
         }
 
-        if (isMelodyTriggered) {
-            // Gọi Melody Giai Điệu Ảo Ảnh (Xử lý Tàng hình & Xóa Aggro)
-            new MirageMelody().cast(player, rpgPlayer, player.getLocation());
-            ToneManager.consumeTones(player, rpgPlayer);
-            MelodyUtils.setMelodyCooldown(player);
-        } else {
-            ToneManager.addTone(player, rpgPlayer, ToneType.SHARP);
-        }
-
-        // ==========================================
-        // 2. CHUẨN BỊ CHỈ SỐ GÂY SÁT THƯƠNG
-        // ==========================================
         double highToneMultiplier = ToneModifier.getHighToneMultiplier(player, ToneType.SHARP);
         int sharpToneCount = ToneModifier.getSharpToneCount(player, ToneType.SHARP);
 
-        // Base Dash: 0.6 + 0.2/lv | Base Explosion: 1.3 + 0.3/lv
-        final double dashDmgMulti = (0.6 + (level * 0.2)) * highToneMultiplier;
-        final double explodeDmgMulti = (1.3 + (level * 0.3)) * highToneMultiplier;
+        final double bounceDmgMulti = (0.6 + (level * 0.2)) * highToneMultiplier;
+        final double headBonusMulti = 0.6 * highToneMultiplier;
         final double extraMagicPen = sharpToneCount * 10.0;
 
-        Location startLoc = player.getLocation().clone();
+        player.sendMessage("§a§l[Vũ Điệu Lưu Ảnh] §fBắt đầu nhịp điệu!");
+        forceJump(player);
 
-        // ==========================================
-        // 3. THỰC THI CƠ CHẾ LƯỚT (DASH)
-        // ==========================================
-        Vector dashVector = player.getLocation().getDirection().normalize().multiply(1.8).setY(0.25);
-        player.setVelocity(dashVector);
-        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_MIRROR_MOVE, 1.0f, 1.5f);
-
-        // Vòng lặp vẽ đường lướt và sát thương kẻ địch trên đường bay
         new BukkitRunnable() {
-            int ticks = 0;
+            int currentBounce = 1;
+            int fallTicks = 0;
+            boolean isFalling = false;
+            boolean wasLastBounceHeadStomp = false;
+
             @Override
             public void run() {
-                if (ticks++ > 8 || !player.isOnline() || player.isDead()) {
+                if (!player.isOnline() || player.isDead()) {
                     this.cancel();
                     return;
                 }
 
-                // Vẽ hạt bụi ma thuật dọc đường lướt
-                player.getWorld().spawnParticle(Particle.WITCH, player.getLocation().add(0, 1, 0), 5, 0.2, 0.2, 0.2, 0.05);
+                if (Math.random() > 0.5) {
+                    player.getWorld().spawnParticle(Particle.NOTE, player.getLocation().add(0, 1, 0), 0, Math.random(), 0, 0, 1);
+                }
 
-                // Gây sát thương quét (Hitbox 1.5)
-                for (Entity e : player.getNearbyEntities(1.5, 1.5, 1.5)) {
-                    if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) {
-                        LivingEntity target = (LivingEntity) e;
-                        // Chống lặp sát thương Dash (Tránh 1 con ăn 3-4 tick dash)
-                        if (!target.hasMetadata("Dash_Hit_" + player.getUniqueId())) {
-                            target.setMetadata("Dash_Hit_" + player.getUniqueId(), new FixedMetadataValue(RPGCore.getInstance(), true));
+                Vector vel = player.getVelocity();
+                if (vel.getY() < -0.1) {
+                    isFalling = true;
+                    fallTicks++;
+                } else {
+                    fallTicks = 0;
+                }
 
-                            double dmg = CombatManager.calculateDamage(player, rpgPlayer, target, dashDmgMulti, extraMagicPen, true, false);
-                            player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(RPGCore.getInstance(), true));
-                            CombatManager.applySkillDamage(player, target, dmg);
-                            player.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
+                // [SAFETY NET]: Cứu mạng nếu rơi quá 1.2s
+                if (fallTicks > 24) {
+                    player.setVelocity(new Vector(vel.getX(), 0.5, vel.getZ()));
+                    player.setFallDistance(0);
 
-                            // Hẹn giờ xóa cờ chống lặp sát thương
-                            Bukkit.getScheduler().runTaskLater(RPGCore.getInstance(), () -> target.removeMetadata("Dash_Hit_" + player.getUniqueId(), RPGCore.getInstance()), 20L);
+                    if (currentBounce <= 3) {
+                        triggerExplosion(player, rpgPlayer, null, bounceDmgMulti, extraMagicPen, wasLastBounceHeadStomp);
+                    }
+                    applyFinaleKnockback(player);
+                    finalizeSkill(false);
+                    return;
+                }
+
+                if (isFalling) {
+                    LivingEntity stompedTarget = checkHeadStomp(player);
+                    boolean isGrounded = ((Entity) player).isOnGround() || isNearWater(player.getLocation());
+
+                    if (stompedTarget != null || isGrounded) {
+                        isFalling = false;
+                        fallTicks = 0;
+                        player.setFallDistance(0);
+
+                        // 3 Nhịp Sát Thương Đầu Tiên
+                        if (currentBounce <= 3) {
+                            triggerExplosion(player, rpgPlayer, stompedTarget, bounceDmgMulti, extraMagicPen, wasLastBounceHeadStomp);
+                            wasLastBounceHeadStomp = (stompedTarget != null);
+
+                            // KIỂM TRA ĐIỀU KIỆN NHỊP 4 (ENCORE)
+                            if (currentBounce == 3 && stompedTarget != null) {
+                                currentBounce++;
+                                forceJump(player);
+                                player.sendMessage("§e§l[Tuyệt Kỹ] §fKhúc vĩ thanh! Nhịp nảy an toàn kích hoạt!");
+                            }
+                            // Nếu nhịp 3 rớt xuống đất -> Hạ Màn
+                            else if (currentBounce == 3) {
+                                applyFinaleKnockback(player);
+                                finalizeSkill(true);
+                            }
+                            // Nhịp 1, 2 -> Nảy tiếp
+                            else {
+                                currentBounce++;
+                                forceJump(player);
+                            }
+                        }
+                        // Đang ở Nhịp 4 (Nhịp vô hại) -> Hạ Màn
+                        else {
+                            spawnSafeLandingVFX(player.getLocation());
+                            applyFinaleKnockback(player);
+                            finalizeSkill(true);
                         }
                     }
                 }
             }
+
+            // Bên trong BukkitRunnable...
+            private void finalizeSkill(boolean normalEnd) {
+                if (isMelodyTriggered) {
+                    new MirageMelody().cast(player, rpgPlayer, player.getLocation());
+                    ToneManager.consumeTones(player, rpgPlayer);
+                    MelodyUtils.setMelodyCooldown(player);
+                } else {
+                    ToneManager.addTone(player, rpgPlayer, ToneType.SHARP);
+                }
+
+                if (normalEnd) player.sendMessage("§d§l[!] §fNhịp điệu kết thúc!");
+
+                // [DI DỜI]: Bắt đầu tính Cooldown ngay tại thời điểm kết thúc kỹ năng
+                applyGlobalCooldown(player, rpgPlayer, level);
+
+                this.cancel();
+            }
+
         }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
 
-        // ==========================================
-        // 4. LƯU ẢNH VÀ PHÁT NỔ SAU 1.2 GIÂY (24 TICKS)
-        // ==========================================
-        // Vẽ bóng mờ tại vị trí xuất phát
+        return true;
+    }
+
+    private void forceJump(Player player) {
+        Vector dir = player.getLocation().getDirection().setY(0).normalize();
+        player.setVelocity(dir.multiply(0.7).setY(0.85));
+        StatusEffectManager.grantTemporarySafeFall(player, 40);
+        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_MIRROR_MOVE, 1.0f, 1.5f);
+        player.getWorld().spawnParticle(Particle.CLOUD, player.getLocation(), 10, 0.2, 0.1, 0.2, 0.1);
+    }
+
+    private boolean isNearWater(Location loc) {
+        Material m = loc.getBlock().getType();
+        Material below = loc.clone().subtract(0, 0.5, 0).getBlock().getType();
+        return m == Material.WATER || below == Material.WATER;
+    }
+
+    private LivingEntity checkHeadStomp(Player player) {
+        Location below = player.getLocation().subtract(0, 0.5, 0);
+        for (Entity e : below.getWorld().getNearbyEntities(below, 1.0, 0.8, 1.0)) {
+            if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) {
+                return (LivingEntity) e;
+            }
+        }
+        return null;
+    }
+
+    // ==========================================
+    // HÀM: ĐẨY LÙI KHI HẠ MÀN (KNOCKBACK)
+    // ==========================================
+    private void applyFinaleKnockback(Player player) {
+        Location pLoc = player.getLocation();
+        pLoc.getWorld().playSound(pLoc, Sound.ENTITY_DRAGON_FIREBALL_EXPLODE, 0.8f, 1.2f);
+        pLoc.getWorld().spawnParticle(Particle.EXPLOSION, pLoc.clone().add(0, 1, 0), 2);
+
+        for (Entity e : pLoc.getWorld().getNearbyEntities(pLoc, 4, 3, 4)) {
+            if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) {
+                Vector pushDir = e.getLocation().toVector().subtract(pLoc.toVector()).normalize();
+                pushDir.setY(0.4); // Hất lên một chút để tránh kẹt block
+                e.setVelocity(pushDir.multiply(1.2)); // Đẩy mạnh ra xa
+            }
+        }
+    }
+
+    // ==========================================
+    // HÀM: VẼ HÌNH XOẮN ỐC NỐT NHẠC (HELIX VFX) & TRÓI CHÂN
+    // ==========================================
+    private void applyHeadStompStunAndVFX(LivingEntity target) {
+        // [TÍCH HỢP]: Khóa cứng mục tiêu trong 2 giây (40 Ticks)[cite: 17]
+        StatusEffectManager.applyAbsoluteRoot(target, 40);
+
+        // Vẽ Helix Nốt Nhạc bao quanh nạn nhân
         new BukkitRunnable() {
             int ticks = 0;
+            double yOffset = 0;
+
             @Override
             public void run() {
-                if (ticks++ > 24) {
+                if (ticks >= 40 || target.isDead() || !target.isValid()) {
                     this.cancel();
                     return;
                 }
-                // Hiệu ứng "Lưu ảnh" xoáy tại chỗ
-                startLoc.getWorld().spawnParticle(Particle.WHITE_ASH, startLoc.clone().add(0, 1, 0), 10, 0.4, 0.8, 0.4, 0.02);
+
+                // Toán học quỹ đạo tròn (Bán kính 1.0)
+                double x = 1.0 * Math.cos(ticks * 0.5);
+                double z = 1.0 * Math.sin(ticks * 0.5);
+                Location particleLoc = target.getLocation().add(x, yOffset, z);
+
+                particleLoc.getWorld().spawnParticle(Particle.NOTE, particleLoc, 0, Math.random(), 0, 0, 1);
+
+                yOffset += 0.08;
+                if (yOffset > 2.0) yOffset = 0;
+
+                ticks++;
             }
         }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
+    }
 
-        // Phát nổ sau Delay
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                startLoc.getWorld().playSound(startLoc, Sound.ENTITY_WARDEN_SONIC_BOOM, 0.8f, 1.8f);
-                startLoc.getWorld().playSound(startLoc, Sound.BLOCK_GLASS_BREAK, 1.0f, 0.5f);
-                startLoc.getWorld().spawnParticle(Particle.SONIC_BOOM, startLoc.clone().add(0, 1, 0), 1);
+    private void triggerExplosion(Player player, RPGPlayer rpgPlayer, LivingEntity stompedTarget, double baseMulti, double pen, boolean wasPrevHeadStomp) {
+        Location pLoc = player.getLocation();
+        boolean isHeadStomp = (stompedTarget != null);
 
-                // AoE Nổ (Bán kính 4 block)
-                for (Entity e : startLoc.getWorld().getNearbyEntities(startLoc, 4, 3, 4)) {
-                    if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) {
-                        LivingEntity target = (LivingEntity) e;
-                        double dmg = CombatManager.calculateDamage(player, rpgPlayer, target, explodeDmgMulti, extraMagicPen, true, false);
+        pLoc.getWorld().playSound(pLoc, Sound.BLOCK_BELL_RESONATE, 1.0f, 0.8f);
+        pLoc.getWorld().playSound(pLoc, Sound.ENTITY_WARDEN_SONIC_BOOM, 0.5f, 2.0f);
+        pLoc.getWorld().spawnParticle(Particle.SONIC_BOOM, pLoc.clone().add(0, 0.2, 0), 1);
 
-                        player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(RPGCore.getInstance(), true));
-                        CombatManager.applySkillDamage(player, target, dmg);
-                        player.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
-                    }
+        for (double i = 0; i <= 2 * Math.PI; i += Math.PI / 8) {
+            Location noteLoc = pLoc.clone().add(Math.cos(i) * 2.5, 0.2, Math.sin(i) * 2.5);
+            pLoc.getWorld().spawnParticle(Particle.NOTE, noteLoc, 0, Math.random(), 0, 0, 1);
+        }
+
+        if (isHeadStomp) {
+            pLoc.getWorld().playSound(pLoc, Sound.BLOCK_ANVIL_LAND, 0.8f, 1.2f);
+            pLoc.getWorld().spawnParticle(Particle.CRIT, pLoc.clone().add(0, 0.5, 0), 30, 0.5, 0.5, 0.5, 0.2);
+
+            // Kích hoạt Khống chế và Đồ họa Xoắn ốc
+            applyHeadStompStunAndVFX(stompedTarget);
+        }
+
+        for (Entity e : pLoc.getWorld().getNearbyEntities(pLoc, 4, 3, 4)) {
+            if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) {
+                LivingEntity target = (LivingEntity) e;
+                double finalMulti = baseMulti;
+
+                if (isHeadStomp && target.equals(stompedTarget)) {
+                    finalMulti += 0.6;
+                } else if (!isHeadStomp && wasPrevHeadStomp) {
+                    finalMulti *= 0.5;
                 }
+
+                double dmg = CombatManager.calculateDamage(player, rpgPlayer, target, finalMulti, pen, true, false);
+
+                player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(RPGCore.getInstance(), true));
+                CombatManager.applySkillDamage(player, target, dmg);
+                player.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
             }
-        }.runTaskLater(RPGCore.getInstance(), 24L);
+        }
+    }
 
-        // [SIÊU HÀM]: Khóa Cooldown (Đã bao gồm Start Notifier)
-        applyGlobalCooldown(player, rpgPlayer, level);
-
-        return true;
+    private void spawnSafeLandingVFX(Location pLoc) {
+        pLoc.getWorld().playSound(pLoc, Sound.ENTITY_ENDER_DRAGON_FLAP, 1.0f, 1.5f);
+        for (double i = 0; i <= 2 * Math.PI; i += Math.PI / 6) {
+            Location noteLoc = pLoc.clone().add(Math.cos(i) * 1.5, 0.2, Math.sin(i) * 1.5);
+            pLoc.getWorld().spawnParticle(Particle.NOTE, noteLoc, 0, Math.random(), 0, 0, 1);
+        }
     }
 }

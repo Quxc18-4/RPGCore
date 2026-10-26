@@ -408,4 +408,21 @@ public class StatusEffectManager {
             }
         }.runTaskLater(RPGCore.getInstance(), durationTicks);
     }
+    // ==========================================
+    // [HÀM MỚI]: MIỄN SÁT THƯƠNG RƠI TẠM THỜI (DÙNG CHO KỸ NĂNG NẢY/LƯỚT)
+    // ==========================================
+    public static void grantTemporarySafeFall(Player player, int durationTicks) {
+        // Cấp cờ an toàn (Hệ thống Event Listener của bạn sẽ đọc cờ này để hủy sát thương rơi)
+        player.setMetadata("RPGCore_SafeFall", new FixedMetadataValue(RPGCore.getInstance(), true));
+
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (player.isOnline() && player.hasMetadata("RPGCore_SafeFall")) {
+                    player.setFallDistance(0f); // Reset khoảng cách rơi ảo trước khi gỡ cờ
+                    player.removeMetadata("RPGCore_SafeFall", RPGCore.getInstance());
+                }
+            }
+        }.runTaskLater(RPGCore.getInstance(), durationTicks);
+    }
 }

@@ -67,22 +67,25 @@ public class CrescendoBlast implements ISkill {
     @Override
     public List<String> getDescription(Player player, int level) {
         int displayLevel = Math.max(1, level);
-
-        // [CÂN BẰNG MỚI]: Base 280%, +20% mỗi cấp (Max 380%)
-        int dmgPercent = 260 + (displayLevel * 20);
-        double stunDuration = 0.9 + (displayLevel * 0.1);
+        int bounceDmg = 260 + (displayLevel * 20);
+        int headStompBonus = 60;
 
         return Arrays.asList(
-                "§7Thổi mạnh vào nhạc cụ, phát ra một luồng",
-                "§7sóng âm chói tai theo hình nón phía trước.",
+                "§7Hòa mình vào giai điệu, biến cơ thể",
+                "§7thành một quả bom âm thanh nảy liên tục.",
                 "",
-                "§8▪ §fLoại Âm Tiết: §b[ Âm Cao ]",
-                "§8▪ §fLoại Giai Điệu: §c[ Bùng Nổ ]",
-                "§8▪ §fPhạm vi: §e6 Block",
+                "§8▪ §fLoại Âm Tiết: §c[ Âm Sắc ]",
+                "§8▪ §fLoại Giai Điệu: §a[ Ảo Ảnh ]",
+                "§8▪ §fPhạm vi: §e4 Block",
                 "",
-                "§c[Thi Triển - Giai Điệu Bùng Nổ]",
-                "§f- Gây §c" + dmgPercent + "% ST Phép§f lên kẻ địch trong vùng.",
-                "§f- Đẩy lùi mạnh và làm choáng mục tiêu trong §e" + String.format("%.1f", stunDuration) + "s§f."
+                "§c[Thi Triển - Cung Đàn Lưu Ảnh]",
+                "§f- Bật nhảy liên tục tối đa §e3 Nhịp§f.",
+                "§f- Mỗi lần đáp đất gây §c" + bounceDmg + "% ST Phép§f xung quanh.",
+                "§f- Ở lần đáp đất cuối cùng, tạo ra vụ nổ đẩy lùi kẻ địch.",
+                "",
+                "§e[Nội Tại - Trọng Lực Âm Thanh]",
+                "§f- Đạp trúng đầu kẻ địch gây thêm §c" + headStompBonus + "% ST Phép§f",
+                "§f  đồng thời §eTrói chân§f chúng trong 2s."
         );
     }
 

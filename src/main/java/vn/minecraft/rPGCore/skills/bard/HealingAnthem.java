@@ -86,7 +86,7 @@ public class HealingAnthem implements ISkill {
                 "§f  (Hồi phục theo một lượng HP cố định).",
                 "",
                 "§c[Nội Tại - Đơn Điệu]",
-                "§f- Nếu xung quanh không có đồng minh, bể máu tạo ra",
+                "§f- Nếu xung quanh không có đồng minh, lượng hồi phục tạo ra",
                 "§f  bị giảm một nửa, nhưng bù lại §bgiảm 30% Hồi chiêu§f."
         );
     }
