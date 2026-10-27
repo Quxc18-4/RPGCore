@@ -82,7 +82,7 @@ public class BardGlobalManager {
                         double excessSpeed = Math.max(0.0, currentMs - 200.0);
                         int stacks = (int) Math.floor(excessSpeed / 10.0);
 
-                        player.setMetadata("BARD_BONUS_CDR", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), Math.min(40.0, stacks * 1.0)));
+                        //player.setMetadata("BARD_BONUS_CDR", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), Math.min(40.0, stacks * 1.0)));
                         player.setMetadata("BARD_BONUS_DURATION", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), Math.min(80.0, stacks * 2.0)));
                     }
 

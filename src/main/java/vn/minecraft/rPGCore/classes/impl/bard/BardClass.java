@@ -103,10 +103,10 @@ public class BardClass extends RPGClass {
         Player player = rpgPlayer.getBukkitPlayer();
 
         // 1. TIẾN TRÌNH VI MÔ: Bơm % Giảm hồi chiêu (CDR)
-        if (player.hasMetadata("BARD_BONUS_CDR")) {
-            double bonusCdr = player.getMetadata("BARD_BONUS_CDR").get(0).asDouble();
-            stats.put("Giảm hồi chiêu", stats.getOrDefault("Giảm hồi chiêu", 0.0) + bonusCdr);
-        }
+//        if (player.hasMetadata("BARD_BONUS_CDR")) {
+//            double bonusCdr = player.getMetadata("BARD_BONUS_CDR").get(0).asDouble();
+//            stats.put("Giảm hồi chiêu", stats.getOrDefault("Giảm hồi chiêu", 0.0) + bonusCdr);
+//        }
 
         // 2. LÕI 5: BỘI ÂM (OVERTONE) - Cấp MS và Kháng Hiệu Ứng động theo số Âm đang giữ
         if (player.hasMetadata("BARD_OVERTONE_ACTIVE") && player.hasMetadata("BARD_TONE_COUNT")) {
