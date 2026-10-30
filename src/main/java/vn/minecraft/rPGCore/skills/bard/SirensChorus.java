@@ -17,7 +17,6 @@ import vn.minecraft.rPGCore.classes.impl.bard.tones.ToneManager;
 import vn.minecraft.rPGCore.classes.impl.bard.tones.ToneModifier;
 import vn.minecraft.rPGCore.classes.impl.bard.tones.ToneType;
 import vn.minecraft.rPGCore.managers.CombatManager;
-import vn.minecraft.rPGCore.managers.StatusEffectManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 import vn.minecraft.rPGCore.skills.ISkill;
 
@@ -65,10 +64,9 @@ public class SirensChorus implements ISkill {
     public List<String> getDescription(Player player, int level) {
         int displayLevel = Math.max(1, level);
 
-        // Hệ số sát thương chuẩn hóa mới
-        int tickDmg = 15 + (displayLevel * 5);
-        int launchDmg = 40 + (displayLevel * 10);
-        int blastDmg = 100 + (displayLevel * 25);
+        int tickDmg = 30 + (displayLevel * 10);
+        int launchDmg = 60 + (displayLevel * 20);
+        int blastDmg = 100 + (displayLevel * 30);
 
         return Arrays.asList(
                 "§7Phóng một hợp âm nén có trọng lượng,",
@@ -80,18 +78,18 @@ public class SirensChorus implements ISkill {
                 "",
                 "§c[Thi Triển - Khúc Ca Dẫn Hồn]",
                 "§f- Hố đen hình thành sau 0.5s chờ.",
-                "§f- §e[Trọng Lực]:§f Tạo vùng đầm lầy làm chậm §c60%§f tốc chạy",
-                "§f  kẻ địch trong 3s, gây §c" + tickDmg + "% ST Phép§f mỗi 0.5s.",
-                "§f- §e[Cao Trào]:§f Đột ngột hất tung mục tiêu lên không,",
+                "§f- §e[Hút Hồn]:§f Liên tục hút kẻ địch vào tâm trong",
+                "§f  1.5s, gây §c" + tickDmg + "% ST Phép§f mỗi 0.5s.",
+                "§f- §e[Bùng Nổ]:§f Đột ngột hất tung mục tiêu lên không,",
                 "§f  gây §c" + launchDmg + "% ST Phép§f và giam giữ lơ lửng.",
                 "§f- §e[Hạ Màn]:§f Hố đen bùng nổ, hất văng mọi thứ",
-                "§f  ra xa và gây §c" + blastDmg + "% ST Phép§f dứt điểm."
+                "§f  ra xa và gây §c" + blastDmg + "% ST Phép§f."
         );
     }
 
     @Override
     public boolean execute(Player player, RPGPlayer rpgPlayer, int level) {
-        if (!handleCostAndCooldown(player, rpgPlayer, level)) return false; //[cite: 6]
+        if (!handleCostAndCooldown(player, rpgPlayer, level)) return false; //[cite: 5, 6]
 
         int maxCapacity = rpgPlayer.getSkillData().getSkillLevel("BARD_CORE_8") > 0 ? 4 : 3;
         List<ToneType> currentTones = ToneManager.getCurrentTones(player);
@@ -108,14 +106,13 @@ public class SirensChorus implements ISkill {
         double echoRadiusMultiplier = ToneModifier.getEchoRadiusMultiplier(player, rpgPlayer, ToneType.LOW);
         int sharpToneCount = ToneModifier.getSharpToneCount(player, ToneType.LOW);
 
-        final double tickMulti = (0.15 + (level * 0.05)) * highToneMultiplier;
-        final double launchMulti = (0.40 + (level * 0.10)) * highToneMultiplier;
-        final double blastMulti = (1.00 + (level * 0.25)) * highToneMultiplier;
+        final double tickMulti = (0.30 + (level * 0.10)) * highToneMultiplier;
+        final double launchMulti = (0.60 + (level * 0.20)) * highToneMultiplier;
+        final double blastMulti = (1.00 + (level * 0.30)) * highToneMultiplier;
 
         final double extraMagicPen = sharpToneCount * 10.0;
         final double radius = 6.0 * echoRadiusMultiplier;
 
-        // BẮN ĐẠN ĐẠO
         Location startLoc = player.getEyeLocation();
         Vector velocity = startLoc.getDirection().multiply(1.5);
         player.getWorld().playSound(startLoc, Sound.BLOCK_NOTE_BLOCK_BASEDRUM, 1.0f, 0.5f);
@@ -127,7 +124,7 @@ public class SirensChorus implements ISkill {
             @Override
             public void run() {
                 flightTicks++;
-                velocity.setY(velocity.getY() - 0.06); // Trọng lực đạn
+                velocity.setY(velocity.getY() - 0.06);
                 currentLoc.add(velocity);
 
                 currentLoc.getWorld().spawnParticle(Particle.NOTE, currentLoc, 1, 0.1, 0.1, 0.1, 1);
@@ -138,28 +135,27 @@ public class SirensChorus implements ISkill {
 
                 if (!hitGround) {
                     for (Entity e : currentLoc.getWorld().getNearbyEntities(currentLoc, 0.8, 0.8, 0.8)) {
-                        if (e instanceof LivingEntity && !e.equals(player) && CombatManager.canTarget(player, e)) { //[cite: 6]
+                        if (e instanceof LivingEntity && !e.equals(player) && CombatManager.canTarget(player, e)) { //[cite: 5, 6]
                             hitEntity = true; break;
                         }
                     }
                 }
 
-                if (hitGround || hitEntity || flightTicks > 40) {
+                if (hitGround || hitEntity || flightTicks > 80) {
                     this.cancel();
                     while (currentLoc.getBlock().getType().isSolid() && currentLoc.getY() < 256) {
                         currentLoc.add(0, 0.5, 0);
                     }
-                    startGravitySequence(player, rpgPlayer, currentLoc, radius, tickMulti, launchMulti, blastMulti, extraMagicPen, isMelodyTriggered);
+                    startBlackHoleSequence(player, rpgPlayer, currentLoc, radius, tickMulti, launchMulti, blastMulti, extraMagicPen, isMelodyTriggered);
                 }
             }
         }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
 
-        applyGlobalCooldown(player, rpgPlayer, level);
+        applyGlobalCooldown(player, rpgPlayer, level); //[cite: 5]
         return true;
     }
 
-    // STATE MACHINE MỚI: GRAVITY SEQUENCE
-    private void startGravitySequence(Player player, RPGPlayer rpgPlayer, Location center, double radius, double tickMulti, double launchMulti, double blastMulti, double pen, boolean isMelodyTriggered) {
+    private void startBlackHoleSequence(Player player, RPGPlayer rpgPlayer, Location center, double radius, double tickMulti, double launchMulti, double blastMulti, double pen, boolean isMelodyTriggered) {
 
         Location groundCenter = center.clone();
         groundCenter.setY(Math.floor(groundCenter.getY()) + 0.15);
@@ -171,18 +167,14 @@ public class SirensChorus implements ISkill {
             public void run() {
                 ticks++;
 
-                // =====================================
                 // PHASE 3: HÌNH THÀNH (10 Ticks)
-                // =====================================
                 if (ticks <= 10) {
                     if (ticks == 1) groundCenter.getWorld().playSound(groundCenter, Sound.BLOCK_BEACON_POWER_SELECT, 1.5f, 0.5f);
                     MelodyUtils.drawExpandingAura(groundCenter, radius, org.bukkit.Color.AQUA, Particle.ENCHANT);
                 }
 
-                // =====================================
-                // PHASE 4: ĐẦM LẦY TRỌNG LỰC (Từ Tick 11 -> 70 / 3 giây)
-                // =====================================
-                else if (ticks > 10 && ticks <= 70) {
+                // PHASE 4: HÚT THEO PHƯƠNG NGANG (Từ Tick 11 -> 40)
+                else if (ticks > 10 && ticks <= 40) {
                     if (ticks == 11) {
                         groundCenter.getWorld().playSound(groundCenter, Sound.BLOCK_BEACON_AMBIENT, 2.0f, 1.5f);
                         if (isMelodyTriggered) {
@@ -194,17 +186,22 @@ public class SirensChorus implements ISkill {
                         }
                     }
 
-                    drawGravityVortex(groundCenter, radius);
+                    drawMusicalVortex(groundCenter, radius);
 
                     for (Entity e : groundCenter.getWorld().getNearbyEntities(groundCenter, radius, 4.0, radius)) {
-                        if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) { //[cite: 6]
+                        if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) { //[cite: 5, 6]
                             LivingEntity target = (LivingEntity) e;
 
-                            // [THAY ĐỔI LỚN]: Không hút nữa, áp dụng Làm Chậm 60%
-                            // Sử dụng API làm chậm 1 giây (20 ticks) để liên tục đè hiệu ứng khi quái đứng trong vùng
-                            StatusEffectManager.applySlow(target, 20, 0.6, 3);
+                            // [FIX] HÚT PHƯƠNG NGANG TUYỆT ĐỐI
+                            Vector pullDir = groundCenter.toVector().subtract(target.getLocation().toVector());
+                            pullDir.setY(0); // Triệt tiêu trục Y để quái lê trên mặt đất
 
-                            // Gây sát thương mỗi 10 ticks (0.5s) -> Tổng 6 lần
+                            if (pullDir.lengthSquared() > 0.5) {
+                                // Nếu chạm đất thì cho nảy cực nhẹ (0.1) để không kẹt viền block, nếu không thì Y = 0
+                                double yOffset = target.isOnGround() ? 0.1 : 0.0;
+                                target.setVelocity(pullDir.normalize().multiply(0.45).setY(yOffset));
+                            }
+
                             if (ticks % 10 == 0) {
                                 triggerDamage(player, rpgPlayer, target, tickMulti, pen);
                             }
@@ -212,50 +209,43 @@ public class SirensChorus implements ISkill {
                     }
                 }
 
-                // =====================================
-                // PHASE 5: HẤT TUNG MẠNH DỨT KHOÁT (Tick 71)
-                // =====================================
-                else if (ticks == 71) {
+                // PHASE 5: HẤT TUNG MẠNH DỨT KHOÁT (Tick 41)
+                else if (ticks == 41) {
                     groundCenter.getWorld().playSound(groundCenter, Sound.ENTITY_WARDEN_ROAR, 1.0f, 1.5f);
                     groundCenter.getWorld().spawnParticle(Particle.SONIC_BOOM, groundCenter.clone().add(0, 1, 0), 1);
 
                     for (Entity e : groundCenter.getWorld().getNearbyEntities(groundCenter, radius, 4.0, radius)) {
-                        if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) { //[cite: 6]
+                        if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) { //[cite: 5, 6]
                             LivingEntity target = (LivingEntity) e;
 
-                            // Lực hất 1.0 (Đạt đỉnh trong vòng ~7 Ticks / 0.35s)
+                            // [FIX] Lực hất 1.0 (Đạt đỉnh trong vòng ~7 Ticks / 0.35s)
                             target.setVelocity(new Vector(0, 1.0, 0));
                             triggerDamage(player, rpgPlayer, target, launchMulti, pen);
                         }
                     }
                 }
 
-                // =====================================
-                // PHASE 6: LƠ LỬNG AIRBORNE (Tick 78 -> 100)
+                // PHASE 6: LƠ LỬNG TRÊN KHÔNG (Tick 48 -> 90)
                 // Chờ đúng 7 ticks sau khi hất để quái đạt ĐỈNH, sau đó khóa ngay lập tức!
-                // =====================================
-                else if (ticks >= 78 && ticks <= 100) {
+                else if (ticks >= 48 && ticks <= 90) {
                     for (Entity e : groundCenter.getWorld().getNearbyEntities(groundCenter, radius, 8.0, radius)) {
-                        if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) { //[cite: 6]
+                        if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) { //[cite: 5, 6]
                             Vector v = e.getVelocity();
-                            // Y = 0.04 triệt tiêu hoàn toàn trọng lực của Minecraft, quái bị giam đứng yên!
+                            // [FIX] Y = 0.04 triệt tiêu hoàn toàn trọng lực của Minecraft, quái bị giam đứng yên!
                             e.setVelocity(new Vector(v.getX() * 0.5, 0.04, v.getZ() * 0.5));
                         }
                     }
                 }
 
-                // =====================================
-                // PHASE 7: NỔ VĂNG (Tick 101)
-                // =====================================
-                else if (ticks >= 101) {
+                // PHASE 7: NỔ VĂNG (Tick 91)
+                else if (ticks >= 91) {
                     groundCenter.getWorld().playSound(groundCenter, Sound.ENTITY_GENERIC_EXPLODE, 1.5f, 0.8f);
                     groundCenter.getWorld().spawnParticle(Particle.EXPLOSION, groundCenter.clone().add(0, 3, 0), 3, 1, 1, 1, 0.1);
 
                     for (Entity e : groundCenter.getWorld().getNearbyEntities(groundCenter, radius, 8.0, radius)) {
-                        if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) { //[cite: 6]
+                        if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) { //[cite: 5, 6]
                             LivingEntity target = (LivingEntity) e;
 
-                            // Nổ bung văng quái ra ngoài
                             Vector pushOut = target.getLocation().toVector().subtract(groundCenter.toVector()).normalize();
                             target.setVelocity(pushOut.multiply(1.8).setY(0.4));
 
@@ -268,17 +258,16 @@ public class SirensChorus implements ISkill {
         }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
     }
 
-    // Đổi màu Particle thành tím đen (Màu của Trọng Lực)
-    private void drawGravityVortex(Location center, double radius) {
+    private void drawMusicalVortex(Location center, double radius) {
         double angle = (System.currentTimeMillis() / 50.0) % (2 * Math.PI);
         for (double r = radius; r > 0; r -= 1.0) {
             double x = Math.cos(angle + r) * r;
             double z = Math.sin(angle + r) * r;
             Location pLoc = center.clone().add(x, 0, z);
 
-            pLoc.getWorld().spawnParticle(Particle.SQUID_INK, pLoc, 1, 0, 0.2, 0, 0.05); // Hạt mực đen xoáy
+            pLoc.getWorld().spawnParticle(Particle.ENCHANT, pLoc, 1, 0, 0.2, 0, 0.5);
             if (Math.random() > 0.7) {
-                pLoc.getWorld().spawnParticle(Particle.NOTE, pLoc.clone().add(0, 0.5, 0), 0, 0.8, 0, 0, 1); // Nốt nhạc màu trầm
+                pLoc.getWorld().spawnParticle(Particle.NOTE, pLoc.clone().add(0, 0.5, 0), 0, Math.random(), 0, 0, 1);
             }
         }
     }
