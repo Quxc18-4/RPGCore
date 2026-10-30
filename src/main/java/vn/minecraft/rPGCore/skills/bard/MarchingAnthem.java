@@ -154,6 +154,11 @@ public class MarchingAnthem implements ISkill {
             return false;
         }
 
+        // TÍNH CHỈ SỐ BUFF TỪ ÂM CAO
+        double highToneMultiplier = ToneModifier.getHighToneMultiplier(player, ToneType.ECHO);
+        final int finalDrPercent = (int) Math.round((4 + (level * 2)) * highToneMultiplier);
+        final int finalMsPercent = (int) Math.round((15 + (level * 15)) * highToneMultiplier);
+
         // KIỂM TRA LÕI 8 VÀ KÍCH NỔ GIAI ĐIỆU
         int maxCapacity = rpgPlayer.getSkillData().getSkillLevel("BARD_CORE_8") > 0 ? 4 : 3;
         List<ToneType> currentTones = new ArrayList<>(ToneManager.getCurrentTones(player));
@@ -179,11 +184,6 @@ public class MarchingAnthem implements ISkill {
         } else {
             ToneManager.addTone(player, rpgPlayer, ToneType.ECHO);
         }
-
-        // TÍNH CHỈ SỐ BUFF TỪ ÂM CAO
-        double highToneMultiplier = ToneModifier.getHighToneMultiplier(player, ToneType.ECHO);
-        final int finalDrPercent = (int) Math.round((4 + (level * 2)) * highToneMultiplier);
-        final int finalMsPercent = (int) Math.round((15 + (level * 15)) * highToneMultiplier);
 
         player.setMetadata(ACTIVE_METADATA, new FixedMetadataValue(RPGCore.getInstance(), true));
         player.getWorld().playSound(player.getLocation(), Sound.ITEM_GOAT_HORN_SOUND_0, 1.0f, 1.2f);

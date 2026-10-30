@@ -56,8 +56,8 @@ public class SirensChorus implements ISkill {
 
     @Override
     public double getManaCost(int level) {
-        // Bắt đầu 53 mana (45 + 8), mỗi cấp tăng 8
-        return 45.0 + (level * 8.0);
+        // Start 53, mỗi cấp tăng 8
+        return 45.0 + (level * 10.0);
     }
 
     @Override
@@ -111,16 +111,18 @@ public class SirensChorus implements ISkill {
         }
 
         double highToneMultiplier = ToneModifier.getHighToneMultiplier(player, ToneType.LOW);
-        double echoRadiusMultiplier = ToneModifier.getEchoRadiusMultiplier(player, rpgPlayer, ToneType.LOW);
         int sharpToneCount = ToneModifier.getSharpToneCount(player, ToneType.LOW);
 
-        // HỆ SỐ MỚI
+        // HỆ SỐ SÁT THƯƠNG
         final double launchMulti = (2.65 + (level * 0.15)) * highToneMultiplier;
         final double blastMulti = (3.65 + (level * 0.15)) * highToneMultiplier;
 
-        final double slowRate = 0.50 + (level * 0.10); // Khởi điểm 60% (0.6), max 100% (1.0)
+        final double slowRate = 0.50 + (level * 0.10); // Khởi điểm 0.6
+        final int mobAmp = (slowRate <= 0.7) ? 4 : (slowRate <= 0.9 ? 5 : 6);
+
         final int extraMagicPen = (int)(sharpToneCount * 10.0);
-        final double radius = 6.0 * echoRadiusMultiplier; // Vùng 6x6
+        // SỬA THÀNH:
+        final double radius = 6.0; // Chốt cứng 6 block theo đúng mô tả
 
         Location startLoc = player.getEyeLocation();
         Vector velocity = startLoc.getDirection().multiply(1.5);
@@ -157,10 +159,13 @@ public class SirensChorus implements ISkill {
 
                 if (hitGround || hitEntity || flightTicks > 100) {
                     this.cancel();
-                    while (currentLoc.getBlock().getType().isSolid() && currentLoc.getY() < 256) {
-                        currentLoc.add(0, 0.5, 0);
+
+                    // [SỬA LỖI TÂM LƠ LỬNG]: Dò xuống block cứng gần nhất từ vị trí hiện tại thay vì giữ Y thập phân của đạn
+                    while (!currentLoc.getBlock().getType().isSolid() && currentLoc.getY() > 0) {
+                        currentLoc.subtract(0, 0.5, 0);
                     }
-                    startGravitySequence(player, rpgPlayer, currentLoc, radius, launchMulti, blastMulti, extraMagicPen, isMelodyTriggered, slowRate);
+
+                    startGravitySequence(player, rpgPlayer, currentLoc, radius, launchMulti, blastMulti, extraMagicPen, isMelodyTriggered, slowRate, mobAmp);
                 }
             }
         }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
@@ -169,10 +174,13 @@ public class SirensChorus implements ISkill {
         return true;
     }
 
-    private void startGravitySequence(Player player, RPGPlayer rpgPlayer, Location center, double radius, double launchMulti, double blastMulti, double pen, boolean isMelodyTriggered, double slowRate) {
+    private void startGravitySequence(Player player, RPGPlayer rpgPlayer, Location center, double radius, double launchMulti, double blastMulti, double pen, boolean isMelodyTriggered, double slowRate, int mobAmp) {
 
         Location groundCenter = center.clone();
-        groundCenter.setY(Math.floor(groundCenter.getY()) + 0.15);
+        groundCenter.setY(Math.floor(groundCenter.getY()) + 1.05);
+
+        // [CƠ CHẾ MỚI]: Theo dõi chính xác các nạn nhân bị bắt lên không trung
+        final java.util.Set<java.util.UUID> caughtTargets = new java.util.HashSet<>();
 
         new BukkitRunnable() {
             int ticks = 0;
@@ -200,7 +208,13 @@ public class SirensChorus implements ISkill {
                 else if (ticks > 10 && ticks <= 40) {
                     if (ticks == 11) {
                         groundCenter.getWorld().playSound(groundCenter, Sound.BLOCK_BEACON_AMBIENT, 2.0f, 1.5f);
-                        if (isMelodyTriggered) {
+
+                        // KIỂM TRA TÚI ÂM THỰC TẾ NGAY KHI ĐẦM LẦY KÍCH HOẠT
+                        int maxCapacity = rpgPlayer.getSkillData().getSkillLevel("BARD_CORE_8") > 0 ? 4 : 3;
+                        List<ToneType> currentTones = ToneManager.getCurrentTones(player);
+                        boolean timeToMelody = (currentTones.size() + 1) >= maxCapacity && MelodyUtils.canTriggerMelody(player);
+
+                        if (timeToMelody) {
                             new SiphonMelody().cast(player, rpgPlayer, groundCenter);
                             ToneManager.consumeTones(player, rpgPlayer);
                             MelodyUtils.setMelodyCooldown(player);
@@ -211,7 +225,8 @@ public class SirensChorus implements ISkill {
 
                     drawGravityVortex(groundCenter, radius);
 
-                    for (Entity e : groundCenter.getWorld().getNearbyEntities(groundCenter, radius, 4.0, radius)) {
+                    // Đồng bộ bán kính 'radius' cho việc Làm chậm
+                    for (Entity e : groundCenter.getWorld().getNearbyEntities(groundCenter, radius, radius, radius)) {
                         if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) {
                             LivingEntity target = (LivingEntity) e;
 
@@ -219,24 +234,27 @@ public class SirensChorus implements ISkill {
                             if (target instanceof Player) {
                                 StatusEffectManager.applySlow(target, 20, slowRate, 0);
                             } else {
-                                StatusEffectManager.applySlow(target, 20, 1.0, 4);
+                                StatusEffectManager.applySlow(target, 20, 1.0, mobAmp);
                             }
                         }
                     }
                 }
 
                 // =====================================
-                // PHASE 5.1: KÍCH HOẠT HẤT TUNG (Tick 41) - Không Sát Thương
+                // PHASE 5.1: KÍCH HOẠT HẤT TUNG & BẮT MỤC TIÊU (Tick 41)
                 // =====================================
                 else if (ticks == 41) {
                     groundCenter.getWorld().playSound(groundCenter, Sound.ENTITY_WARDEN_ROAR, 1.0f, 1.5f);
                     groundCenter.getWorld().spawnParticle(Particle.SONIC_BOOM, groundCenter.clone().add(0, 1, 0), 1);
 
-                    for (Entity e : groundCenter.getWorld().getNearbyEntities(groundCenter, radius, 4.0, radius)) {
+                    // Đồng bộ bán kính 'radius'. Ai nằm trong vùng này MỚI BỊ HẤT.
+                    for (Entity e : groundCenter.getWorld().getNearbyEntities(groundCenter, radius, radius, radius)) {
                         if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) {
                             LivingEntity target = (LivingEntity) e;
-                            // Ép vận tốc bốc thẳng lên trời (Y=0.75)
                             target.setVelocity(new Vector(0, 0.75, 0));
+
+                            // [TRACKING]: Lưu dấu nạn nhân vào danh sách
+                            caughtTargets.add(target.getUniqueId());
                         }
                     }
                 }
@@ -245,52 +263,81 @@ public class SirensChorus implements ISkill {
                 // PHASE 5.2: SÁT THƯƠNG HẤT TUNG LẦN 1 (Tick 44)
                 // =====================================
                 else if (ticks == 44) {
-                    for (Entity e : groundCenter.getWorld().getNearbyEntities(groundCenter, radius, 6.0, radius)) {
-                        if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) {
+                    // XỬ LÝ RIÊNG NHỮNG NẠN NHÂN TRONG DANH SÁCH BỊ BẮT
+                    for (java.util.UUID uuid : caughtTargets) {
+                        Entity e = org.bukkit.Bukkit.getEntity(uuid);
+                        if (e instanceof LivingEntity && e.isValid() && !e.isDead()) {
                             LivingEntity target = (LivingEntity) e;
                             triggerDamage(player, rpgPlayer, target, launchMulti, pen);
 
-                            // [THÊM MỚI]: Ép Potion Buồn Nôn (Say nhạc - Tipsy) trong 1.5s (30 ticks)
+                            // Hiệu ứng Say Nhạc (Tipsy) 1.5s
                             target.addPotionEffect(new PotionEffect(PotionEffectType.NAUSEA, 40, 1, false, false, false));
                         }
                     }
                 }
 
                 // =====================================
-                // PHASE 6: LƠ LỬNG AIRBORNE (Tick 48 -> 78 ~ 1.5s)
+                // PHASE 6: LƠ LỬNG AIRBORNE KÈM VFX (Tick 48 -> 78 ~ 1.5s)
                 // =====================================
                 else if (ticks >= 48 && ticks <= 78) {
-                    for (Entity e : groundCenter.getWorld().getNearbyEntities(groundCenter, radius, 8.0, radius)) {
-                        if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) {
-                            Vector v = e.getVelocity();
-                            // Treo lơ lửng, triệt tiêu trọng lực rơi tự do
-                            e.setVelocity(new Vector(v.getX() * 0.5, 0.04, v.getZ() * 0.5));
+                    for (java.util.UUID uuid : caughtTargets) {
+                        Entity e = org.bukkit.Bukkit.getEntity(uuid);
+                        if (e instanceof LivingEntity && e.isValid() && !e.isDead()) {
+                            LivingEntity target = (LivingEntity) e;
+                            Vector v = target.getVelocity();
+                            target.setVelocity(new Vector(v.getX() * 0.5, 0.04, v.getZ() * 0.5));
+
+                            // Hạt Particle lơ lửng quấn quanh quái
+                            if (ticks % 5 == 0) {
+                                target.getWorld().spawnParticle(Particle.PORTAL, target.getLocation().add(0, 1, 0), 5, 0.3, 0.3, 0.3, 0.1);
+                            }
                         }
                     }
                 }
 
                 // =====================================
-                // PHASE 7: ĐẬP MẠNH XUỐNG ĐẤT (Tick 79)
+                // PHASE 7.1: NÉM MẠNH XUỐNG ĐẤT (Tick 79)
                 // =====================================
                 else if (ticks == 79) {
-                    groundCenter.getWorld().playSound(groundCenter, Sound.ENTITY_IRON_GOLEM_DEATH, 2.0f, 0.5f);
+                    for (java.util.UUID uuid : caughtTargets) {
+                        Entity e = org.bukkit.Bukkit.getEntity(uuid);
+                        if (e instanceof LivingEntity && e.isValid() && !e.isDead()) {
+                            LivingEntity target = (LivingEntity) e;
+                            // Ép rơi siêu mạnh xuống đất
+                            target.setVelocity(new Vector(0, -1.5, 0));
+                        }
+                    }
+                }
 
-                    for (Entity e : groundCenter.getWorld().getNearbyEntities(groundCenter, radius, 8.0, radius)) {
-                        if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) {
+                // =====================================
+                // PHASE 7.2: CHẠM ĐẤT - NỔ VFX & GÂY SÁT THƯƠNG (Tick 82)
+                // =====================================
+                else if (ticks == 82) {
+                    boolean playedSound = false;
+
+                    for (java.util.UUID uuid : caughtTargets) {
+                        Entity e = org.bukkit.Bukkit.getEntity(uuid);
+                        if (e instanceof LivingEntity && e.isValid() && !e.isDead()) {
                             LivingEntity target = (LivingEntity) e;
 
-                            // 1. Phá nát mặt đất (Block Crack + Khói bụi) ngay dưới chân mục tiêu
+                            // Phát âm thanh 1 lần duy nhất để không bị đinh tai khi đánh 1 bầy quái
+                            if (!playedSound) {
+                                target.getWorld().playSound(target.getLocation(), Sound.ENTITY_IRON_GOLEM_DEATH, 2.0f, 0.5f);
+                                playedSound = true;
+                            }
+
+                            // 1. Phá nát mặt đất ngay dưới gót chân TỪNG NẠN NHÂN
                             Location smashLoc = target.getLocation();
                             smashLoc.getWorld().spawnParticle(Particle.BLOCK_CRUMBLE, smashLoc, 30, 0.5, 0.1, 0.5, 0, Material.DIRT.createBlockData());
                             smashLoc.getWorld().spawnParticle(Particle.CAMPFIRE_COSY_SMOKE, smashLoc, 10, 0.5, 0.1, 0.5, 0.05);
 
-                            // 2. Ép rơi mạnh xuống đất
-                            target.setVelocity(new Vector(0, -1.5, 0));
-
-                            // 3. GÂY SÁT THƯƠNG DẬP XUỐNG (LẦN 2)
+                            // 2. GÂY SÁT THƯƠNG DẬP XUỐNG DỨT ĐIỂM (LẦN 2)
                             triggerDamage(player, rpgPlayer, target, blastMulti, pen);
                         }
                     }
+
+                    // Dọn dẹp danh sách và hủy task
+                    caughtTargets.clear();
                     this.cancel();
                 }
             }

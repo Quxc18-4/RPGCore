@@ -116,8 +116,12 @@ public class HealingAnthem implements ISkill {
         // CƠ CHẾ SPLIT-POOL HEALING (TRỊ LIỆU CHIA SẺ)
         // ==========================================
         double highToneMultiplier = ToneModifier.getHighToneMultiplier(player, ToneType.LOW);
-        double echoRadiusMultiplier = ToneModifier.getEchoRadiusMultiplier(player, rpgPlayer, ToneType.LOW);
-        double searchRadius = 8.0 * echoRadiusMultiplier;
+        // BỎ DÒNG NÀY:
+        // double echoRadiusMultiplier = ToneModifier.getEchoRadiusMultiplier(player, rpgPlayer, ToneType.LOW);
+        // double searchRadius = 8.0 * echoRadiusMultiplier;
+
+        // THAY BẰNG DÒNG NÀY:
+        double searchRadius = 8.0;
 
         List<Player> allies = new ArrayList<>();
         for (Entity e : player.getNearbyEntities(searchRadius, searchRadius, searchRadius)) {

@@ -90,10 +90,9 @@ public class ScatteringChords implements ISkill {
         // GÂY SÁT THƯƠNG KỸ NĂNG (Tích hợp Trigger Tone: ECHO)
         // ==========================================
         double highToneMultiplier = ToneModifier.getHighToneMultiplier(player, ToneType.ECHO);
-        double echoRadiusMultiplier = ToneModifier.getEchoRadiusMultiplier(player, rpgPlayer, ToneType.ECHO);
         int sharpToneCount = ToneModifier.getSharpToneCount(player, ToneType.ECHO);
 
-        double searchRadius = 10.0 * echoRadiusMultiplier;
+        double searchRadius = 10.0; // <-- Chốt cứng 10 block theo đúng mô tả
 
         // Base Damage: 0.4 + (0.1 * level) -> Level 1 là 0.5 (50%), Level 10 là 1.4 (140%)
         double dmgMulti = (0.4 + (level * 0.10)) * highToneMultiplier;

@@ -57,8 +57,6 @@ public class EchoingMirage implements ISkill {
 
     @Override
     public long getCooldown(int level) {
-        // Cũ: 14.0 - level (13s -> 9s)
-        // Mới: 20.0 - level (19s -> 15s)
         return (long) ((20.0 - level) * 1000);
     }
 
@@ -68,8 +66,11 @@ public class EchoingMirage implements ISkill {
     @Override
     public List<String> getDescription(Player player, int level) {
         int displayLevel = Math.max(1, level);
-        int bounceDmg = 60 + (displayLevel * 20);
-        int headStompBonus = bounceDmg + 60;
+
+        // Base 180% + 20% mỗi cấp
+        int bounceDmg = 180 + ((displayLevel - 1) * 20);
+        // Bonus 40/45/50/55/60%
+        int headStomp = 35 + (displayLevel * 5);
 
         return Arrays.asList(
                 "§7Hòa mình vào giai điệu, biến cơ thể",
@@ -81,25 +82,17 @@ public class EchoingMirage implements ISkill {
                 "§c[Thi Triển - Vũ Điệu Lưu Ảnh]",
                 "§f- Bật nhảy liên tiếp §e3 Nhịp§f. Mỗi lần chạm mặt đất gây",
                 "§f  §c" + bounceDmg + "% ST Phép§f cho kẻ địch xung quanh.",
-                "§f- Kẻ địch bị đạp trúng sẽ chịu §c" + headStompBonus + "% ST Phép§f",
-                "§f  đồng thời sẽ §eTrói chân§f chúng trong 2s.",
+                "§f- Kẻ địch bị đạp trúng đầu sẽ chịu thêm §c" + headStomp + "% ST Phép§f",
+                "§f  đồng thời bị §eTrói chân§f trong 2s.",
                 "",
-                "§f- §e§l[Nội tại - Dư Âm]",
-                "§f Nếu nhịp thứ 3 Đạp Đầu thành công,",
-                "§f  nhận thêm §bNhịp Nảy thứ 4 §f(Không sát thương).",
-                "§f- Ở lần đáp đất cuối cùng, bùng nổ đẩy lùi mọi kẻ địch"
+                "§f§e§l[Nội tại - Dư Âm]",
+                "§f- Ở lần đáp đất cuối cùng, bùng nổ đẩy lùi mọi kẻ địch."
         );
     }
 
     @Override
     public boolean execute(Player player, RPGPlayer rpgPlayer, int level) {
         if (!handleCostAndCooldown(player, rpgPlayer, level)) return false;
-
-        //int maxCapacity = rpgPlayer.getSkillData().getSkillLevel("BARD_CORE_8") > 0 ? 4 : 3;
-        //List<ToneType> currentTones = ToneManager.getCurrentTones(player);
-        //final boolean isMelodyTriggered = (currentTones.size() + 1) >= maxCapacity && MelodyUtils.canTriggerMelody(player);
-
-        // CODE MỚI: Dùng biến tạm để check Lõi 2
         int maxCap = rpgPlayer.getSkillData().getSkillLevel("BARD_CORE_8") > 0 ? 4 : 3;
         boolean willMelody = (ToneManager.getCurrentTones(player).size() + 1) >= maxCap;
 
@@ -110,11 +103,15 @@ public class EchoingMirage implements ISkill {
             }
         }
 
+        // Chuẩn hóa Hệ Âm
         double highToneMultiplier = ToneModifier.getHighToneMultiplier(player, ToneType.SHARP);
         int sharpToneCount = ToneModifier.getSharpToneCount(player, ToneType.SHARP);
 
-        final double bounceDmgMulti = (0.6 + (level * 0.2)) * highToneMultiplier;
-        final double headBonusMulti = 0.6 * highToneMultiplier;
+        // [TÍNH TOÁN SÁT THƯƠNG MỚI]
+        // 180% -> 1.8, mỗi cấp +0.2
+        final double bounceDmgMulti = (1.8 + ((level - 1) * 0.2)) * highToneMultiplier;
+        // 40% -> 0.4, mỗi cấp +0.05
+        final double headBonusMulti = (0.35 + (level * 0.05)) * highToneMultiplier;
         final double extraMagicPen = sharpToneCount * 10.0;
 
         player.sendMessage("§a§l[Vũ Điệu Lưu Ảnh] §fBắt đầu nhịp điệu!");
@@ -124,7 +121,6 @@ public class EchoingMirage implements ISkill {
             int currentBounce = 1;
             int fallTicks = 0;
             boolean isFalling = false;
-            boolean wasLastBounceHeadStomp = false;
 
             @Override
             public void run() {
@@ -145,13 +141,13 @@ public class EchoingMirage implements ISkill {
                     fallTicks = 0;
                 }
 
-                // [SAFETY NET]: Cứu mạng nếu rơi quá 1.2s
+                // Cứu mạng nếu rơi quá 1.2s
                 if (fallTicks > 24) {
                     player.setVelocity(new Vector(vel.getX(), 0.5, vel.getZ()));
                     player.setFallDistance(0);
 
                     if (currentBounce <= 3) {
-                        triggerExplosion(player, rpgPlayer, null, bounceDmgMulti, extraMagicPen, wasLastBounceHeadStomp);
+                        triggerExplosion(player, rpgPlayer, null, bounceDmgMulti, headBonusMulti, extraMagicPen);
                     }
                     applyFinaleKnockback(player);
                     finalizeSkill(false);
@@ -169,16 +165,15 @@ public class EchoingMirage implements ISkill {
 
                         // 3 Nhịp Sát Thương Đầu Tiên
                         if (currentBounce <= 3) {
-                            triggerExplosion(player, rpgPlayer, stompedTarget, bounceDmgMulti, extraMagicPen, wasLastBounceHeadStomp);
-                            wasLastBounceHeadStomp = (stompedTarget != null);
+                            // Gọi nổ sát thương
+                            triggerExplosion(player, rpgPlayer, stompedTarget, bounceDmgMulti, headBonusMulti, extraMagicPen);
 
-                            // KIỂM TRA ĐIỀU KIỆN NHỊP 4 (ENCORE)
+                            // Kiểm tra Tuyệt Kỹ (Nhịp 4)
                             if (currentBounce == 3 && stompedTarget != null) {
                                 currentBounce++;
                                 forceJump(player);
-                                //player.sendMessage("§e§l[Tuyệt Kỹ] §fKhúc vĩ thanh! Nhịp nảy an toàn kích hoạt!");
                             }
-                            // Nếu nhịp 3 rớt xuống đất -> Hạ Màn
+                            // Nếu nhịp 3 đáp đất thường -> Hạ Màn
                             else if (currentBounce == 3) {
                                 applyFinaleKnockback(player);
                                 finalizeSkill(true);
@@ -189,7 +184,7 @@ public class EchoingMirage implements ISkill {
                                 forceJump(player);
                             }
                         }
-                        // Đang ở Nhịp 4 (Nhịp vô hại) -> Hạ Màn
+                        // Đang ở Nhịp 4 (Vô hại) -> Hạ Màn
                         else {
                             spawnSafeLandingVFX(player.getLocation());
                             applyFinaleKnockback(player);
@@ -221,7 +216,6 @@ public class EchoingMirage implements ISkill {
 
                 this.cancel();
             }
-
         }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
 
         return true;
@@ -260,10 +254,10 @@ public class EchoingMirage implements ISkill {
         pLoc.getWorld().spawnParticle(Particle.EXPLOSION, pLoc.clone().add(0, 1, 0), 2);
 
         for (Entity e : pLoc.getWorld().getNearbyEntities(pLoc, 4, 3, 4)) {
-            if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) {
+            if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) { //[cite: 10]
                 Vector pushDir = e.getLocation().toVector().subtract(pLoc.toVector()).normalize();
-                pushDir.setY(0.4); // Hất lên một chút để tránh kẹt block
-                e.setVelocity(pushDir.multiply(1.2)); // Đẩy mạnh ra xa
+                pushDir.setY(0.4);
+                e.setVelocity(pushDir.multiply(1.2));
             }
         }
     }
@@ -302,7 +296,7 @@ public class EchoingMirage implements ISkill {
         }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
     }
 
-    private void triggerExplosion(Player player, RPGPlayer rpgPlayer, LivingEntity stompedTarget, double baseMulti, double pen, boolean wasPrevHeadStomp) {
+    private void triggerExplosion(Player player, RPGPlayer rpgPlayer, LivingEntity stompedTarget, double baseMulti, double headBonusMulti, double pen) {
         Location pLoc = player.getLocation();
         boolean isHeadStomp = (stompedTarget != null);
 
@@ -324,21 +318,20 @@ public class EchoingMirage implements ISkill {
         }
 
         for (Entity e : pLoc.getWorld().getNearbyEntities(pLoc, 4, 3, 4)) {
-            if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) {
+            if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) { //[cite: 10]
                 LivingEntity target = (LivingEntity) e;
-                double finalMulti = baseMulti;
 
+                double finalMulti = baseMulti;
+                // Nếu nạn nhân chính là kẻ bị đạp trúng đầu -> Cộng thêm Bonus
                 if (isHeadStomp && target.equals(stompedTarget)) {
-                    finalMulti += 0.6;
-                } else if (!isHeadStomp && wasPrevHeadStomp) {
-                    finalMulti *= 0.5;
+                    finalMulti += headBonusMulti;
                 }
 
-                double dmg = CombatManager.calculateDamage(player, rpgPlayer, target, finalMulti, pen, true, false);
+                double dmg = CombatManager.calculateDamage(player, rpgPlayer, target, finalMulti, pen, true, false); //[cite: 10]
 
-                player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(RPGCore.getInstance(), true));
-                CombatManager.applySkillDamage(player, target, dmg);
-                player.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
+                player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(RPGCore.getInstance(), true)); //[cite: 10]
+                CombatManager.applySkillDamage(player, target, dmg); //[cite: 10]
+                player.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance()); //[cite: 10]
             }
         }
     }
