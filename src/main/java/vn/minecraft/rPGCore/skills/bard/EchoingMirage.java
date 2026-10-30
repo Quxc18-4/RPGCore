@@ -69,7 +69,7 @@ public class EchoingMirage implements ISkill {
     public List<String> getDescription(Player player, int level) {
         int displayLevel = Math.max(1, level);
         int bounceDmg = 60 + (displayLevel * 20);
-        int headStompBonus = 60;
+        int headStompBonus = bounceDmg + 60;
 
         return Arrays.asList(
                 "§7Hòa mình vào giai điệu, biến cơ thể",
@@ -79,16 +79,15 @@ public class EchoingMirage implements ISkill {
                 "§8▪ §fLoại Giai Điệu: §a[ Ảo Ảnh ]",
                 "",
                 "§c[Thi Triển - Vũ Điệu Lưu Ảnh]",
-                "§f- Bật nhảy tối đa §e3 Nhịp§f. Mỗi lần đáp đất gây",
-                "§f  §c" + bounceDmg + "% ST Phép§f xung quanh.",
-                "§f- Đạp trúng đầu kẻ địch gây thêm §c" + headStompBonus + "% ST Phép§f",
-                "§f  đồng thời §eTrói chân (Choáng)§f nạn nhân trong 2s.",
-                "§f- §e§l[Tuyệt Kỹ]:§f Nếu nhịp thứ 3 Đạp Đầu thành công,",
-                "§f  nhận thêm §bNhịp Nảy thứ 4 §f(Không sát thương).",
+                "§f- Bật nhảy liên tiếp §e3 Nhịp§f. Mỗi lần chạm mặt đất gây",
+                "§f  §c" + bounceDmg + "% ST Phép§f cho kẻ địch xung quanh.",
+                "§f- Kẻ địch bị đạp trúng sẽ chịu §c" + headStompBonus + "% ST Phép§f",
+                "§f  đồng thời sẽ §eTrói chân§f chúng trong 2s.",
                 "",
-                "§a[Cộng Hưởng Giai Điệu - Ảo Ảnh]",
-                "§f- Ở lần đáp đất cuối cùng, bùng nổ đẩy lùi mọi kẻ địch,",
-                "§f  Tàng hình tuyệt đối 2s và xóa bỏ Aggro."
+                "§f- §e§l[Nội tại - Dư Âm]",
+                "§f Nếu nhịp thứ 3 Đạp Đầu thành công,",
+                "§f  nhận thêm §bNhịp Nảy thứ 4 §f(Không sát thương).",
+                "§f- Ở lần đáp đất cuối cùng, bùng nổ đẩy lùi mọi kẻ địch"
         );
     }
 
@@ -96,11 +95,15 @@ public class EchoingMirage implements ISkill {
     public boolean execute(Player player, RPGPlayer rpgPlayer, int level) {
         if (!handleCostAndCooldown(player, rpgPlayer, level)) return false;
 
-        int maxCapacity = rpgPlayer.getSkillData().getSkillLevel("BARD_CORE_8") > 0 ? 4 : 3;
-        List<ToneType> currentTones = ToneManager.getCurrentTones(player);
-        final boolean isMelodyTriggered = (currentTones.size() + 1) >= maxCapacity && MelodyUtils.canTriggerMelody(player);
+        //int maxCapacity = rpgPlayer.getSkillData().getSkillLevel("BARD_CORE_8") > 0 ? 4 : 3;
+        //List<ToneType> currentTones = ToneManager.getCurrentTones(player);
+        //final boolean isMelodyTriggered = (currentTones.size() + 1) >= maxCapacity && MelodyUtils.canTriggerMelody(player);
 
-        if (isMelodyTriggered && rpgPlayer.getSkillData().getSkillLevel("BARD_CORE_2") > 0) {
+        // CODE MỚI: Dùng biến tạm để check Lõi 2
+        int maxCap = rpgPlayer.getSkillData().getSkillLevel("BARD_CORE_8") > 0 ? 4 : 3;
+        boolean willMelody = (ToneManager.getCurrentTones(player).size() + 1) >= maxCap;
+
+        if (willMelody && rpgPlayer.getSkillData().getSkillLevel("BARD_CORE_2") > 0) {
             if (player.getHealth() / rpgPlayer.getTotalMaxHealth() > 0.90) {
                 rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() + getManaCost(level));
                 player.sendMessage("§d§l[Hơi Thở Của Gió] §fThi triển không tốn Năng lượng!");
@@ -173,7 +176,7 @@ public class EchoingMirage implements ISkill {
                             if (currentBounce == 3 && stompedTarget != null) {
                                 currentBounce++;
                                 forceJump(player);
-                                player.sendMessage("§e§l[Tuyệt Kỹ] §fKhúc vĩ thanh! Nhịp nảy an toàn kích hoạt!");
+                                //player.sendMessage("§e§l[Tuyệt Kỹ] §fKhúc vĩ thanh! Nhịp nảy an toàn kích hoạt!");
                             }
                             // Nếu nhịp 3 rớt xuống đất -> Hạ Màn
                             else if (currentBounce == 3) {
@@ -198,7 +201,12 @@ public class EchoingMirage implements ISkill {
 
             // Bên trong BukkitRunnable...
             private void finalizeSkill(boolean normalEnd) {
-                if (isMelodyTriggered) {
+                // THAY THẾ BẰNG ĐOẠN KIỂM TRA MỚI:
+                int maxCapacity = rpgPlayer.getSkillData().getSkillLevel("BARD_CORE_8") > 0 ? 4 : 3;
+                List<ToneType> currentTones = ToneManager.getCurrentTones(player);
+                boolean timeToMelody = (currentTones.size() + 1) >= maxCapacity && MelodyUtils.canTriggerMelody(player);
+
+                if (timeToMelody) {
                     new MirageMelody().cast(player, rpgPlayer, player.getLocation());
                     ToneManager.consumeTones(player, rpgPlayer);
                     MelodyUtils.setMelodyCooldown(player);
@@ -208,7 +216,7 @@ public class EchoingMirage implements ISkill {
 
                 if (normalEnd) player.sendMessage("§d§l[!] §fNhịp điệu kết thúc!");
 
-                // [DI DỜI]: Bắt đầu tính Cooldown ngay tại thời điểm kết thúc kỹ năng
+                // Bắt đầu tính Cooldown ngay tại thời điểm kết thúc kỹ năng
                 applyGlobalCooldown(player, rpgPlayer, level);
 
                 this.cancel();
