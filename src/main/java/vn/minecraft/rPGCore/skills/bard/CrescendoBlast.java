@@ -76,7 +76,7 @@ public class CrescendoBlast implements ISkill {
                 "§7Thổi mạnh vào nhạc cụ, phát ra một luồng",
                 "§7sóng âm chói tai theo hình nón phía trước.",
                 "",
-                "§8▪ §fLoại Âm Tiết: §b[ Âm Cao ]",
+                "§8▪ §fLoại Âm Tiết: §e[ Âm Cao ]",
                 "§8▪ §fLoại Giai Điệu: §c[ Bùng Nổ ]",
                 "§8▪ §fPhạm vi: §e6 Block",
                 "",

@@ -102,6 +102,7 @@ public class SkillManager {
         registerSkill(new MarchingAnthem());
         registerSkill(new SirensChorus());
         registerSkill(new EchoingMirage());
+        registerSkill(new SoulLink());
     }
 
     public void registerSkill(ISkill skill) {
