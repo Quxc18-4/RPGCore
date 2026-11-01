@@ -98,7 +98,7 @@ public class MarchingAnthem implements ISkill {
     }
 
     public double getManaDrainPerSecond(int level) {
-        return 20.0 + (level * 10.0); // Lv1: 15/s, Lv2: 20/s, Lv3: 25/s
+        return 20.0 + (level * 10.0); // Lv1: 30/s, Lv2: 40/s, Lv3: 50/s
     }
 
     @Override
@@ -147,7 +147,7 @@ public class MarchingAnthem implements ISkill {
             if (timeLeft > 0) return false;
         }
 
-        // KIỂM TRA MANA MỞ CỬA (KHÔNG TRỪ)
+        // KIỂM TRA MANA MỞ CỬA
         double gateCost = getManaCost(level);
         if (rpgPlayer.getCurrentResource() < gateCost) {
             player.sendMessage("§c§l[!] §cKhông đủ Năng lượng để mở vùng! (Cần " + gateCost + " Năng lượng)");
@@ -200,6 +200,7 @@ public class MarchingAnthem implements ISkill {
         new BukkitRunnable() {
             @Override
             public void run() {
+                // Kiểm tra điều kiện sống sót và trạng thái kích hoạt
                 if (!player.isOnline() || player.isDead() || !player.hasMetadata(ACTIVE_METADATA)) {
                     deactivateAura(player, rpgPlayer, level, cdKey);
                     this.cancel();
@@ -207,14 +208,19 @@ public class MarchingAnthem implements ISkill {
                 }
 
                 double currentMana = rpgPlayer.getCurrentResource();
-//                if (currentMana < drainPerTick) {
-//                    player.sendMessage("§c§l[-] §cĐã cạn Năng lượng! Khúc Ca Xung Trận bị ngắt.");
-//                    deactivateAura(player, rpgPlayer, level, cdKey);
-//                    this.cancel();
-//                    return;
-//                }
+
+                // [FIX LỖI CẠN MANA]: Kiểm tra nếu Mana không đủ cho chu kỳ tiếp theo -> Tự ngắt ngay lập tức
+                if (currentMana < drainPerTick) {
+                    player.sendMessage("§c§l[-] §cCạn kiệt Năng lượng! Khúc Ca Xung Trận tự động ngắt.");
+                    deactivateAura(player, rpgPlayer, level, cdKey);
+                    this.cancel();
+                    return;
+                }
+
+                // Trừ Mana duy trì
                 rpgPlayer.setCurrentResource(currentMana - drainPerTick);
 
+                // Vẽ hào quang vòng tròn biên giới 8 Block
                 Location center = player.getLocation();
                 for (int i = 0; i < 360; i += 30) {
                     double angle = Math.toRadians(i);
@@ -223,6 +229,7 @@ public class MarchingAnthem implements ISkill {
                     center.getWorld().spawnParticle(Particle.GLOW, center.clone().add(x, 0.1, z), 1, 0, 0, 0, 0);
                 }
 
+                // Buff bản thân và quét đồng minh trong phạm vi
                 applyAuraBuff(player, drPercent, msPercent);
                 for (Entity e : center.getWorld().getNearbyEntities(center, fixedRadius, 2.0, fixedRadius)) {
                     if (e instanceof Player && !e.equals(player) && !CombatManager.canTarget(player, e)) {
@@ -234,7 +241,7 @@ public class MarchingAnthem implements ISkill {
     }
 
     private void applyAuraBuff(Player target, int drPercent, int msPercent) {
-        long expireTime = System.currentTimeMillis() + 1000;
+        long expireTime = System.currentTimeMillis() + 1200; // Buffer 1.2s để tránh giật lag giữa các tick
         target.setMetadata("BARD_MARCHING_DR", new FixedMetadataValue(RPGCore.getInstance(), drPercent));
         target.setMetadata("BARD_MARCHING_MS", new FixedMetadataValue(RPGCore.getInstance(), msPercent));
         target.setMetadata("BARD_MARCHING_EXPIRE", new FixedMetadataValue(RPGCore.getInstance(), expireTime));

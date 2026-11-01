@@ -33,11 +33,20 @@ import java.util.UUID;
 
 public class SoulLink implements ISkill {
 
+    private static boolean isModifierRegistered = false;
+
+    public SoulLink() {
+        if (!isModifierRegistered) {
+            CombatManager.registerCombatModifier(new SoulLinkCombatModifier());
+            isModifierRegistered = true;
+        }
+    }
+
     @Override
     public String getId() { return "bard_soul_link"; }
 
     @Override
-    public String getName() { return "Khúc Cầu Hồn"; }
+    public String getName() { return "Đồng Âm Cộng Hưởng"; }
 
     @Override
     public String getRequiredClass() { return "bard"; }
@@ -76,10 +85,10 @@ public class SoulLink implements ISkill {
 
         int reduction = 10 + (displayLevel * 10);
         int vulnerable = displayLevel * 5;
-        double trueDmgRate = displayLevel * 0.1;
+        double trueDmgRate = displayLevel * 0.2;
 
         List<String> lore = new java.util.ArrayList<>(Arrays.asList(
-                "§7Kéo một bản nhạc với tần số u ám,",
+                "§7Kéo một bản nhạc với giai điệu u ám,",
                 "§7khóa chặt linh hồn giữa sự sống và cái chết.",
                 "",
                 "§8▪ §fLoại Âm Tiết: §e[ Âm Cao ]",
@@ -87,14 +96,15 @@ public class SoulLink implements ISkill {
                 "",
                 "§c[Thi Triển - Khúc Cầu Hồn]",
                 "§f- Phóng ra một sợi xích linh hồn kết nối với",
-                "§f  kẻ địch. Nếu đi xa quá §e10 Block§f, xích sẽ đứt.",
+                "§f  kẻ địch. Nếu đi xa quá §e20 Block§f, xích sẽ đứt",
+                "§f  khiến nạn nhân bị §eChoáng váng (Stun)§f 1 giây.",
                 "§f- Khi xích còn tồn tại, bạn nhận giảm §a" + reduction + "%§f",
                 "§f  sát thương GÂY RA TỪ MỤC TIÊU ĐÓ.",
                 "§f- Kẻ địch bị xích sẽ nhận thêm §c" + vulnerable + "%§f sát thương",
                 "§f  từ mọi nguồn (Không cộng dồn nếu nhiều Nhạc Sư xích).",
-                "§f- §e[Bào Mòn]:§f Mỗi giây, sợi xích rút đi §c" + trueDmgRate + "%§f",
+                "§f- §e[Bào Mòn]:§f Mỗi giây, sợi xích rút đi §c" + String.format("%.1f", trueDmgRate) + "%§f",
                 "§f  Máu Hiện Tại của mục tiêu thành Sát Thương Chuẩn.",
-                "§f  §7(Chỉ tính sát thương này cho 1 Nhạc Sư đầu tiên xích)."
+                "§f  §7(Chỉ tính sát thương này cho Nhạc Sư đầu tiên)."
         ));
 
         if (displayLevel >= 5) {
@@ -126,38 +136,35 @@ public class SoulLink implements ISkill {
 
         final double reductionRate = 0.10 + (level * 0.10);
         final double vulnerableRate = level * 0.05;
-        final double trueDmgPercent = level * 0.1;
+        final double trueDmgPercent = level * 0.2;
 
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_PREPARE_BLINDNESS, 1.0f, 0.5f);
 
-        // ==========================================
-        // RAYCAST TÌM ĐIỂM CHẠM VÀ MỤC TIÊU
-        // ==========================================
         Location pLoc = player.getEyeLocation();
         Vector dir = pLoc.getDirection().normalize().multiply(0.5);
         LivingEntity target = null;
         Location impactLoc = pLoc.clone();
 
-        for (double i = 0; i < 15.0; i += 0.5) {
+        for (double i = 0; i < 20.0; i += 0.5) {
             impactLoc.add(dir);
-            // [FIX 1.21.11 API]: Đổi REDSTONE thành DUST
-            impactLoc.getWorld().spawnParticle(Particle.DUST, impactLoc, 1, new Particle.DustOptions(Color.fromRGB(138, 43, 226), 1.0f));
+            // Giảm lượng hạt Particle bằng DustOptions
+            impactLoc.getWorld().spawnParticle(Particle.DUST, impactLoc, 1, new Particle.DustOptions(Color.fromRGB(138, 43, 226), 0.5f));
 
-            // Check trúng block cứng -> Dừng tia
             if (impactLoc.getBlock().getType().isSolid()) break;
 
-            for (Entity e : impactLoc.getWorld().getNearbyEntities(impactLoc, 0.8, 0.8, 0.8)) {
+            for (Entity e : impactLoc.getWorld().getNearbyEntities(impactLoc, 1.0, 1.0, 1.0)) {
                 if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) {
                     target = (LivingEntity) e;
                     break;
                 }
             }
-            if (target != null) break;
+            if (target != null) {
+                // CHỈNH SỬA: Đưa vị trí kích nổ Melody xuống ngang chân mục tiêu (tránh lơ lửng nếu bắn trúng đầu)
+                impactLoc = target.getLocation();
+                break;
+            }
         }
 
-        // ==========================================
-        // KÍCH HOẠT GIAI ĐIỆU HOẶC ÂM SẮC TẠI ĐIỂM CHẠM
-        // ==========================================
         if (willMelody) {
             new GloomMelody().cast(player, rpgPlayer, impactLoc);
             ToneManager.consumeTones(player, rpgPlayer);
@@ -200,7 +207,6 @@ public class SoulLink implements ISkill {
         target.setMetadata(metaVulnList, new FixedMetadataValue(RPGCore.getInstance(), vulnList));
         target.setMetadata("BARD_LINK_VULN_RATE", new FixedMetadataValue(RPGCore.getInstance(), vulnRate));
 
-        // Kiểm tra độc quyền True Damage
         final boolean isDoTOwner = !target.hasMetadata(metaDoTClaim);
         if (isDoTOwner) {
             target.setMetadata(metaDoTClaim, new FixedMetadataValue(RPGCore.getInstance(), player.getUniqueId().toString()));
@@ -212,21 +218,22 @@ public class SoulLink implements ISkill {
             @Override
             public void run() {
                 if (!player.isOnline() || player.isDead() || target.isDead() || !target.isValid()
-                        || player.getLocation().distanceSquared(target.getLocation()) > 100.0) {
-                    breakLink();
+                        || player.getLocation().distanceSquared(target.getLocation()) > 400.0) {
+                    breakLink(true);
                     this.cancel();
                     return;
                 }
 
                 ticks++;
 
-                if (ticks % 2 == 0) {
+                // Vẽ dây: Mỗi 5 Ticks, Giãn hạt 1.0 Block
+                if (ticks % 5 == 0) {
                     drawTether(player.getLocation().add(0, 1, 0), target.getLocation().add(0, 1, 0), Color.fromRGB(75, 0, 130));
                 }
 
                 if (ticks % 20 == 0 && isDoTOwner) {
                     target.getWorld().playSound(target.getLocation(), Sound.ENTITY_ELDER_GUARDIAN_CURSE, 0.5f, 2.0f);
-                    target.getWorld().spawnParticle(Particle.SOUL, target.getLocation().add(0, 1, 0), 5, 0.3, 0.5, 0.3, 0.05);
+                    target.getWorld().spawnParticle(Particle.SOUL, target.getLocation().add(0, 1, 0), 2, 0.3, 0.5, 0.3, 0.05);
 
                     double currentHp = target.getHealth();
                     double trueDmg = currentHp * (trueDmgPct / 100.0);
@@ -237,7 +244,7 @@ public class SoulLink implements ISkill {
                 }
             }
 
-            private void breakLink() {
+            private void breakLink(boolean forceBreak) {
                 player.removeMetadata(metaRed, RPGCore.getInstance());
                 player.removeMetadata(metaTarget, RPGCore.getInstance());
 
@@ -258,7 +265,12 @@ public class SoulLink implements ISkill {
 
                     if (isDoTOwner) target.removeMetadata(metaDoTClaim, RPGCore.getInstance());
 
-                    target.getWorld().playSound(target.getLocation(), Sound.ENTITY_ITEM_BREAK, 1.0f, 0.5f);
+                    target.getWorld().playSound(target.getLocation(), Sound.BLOCK_GLASS_BREAK, 1.2f, 0.5f);
+                    target.getWorld().spawnParticle(Particle.CRIT, target.getLocation().add(0, 1, 0), 20, 0.5, 0.5, 0.5, 0.2);
+
+                    if (forceBreak && player.isOnline() && !player.isDead()) {
+                        vn.minecraft.rPGCore.managers.StatusEffectManager.applyAbsoluteRoot(target, 20);
+                    }
                 }
                 player.sendMessage("§8§l[Tether] §7Liên kết linh hồn đã bị đứt.");
             }
@@ -287,7 +299,7 @@ public class SoulLink implements ISkill {
                 auraTicks++;
 
                 if (auraTicks % 300 == 0 && linkedAllies.size() < 3) {
-                    for (Entity e : player.getWorld().getNearbyEntities(player.getLocation(), 10, 5, 10)) {
+                    for (Entity e : player.getWorld().getNearbyEntities(player.getLocation(), 20, 5, 20)) {
                         if (e instanceof Player && !e.equals(player) && !CombatManager.canTarget(player, e)) {
                             Player ally = (Player) e;
                             if (!linkedAllies.contains(ally.getUniqueId())) {
@@ -303,12 +315,13 @@ public class SoulLink implements ISkill {
                 for (UUID uuid : linkedAllies) {
                     Player ally = org.bukkit.Bukkit.getPlayer(uuid);
 
-                    if (ally == null || !ally.isOnline() || ally.isDead() || ally.getLocation().distanceSquared(player.getLocation()) > 100.0) {
+                    if (ally == null || !ally.isOnline() || ally.isDead() || ally.getLocation().distanceSquared(player.getLocation()) > 400.0) {
                         toRemove.add(uuid);
                         if (ally != null && ally.isOnline()) {
                             ally.sendMessage("§8§l[Tether] §7Đứt liên kết linh hồn đồng minh.");
                             ally.removeMetadata("BARD_ALLY_DMG_BUFF", RPGCore.getInstance());
                             RPGCore.getInstance().getPlayerManager().getRPGPlayer(ally.getUniqueId()).updateMoveSpeed();
+                            ally.getWorld().playSound(ally.getLocation(), Sound.ENTITY_ITEM_BREAK, 0.5f, 1.5f);
                         }
                         continue;
                     }
@@ -316,7 +329,7 @@ public class SoulLink implements ISkill {
                     ally.setMetadata("BARD_ALLY_DMG_BUFF", new FixedMetadataValue(RPGCore.getInstance(), 0.10));
                     ally.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 40, 1, false, false, false));
 
-                    if (auraTicks % 3 == 0) {
+                    if (auraTicks % 5 == 0) {
                         drawTether(player.getLocation().add(0, 1, 0), ally.getLocation().add(0, 1, 0), Color.fromRGB(0, 255, 255));
                     }
                 }
@@ -338,14 +351,53 @@ public class SoulLink implements ISkill {
     private void drawTether(Location start, Location end, Color color) {
         Vector link = end.toVector().subtract(start.toVector());
         double distance = link.length();
-        Vector step = link.normalize().multiply(0.5);
+        Vector step = link.normalize().multiply(1.0);
         Location current = start.clone();
         Particle.DustOptions dust = new Particle.DustOptions(color, 0.8f);
 
-        for (double i = 0; i < distance; i += 0.5) {
+        for (double i = 0; i < distance; i += 1.0) {
             current.add(step);
-            // [FIX 1.21.11 API]: Đổi REDSTONE thành DUST
             current.getWorld().spawnParticle(Particle.DUST, current, 1, dust);
+        }
+    }
+
+    // ==========================================
+    // HOOK CHUẨN: XỬ LÝ NHẬN/GIẢM SÁT THƯƠNG
+    // ==========================================
+    public class SoulLinkCombatModifier implements CombatManager.ICombatModifier {
+
+        @Override
+        public double getIncomingDamageReduction(LivingEntity victim, LivingEntity attacker) {
+            double modifier = 0.0;
+
+            // 1. Quái nhận thêm Sát thương (Vulnerable)
+            // Khi Victim là Quái vật bị xích: Âm % -> Nhận thêm Damage
+            if (victim.hasMetadata("BARD_LINK_VULNERABLE_LIST") && victim.hasMetadata("BARD_LINK_VULN_RATE")) {
+                List<String> list = (List<String>) victim.getMetadata("BARD_LINK_VULNERABLE_LIST").get(0).value();
+                if (list != null && !list.isEmpty()) {
+                    modifier -= victim.getMetadata("BARD_LINK_VULN_RATE").get(0).asDouble();
+                }
+            }
+
+            // 2. Bard được Giảm Sát thương từ Quái bị xích (Reduction)
+            // Khi Victim là Bard, Attacker là Quái vật đã xích Bard: Dương % -> Giảm Damage
+            if (victim.hasMetadata("BARD_LINK_REDUCTION") && victim.hasMetadata("BARD_LINK_TARGET_UUID")) {
+                String targetId = victim.getMetadata("BARD_LINK_TARGET_UUID").get(0).asString();
+                if (attacker.getUniqueId().toString().equals(targetId)) {
+                    modifier += victim.getMetadata("BARD_LINK_REDUCTION").get(0).asDouble();
+                }
+            }
+
+            return modifier;
+        }
+
+        @Override
+        public double getOutgoingDamageModifier(LivingEntity attacker, LivingEntity victim) {
+            // Tiềm năng cấp 5: Đồng minh được +10% Damage
+            if (attacker.hasMetadata("BARD_ALLY_DMG_BUFF")) {
+                return attacker.getMetadata("BARD_ALLY_DMG_BUFF").get(0).asDouble();
+            }
+            return 0.0;
         }
     }
 }
