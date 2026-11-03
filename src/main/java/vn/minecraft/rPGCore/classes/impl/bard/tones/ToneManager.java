@@ -88,25 +88,55 @@ public class ToneManager {
 
     public static void sendToneActionBar(Player player, List<ToneType> tones) {
 
-        // ==========================================
-        // [FIX]: NHƯỜNG ACTION BAR CHO MINIGAME CÂU CÁ
-        // Kiểm tra nếu người chơi đang câu cá thì không hiển thị Âm sắc của Bard
-        // ==========================================
+        // Nhường Action Bar cho Minigame Câu Cá
         if (vn.minecraft.rPGCore.RPGCore.getInstance().getFishingManager().isInMinigame(player)) {
             return;
         }
 
-        StringBuilder sb = new StringBuilder("§d§l♫ ");
-        for (int i = 0; i < tones.size(); i++) {
-            switch (tones.get(i)) {
-                case HIGH: sb.append("§e[Cao]"); break;
-                case ECHO: sb.append("§b[Vang]"); break;
-                case LOW: sb.append("§6[Trầm]"); break;
-                case SHARP: sb.append("§c[Sắc]"); break;
-            }
-            if (i < tones.size() - 1) sb.append(" §f- ");
+        StringBuilder sb = new StringBuilder();
+
+        // ==========================================
+        // [TÍCH HỢP]: KIỂM TRA VÀ NỐI GIAO DIỆN MAESTRO
+        // ==========================================
+        if (player.hasMetadata(vn.minecraft.rPGCore.skills.bard.MaestroState.ACTIVE_META)) {
+            // Nếu bạn có lưu thời gian của Maestro, có thể get từ Metadata để hiển thị số giây ở đây
+            sb.append("§e§l[NHẠC TRƯỞNG] §f| ");
         }
+
+        // ==========================================
+        // VẼ TIẾP GIAO DIỆN ÂM TIẾT
+        // ==========================================
+        sb.append("§d§l♫ ");
+        if (tones.isEmpty()) {
+            sb.append("§7(Chưa có âm)");
+        } else {
+            for (int i = 0; i < tones.size(); i++) {
+                switch (tones.get(i)) {
+                    case HIGH: sb.append("§e[Cao]"); break;
+                    case ECHO: sb.append("§b[Vang]"); break;
+                    case LOW: sb.append("§6[Trầm]"); break;
+                    case SHARP: sb.append("§c[Sắc]"); break;
+                }
+                if (i < tones.size() - 1) sb.append(" §f- ");
+            }
+        }
+
+        // GỬI DUY NHẤT 1 LỆNH ACTION BAR
         player.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR,
                 net.md_5.bungee.api.chat.TextComponent.fromLegacyText(sb.toString()));
+    }
+    // ==========================================
+    // XÓA 1 ÂM CHỈ ĐỊNH (Dùng cho Nhạc Trưởng tiêu hao từng Âm)
+    // ==========================================
+    public static void consumeTone(Player player, RPGPlayer rpgPlayer, ToneType targetTone) {
+        List<ToneType> currentTones = getCurrentTones(player);
+        if (currentTones.isEmpty()) return;
+
+        // Xóa nốt nhạc chỉ định đầu tiên tìm thấy trong danh sách
+        if (currentTones.remove(targetTone)) {
+            // Lưu lại danh sách mới và update ActionBar
+            saveTones(player, rpgPlayer, currentTones);
+            sendToneActionBar(player, currentTones);
+        }
     }
 }

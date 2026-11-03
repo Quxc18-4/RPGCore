@@ -114,17 +114,31 @@ public class BardGlobalManager {
                     }
                     lastLocations.put(uuid, currentLoc.clone());
 
-                    // 4. SINH ÂM TỰ ĐỘNG
+                    // ==========================================
+                    // 4. SINH ÂM TỰ ĐỘNG (DÀNH RIÊNG TRẠNG THÁI THƯỜNG)
+                    // ==========================================
+                    // NẾU LÀ NHẠC TRƯỞNG: Đứng im, để MaestroState tự nhồi đạn!
+                    if (player.hasMetadata(vn.minecraft.rPGCore.skills.bard.MaestroState.ACTIVE_META)) {
+                        player.setMetadata("BARD_TONE_TIMER", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), 0));
+                        continue; // Bỏ qua luồng này
+                    }
+
+                    boolean hasCore8 = rpgPlayer.getSkillData().getSkillLevel("BARD_CORE_8") > 0;
+                    int maxAutoGenLimit = hasCore8 ? 3 : 2; // Khóa lại 2/3 để chừa slot Combo
+
                     int ticks = player.hasMetadata("BARD_TONE_TIMER") ? player.getMetadata("BARD_TONE_TIMER").get(0).asInt() : 0;
                     ticks++;
-                    if (ticks >= 30) {
+
+                    if (ticks >= 30) { // Đủ 15s
                         ticks = 0;
-                        int maxTones = rpgPlayer.getSkillData().getSkillLevel("BARD_CORE_8") > 0 ? 3 : 2;
-                        if (ToneManager.getCurrentTones(player).size() < maxTones) {
+
+                        // Sinh thêm âm nếu chưa chạm ngưỡng Auto-gen
+                        if (ToneManager.getCurrentTones(player).size() < maxAutoGenLimit) {
                             vn.minecraft.rPGCore.classes.impl.bard.tones.ToneType[] types = vn.minecraft.rPGCore.classes.impl.bard.tones.ToneType.values();
                             ToneManager.addTone(player, rpgPlayer, types[new java.util.Random().nextInt(types.length)]);
                         }
                     }
+
                     player.setMetadata("BARD_TONE_TIMER", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), ticks));
                 }
             }

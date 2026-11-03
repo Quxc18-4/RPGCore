@@ -31,6 +31,7 @@ import vn.minecraft.rPGCore.playercommunication.managers.DuelManager;
 import vn.minecraft.rPGCore.playercommunication.managers.FriendManager;
 import vn.minecraft.rPGCore.playercommunication.managers.TradeManager;
 import vn.minecraft.rPGCore.skills.SkillManager;
+import vn.minecraft.rPGCore.skills.bard.BardCoreGUI;
 import vn.minecraft.rPGCore.ui.*;
 import vn.minecraft.rPGCore.player.tasks.RegenTask;
 import vn.minecraft.rPGCore.database.MongoManager;
@@ -187,8 +188,8 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new WaterFetchListener(this.itemManager), this);
         getServer().getPluginManager().registerEvents(new TrinketMenuGUI(), this);
         getServer().getPluginManager().registerEvents(new TrinketRandomCraftGUI(), this);
-        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.ui.TrinketRecipeCraftGUI(), this);
-        getServer().getPluginManager().registerEvents(new vn.minecraft.rPGCore.skills.bard.BardCoreGUI(), this);
+        getServer().getPluginManager().registerEvents(new TrinketRecipeCraftGUI(), this);
+        getServer().getPluginManager().registerEvents(new BardCoreGUI(), this);
         getServer().getPluginManager().registerEvents(new RewardListener(this), this);
         getServer().getPluginManager().registerEvents(this.auctionGUIListener, this);
         getServer().getPluginManager().registerEvents(new InteractMenuListener(this), this);

@@ -23,9 +23,12 @@ import vn.minecraft.rPGCore.skills.ISkill;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
+import java.util.UUID;
 
 public class PiercingAnthem implements ISkill {
 
@@ -44,7 +47,7 @@ public class PiercingAnthem implements ISkill {
     public Material getIcon() { return Material.DISC_FRAGMENT_5; }
 
     @Override
-    public int getMaxLevel() { return 10; } // Active thường nâng tới cấp 10
+    public int getMaxLevel() { return 10; }
 
     @Override
     public int getUpgradeCost(int currentLevel) { return 1; }
@@ -59,17 +62,16 @@ public class PiercingAnthem implements ISkill {
 
     @Override
     public long getCooldown(int level) {
-        return (long) ((8.0 - (level * 0.2)) * 1000); // 8s giảm còn 6s
+        return (long) ((8.0 - (level * 0.2)) * 1000);
     }
 
     @Override
     public List<String> getDescription(int level) { return getDescription(null, level); }
 
     @Override
-
     public List<String> getDescription(Player player, int level) {
         int displayLevel = Math.max(1, level);
-        int dmgPercent = 100 + (displayLevel * 20); // Base 120%, Max 300%
+        int dmgPercent = 100 + (displayLevel * 20);
         return Arrays.asList(
                 "§7Phóng ra một lưỡi dao sóng âm xuyên thấu",
                 "§7mọi thứ trên đường bay trước khi phát nổ.",
@@ -95,21 +97,16 @@ public class PiercingAnthem implements ISkill {
     public boolean execute(Player player, RPGPlayer rpgPlayer, int level) {
         if (!handleCostAndCooldown(player, rpgPlayer, level)) return false;
 
-        // ==========================================
-        // 1. CHUẨN BỊ CHỈ SỐ CƯỜNG HÓA
-        // ==========================================
         double highToneMultiplier = ToneModifier.getHighToneMultiplier(player, ToneType.SHARP);
         int sharpToneCount = ToneModifier.getSharpToneCount(player, ToneType.SHARP);
 
-        double dmgMulti = (1.0 + (level * 0.2)) * highToneMultiplier;
-        double extraMagicPen = sharpToneCount * 10.0;
+        // Khai báo Effectively Final theo luật[cite: 14]
+        final double dmgMulti = (1.0 + (level * 0.2)) * highToneMultiplier;
+        final double extraMagicPen = sharpToneCount * 10.0;
 
         Location startLoc = player.getEyeLocation().add(0, -0.2, 0);
         Vector direction = startLoc.getDirection().normalize();
 
-        // ==========================================
-        // 2. ĐIỀU PHỐI GIAI ĐIỆU (DŨNG CẢM)
-        // ==========================================
         int maxCapacity = rpgPlayer.getSkillData().getSkillLevel("BARD_CORE_8") > 0 ? 4 : 3;
         List<ToneType> currentTones = ToneManager.getCurrentTones(player);
 
@@ -132,83 +129,75 @@ public class PiercingAnthem implements ISkill {
             ToneManager.addTone(player, rpgPlayer, ToneType.SHARP);
         }
 
-        // ==========================================
-        // 3. THUẬT TOÁN PHÓNG LƯỠI DAO BÁN NGUYỆT
-        // ==========================================
         player.getWorld().playSound(startLoc, Sound.ENTITY_PLAYER_ATTACK_SWEEP, 1.0f, 1.5f);
         player.getWorld().playSound(startLoc, Sound.ENTITY_WARDEN_ATTACK_IMPACT, 0.8f, 2.0f);
 
-        // Tính toán trục ngang (Right Vector) để vẽ lưỡi đao
         Vector tempRight = direction.clone().crossProduct(new Vector(0, 1, 0)).normalize();
         if (tempRight.lengthSquared() == 0) {
             tempRight = direction.clone().crossProduct(new Vector(1, 0, 0)).normalize();
         }
-        final Vector right = tempRight; // Khóa biến thành final để dùng an toàn trong BukkitRunnable
+        final Vector right = tempRight;
 
         new BukkitRunnable() {
             Location current = startLoc.clone();
             int ticksLived = 0;
             int killCount = 0;
 
+            // BỘ NHỚ LƯU MỤC TIÊU ĐÃ TRÚNG ĐÒN (Chống sát thương lặp)
+            Set<UUID> hitTargets = new HashSet<>();
+
             @Override
             public void run() {
+                // 1. CHỈ KÍCH NỔ KHI ĐẾN ĐÍCH HOẶC TRÚNG TƯỜNG[cite: 13]
                 if (ticksLived++ > 15 || current.getBlock().getType().isSolid() || !player.isOnline()) {
                     triggerExplosion(current);
                     this.cancel();
                     return;
                 }
 
-                current.add(direction.clone().multiply(0.8)); // Tốc độ bay
+                current.add(direction.clone().multiply(0.8));
 
-                // [THUẬT TOÁN ĐỒ HỌA MỚI] Vẽ Lưỡi Đao Cong (Hình Parabol)
                 for (double i = -1.5; i <= 1.5; i += 0.3) {
-                    double backOffset = (i * i) * 0.4; // Độ cong của lưỡi đao
+                    double backOffset = (i * i) * 0.4;
                     Location particleLoc = current.clone().add(right.clone().multiply(i)).subtract(direction.clone().multiply(backOffset));
-
-                    // Lưỡi đao sắc bén màu Cyan/Xanh lơ
                     current.getWorld().spawnParticle(Particle.ENCHANTED_HIT, particleLoc, 1, 0, 0, 0, 0);
                     current.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, particleLoc, 1, 0, 0, 0, 0);
                 }
 
-                // Quét Hitbox trên đường thẳng
-                boolean hitSomething = false;
+                // 2. QUÉT MỤC TIÊU XUYÊN THẤU
                 for (Entity e : current.getWorld().getNearbyEntities(current, 1.5, 1.5, 1.5)) {
-                    if (e instanceof LivingEntity && !e.equals(player) && CombatManager.canTarget(player, e)) {
+                    if (e instanceof LivingEntity && !e.equals(player) && CombatManager.canTarget(player, e)) { // Lọc Đồng Minh[cite: 14]
                         LivingEntity target = (LivingEntity) e;
+
+                        // Lọc các mục tiêu đã ăn sát thương từ lưỡi đao này
+                        if (hitTargets.contains(target.getUniqueId())) continue;
+                        hitTargets.add(target.getUniqueId());
+
                         double hpBefore = target.getHealth();
 
-                        double dmg = CombatManager.calculateDamage(player, rpgPlayer, target, dmgMulti, extraMagicPen, true, false);
-                        player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(RPGCore.getInstance(), true));
-                        CombatManager.applySkillDamage(player, target, dmg);
-                        player.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
+                        double dmg = CombatManager.calculateDamage(player, rpgPlayer, target, dmgMulti, extraMagicPen, true, false); // Tính toán DMG[cite: 14]
+                        player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(RPGCore.getInstance(), true)); // Chặn lặp sát thương Vanilla[cite: 14]
+                        CombatManager.applySkillDamage(player, target, dmg); // Gây DMG chuẩn (Đã kèm Lifesteal)[cite: 14]
+                        player.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance()); // Xóa cờ chặn[cite: 14]
 
                         if (target.isDead() || hpBefore - dmg <= 0) {
                             killCount++;
                         }
-                        hitSomething = true;
                     }
-                }
-
-                if (hitSomething) {
-                    triggerExplosion(current);
-                    this.cancel();
                 }
             }
 
-            // Xử lý nổ và tạo Dư Âm
             private void triggerExplosion(Location loc) {
-                // Âm thanh vỡ nát chói tai
                 loc.getWorld().playSound(loc, Sound.BLOCK_GLASS_BREAK, 1.5f, 0.5f);
                 loc.getWorld().playSound(loc, Sound.ENTITY_ZOMBIE_BREAK_WOODEN_DOOR, 1.0f, 2.0f);
 
-                // Vụ nổ sóng xung kích tia sáng (Thay thế hoàn toàn FLASH)
                 for(int i = 0; i < 20; i++) {
                     double angle = random.nextDouble() * 2 * Math.PI;
                     Vector burst = new Vector(Math.cos(angle), random.nextDouble() * 0.5, Math.sin(angle)).normalize().multiply(0.5);
                     loc.getWorld().spawnParticle(Particle.END_ROD, loc, 0, burst.getX(), burst.getY(), burst.getZ());
                 }
 
-                int totalNotes = Math.min(6, 3 + killCount); // Base 3 + Kills (Max 6)
+                int totalNotes = Math.min(6, 3 + killCount);
                 List<Location> residueLocs = new ArrayList<>();
 
                 for (int i = 0; i < totalNotes; i++) {
@@ -226,9 +215,6 @@ public class PiercingAnthem implements ISkill {
             }
         }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
 
-        // ==========================================
-        // 4. CẬP NHẬT COOLDOWN
-        // ==========================================
         long finalCd = getFinalCooldown(rpgPlayer, getCooldown(level));
         if (triggeredCore2) finalCd = (long) (finalCd * 0.8);
         if (player.hasMetadata("BARD_ETERNAL_MELODY_TRIGGERED")) {
@@ -242,31 +228,25 @@ public class PiercingAnthem implements ISkill {
         return true;
     }
 
-    // ==========================================
-    // CƠ CHẾ VẬT PHẨM ẢO (VIRTUAL PICKUP) ĐÃ TỐI ƯU
-    // ==========================================
     private void spawnVirtualResidue(List<Location> locations) {
         new BukkitRunnable() {
             int ticks = 0;
             @Override
             public void run() {
-                if (ticks++ > 120 || locations.isEmpty()) { // Tồn tại tối đa 6 giây
+                if (ticks++ > 120 || locations.isEmpty()) {
                     this.cancel();
                     return;
                 }
 
                 List<Location> toRemove = new ArrayList<>();
                 for (Location loc : locations) {
-                    // [ĐÃ SỬA LỖI API 1.21]: Dùng WAX_ON lấp lánh, không cần gọi data Color
                     loc.getWorld().spawnParticle(Particle.WAX_ON, loc.clone().add(0, 0.2, 0), 3, 0.2, 0.2, 0.2, 0);
                     loc.getWorld().spawnParticle(Particle.END_ROD, loc, 1, 0, 0, 0, 0.02);
 
-                    // Kiểm tra người chơi giẫm lên (Khoảng cách < 1.2 Block)
                     for (Entity e : loc.getWorld().getNearbyEntities(loc, 1.2, 1.2, 1.2)) {
-                        if (e instanceof Player && !CombatManager.canTarget((Player) e, e)) {
+                        if (e instanceof Player && !CombatManager.canTarget((Player) e, e)) { // Lọc đồng đội[cite: 14]
                             Player ally = (Player) e;
 
-                            // Check điều kiện chưa có Buff
                             if (!ally.hasMetadata("BARD_RESIDUE_BUFF")) {
                                 applyResidueBuff(ally);
                                 toRemove.add(loc);
@@ -280,10 +260,9 @@ public class PiercingAnthem implements ISkill {
                 }
                 locations.removeAll(toRemove);
             }
-        }.runTaskTimer(RPGCore.getInstance(), 0L, 5L); // Quét mỗi 5 ticks (0.25s) để tối ưu
+        }.runTaskTimer(RPGCore.getInstance(), 0L, 5L);
     }
 
-    // Cấp Metadata Buff duy trì 6 giây
     private void applyResidueBuff(Player player) {
         long expireTime = System.currentTimeMillis() + (6 * 1000);
         player.setMetadata("BARD_RESIDUE_BUFF", new FixedMetadataValue(RPGCore.getInstance(), expireTime));
@@ -298,6 +277,6 @@ public class PiercingAnthem implements ISkill {
                     }
                 }
             }
-        }.runTaskLater(RPGCore.getInstance(), 125L); // 6.25 giây
+        }.runTaskLater(RPGCore.getInstance(), 125L);
     }
 }

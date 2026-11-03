@@ -9,8 +9,6 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.metadata.FixedMetadataValue;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 import vn.minecraft.rPGCore.RPGCore;
@@ -93,27 +91,25 @@ public class SoulLink implements ISkill {
                 "",
                 "§8▪ §fLoại Âm Tiết: §e[ Âm Cao ]",
                 "§8▪ §fLoại Giai Điệu: §5[ U Ám ]",
+                "§8▪ §fPhạm vi: §e15 Block",
                 "",
                 "§c[Thi Triển - Khúc Cầu Hồn]",
-                "§f- Phóng ra một sợi xích linh hồn kết nối với",
-                "§f  kẻ địch. Nếu đi xa quá §e20 Block§f, xích sẽ đứt",
-                "§f  khiến nạn nhân bị §eChoáng váng (Stun)§f 1 giây.",
-                "§f- Khi xích còn tồn tại, bạn nhận giảm §a" + reduction + "%§f",
-                "§f  sát thương GÂY RA TỪ MỤC TIÊU ĐÓ.",
-                "§f- Kẻ địch bị xích sẽ nhận thêm §c" + vulnerable + "%§f sát thương",
-                "§f  từ mọi nguồn (Không cộng dồn nếu nhiều Nhạc Sư xích).",
-                "§f- §e[Bào Mòn]:§f Mỗi giây, sợi xích rút đi §c" + String.format("%.1f", trueDmgRate) + "%§f",
-                "§f  Máu Hiện Tại của mục tiêu thành Sát Thương Chuẩn.",
-                "§f  §7(Chỉ tính sát thương này cho Nhạc Sư đầu tiên)."
+                "§f- Phóng xích linh hồn vào mục tiêu. Nếu di chuyển",
+                "§f  cách xa quá 15 Block, sợi dậy sẽ mất liên kết.",
+                "§f- Bản thân được §aGiảm " + reduction + "%§f ST nhận vào từ mục tiêu",
+                "§f  và kẻ địch chịu thêm §c" + vulnerable + "%§f ST từ mọi nguồn.",
+                "",
+                "§e[Nội tại - Ăn Mòn]",
+                "§f- Mỗi giây, sợi xích bào mòn §c" + String.format("%.1f", trueDmgRate) + "%§f Máu Hiện Tại",
+                "§f  của mục tiêu thành Sát Thương Chuẩn."
         ));
 
         if (displayLevel >= 5) {
             lore.addAll(Arrays.asList(
                     "",
-                    "§6§l[Thức Tỉnh Tiềm Năng - Cấp 5]",
-                    "§f- Nội tại: Mỗi 15s, tự động kết nối 1 đồng minh lân cận",
-                    "§f  (Tối đa 3 người). Đồng minh nhận §c+10% Sát thương§f",
-                    "§f  và §b+30% Tốc độ di chuyển§f."
+                    "§6§l[Thức Tỉnh Tiềm Năng - Đồng Âm]",
+                    "§f- Mỗi 10s chọn 1 đồng minh để kết nối (Tối đa 3).",
+                    "§f- Nhận §c+10% Sát thương§f và §b+30% Tốc chạy§f."
             ));
         }
 
@@ -145,9 +141,9 @@ public class SoulLink implements ISkill {
         LivingEntity target = null;
         Location impactLoc = pLoc.clone();
 
-        for (double i = 0; i < 20.0; i += 0.5) {
+        // Tầm Cast giảm còn 15
+        for (double i = 0; i < 15.0; i += 0.5) {
             impactLoc.add(dir);
-            // Giảm lượng hạt Particle bằng DustOptions
             impactLoc.getWorld().spawnParticle(Particle.DUST, impactLoc, 1, new Particle.DustOptions(Color.fromRGB(138, 43, 226), 0.5f));
 
             if (impactLoc.getBlock().getType().isSolid()) break;
@@ -159,7 +155,6 @@ public class SoulLink implements ISkill {
                 }
             }
             if (target != null) {
-                // CHỈNH SỬA: Đưa vị trí kích nổ Melody xuống ngang chân mục tiêu (tránh lơ lửng nếu bắn trúng đầu)
                 impactLoc = target.getLocation();
                 break;
             }
@@ -175,7 +170,7 @@ public class SoulLink implements ISkill {
 
         if (target != null) {
             startSoulLink(player, target, reductionRate, vulnerableRate, trueDmgPercent);
-            player.sendMessage("§5§l[Tether] §fĐã khóa hồn mục tiêu: §c" + target.getName());
+            player.sendMessage("§5§l[Cộng Hưởng] §fĐã khóa hồn mục tiêu: §c" + target.getName());
         } else {
             player.sendMessage("§c§l[!] §fKhông tìm thấy linh hồn để kết nối.");
         }
@@ -217,8 +212,9 @@ public class SoulLink implements ISkill {
 
             @Override
             public void run() {
+                // Giới hạn đứt xích giảm còn 15 Block (15^2 = 225.0)
                 if (!player.isOnline() || player.isDead() || target.isDead() || !target.isValid()
-                        || player.getLocation().distanceSquared(target.getLocation()) > 400.0) {
+                        || player.getLocation().distanceSquared(target.getLocation()) > 225.0) {
                     breakLink(true);
                     this.cancel();
                     return;
@@ -265,6 +261,7 @@ public class SoulLink implements ISkill {
 
                     if (isDoTOwner) target.removeMetadata(metaDoTClaim, RPGCore.getInstance());
 
+                    // Hiệu ứng đứt xích cho Mục tiêu
                     target.getWorld().playSound(target.getLocation(), Sound.BLOCK_GLASS_BREAK, 1.2f, 0.5f);
                     target.getWorld().spawnParticle(Particle.CRIT, target.getLocation().add(0, 1, 0), 20, 0.5, 0.5, 0.5, 0.2);
 
@@ -272,7 +269,13 @@ public class SoulLink implements ISkill {
                         vn.minecraft.rPGCore.managers.StatusEffectManager.applyAbsoluteRoot(target, 20);
                     }
                 }
-                player.sendMessage("§8§l[Tether] §7Liên kết linh hồn đã bị đứt.");
+
+                // Hiệu ứng đứt xích cho Nhạc Sư
+                if (player.isOnline()) {
+                    player.getWorld().playSound(player.getLocation(), Sound.ITEM_WOLF_ARMOR_BREAK, 1.0f, 0.5f);
+                    player.getWorld().spawnParticle(Particle.ENCHANTED_HIT, player.getLocation().add(0, 1, 0), 10, 0.2, 0.2, 0.2, 0.05);
+                    player.sendMessage("§8§l[Cộng Hưởng] §7Liên kết linh hồn đã bị đứt.");
+                }
             }
 
         }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
@@ -298,13 +301,14 @@ public class SoulLink implements ISkill {
 
                 auraTicks++;
 
+                // Tìm kiếm đồng minh lân cận (Phạm vi tìm kiếm 15 Block)
                 if (auraTicks % 300 == 0 && linkedAllies.size() < 3) {
-                    for (Entity e : player.getWorld().getNearbyEntities(player.getLocation(), 20, 5, 20)) {
+                    for (Entity e : player.getWorld().getNearbyEntities(player.getLocation(), 15, 5, 15)) {
                         if (e instanceof Player && !e.equals(player) && !CombatManager.canTarget(player, e)) {
                             Player ally = (Player) e;
                             if (!linkedAllies.contains(ally.getUniqueId())) {
                                 linkedAllies.add(ally.getUniqueId());
-                                ally.sendMessage("§b§l[Tether] §fBạn được kết nối linh hồn với Nhạc Sư!");
+                                ally.sendMessage("§b§l[Đồng Âm] §fBạn được kết nối linh hồn với Nhạc Sư!");
                                 break;
                             }
                         }
@@ -315,19 +319,26 @@ public class SoulLink implements ISkill {
                 for (UUID uuid : linkedAllies) {
                     Player ally = org.bukkit.Bukkit.getPlayer(uuid);
 
-                    if (ally == null || !ally.isOnline() || ally.isDead() || ally.getLocation().distanceSquared(player.getLocation()) > 400.0) {
+                    // Tầm đứt xích đồng minh giảm còn 15 Block (15^2 = 225.0)
+                    if (ally == null || !ally.isOnline() || ally.isDead() || ally.getLocation().distanceSquared(player.getLocation()) > 225.0) {
                         toRemove.add(uuid);
                         if (ally != null && ally.isOnline()) {
-                            ally.sendMessage("§8§l[Tether] §7Đứt liên kết linh hồn đồng minh.");
+                            ally.sendMessage("§8§l[Đồng Âm] §7Đứt liên kết linh hồn đồng minh.");
                             ally.removeMetadata("BARD_ALLY_DMG_BUFF", RPGCore.getInstance());
                             RPGCore.getInstance().getPlayerManager().getRPGPlayer(ally.getUniqueId()).updateMoveSpeed();
-                            ally.getWorld().playSound(ally.getLocation(), Sound.ENTITY_ITEM_BREAK, 0.5f, 1.5f);
+
+                            ally.getWorld().playSound(ally.getLocation(), Sound.ITEM_WOLF_ARMOR_BREAK, 0.8f, 1.5f);
+                            ally.getWorld().spawnParticle(Particle.ENCHANTED_HIT, ally.getLocation().add(0, 1, 0), 10, 0.2, 0.2, 0.2, 0.05);
                         }
                         continue;
                     }
 
+                    // Tăng sát thương bằng Meta, Tăng tốc bằng siêu hàm Stats (chuẩn 30%)
                     ally.setMetadata("BARD_ALLY_DMG_BUFF", new FixedMetadataValue(RPGCore.getInstance(), 0.10));
-                    ally.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 40, 1, false, false, false));
+                    if (auraTicks % 30 == 0) {
+                        // Liên tục bồi tốc độ để chống hết hạn
+                        vn.minecraft.rPGCore.managers.StatusEffectManager.applySpeed(ally, 40, 0.30);
+                    }
 
                     if (auraTicks % 5 == 0) {
                         drawTether(player.getLocation().add(0, 1, 0), ally.getLocation().add(0, 1, 0), Color.fromRGB(0, 255, 255));
@@ -341,6 +352,7 @@ public class SoulLink implements ISkill {
                     Player ally = org.bukkit.Bukkit.getPlayer(uuid);
                     if (ally != null && ally.isOnline()) {
                         ally.removeMetadata("BARD_ALLY_DMG_BUFF", RPGCore.getInstance());
+                        RPGCore.getInstance().getPlayerManager().getRPGPlayer(ally.getUniqueId()).updateMoveSpeed();
                     }
                 }
                 linkedAllies.clear();

@@ -1,15 +1,19 @@
 package vn.minecraft.rPGCore.classes.impl.bard;
 
-import org.bukkit.Material;
-import org.bukkit.Particle;
-import org.bukkit.Sound;
+import org.bukkit.*;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.metadata.FixedMetadataValue;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.util.RayTraceResult;
+import org.bukkit.util.Vector;
 import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.classes.RPGClass;
 import vn.minecraft.rPGCore.classes.ResourceType;
 import vn.minecraft.rPGCore.managers.CombatManager;
+import vn.minecraft.rPGCore.managers.StatusEffectManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 
 import java.util.List;
@@ -179,13 +183,28 @@ public class BardClass extends RPGClass {
     // ==========================================
     private final Map<java.util.UUID, Long> nextAttackTime = new java.util.HashMap<>();
 
+    // ==========================================
+    // 1. FIX LỖI NUỐT ĐÒN HITBOX: ĐIỀU HƯỚNG VỀ ONLEFTCLICK
+    // ==========================================
     @Override
     public boolean performMeleeAttack(Player attacker, RPGPlayer rpgAttacker, org.bukkit.entity.LivingEntity target, org.bukkit.inventory.ItemStack weapon) {
-        return false;
+        // Khi chém thẳng vào quái, mượn luồng onLeftClick để kích hoạt Skill Nhạc Trưởng / Đòn lượn sóng!
+        this.onLeftClick(attacker, rpgAttacker, weapon);
+        return false; // Trả về false để hủy sát thương vật lý Vanilla
     }
 
+    // ==========================================
+    // 2. PHÂN LUỒNG 1 CỬA (SINGLE ENTRY POINT)
+    // ==========================================
     @Override
     public boolean onLeftClick(Player player, RPGPlayer rpgPlayer, org.bukkit.inventory.ItemStack weapon) {
+        // TRẠNG THÁI 1: BẬT NHẠC TRƯỞNG (Spam 0 Cooldown)
+        if (player.hasMetadata(vn.minecraft.rPGCore.skills.bard.MaestroState.ACTIVE_META)) {
+            executeMaestroAttack(player, rpgPlayer);
+            return true;
+        }
+
+        // TRẠNG THÁI 2: ĐÁNH THƯỜNG (Chạy Cooldown Tốc đánh)
         long currentTime = System.currentTimeMillis();
         long allowedTime = nextAttackTime.getOrDefault(player.getUniqueId(), 0L);
         if (currentTime < allowedTime) return false;
@@ -196,7 +215,182 @@ public class BardClass extends RPGClass {
         nextAttackTime.put(player.getUniqueId(), currentTime + attackCooldown);
 
         fireAdaptiveChords(player, rpgPlayer);
-        return false;
+        return true;
+    }
+
+    // ==========================================
+    // 3. LOGIC MAESTRO: CÓ XỬ LÝ ÂM CAO (HIGH TONE)
+    // ==========================================
+    private void executeMaestroAttack(Player player, RPGPlayer rpgPlayer) {
+        // Tuân thủ Core Rule: Chống lặp sát thương
+        if (player.hasMetadata("Ghost_L_Blocker")) return;
+
+        java.util.List<vn.minecraft.rPGCore.classes.impl.bard.tones.ToneType> tones = vn.minecraft.rPGCore.classes.impl.bard.tones.ToneManager.getCurrentTones(player);
+        if (tones.isEmpty()) return;
+
+        int highCount = 0;
+        vn.minecraft.rPGCore.classes.impl.bard.tones.ToneType executeTone = null;
+
+        for (vn.minecraft.rPGCore.classes.impl.bard.tones.ToneType t : tones) {
+            if (t == vn.minecraft.rPGCore.classes.impl.bard.tones.ToneType.HIGH) highCount++;
+            else if (executeTone == null) executeTone = t;
+        }
+
+        double damageMultiplier = 1.0 + (highCount * 1.5);
+
+        if (executeTone != null) {
+            // Có Vang/Sắc/Trầm -> Trừ 1 âm, xả skill
+            vn.minecraft.rPGCore.classes.impl.bard.tones.ToneManager.consumeTone(player, rpgPlayer, executeTone);
+            switch (executeTone) {
+                case ECHO: executeEchoRing(player, rpgPlayer, damageMultiplier); break;
+                case SHARP: executeSharpBeam(player, rpgPlayer, damageMultiplier); break;
+                case LOW: executeLowBlackHole(player, rpgPlayer, damageMultiplier); break;
+            }
+        } else if (highCount > 0) {
+            // Băng đạn trống rỗng tiêu hao, CHỈ CÒN ÂM CAO -> Bắn tia Định hướng Siêu Cấp
+            vn.minecraft.rPGCore.classes.impl.bard.tones.ToneManager.consumeTone(player, rpgPlayer, vn.minecraft.rPGCore.classes.impl.bard.tones.ToneType.HIGH);
+            executeHighSonicStrike(player, rpgPlayer, damageMultiplier);
+        }
+    }
+
+    // ========================================================
+    // 4. BỘ 4 HÀM VẬT LÝ MAESTRO BẠN CẦN THÊM VÀO CUỐI BARDCLASS
+    // ========================================================
+    private void executeHighSonicStrike(Player player, RPGPlayer rpgPlayer, double dmgMulti) {
+        org.bukkit.Location startLoc = player.getEyeLocation().clone().add(0, -0.2, 0);
+        org.bukkit.util.Vector dir = startLoc.getDirection().normalize().multiply(1.5);
+        player.getWorld().playSound(startLoc, org.bukkit.Sound.BLOCK_NOTE_BLOCK_BELL, 1.0f, 2.0f);
+
+        new org.bukkit.scheduler.BukkitRunnable() {
+            org.bukkit.Location currentLoc = startLoc.clone();
+            int ticksLived = 0;
+
+            @Override
+            public void run() {
+                if (ticksLived++ > 12 || currentLoc.getBlock().getType().isSolid()) {
+                    this.cancel(); return;
+                }
+                currentLoc.add(dir);
+                player.getWorld().spawnParticle(org.bukkit.Particle.NOTE, currentLoc, 2, 0.1, 0.1, 0.1, 0);
+
+                for (org.bukkit.entity.Entity e : currentLoc.getWorld().getNearbyEntities(currentLoc, 1.2, 1.2, 1.2)) {
+                    if (e instanceof org.bukkit.entity.LivingEntity && !e.equals(player) && CombatManager.canTarget(player, e)) {
+                        double dmg = CombatManager.calculateDamage(player, rpgPlayer, (org.bukkit.entity.LivingEntity) e, dmgMulti, 0.0, true, false);
+                        player.setMetadata("Ghost_L_Blocker", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), true));
+                        CombatManager.applySkillDamage(player, (org.bukkit.entity.LivingEntity) e, dmg);
+                        player.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
+
+                        player.getWorld().playSound(currentLoc, org.bukkit.Sound.ENTITY_PLAYER_ATTACK_CRIT, 1.0f, 1.5f);
+                        player.getWorld().spawnParticle(org.bukkit.Particle.CRIT, currentLoc, 10, 0.2, 0.2, 0.2, 0.1);
+                        this.cancel(); return;
+                    }
+                }
+            }
+        }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
+    }
+
+    private void executeEchoRing(Player player, RPGPlayer rpgPlayer, double dmgMulti) {
+        org.bukkit.Location center = player.getEyeLocation().clone().add(0, -0.3, 0);
+        center.getWorld().playSound(center, org.bukkit.Sound.BLOCK_NOTE_BLOCK_CHIME, 1.0f, 1.8f);
+
+        for (int i = 0; i < 360; i += 30) {
+            double angle = Math.toRadians(i);
+            org.bukkit.util.Vector dir = new org.bukkit.util.Vector(Math.cos(angle), 0, Math.sin(angle)).normalize().multiply(1.6);
+            new org.bukkit.scheduler.BukkitRunnable() {
+                org.bukkit.Location currentLoc = center.clone();
+                int ticksLived = 0;
+                @Override
+                public void run() {
+                    if (ticksLived++ > 10 || currentLoc.getBlock().getType().isSolid()) { this.cancel(); return; }
+                    currentLoc.add(dir);
+                    player.getWorld().spawnParticle(org.bukkit.Particle.NOTE, currentLoc, 1, 0, 0, 0, 0);
+
+                    for (org.bukkit.entity.Entity e : currentLoc.getWorld().getNearbyEntities(currentLoc, 1.0, 1.0, 1.0)) {
+                        if (e instanceof org.bukkit.entity.LivingEntity && !e.equals(player) && CombatManager.canTarget(player, e)) {
+                            double dmg = CombatManager.calculateDamage(player, rpgPlayer, (org.bukkit.entity.LivingEntity) e, dmgMulti, 0.0, true, false);
+                            player.setMetadata("Ghost_L_Blocker", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), true));
+                            CombatManager.applySkillDamage(player, (org.bukkit.entity.LivingEntity) e, dmg);
+                            player.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
+
+                            player.getWorld().playSound(currentLoc, org.bukkit.Sound.BLOCK_AMETHYST_BLOCK_HIT, 1.0f, 1.5f);
+                            this.cancel(); return;
+                        }
+                    }
+                }
+            }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
+        }
+    }
+
+    private void executeSharpBeam(Player player, RPGPlayer rpgPlayer, double dmgMulti) {
+        org.bukkit.Location pLoc = player.getEyeLocation();
+        org.bukkit.util.Vector dir = pLoc.getDirection().normalize().multiply(0.6);
+        player.getWorld().playSound(pLoc, org.bukkit.Sound.ENTITY_GUARDIAN_ATTACK, 1.0f, 2.0f);
+
+        for (double i = 0; i < 15.0; i += 0.6) {
+            pLoc.add(dir);
+            pLoc.getWorld().spawnParticle(org.bukkit.Particle.DUST, pLoc, 2, new org.bukkit.Particle.DustOptions(org.bukkit.Color.YELLOW, 1.2f));
+            if (pLoc.getBlock().getType().isSolid()) break;
+
+            for (org.bukkit.entity.Entity e : pLoc.getWorld().getNearbyEntities(pLoc, 1.2, 1.2, 1.2)) {
+                if (e instanceof org.bukkit.entity.LivingEntity && !e.equals(player) && !e.hasMetadata("Laser_Hit") && CombatManager.canTarget(player, e)) {
+                    e.setMetadata("Laser_Hit", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), true));
+                    double dmg = CombatManager.calculateDamage(player, rpgPlayer, (org.bukkit.entity.LivingEntity) e, dmgMulti, 0.0, true, false);
+                    player.setMetadata("Ghost_L_Blocker", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), true));
+                    CombatManager.applySkillDamage(player, (org.bukkit.entity.LivingEntity) e, dmg);
+                    player.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
+
+                    new org.bukkit.scheduler.BukkitRunnable() {
+                        @Override public void run() { e.removeMetadata("Laser_Hit", RPGCore.getInstance()); }
+                    }.runTaskLater(RPGCore.getInstance(), 3L);
+                }
+            }
+        }
+    }
+
+    private void executeLowBlackHole(Player player, RPGPlayer rpgPlayer, double dmgMulti) {
+        org.bukkit.util.RayTraceResult rayTrace = player.getWorld().rayTraceEntities(player.getEyeLocation(), player.getEyeLocation().getDirection(), 15.0,
+                e -> e instanceof org.bukkit.entity.LivingEntity && !e.equals(player) && CombatManager.canTarget(player, e));
+
+        org.bukkit.Location center;
+        if (rayTrace != null && rayTrace.getHitEntity() != null) {
+            center = rayTrace.getHitEntity().getLocation();
+        } else {
+            org.bukkit.util.RayTraceResult blockTrace = player.getWorld().rayTraceBlocks(player.getEyeLocation(), player.getEyeLocation().getDirection(), 15.0);
+            center = (blockTrace != null && blockTrace.getHitBlock() != null) ? blockTrace.getHitBlock().getLocation().add(0, 1, 0) : player.getEyeLocation().add(player.getEyeLocation().getDirection().multiply(10));
+        }
+
+        center.getWorld().playSound(center, org.bukkit.Sound.ENTITY_ILLUSIONER_CAST_SPELL, 1.0f, 0.6f);
+
+        new org.bukkit.scheduler.BukkitRunnable() {
+            int ticks = 0;
+            @Override
+            public void run() {
+                if (ticks++ >= 20) { this.cancel(); return; }
+
+                for (int i = 0; i < 360; i += 45) {
+                    double angle = Math.toRadians(i + (ticks * 12));
+                    double x = Math.cos(angle) * 2.5;
+                    double z = Math.sin(angle) * 2.5;
+                    center.getWorld().spawnParticle(org.bukkit.Particle.PORTAL, center.clone().add(x, 0.5, z), 1, 0, 0, 0, 0);
+                }
+
+                for (org.bukkit.entity.Entity e : center.getWorld().getNearbyEntities(center, 5, 3, 5)) {
+                    if (e instanceof org.bukkit.entity.LivingEntity && !e.equals(player) && CombatManager.canTarget(player, e)) {
+                        org.bukkit.entity.LivingEntity victim = (org.bukkit.entity.LivingEntity) e;
+                        org.bukkit.util.Vector pull = center.toVector().subtract(victim.getLocation().toVector());
+                        if (pull.lengthSquared() > 0.01) victim.setVelocity(pull.normalize().multiply(0.5));
+
+                        if (ticks == 1 || ticks % 10 == 0) {
+                            StatusEffectManager.applyAbsoluteRoot(victim, 10);
+                            double dmg = CombatManager.calculateDamage(player, rpgPlayer, victim, dmgMulti, 0.0, true, false);
+                            player.setMetadata("Ghost_L_Blocker", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), true));
+                            CombatManager.applySkillDamage(player, victim, dmg);
+                            player.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
+                        }
+                    }
+                }
+            }
+        }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
     }
 
     private void fireAdaptiveChords(Player player, RPGPlayer rpgPlayer) {
@@ -213,18 +407,22 @@ public class BardClass extends RPGClass {
         }
 
         // 2. TÍNH TOÁN CÁC CHỈ SỐ BỔ TRỢ TỪ ÂM
-        // Số lượng đạn (Âm Vang)
         int projCount = Math.min(4, echoCount + 1);
 
-        // Hệ số sát thương cơ bản chia theo số lượng tia
         double baseDmgMulti = 1.0;
         if (projCount == 2) baseDmgMulti = 0.50;
         else if (projCount == 3) baseDmgMulti = 0.33;
         else if (projCount == 4) baseDmgMulti = 0.30;
 
-        // Cơ chế của Âm Sắc (Sharp): Ở basic attack vẫn có thể cộng sát thương nhẹ, hoặc bạn muốn gỡ luôn thì báo tôi nhé.
-        // Hiện tại vẫn đang giữ +10% DMG cho tia đạn.
         double finalDmgMulti = baseDmgMulti + (sharpCount * 0.10);
+
+        // ==========================================
+        // [CƠ CHẾ MỚI]: BƠM SÁT THƯƠNG TỪ ÂM CAO KHI ĐANG LÀ NHẠC TRƯỞNG
+        // Nếu đang bật Ulti, mỗi Âm Cao cộng thêm 150% Sát thương đòn đánh
+        // ==========================================
+        if (player.hasMetadata(vn.minecraft.rPGCore.skills.bard.MaestroState.ACTIVE_META)) {
+            finalDmgMulti += (highCount * 1.5);
+        }
 
         // Âm Trầm: Làm chậm 15% mỗi Âm
         double slowPercent = lowCount * 0.15;
@@ -240,7 +438,7 @@ public class BardClass extends RPGClass {
         if (projCount == 1) spreadAngles = new double[]{0};
         else if (projCount == 2) spreadAngles = new double[]{-12, 12};
         else if (projCount == 3) spreadAngles = new double[]{-15, 0, 15};
-        else spreadAngles = new double[]{-20, -7, 7, 20}; // Có Lõi 8 (4 đạn)
+        else spreadAngles = new double[]{-20, -7, 7, 20};
 
         // [QUAN TRỌNG]: Bộ nhớ dùng chung để phân phối đạn, tránh 4 đạn cắm vào 1 con
         java.util.Set<java.util.UUID> lockedTargets = new java.util.HashSet<>();
