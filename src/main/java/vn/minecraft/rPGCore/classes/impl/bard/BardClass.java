@@ -194,17 +194,22 @@ public class BardClass extends RPGClass {
     }
 
     // ==========================================
-    // 2. PHÂN LUỒNG 1 CỬA (SINGLE ENTRY POINT)
-    // ==========================================
+// 2. PHÂN LUỒNG 1 CỬA (SINGLE ENTRY POINT)
+// ==========================================
     @Override
     public boolean onLeftClick(Player player, RPGPlayer rpgPlayer, org.bukkit.inventory.ItemStack weapon) {
-        // TRẠNG THÁI 1: BẬT NHẠC TRƯỞNG (Spam 0 Cooldown)
-        if (player.hasMetadata(vn.minecraft.rPGCore.skills.bard.MaestroState.ACTIVE_META)) {
-            executeMaestroAttack(player, rpgPlayer);
-            return true;
+        boolean isMaestro = player.hasMetadata(vn.minecraft.rPGCore.skills.bard.MaestroState.ACTIVE_META);
+
+        if (isMaestro) {
+            // Nếu là Nhạc Trưởng, thử dùng Âm đặc biệt (Vang/Sắc/Trầm) làm đạn.
+            // Nếu bắn thành công -> Bỏ qua hoàn toàn Cooldown tốc đánh (Vì đạn 4.5s mới có 1 viên)
+            if (tryExecuteMaestroSpecialAttack(player, rpgPlayer)) {
+                return true;
+            }
         }
 
-        // TRẠNG THÁI 2: ĐÁNH THƯỜNG (Chạy Cooldown Tốc đánh)
+        // TRẠNG THÁI BÌNH THƯỜNG (Hoặc Nhạc Trưởng nhưng hết đạn Vang/Sắc/Trầm)
+        // -> ÁP DỤNG COOLDOWN TỐC ĐÁNH CHO ĐÒN LƯỢN SÓNG CƠ BẢN
         long currentTime = System.currentTimeMillis();
         long allowedTime = nextAttackTime.getOrDefault(player.getUniqueId(), 0L);
         if (currentTime < allowedTime) return false;
@@ -214,43 +219,50 @@ public class BardClass extends RPGClass {
         attackCooldown = Math.max(200, attackCooldown);
         nextAttackTime.put(player.getUniqueId(), currentTime + attackCooldown);
 
+        // Bắn đạn lượn sóng (Đoạn này đã có sẵn code nhận +150% dmg từ Âm Cao)
         fireAdaptiveChords(player, rpgPlayer);
         return true;
     }
 
     // ==========================================
-    // 3. LOGIC MAESTRO: CÓ XỬ LÝ ÂM CAO (HIGH TONE)
-    // ==========================================
-    private void executeMaestroAttack(Player player, RPGPlayer rpgPlayer) {
-        // Tuân thủ Core Rule: Chống lặp sát thương
-        if (player.hasMetadata("Ghost_L_Blocker")) return;
+// 3. LOGIC MAESTRO: CHỈ TIÊU HAO ĐẠN (VANG/SẮC/TRẦM)
+// ==========================================
+    private boolean tryExecuteMaestroSpecialAttack(Player player, RPGPlayer rpgPlayer) {
+        if (player.hasMetadata("Ghost_L_Blocker")) return false;
 
         java.util.List<vn.minecraft.rPGCore.classes.impl.bard.tones.ToneType> tones = vn.minecraft.rPGCore.classes.impl.bard.tones.ToneManager.getCurrentTones(player);
-        if (tones.isEmpty()) return;
+        if (tones.isEmpty()) return false;
 
         int highCount = 0;
         vn.minecraft.rPGCore.classes.impl.bard.tones.ToneType executeTone = null;
 
+        // Đếm số lượng Âm Cao (HIGH) để tính Buff, và tìm 1 Âm làm đạn
         for (vn.minecraft.rPGCore.classes.impl.bard.tones.ToneType t : tones) {
-            if (t == vn.minecraft.rPGCore.classes.impl.bard.tones.ToneType.HIGH) highCount++;
-            else if (executeTone == null) executeTone = t;
+            if (t == vn.minecraft.rPGCore.classes.impl.bard.tones.ToneType.HIGH) {
+                highCount++; // Chỉ đếm, không làm gì cả
+            } else if (executeTone == null) {
+                executeTone = t; // Chọn Âm Vang/Sắc/Trầm đầu tiên tìm thấy làm đạn
+            }
         }
 
-        double damageMultiplier = 1.0 + (highCount * 1.5);
-
+        // Nếu CÓ đạn (Vang/Sắc/Trầm)
         if (executeTone != null) {
-            // Có Vang/Sắc/Trầm -> Trừ 1 âm, xả skill
+            // [QUAN TRỌNG]: TIÊU HAO ĐÚNG 1 ÂM (VANG/SẮC/TRẦM) ĐÓ
             vn.minecraft.rPGCore.classes.impl.bard.tones.ToneManager.consumeTone(player, rpgPlayer, executeTone);
+
+            // Tính Buff từ các Âm Cao đang có trong túi (Không bị tiêu hao)
+            double damageMultiplier = 1.0 + (highCount * 1.5);
+
             switch (executeTone) {
                 case ECHO: executeEchoRing(player, rpgPlayer, damageMultiplier); break;
                 case SHARP: executeSharpBeam(player, rpgPlayer, damageMultiplier); break;
                 case LOW: executeLowBlackHole(player, rpgPlayer, damageMultiplier); break;
             }
-        } else if (highCount > 0) {
-            // Băng đạn trống rỗng tiêu hao, CHỈ CÒN ÂM CAO -> Bắn tia Định hướng Siêu Cấp
-            vn.minecraft.rPGCore.classes.impl.bard.tones.ToneManager.consumeTone(player, rpgPlayer, vn.minecraft.rPGCore.classes.impl.bard.tones.ToneType.HIGH);
-            executeHighSonicStrike(player, rpgPlayer, damageMultiplier);
+            return true; // Bắn đạn đặc biệt thành công
         }
+
+        // Nếu KHÔNG có đạn đặc biệt (Túi rỗng hoặc túi CHỈ TOÀN ÂM CAO)
+        return false;
     }
 
     // ========================================================

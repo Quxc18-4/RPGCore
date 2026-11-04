@@ -1,9 +1,6 @@
 package vn.minecraft.rPGCore.skills.bard;
 
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.Particle;
-import org.bukkit.Sound;
+import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Entity;
@@ -154,6 +151,9 @@ public class MaestroState implements ISkill {
     public boolean execute(Player player, RPGPlayer rpgPlayer, int level) {
         if (!handleCostAndCooldown(player, rpgPlayer, level)) return false;
 
+        // [MỚI]: Trói chân (Absolute Root) Nhạc Trưởng trong đúng 3 giây đầu
+        StatusEffectManager.applyAbsoluteRoot(player, 60);
+
         List<ToneType> tones = ToneManager.getCurrentTones(player);
         int highCount = 0, echoCount = 0, lowCount = 0, sharpCount = 0;
 
@@ -165,7 +165,6 @@ public class MaestroState implements ISkill {
                 case SHARP: sharpCount++; break;
             }
         }
-
         ToneManager.consumeTones(player, rpgPlayer);
 
         double highMulti = 1.0 + (highCount * 0.15);
@@ -174,60 +173,165 @@ public class MaestroState implements ISkill {
         final double radius = 16.0 + (echoCount * 4.0);
         final int finalDuration = (int) Math.round((30 + (level * 6) + (level == 3 ? 2 : 0)) * lowMulti);
         final double penBonus = sharpCount * 10.0;
-
         final double drBuff = (level * 0.04) * highMulti;
         final double dmgBuff = (0.10 + (level * 0.05)) * highMulti;
         final double spdBuff = (0.30 + (level * 0.10)) * highMulti;
         final double critRate = (8 + (level * 4)) * highMulti;
         final double critDmg = (30 + (level * 10)) * highMulti;
 
-        Location pLoc = player.getLocation();
-        pLoc.getWorld().playSound(pLoc, Sound.ENTITY_ENDER_DRAGON_GROWL, 0.8f, 1.5f);
-        pLoc.getWorld().playSound(pLoc, Sound.BLOCK_BELL_RESONATE, 1.0f, 0.8f);
-        pLoc.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, pLoc.add(0, 1, 0), 100, 1.0, 1.0, 1.0, 0.5);
+        // [CẬP NHẬT MESSAGE THEO YÊU CẦU]
+        player.sendMessage("§d§l[TỐI THƯỢNG] §fKhúc Nhạc Khải Huyền... Bắt đầu tấu lên!");
+        final org.bukkit.Location castLoc = player.getLocation().clone();
 
-        // ==========================================
-        // VÒNG LẶP CẤP BUFF CHO ĐỒNG MINH XUNG QUANH
-        // THÊM: !e.equals(player) ĐỂ KHÔNG TỰ ÁP DỤNG 2 LẦN
-        // ==========================================
-        for (Entity e : pLoc.getWorld().getNearbyEntities(pLoc, radius, radius/2, radius)) {
-            if (e instanceof Player && !e.equals(player) && !CombatManager.canTarget(player, e)) {
-                applyMaestroEffects(player, (Player) e, finalDuration, drBuff, dmgBuff, spdBuff, critRate, critDmg, penBonus);
-            }
+        int numNotes = 25;
+        double[] nx = new double[numNotes];
+        double[] nz = new double[numNotes];
+        double[] startY = new double[numNotes]; // Điểm bắt đầu rơi
+        double[] fallDist = new double[numNotes]; // Quãng đường sẽ rơi (3 đến 6 block)
+
+        for (int i = 0; i < numNotes; i++) {
+            nx[i] = castLoc.getX() + (random.nextDouble() - 0.5) * (radius * 1.5);
+            nz[i] = castLoc.getZ() + (random.nextDouble() - 0.5) * (radius * 1.5);
+
+            // Bắt đầu từ trên cao: Cách mặt đất 10 -> 12 block
+            startY[i] = castLoc.getY() + 10.0 + (random.nextDouble() * 2.0);
+
+            // Quãng đường rơi: Từ 3 -> 6 block.
+            // => Điểm dừng chắc chắn sẽ lơ lửng ở độ cao từ (10-6=4) đến (12-3=9) block so với mặt đất!
+            fallDist[i] = 3.0 + (random.nextDouble() * 3.0);
         }
 
-        // ÁP DỤNG BUFF CHO CHÍNH BẢN THÂN NGƯỜI CAST (DUY NHẤT 1 LẦN DÒNG NÀY)
-        applyMaestroEffects(player, player, finalDuration, drBuff, dmgBuff, spdBuff, critRate, critDmg, penBonus);
+        // Không dùng object thừa để tránh Memory Leak[cite: 19]
+        new org.bukkit.scheduler.BukkitRunnable() {
+            int ticks = 0;
 
-        // Bật Khóa Mana và Bộ Sạc Âm Đánh Thường
-        startMaestroState(player, rpgPlayer, finalDuration);
+            @Override
+            public void run() {
+                if (!player.isOnline() || player.isDead()) {
+                    this.cancel();
+                    return;
+                }
+
+                // ==========================================
+                // PHASE 1: RỚT & CHỜ NỔ (Tổng 5 giây = 100 ticks)
+                // ==========================================
+                if (ticks < 100) {
+
+                    // 1. Âm thanh đếm nhịp
+                    if (ticks % 10 == 0) {
+                        float pitch = 0.5f + (ticks / 100.0f) * 1.5f;
+                        player.getWorld().playSound(castLoc, org.bukkit.Sound.BLOCK_NOTE_BLOCK_HARP, 1.5f, pitch);
+                    }
+                    if (ticks == 60) {
+                        // Tiếng nạp năng lượng ở 2 giây cuối
+                        player.getWorld().playSound(castLoc, org.bukkit.Sound.ENTITY_ILLUSIONER_PREPARE_BLINDNESS, 1.0f, 1.0f);
+                    }
+
+                    // 2. Vòng tròn sáng pha lê dưới mặt đất (Quay tít)
+                    if (ticks % 4 == 0) {
+                        org.bukkit.Color ringColor = ticks < 60 ? org.bukkit.Color.AQUA : org.bukkit.Color.WHITE;
+                        double offset = (ticks * Math.PI) / 30;
+
+                        for (double i = 0; i < 2 * Math.PI; i += Math.PI / 8) {
+                            double x = Math.cos(i + offset) * radius;
+                            double z = Math.sin(i + offset) * radius;
+                            player.getWorld().spawnParticle(org.bukkit.Particle.DUST, castLoc.clone().add(x, 0.2, z), 1, new org.bukkit.Particle.DustOptions(ringColor, 1.2f));
+                        }
+                    }
+
+                    // 3. VẬT LÝ HẠT (TOÁN HỌC CUBIC EASE-OUT)
+                    // Render mỗi 4 tick để hạt không tạo thành vệt dài
+                    if (ticks % 4 == 0) {
+                        // Tính % thời gian rơi (Chỉ rơi trong 60 tick đầu, max là 1.0)
+                        double progress = Math.min(1.0, (double) ticks / 60.0);
+
+                        // Công thức hãm phanh: Lúc đầu nhanh, lúc sau mượt
+                        double easeOut = 1.0 - Math.pow(1.0 - progress, 3);
+
+                        for (int i = 0; i < numNotes; i++) {
+                            // Tọa độ Y hiện tại = Điểm bắt đầu - (Quãng đường * % hoàn thành)
+                            double currentY = startY[i] - (fallDist[i] * easeOut);
+
+                            // Render hạt End_Rod chói sáng tại vị trí lơ lửng
+                            player.getWorld().spawnParticle(org.bukkit.Particle.END_ROD, nx[i], currentY, nz[i], 1, 0, 0, 0, 0);
+                        }
+                    }
+                }
+
+                // ==========================================
+                // PHASE 2: BÙNG NỔ PHA LÊ HỒI PHỤC (Tick 100)
+                // ==========================================
+                else if (ticks == 100) {
+                    player.getWorld().playSound(castLoc, org.bukkit.Sound.BLOCK_AMETHYST_CLUSTER_BREAK, 1.5f, 0.8f);
+                    player.getWorld().playSound(castLoc, org.bukkit.Sound.BLOCK_BEACON_ACTIVATE, 2.0f, 1.5f);
+
+                    for (int i = 0; i < numNotes; i++) {
+                        // Lấy lại điểm Y cuối cùng (khi easeOut = 1.0) để phát nổ
+                        double finalY = startY[i] - fallDist[i];
+
+                        player.getWorld().spawnParticle(org.bukkit.Particle.BLOCK, nx[i], finalY, nz[i], 8, 0.2, 0.2, 0.2, org.bukkit.Material.AMETHYST_BLOCK.createBlockData());
+                        player.getWorld().spawnParticle(org.bukkit.Particle.FIREWORK, nx[i], finalY, nz[i], 3, 0.1, 0.1, 0.1, 0.05);
+                    }
+
+                    player.getWorld().spawnParticle(org.bukkit.Particle.HAPPY_VILLAGER, castLoc.clone().add(0, 1, 0), 200, radius/1.5, 1.0, radius/1.5, 0);
+                    player.getWorld().spawnParticle(org.bukkit.Particle.END_ROD, castLoc.clone().add(0, 1, 0), 100, radius/2, 1.0, radius/2, 0.1);
+
+                    // Quét đồng minh & buff (Check CombatManager chuẩn rule)[cite: 19]
+                    for (org.bukkit.entity.Entity e : castLoc.getWorld().getNearbyEntities(castLoc, radius, radius/2, radius)) {
+                        if (e instanceof Player && !e.equals(player) && !CombatManager.canTarget(player, e)) {
+                            Player ally = (Player) e;
+                            if (canReceiveMaestroBuff(ally)) {
+                                applyHeal(ally);
+                                applyBuff(player, ally, finalDuration, drBuff, dmgBuff, spdBuff, critRate, critDmg, penBonus);
+                            }
+                        }
+                    }
+
+                    // Buff cho chính Bard[cite: 18]
+                    if (canReceiveMaestroBuff(player)) {
+                        applyHeal(player);
+                        applyBuff(player, player, finalDuration, drBuff, dmgBuff, spdBuff, critRate, critDmg, penBonus);
+                    }
+
+                    startMaestroState(player, rpgPlayer, finalDuration, radius, drBuff, dmgBuff, spdBuff, critRate, critDmg, penBonus);
+
+                    this.cancel();
+                }
+
+                ticks++;
+            }
+        }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
 
         applyGlobalCooldown(player, rpgPlayer, level);
         return true;
     }
 
-    private void applyMaestroEffects(Player bard, Player ally, int durationSeconds, double dr, double dmg, double spd, double cRate, double cDmg, double pen) {
+    // =====================================
+    // HÀM KIỂM TRA CHỐNG SPAM (FATIGUE)
+    // =====================================
+    private boolean canReceiveMaestroBuff(Player p) {
+        if (!p.hasMetadata(FATIGUE_META)) return true;
+        long expire = p.getMetadata(FATIGUE_META).get(0).asLong();
+        return System.currentTimeMillis() >= expire;
+    }
 
-        // KIỂM TRA CHỐNG SPAM BUFF
-        if (ally.hasMetadata(FATIGUE_META)) {
-            long expire = ally.getMetadata(FATIGUE_META).get(0).asLong();
-            if (System.currentTimeMillis() < expire) {
-                // CHẶN HOÀN TOÀN (Cả Heal, Cleanse, và Buff)
-                ally.sendMessage("§e§l[!] §eLinh hồn bạn đang mỏi mệt (Fatigue) không thể nhận Hào Quang Nhạc Trưởng!");
-                return;
-            }
-        }
-
-        // 1. HỒI HP & CLEANSE (Chỉ diễn ra khi KHÔNG có Fatigue)
+    // =====================================
+    // HÀM HỒI MÁU (CHỈ XẢY RA 1 LẦN CỐ ĐỊNH LÚC CAST)
+    // =====================================
+    private void applyHeal(Player ally) {
         AttributeInstance maxHpAttr = ally.getAttribute(Attribute.MAX_HEALTH);
         if (maxHpAttr != null) {
             ally.setHealth(maxHpAttr.getValue());
             ally.getWorld().spawnParticle(Particle.HEART, ally.getLocation().add(0, 2, 0), 5, 0.5, 0.5, 0.5, 0);
         }
         StatusEffectManager.cleanseNegativeEffects(ally);
+    }
 
-        // 2. CẤP HÀO QUANG BUFF
-        long fatigueExpireTime = System.currentTimeMillis() + (300 * 1000L); // 300s Fatigue
+    // =====================================
+    // HÀM CẤP BUFF (KÈM THEO ÁP FATIGUE 300S)
+    // =====================================
+    private void applyBuff(Player bard, Player ally, int durationSeconds, double dr, double dmg, double spd, double cRate, double cDmg, double pen) {
+        long fatigueExpireTime = System.currentTimeMillis() + (300 * 1000L); // Khóa không nhận lần nữa trong 300s
         ally.setMetadata(FATIGUE_META, new FixedMetadataValue(RPGCore.getInstance(), fatigueExpireTime));
 
         ally.setMetadata("MAESTRO_DR_BUFF", new FixedMetadataValue(RPGCore.getInstance(), dr));
@@ -237,11 +341,10 @@ public class MaestroState implements ISkill {
         if (pen > 0) ally.setMetadata("MAESTRO_PEN_BUFF", new FixedMetadataValue(RPGCore.getInstance(), pen));
 
         StatusEffectManager.applySpeed(ally, durationSeconds * 20, spd);
-
         ally.sendMessage("§a§l[Maestro] §fTâm hồn rực cháy! Toàn bộ chỉ số được thăng hoa!");
         ally.playSound(ally.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
 
-        // 3. VÒNG LẶP HỒI MÁU 1% MỖI GIÂY & DỌN DẸP
+        // Hồi 1% máu mỗi giây cho người nhận buff
         new BukkitRunnable() {
             int ticks = 0;
             final int maxTicks = durationSeconds * 20;
@@ -253,9 +356,7 @@ public class MaestroState implements ISkill {
                     this.cancel();
                     return;
                 }
-
                 ticks++;
-
                 if (ticks % 20 == 0) {
                     AttributeInstance hpAttr = ally.getAttribute(Attribute.MAX_HEALTH);
                     if (hpAttr != null) {
@@ -282,21 +383,22 @@ public class MaestroState implements ISkill {
         }
     }
 
-    private void startMaestroState(Player bard, RPGPlayer rpgPlayer, int durationSeconds) {
+    // =====================================
+    // BẬT TRẠNG THÁI NHẠC TRƯỞNG & VÒNG BUFF DI ĐỘNG
+    // =====================================
+    private void startMaestroState(Player bard, RPGPlayer rpgPlayer, int durationSeconds, double radius, double dr, double dmg, double spd, double cRate, double cDmg, double pen) {
         bard.setMetadata(ACTIVE_META, new FixedMetadataValue(RPGCore.getInstance(), true));
 
         new BukkitRunnable() {
             int ticks = 0;
             final int maxTicks = durationSeconds * 20;
             final boolean hasCore8 = rpgPlayer.getSkillData().getSkillLevel("BARD_CORE_8") > 0;
-            final int maestroCap = hasCore8 ? 4 : 3; // Nới Cap lên 3/4
+            final int maestroCap = hasCore8 ? 4 : 3;
 
             @Override
             public void run() {
                 if (!bard.isOnline() || bard.isDead() || ticks >= maxTicks) {
                     bard.removeMetadata(ACTIVE_META, RPGCore.getInstance());
-
-                    // Dọn dẹp sạch sẽ khi hết Ulti
                     bard.removeMetadata(ToneManager.META_TONES_LIST, RPGCore.getInstance());
                     bard.setMetadata(ToneManager.META_TONE_COUNT, new FixedMetadataValue(RPGCore.getInstance(), 0));
                     rpgPlayer.updateMoveSpeed();
@@ -306,8 +408,30 @@ public class MaestroState implements ISkill {
                     return;
                 }
 
-                ticks++;
+                // TÍNH NĂNG MỚI: VÒNG BUFF DI ĐỘNG THEO NGƯỜI (Cập nhật mỗi 0.5s)
+                if (ticks % 10 == 0) {
+                    Location currentLoc = bard.getLocation();
 
+                    // Vẽ vòng sáng chạy theo chân Bard
+                    for (double i = 0; i < 2 * Math.PI; i += Math.PI / 8) { // Mật độ hạt thưa hơn để tránh lag
+                        double x = Math.cos(i) * radius;
+                        double z = Math.sin(i) * radius;
+                        bard.getWorld().spawnParticle(Particle.DUST, currentLoc.clone().add(x, 0.2, z), 1, new Particle.DustOptions(Color.AQUA, 1.0f));
+                    }
+
+                    // Tự động cấp Buff cho những đồng minh chạy vào vùng di động
+                    for (Entity e : currentLoc.getWorld().getNearbyEntities(currentLoc, radius, radius/2, radius)) {
+                        if (e instanceof Player && !e.equals(bard) && !CombatManager.canTarget(bard, e)) {
+                            Player ally = (Player) e;
+                            if (canReceiveMaestroBuff(ally)) {
+                                // Chỉ cấp Buff, KHÔNG Hồi Máu (vì hồi máu đã cố định ở tâm cast rồi)
+                                applyBuff(bard, ally, durationSeconds, dr, dmg, spd, cRate, cDmg, pen);
+                            }
+                        }
+                    }
+                }
+
+                ticks++;
                 if (rpgPlayer.getCurrentResource() > 0) {
                     rpgPlayer.setCurrentResource(0);
                 }
@@ -315,16 +439,11 @@ public class MaestroState implements ISkill {
                 // Sạc đạn Nhạc Trưởng mỗi 4.5s
                 if (ticks % 90 == 0) {
                     List<ToneType> currentTones = ToneManager.getCurrentTones(bard);
-
-                    // NẾU CHƯA ĐẦY BĂNG ĐẠN NHẠC TRƯỞNG (3 HOẶC 4)
                     if (currentTones.size() < maestroCap) {
                         ToneType[] values = ToneType.values();
                         ToneType randomTone = values[random.nextInt(values.length)];
 
-                        // [BYPASS TONE MANAGER]: ÉP ADD TRỰC TIẾP VÀ SAVE LẠI
                         currentTones.add(randomTone);
-
-                        // Copy logic lưu của ToneManager để không phải gọi hàm addTone (tránh bị xóa nốt cũ)
                         StringBuilder sb = new StringBuilder();
                         for (int i = 0; i < currentTones.size(); i++) {
                             sb.append(currentTones.get(i).name());
