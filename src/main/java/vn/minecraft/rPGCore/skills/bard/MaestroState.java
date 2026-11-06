@@ -70,7 +70,7 @@ public class MaestroState implements ISkill {
     }
 
     @Override public String getId() { return "bard_maestro_state"; }
-    @Override public String getName() { return "Trạng Thái: Nhạc Trưởng"; }
+    @Override public String getName() { return "§b§l[TUYỆT KỸ TỐI THƯỢNG: GIAI ĐIỆU KHẢI HOÀN]"; }
     @Override public String getRequiredClass() { return "bard"; }
     @Override public Material getIcon() { return Material.NETHER_STAR; }
     @Override public int getMaxLevel() { return 3; }
@@ -103,29 +103,42 @@ public class MaestroState implements ISkill {
         int duration = 30 + (displayLevel * 6) + (displayLevel == 3 ? 2 : 0);
 
         return Arrays.asList(
-                "§7Kỹ năng Tối Thượng.",
-                "§7Hy sinh toàn bộ Năng lượng để mở ra một",
-                "§7bản giao hưởng rực rỡ nhất.",
+                "§d§o\"Lắng nghe đi... Đây là bản giao hưởng xua tan mọi bóng tối!\"",
                 "",
-                "§8▪ §fLoại Kỹ Năng: §d[ Tối Thượng ]",
-                "§8▪ §fPhạm vi cơ bản: §e16 Block",
+                "§7Hy sinh toàn bộ Năng lượng để tấu lên một",
+                "§7Giai Điệu Khải Hoàn, ban phước lành tối thượng cho",
+                "§7những người đồng đội sát cánh bên mình.",
                 "",
-                "§c[Thi Triển - Nhạc Trưởng]",
-                "§f- Hồi 100% HP và Xóa Debuff cho đồng minh",
-                "§f  (Và bản thân) trong phạm vi.",
-                "§f- Trong §e" + duration + "s§f, lượng Mana của bạn bị §cÉp về 0§f.",
-                "§f- Đồng minh nhận Buff sẽ bị Khóa không thể",
-                "§f  nhận Hào Quang Nhạc Trưởng lần nữa trong §e300s§f.",
-                "§f- §a-" + baseDr + "% ST Nhận Vào§f | §c+" + baseDmg + "% ST Gây Ra",
-                "§f  §e+" + baseSpd + "% Tốc chạy§f | §c+" + baseCrit + "% Tỉ lệ Crit",
-                "§f  §c+" + baseCdmg + "% ST Crit§f | §aHồi 1% Max HP/s",
+                "§f§l[THÔNG SỐ TUYỆT KỸ]",
+                "§f▪ Thời gian duy trì: §a" + duration + " giây",
+                "§f▪ Bán kính Giai Điệu: §e16 Block",
                 "",
-                "§d[Đòn Đánh Tấu Nhạc]",
-                "§f- Mỗi §e4.5s§f nhận ngẫu nhiên 1 Âm. Đánh thường",
-                "§f  tiêu hao 1 Âm để kích hoạt Kỹ Năng Chìm:",
-                "§f  + §bVang:§f Sóng âm 360 độ | + §eSắc:§f Laser xuyên thấu.",
-                "§f  + §8Trầm:§f Hố đen hút quái & Stun.",
-                "§f  + §cCao (Nội Tại):§f Tăng 150% Sát thương đòn đánh/Âm."
+                "§d§l❂ KHÚC NHẠC KHẢI HUYỀN ❂",
+                "§7- Khi thi triển, thanh tẩy debuff và hồi §a100% HP",
+                "§7  cho toàn bộ Đồng minh nằm trong vùng Giai Điệu.",
+                "",
+                "§e§l❂ BÀI CA ANH HÙNG ❂",
+                "§7Đồng minh trong Giai Điệu được cường hóa võ thuật:",
+                "§7▪ §cTăng " + baseDmg + "% §fSát thương gây ra",
+                "§7▪ §cTăng " + baseCrit + "% §fTỉ lệ Bạo kích §7và §c+" + baseCdmg + "% §fST Bạo Kich",
+                "",
+                "§a§l❂ BÀI CA TÁI SINH ❂",
+                "§7Giai Điệu che chở Đồng minh khỏi mọi hiểm nguy:",
+                "§7▪ §aGiảm " + baseDr + "% §fSát thương nhận vào",
+                "§7▪ §eTăng " + baseSpd + "% §fTốc độ di chuyển",
+                "§7▪ §aNhận lượng Hồi phục 1% Máu tối đa mỗi giây",
+                "",
+                "§e§l❂ GIAI ĐIỆU CỦA NHẠC TRƯỞNG ❂",
+                "§7- Mỗi §e4.5s§7 sinh ra 1 Âm. Đánh thường sẽ tiêu hao",
+                "§7  1 Âm để biến đổi cường hóa đòn đánh tiếp theo:",
+                "§7  + §bVang:§7 Ném lựu đạn chùm sóng âm văng mảnh nốt nhạc.",
+                "§7  + §eSắc:§7 Phóng mũi khoan động năng xuyên thấu mục tiêu.",
+                "§7  + §8Trầm:§7 Triệu hồi hố đen giam giữ và làm chậm tuyệt đối.",
+                "",
+                "§7§c[Nội tại - Cao Trào]:",
+                "§7- Tăng 150% Sát thương toàn phần cho mỗi Âm Cao.",
+                "",
+                "§5§o(Khi nốt nhạc cất lên, định mệnh đã được an bài)."
         );
     }
 
@@ -341,13 +354,15 @@ public class MaestroState implements ISkill {
                     return;
                 }
 
-                if (ticks % 5 == 0) {
+                // 1. HIỆU ỨNG TRÊN ĐẦU NHẠC TRƯỞNG (Đã được làm gọn gàng, tinh tế)
+                if (ticks % 15 == 0) { // Giãn thời gian ra 10 tick/lần để giảm rối mắt
                     Location headLoc = bard.getLocation().add(0, 2.2, 0);
-                    for (double i = 0; i < 2 * Math.PI; i += Math.PI / 4) {
-                        double x = Math.cos(i + (ticks * 0.1)) * 0.6;
-                        double z = Math.sin(i + (ticks * 0.1)) * 0.6;
-                        headLoc.getWorld().spawnParticle(Particle.END_ROD, headLoc.clone().add(x, 0, z), 1, 0, 0, 0, 0);
-                    }
+
+                    // Nhả 1 nốt nhạc với màu sắc ngẫu nhiên bay nhẹ lên
+                    headLoc.getWorld().spawnParticle(Particle.NOTE, headLoc, 0, Math.random(), 0, 0, 1);
+
+                    // Vài ký tự ma thuật (như đang đọc phổ nhạc) bay lơ lửng rớt xuống
+                    headLoc.getWorld().spawnParticle(Particle.ENCHANT, headLoc.clone().add(0, 0.5, 0), 4, 0.2, 0.2, 0.2, 0.1);
                 }
 
                 if (ticks % 4 == 0) {

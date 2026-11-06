@@ -252,13 +252,11 @@ public class BardClass extends RPGClass {
     }
 
     // ========================================================
-    // [CẬP NHẬT 1]: ÂM TRẦM (LOW TONE) - LỰU ĐẠN BÃI LÀM CHẬM KHỔNG LỒ
+    // [CẬP NHẬT 1]: ÂM TRẦM (LOW TONE) - HỐ ĐEN DƯỚI CHÂN & ĐA HẠT
     // ========================================================
     private void executeLowTone(Player player, RPGPlayer rpgPlayer, double baseMulti) {
         final Location startLoc = player.getEyeLocation();
         final Vector direction = startLoc.getDirection().normalize();
-
-        // Cân bằng: Sát thương tick rất nhỏ vì mang tính Khống chế (CC Tax)
         final double tickDmgMulti = baseMulti * 0.20;
 
         new BukkitRunnable() {
@@ -268,7 +266,10 @@ public class BardClass extends RPGClass {
             @Override
             public void run() {
                 if (distance > 20 || currentLoc.getBlock().getType().isSolid()) {
-                    triggerLowTonePuddle(player, rpgPlayer, currentLoc, tickDmgMulti);
+                    // Nếu đập vào tường/đất -> Lấy vị trí đó làm tâm nhưng đẩy lên 0.1 block để không bị lấp
+                    Location floorLoc = currentLoc.clone();
+                    floorLoc.setY(Math.floor(floorLoc.getY()) + 0.1);
+                    triggerLowTonePuddle(player, rpgPlayer, floorLoc, tickDmgMulti);
                     this.cancel();
                     return;
                 }
@@ -277,8 +278,12 @@ public class BardClass extends RPGClass {
                 currentLoc.getWorld().spawnParticle(Particle.DUST, currentLoc, 2, new Particle.DustOptions(Color.PURPLE, 1.2f));
 
                 for (Entity e : currentLoc.getWorld().getNearbyEntities(currentLoc, 0.5, 0.5, 0.5)) {
-                    if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) {
-                        triggerLowTonePuddle(player, rpgPlayer, currentLoc, tickDmgMulti);
+                    if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) { 
+                        // [FIX LỖI LƠ LỬNG]: Lấy tọa độ CHÂN của quái vật làm tâm hố đen
+                        Location floorLoc = e.getLocation().clone();
+                        floorLoc.setY(Math.floor(floorLoc.getY()) + 0.1); // Neo cứng xuống mặt đất
+
+                        triggerLowTonePuddle(player, rpgPlayer, floorLoc, tickDmgMulti);
                         this.cancel();
                         return;
                     }
@@ -296,34 +301,32 @@ public class BardClass extends RPGClass {
             int ticks = 0;
             @Override
             public void run() {
-                if (ticks >= 60 || !player.isOnline()) { // Tồn tại 3s = 60 ticks
-                    this.cancel();
-                    return;
+                if (ticks >= 60 || !player.isOnline()) {
+                    this.cancel(); return;
                 }
 
+                // [FIX HIỆU ỨNG]: Tạo 4 hạt di chuyển cùng lúc từ 4 hướng vào tâm
                 if (ticks % 2 == 0) {
-                    double angle = (ticks * Math.PI / 10.0);
                     double shrinkRadius = radius - ((ticks % 20) / 20.0) * radius;
 
-                    double x = Math.cos(angle) * shrinkRadius;
-                    double z = Math.sin(angle) * shrinkRadius;
+                    for (int i = 0; i < 4; i++) {
+                        // Chia đều 360 độ (2*PI) cho 4 hạt
+                        double angle = (ticks * Math.PI / 10.0) + (i * Math.PI / 2.0);
+                        double x = Math.cos(angle) * shrinkRadius;
+                        double z = Math.sin(angle) * shrinkRadius;
 
-                    Location noteLoc = center.clone().add(x, 0.2, z);
-                    center.getWorld().spawnParticle(Particle.NOTE, noteLoc, 0, 0.1, 0, 0, 1);
-                    center.getWorld().spawnParticle(Particle.WITCH, noteLoc, 1, 0, 0, 0, 0);
+                        Location noteLoc = center.clone().add(x, 0, z); // Giữ Y ở sát mặt đất
+                        center.getWorld().spawnParticle(Particle.NOTE, noteLoc, 0, 0.1, 0, 0, 1);
+                        center.getWorld().spawnParticle(Particle.WITCH, noteLoc, 1, 0, 0, 0, 0);
+                    }
                 }
 
-                // Logic: Quét quái mỗi 10 ticks (0.5s) để Slow và giật DMG
                 if (ticks % 10 == 0) {
                     for (Entity e : center.getWorld().getNearbyEntities(center, radius, 1.5, radius)) {
                         if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) {
                             LivingEntity target = (LivingEntity) e;
-
-                            // [SỬA ĐỔI]: SỬ DỤNG HÀM APPLYLOW CHUẨN CỦA STATUS_EFFECT_MANAGER
-                            // Thời gian 20 ticks (1s) | Giảm 100% tốc độ Player (1.0) | Slowness 5 cho Quái (Amp 4)
                             vn.minecraft.rPGCore.managers.StatusEffectManager.applySlow(target, 20, 1.0, 4);
 
-                            // Gây sát thương chuẩn theo rule
                             double dmg = CombatManager.calculateDamage(player, rpgPlayer, target, dmgMulti, 0.0, true, false);
                             player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(RPGCore.getInstance(), true));
                             CombatManager.applySkillDamage(player, target, dmg);
@@ -331,16 +334,16 @@ public class BardClass extends RPGClass {
                         }
                     }
                 }
-               ticks++;
+                ticks++;
             }
         }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
     }
 
     // ========================================================
-    // [CẬP NHẬT 2]: ÂM SẮC (SHARP TONE) - CHARGE LASER VÀ BẮN HELIX
-    // ========================================================
+// [CẬP NHẬT 2]: ÂM SẮC (SHARP TONE) - CHARGE VÀ MŨI KHOAN ĐỘNG NĂNG
+// ========================================================
     private void executeSharpTone(Player player, RPGPlayer rpgPlayer, double baseMulti) {
-        final double burstMulti = baseMulti * 3.0; // Burst x3 Sát thương
+        final double burstMulti = baseMulti * 3.0; // Burst x3 Sát thương (Cân bằng rủi ro Charge 2s)[cite: 6]
         player.getWorld().playSound(player.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 2.0f);
 
         new BukkitRunnable() {
@@ -351,7 +354,7 @@ public class BardClass extends RPGClass {
                     this.cancel(); return;
                 }
 
-                // Vận chiêu 2s
+                // Vận chiêu 2s (40 ticks)
                 if (chargeTicks < 40) {
                     Location eye = player.getEyeLocation();
                     Vector dir = eye.getDirection().normalize();
@@ -364,9 +367,10 @@ public class BardClass extends RPGClass {
                     player.getWorld().playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.5f);
                     player.getWorld().playSound(player.getLocation(), Sound.ENTITY_GUARDIAN_ATTACK, 1.0f, 1.2f);
 
-                    // Giật lùi người chơi
+                    // Giật lùi người chơi do sức giật của đạn
                     player.setVelocity(player.getLocation().getDirection().multiply(-1.5).setY(0.4));
 
+                    // Kích hoạt mũi khoan
                     fireHelixBeam(player, rpgPlayer, burstMulti);
                     this.cancel();
                 }
@@ -380,39 +384,86 @@ public class BardClass extends RPGClass {
         Vector dir = startLoc.getDirection().normalize();
         List<UUID> hitTargets = new ArrayList<>();
 
-        for (double d = 0; d <= 15; d += 0.5) {
-            Location point = startLoc.clone().add(dir.clone().multiply(d));
+        final double speed = 1.5; // Tốc độ bay: 1.5 block mỗi tick
+        final double maxDistance = 15.0; // Tầm bắn tối đa
 
-            double r = 2.0;
-            double angle = d * Math.PI;
+        new BukkitRunnable() {
+            double currentDist = 0.0;
+            int ticks = 0; // [FIX QUAN TRỌNG]: Bổ sung biến đếm thời gian để làm động cơ xoay
 
-            double x1 = Math.cos(angle) * r;
-            double y1 = Math.sin(angle) * r;
-            Vector v1 = getPerpendicularVectors(dir, x1, y1);
-            point.getWorld().spawnParticle(Particle.DUST, point.clone().add(v1), 2, new Particle.DustOptions(Color.ORANGE, 1.5f));
-
-            double x2 = Math.cos(angle + Math.PI) * r;
-            double y2 = Math.sin(angle + Math.PI) * r;
-            Vector v2 = getPerpendicularVectors(dir, x2, y2);
-            point.getWorld().spawnParticle(Particle.END_ROD, point.clone().add(v2), 1, 0, 0, 0, 0);
-
-            for (Entity e : point.getWorld().getNearbyEntities(point, 2.0, 2.0, 2.0)) {
-                if (e instanceof LivingEntity && CombatManager.canTarget(player, e) && !hitTargets.contains(e.getUniqueId())) {
-                    hitTargets.add(e.getUniqueId());
-
-                    double dmg = CombatManager.calculateDamage(player, rpgPlayer, (LivingEntity) e, dmgMulti, 15.0, true, false);
-                    player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(RPGCore.getInstance(), true));
-                    CombatManager.applySkillDamage(player, (LivingEntity) e, dmg);
-                    player.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
-
-                    point.getWorld().spawnParticle(Particle.ENCHANTED_HIT, e.getLocation().add(0, 1, 0), 20, 0.5, 0.5, 0.5, 0.1);
+            @Override
+            public void run() {
+                // Hủy nếu bay quá tầm hoặc player offline
+                if (currentDist > maxDistance || !player.isOnline()) {
+                    this.cancel(); return;
                 }
+
+                Location headLoc = startLoc.clone().add(dir.clone().multiply(currentDist));
+
+                // Xử lý đập tường: Nổ cái rầm và dừng tia sáng
+                if (headLoc.getBlock().getType().isSolid()) {
+                    headLoc.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, headLoc, 1);
+                    headLoc.getWorld().playSound(headLoc, Sound.ENTITY_DRAGON_FIREBALL_EXPLODE, 1.0f, 1.5f);
+                    this.cancel(); return;
+                }
+
+                // [VFX]: VẼ MŨI KHOAN KẾT HỢP TOÁN HỌC KHÔNG - THỜI GIAN
+                for (double d = currentDist; d < currentDist + speed && d <= maxDistance; d += 0.25) {
+                    Location point = startLoc.clone().add(dir.clone().multiply(d));
+
+                    // 1. Độ xoắn tĩnh theo hình dáng mũi khoan (Cứ 3 block xoắn 1 vòng)
+                    double distanceTwist = d * (Math.PI / 1.5);
+
+                    // 2. Độ xoay động cơ theo thời gian (Tạo cảm giác lốc xoáy)
+                    // Mỗi tick, toàn bộ ngôi sao sẽ xoay đi một góc PI/3 (60 độ)
+                    double timeSpin = ticks * (Math.PI / 3.0);
+
+                    // Vẽ 8 điểm tạo thành hình ngôi sao lốc xoáy
+                    for (int i = 0; i < 8; i++) {
+                        double r = (i % 2 == 0) ? 2.0 : 1.0;
+
+                        // [TỔNG HỢP GÓC XOAY] = Khương tuyến tĩnh + Động cơ xoay + Góc 45 độ của từng cạnh
+                        double finalAngle = distanceTwist + timeSpin + (i * (Math.PI / 4.0));
+
+                        double x = Math.cos(finalAngle) * r;
+                        double y = Math.sin(finalAngle) * r;
+                        Vector v = getPerpendicularVectors(dir, x, y);
+
+                        if (i % 2 == 0) {
+                            point.getWorld().spawnParticle(Particle.DUST, point.clone().add(v), 1, new Particle.DustOptions(Color.ORANGE, 1.5f));
+                        } else {
+                            // Tạo đuôi gió trắng cuộn theo chiều xoáy
+                            point.getWorld().spawnParticle(Particle.END_ROD, point.clone().add(v), 1, 0, 0, 0, 0);
+                        }
+                    }
+                }
+
+                // [LOGIC SÁT THƯƠNG]: Quét Hitbox tại đầu mũi khoan (Bán kính 2.0)
+                for (Entity e : headLoc.getWorld().getNearbyEntities(headLoc, 2.0, 2.0, 2.0)) {
+                    // Lọc đồng minh chuẩn RPGCore[cite: 5]
+                    if (e instanceof LivingEntity && CombatManager.canTarget(player, e) && !hitTargets.contains(e.getUniqueId())) {
+                        hitTargets.add(e.getUniqueId());
+
+                        // Tính toán sát thương chuẩn, truyền 15.0 Xuyên Giáp/Kháng Phép[cite: 5]
+                        double dmg = CombatManager.calculateDamage(player, rpgPlayer, (LivingEntity) e, dmgMulti, 15.0, true, false);
+
+                        // Chống lặp sát thương cực đoan (Ghost Blocker)[cite: 5]
+                        player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(RPGCore.getInstance(), true));
+                        CombatManager.applySkillDamage(player, (LivingEntity) e, dmg); //[cite: 5]
+                        player.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
+
+                        headLoc.getWorld().spawnParticle(Particle.ENCHANTED_HIT, e.getLocation().add(0, 1, 0), 30, 0.5, 0.5, 0.5, 0.2);
+                    }
+                }
+
+                currentDist += speed;
+                ticks++; // [FIX QUAN TRỌNG]: Tăng biến thời gian để động cơ quay
             }
-        }
+        }.runTaskTimer(RPGCore.getInstance(), 0L, 1L);
     }
 
     // ========================================================
-    // [CẬP NHẬT 3]: ÂM VANG (ECHO TONE) - LỰU ĐẠN SÓNG ÂM
+    // [CẬP NHẬT 3]: ÂM VANG (ECHO TONE) - LỰU ĐẠN SÓNG ÂM (CÓ TRỌNG LỰC ĐẠN NỔ)
     // ========================================================
     private void executeEchoTone(Player player, RPGPlayer rpgPlayer, double baseMulti) {
         final Location startLoc = player.getEyeLocation();
@@ -460,7 +511,6 @@ public class BardClass extends RPGClass {
             noteLocs.add(explodeLoc.clone());
             double u = Math.random();
             double v = Math.random();
-
             double theta = 2 * Math.PI * u;
             double phi = Math.acos(2 * v - 1);
 
@@ -468,17 +518,17 @@ public class BardClass extends RPGClass {
             double y = Math.sin(phi) * Math.sin(theta);
             double z = Math.cos(phi);
 
-            // Chỉ nổ bán cầu nếu rớt xuống đất
+            // Nổ bán cầu nếu trên mặt đất
             if (isGround && y < 0) y = Math.abs(y);
-            noteDirs.add(new Vector(x, y, z).normalize().multiply(0.8));
+            // Đẩy mạnh Vector lên trời (1.2) để bay vút ra
+            noteDirs.add(new Vector(x, y, z).normalize().multiply(1.2));
         }
 
-        // Tối ưu chạy gom tất cả tia đạn vào 1 BukkitRunnable
         new BukkitRunnable() {
             int travelTicks = 0;
             @Override
             public void run() {
-                if (travelTicks > 10) {
+                if (travelTicks > 15) { // Tăng thời gian bay lên chút xíu để thấy rõ cung rơi
                     this.cancel(); return;
                 }
 
@@ -486,25 +536,28 @@ public class BardClass extends RPGClass {
                     Location loc = noteLocs.get(i);
                     Vector dir = noteDirs.get(i);
 
+                    // [FIX VẬT LÝ]: Thêm Trọng Lực (Gravity) rơi dần theo thời gian
+                    // Trừ dần trục Y mỗi tick để tạo hình vòng cung Parabol
+                    dir.setY(dir.getY() - 0.12);
+
                     loc.add(dir);
                     loc.getWorld().spawnParticle(Particle.NOTE, loc, 0, Math.random(), 0, 0, 1);
                     loc.getWorld().spawnParticle(Particle.FIREWORK, loc, 1, 0, 0, 0, 0);
 
                     for (Entity e : loc.getWorld().getNearbyEntities(loc, 0.8, 0.8, 0.8)) {
-                        if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) {
+                        if (e instanceof LivingEntity && CombatManager.canTarget(player, e)) { //[cite: 7]
                             UUID targetID = e.getUniqueId();
                             int hits = hitMap.getOrDefault(targetID, 0);
 
-                            // Damage Falloff: Trúng phát đầu = 100%, phát sau = +5%
                             double currentMulti = (hits == 0) ? baseMulti : (baseMulti * 0.05);
+                            double dmg = CombatManager.calculateDamage(player, rpgPlayer, (LivingEntity) e, currentMulti, 0.0, true, false); //[cite: 7]
 
-                            double dmg = CombatManager.calculateDamage(player, rpgPlayer, (LivingEntity) e, currentMulti, 0.0, true, false);
-                            player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(RPGCore.getInstance(), true));
-                            CombatManager.applySkillDamage(player, (LivingEntity) e, dmg);
-                            player.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance());
+                            player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(RPGCore.getInstance(), true)); //[cite: 7]
+                            CombatManager.applySkillDamage(player, (LivingEntity) e, dmg); //[cite: 7]
+                            player.removeMetadata("Ghost_L_Blocker", RPGCore.getInstance()); //[cite: 7]
 
                             hitMap.put(targetID, hits + 1);
-                            dir.setY(999); // Hủy quỹ đạo hạt này
+                            dir.setY(999); // Hủy hạt đạn này
                         }
                     }
                 }
