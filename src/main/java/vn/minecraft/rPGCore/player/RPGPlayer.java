@@ -478,8 +478,14 @@ public class RPGPlayer {
         // [LẤY THÊM MÁU TỪ BÌNH THUỐC]
         double potionFlatHp = vn.minecraft.rPGCore.RPGCore.getInstance().getAlchemistBuffManager().getBonus(this.bukkitPlayer.getUniqueId(), "Máu tối đa");
 
+        // TỔNG MÁU (Chưa tính nội tại Class)
         double totalMaxHp = baseHp + levelBonus + vitBonus + equipHp + foodMaxHp + potionFlatHp;
-        return Math.max(1.0, totalMaxHp);
+
+        // ĐẶC QUYỀN GLOBAL SCALING TỪ CLASS
+        double classGlobalMultiplier = this.currentClass != null ? this.currentClass.getGlobalMaxHpMultiplier(this) : 0.0;
+
+        // Nhân tổng máu với hệ số của Class
+        return Math.max(1.0, totalMaxHp * (1.0 + classGlobalMultiplier));
     }
 
     public double getRequiredExp() {

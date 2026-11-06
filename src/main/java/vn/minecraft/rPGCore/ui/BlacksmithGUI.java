@@ -478,6 +478,12 @@ public class BlacksmithGUI implements Listener {
                 lore.set(i, prefix + " §f" + String.format("%.1f", newMin) + " §8~ §f" + String.format("%.1f", newMax));
             }
             else if (clean.startsWith("- Máu tối đa:") || clean.startsWith("- Giáp:") || clean.startsWith("- Kháng phép:")) {
+
+                // [THÊM ĐOẠN NÀY]: Bỏ qua nếu dòng đang đọc chứa '%' hoặc '★' (Thuộc tính Dòng dõi/Phụ)
+                if (clean.contains("%") || clean.contains("★")) {
+                    continue;
+                }
+
                 String[] parts = clean.split(":");
                 String prefix = line.substring(0, line.indexOf(":") + 1);
                 double oldVal = Double.parseDouble(ChatColor.stripColor(parts[1]).replace("+", "").replace("%", "").trim());

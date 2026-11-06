@@ -7,6 +7,7 @@ import vn.minecraft.rPGCore.skills.assassin.*;
 import vn.minecraft.rPGCore.skills.bard.*;
 import vn.minecraft.rPGCore.skills.mage.*;
 import vn.minecraft.rPGCore.skills.mage.fusion.FusionEngine;
+import vn.minecraft.rPGCore.skills.reaper.BloodStrikeSkill;
 import vn.minecraft.rPGCore.skills.summoner.*;
 import vn.minecraft.rPGCore.skills.summoner.pets.*;
 import vn.minecraft.rPGCore.skills.warrior.*;
@@ -105,6 +106,8 @@ public class SkillManager {
         registerSkill(new SoulLink());
         registerSkill(new RhythmOfWind());
         registerSkill(new MaestroState());
+        //Reaper
+        registerSkill(new BloodStrikeSkill(plugin));
     }
 
     public void registerSkill(ISkill skill) {

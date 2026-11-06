@@ -8,7 +8,9 @@ import org.bukkit.metadata.FixedMetadataValue;
 import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.classes.RPGClass;
 import vn.minecraft.rPGCore.classes.ResourceType;
+import vn.minecraft.rPGCore.managers.CombatManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
+import vn.minecraft.rPGCore.skills.ISkill;
 
 import java.util.List;
 import java.util.Map;
@@ -23,9 +25,16 @@ public class ReaperClass extends RPGClass {
                        double maxHealth, double maxResource, ResourceType resourceType,
                        double regenRate, boolean isEnchanted) {
         super(id, displayName, icon, description, maxHealth, maxResource, resourceType, regenRate, isEnchanted);
-
-        // [LIMIT BREAK]: Mở khóa Cap riêng cho Reaper
-        this.resourceRegenCap = 600.0;
+        // [CẬP NHẬT 1]: Mở khóa Cap Tỉ lệ Hồi phục riêng cho Reaper
+        this.hpRegenCap = 600.0;
+        // Trong Constructor của ReaperClass
+        CombatManager.registerCombatModifier(new CombatManager.ICombatModifier() {
+            @Override
+            public double getOutgoingDamageModifier(LivingEntity attacker, LivingEntity target) {
+                if (attacker.hasMetadata("Reaper_Bloodlust")) return 0.05; // Tăng 5% sát thương cuối
+                return 0.0;
+            }
+        });
     }
 
     // ==========================================
@@ -34,14 +43,12 @@ public class ReaperClass extends RPGClass {
     // ==========================================
     @Override
     public void applyPassiveBonusStats(RPGPlayer rpgPlayer, Map<String, Double> stats) {
-        double healthRegen = stats.getOrDefault("Tỉ lệ hồi máu", 100.0);
+        // [CẬP NHẬT 2]: Khởi đầu 25% Hồi phục thay vì 20%
+        stats.put("Tỉ lệ hồi phục", stats.getOrDefault("Tỉ lệ hồi phục", 0.0) + 25.0);
 
-        if (healthRegen > 200.0) {
-            double excessRegen = Math.min(healthRegen, this.resourceRegenCap) - 200.0;
-            double bonusMaxHpPercent = Math.floor(excessRegen / 10.0) * 1.0;
-            bonusMaxHpPercent = Math.min(bonusMaxHpPercent, 40.0);
-            stats.put("% Máu Tối Đa", stats.getOrDefault("% Máu Tối Đa", 0.0) + bonusMaxHpPercent);
-        }
+        // Hiển thị % Máu Tối Đa lên UI cho người chơi xem (Đồng bộ với Global)
+        double actualHpBonusPercent = getGlobalMaxHpMultiplier(rpgPlayer) * 100.0;
+        stats.put("% Máu Tối Đa", stats.getOrDefault("% Máu Tối Đa", 0.0) + actualHpBonusPercent);
 
         Player player = rpgPlayer.getBukkitPlayer();
         if (player != null && player.isOnline()) {
@@ -52,7 +59,6 @@ public class ReaperClass extends RPGClass {
                 player.setMetadata(META_REAPER_SHIELD, new FixedMetadataValue(RPGCore.getInstance(), true));
             }
         }
-
         super.applyPassiveBonusStats(rpgPlayer, stats);
     }
 
@@ -60,17 +66,35 @@ public class ReaperClass extends RPGClass {
     // [HOOK TƯƠNG LAI] 2. THAO TÁC VŨ KHÍ & ĐÁNH THƯỜNG
     // ==========================================
 
+    // Sửa trong ReaperClass.java
     @Override
     public boolean performMeleeAttack(Player attacker, RPGPlayer rpgAttacker, LivingEntity target, ItemStack weapon) {
-        // Reaper là phái cận chiến (dùng Lưỡi hái Hoe). Mặc định cho phép chém tay.
-        // Có thể chặn chém tay (return false) nếu đang trong trạng thái Vận Chiêu (Channeling).
+        // [SỬA LỖI 1 DMG]: Hứng đòn đánh Kỹ năng ngay từ bước khởi đầu (Before Combat)
+        if (attacker.hasMetadata("Reaper_BS_OnHit")) {
+            int stageBuff = attacker.getMetadata("Reaper_BS_OnHit").get(0).asInt();
+            int skillLevel = rpgAttacker.getSkillData().getSkillLevel("reaper_blood_strike");
+
+            // Xóa Buff lập tức
+            attacker.removeMetadata("Reaper_BS_OnHit", vn.minecraft.rPGCore.RPGCore.getInstance());
+            attacker.removeMetadata("Active_Weapon_Enhancement", vn.minecraft.rPGCore.RPGCore.getInstance());
+
+            // Chạy sát thương Kỹ năng
+            ISkill bsSkill = vn.minecraft.rPGCore.RPGCore.getInstance().getSkillManager().getSkill("reaper_blood_strike");
+            if (bsSkill instanceof vn.minecraft.rPGCore.skills.reaper.BloodStrikeSkill) {
+                ((vn.minecraft.rPGCore.skills.reaper.BloodStrikeSkill) bsSkill).processOnHit(attacker, rpgAttacker, target, skillLevel, stageBuff);
+            }
+
+            // TRẢ VỀ FALSE ĐỂ HỦY BỎ HOÀN TOÀN ĐÒN ĐÁNH TAY VANILLA (CHỐNG LỖI +1 DMG)
+            return false;
+        }
+
+        // Nếu không có Buff, chém tay bình thường
         return super.performMeleeAttack(attacker, rpgAttacker, target, weapon);
     }
 
     @Override
     public double onMeleeHit(Player attacker, RPGPlayer rpgAttacker, LivingEntity target, double rawDamage) {
-        // Nơi xử lý Đòn đánh tay đặc biệt (Giống Mảnh Sấm Sét của Warrior).
-        // Ý tưởng tương lai: Đánh tay tự trừ 2% Máu để nổ thêm Sát thương Chuẩn dựa trên % Máu đã mất.
+        // Xóa đoạn hứng kỹ năng ở đây, chỉ giữ lại super
         return super.onMeleeHit(attacker, rpgAttacker, target, rawDamage);
     }
 
@@ -103,12 +127,15 @@ public class ReaperClass extends RPGClass {
     // [HOOK TƯƠNG LAI] 4. ĐIỀU CHỈNH CHỈ SỐ ĐỘNG TRONG COMBAT
     // ==========================================
 
+    // Tăng 20% Hút máu khi đang trong 12s Cuồng Huyết
     @Override
     public double getDynamicLifeSteal(Player attacker, RPGPlayer rpgPlayer) {
-        // Chỉ số Hút máu cộng thêm ngay khoảnh khắc chém trúng (Thay đổi liên tục).
-        // Ý tưởng tương lai: Trả về lượng hút máu tương ứng với % máu đã mất của Reaper.
-        // Ví dụ: Mất 50% máu -> Trả về 20.0 (cộng thêm 20% lifesteal).
-        return super.getDynamicLifeSteal(attacker, rpgPlayer);
+        double extraLs = super.getDynamicLifeSteal(attacker, rpgPlayer);
+        // Kiểm tra xem đồng hồ 12s còn chạy không
+        if (attacker.hasMetadata("Reaper_Bloodlust_End")) {
+            extraLs += 20.0;
+        }
+        return extraLs;
     }
 
     @Override
@@ -116,5 +143,39 @@ public class ReaperClass extends RPGClass {
         super.applyDynamicCombatStats(attacker, target, combatStats);
         // Sửa đổi chỉ số linh hoạt lúc tính sát thương.
         // Ý tưởng tương lai: Nếu quái (target) đang bị chảy máu, cộng thêm 20.0 Tỉ lệ Xuyên Giáp cho đòn đánh này.
+    }
+    // Thêm hàm này vào ReaperClass.java
+    @Override
+    public double getGlobalMaxHpMultiplier(RPGPlayer rpgPlayer) {
+        double vitRegen = rpgPlayer.getAttributeData().getAttribute("VIT") * 0.1;
+        double gearRegen = rpgPlayer.getStats() != null ? rpgPlayer.getStats().regenRate : 0.0;
+
+        // [CẬP NHẬT 3]: Base là 25.0
+        double rawRegen = vitRegen + gearRegen + 25.0;
+
+        double dynamicBonus = 0.0;
+        if (rawRegen > 200.0) {
+            // [CẬP NHẬT 4]: Sử dụng đúng hpRegenCap để chặn trần phần dư
+            double excessRegen = Math.min(rawRegen, this.hpRegenCap) - 200.0;
+            dynamicBonus = Math.floor(excessRegen / 10.0) / 100.0;
+            dynamicBonus = Math.min(dynamicBonus, 0.40);
+        }
+        return 0.10 + dynamicBonus;
+    }
+    // ==========================================
+    // NỘI TẠI 4: DYNAMIC REGEN (Máu càng thấp hồi càng nhanh)
+    // ==========================================
+    @Override
+    public double getDynamicHpRegenRate(Player player, RPGPlayer rpgPlayer) {
+        double maxHp = rpgPlayer.getTotalMaxHealth();
+        double currentHp = player.getHealth();
+
+        if (maxHp <= 0 || currentHp >= maxHp) return 0.0;
+
+        // Tính % máu đã mất
+        double missingHpPercent = ((maxHp - currentHp) / maxHp) * 100.0;
+
+        // Mỗi 1% máu mất = +1% Hồi phục (Tối đa 99%)
+        return Math.min(Math.floor(missingHpPercent), 99.0);
     }
 }
