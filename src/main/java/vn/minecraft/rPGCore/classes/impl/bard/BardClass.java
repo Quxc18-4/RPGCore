@@ -103,6 +103,10 @@ public class BardClass extends RPGClass {
     public void applyPassiveBonusStats(RPGPlayer rpgPlayer, Map<String, Double> stats) {
         Player player = rpgPlayer.getBukkitPlayer();
 
+        // [CÂN BẰNG - THÊM MỚI]: Nội tại khởi đầu của Bard (Positioning & Resist)
+        stats.put("Tốc độ di chuyển", stats.getOrDefault("Tốc độ di chuyển", 0.0) + 20.0);
+        stats.put("Kháng hiệu ứng", stats.getOrDefault("Kháng hiệu ứng", 0.0) + 15.0);
+
         // 1. TIẾN TRÌNH VI MÔ: Bơm % Giảm hồi chiêu (CDR)
 //        if (player.hasMetadata("BARD_BONUS_CDR")) {
 //            double bonusCdr = player.getMetadata("BARD_BONUS_CDR").get(0).asDouble();

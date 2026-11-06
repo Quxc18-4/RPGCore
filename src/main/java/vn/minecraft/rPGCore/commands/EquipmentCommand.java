@@ -34,7 +34,7 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
             {new String[]{"Divine", "Godly", "Ascended", "Transcendent"}, 1.10, 1.20, 2}
     };
 
-    private static final List<String> VALID_CLASSES = Arrays.asList("warrior", "archer", "mage", "assassin", "summoner", "reaper", "guardian", "bard");
+    private static final List<String> VALID_CLASSES = Arrays.asList("warrior", "archer", "mage", "assassin", "summoner", "reaper", "tanker", "bard");
     private static final List<String> VALID_TIERS = Arrays.asList("common", "uncommon", "rare", "epic", "mythical", "heroic", "legendary", "divine");
     private static final List<String> ALL_LINEAGES = Arrays.asList("vampiric", "experienced", "hunter", "magical", "giant", "armored", "scavenger", "swift", "shattering");
     private static final List<String> WEAPON_LINEAGES = Arrays.asList("vampiric", "experienced", "hunter", "magical", "scavenger", "swift", "shattering");
@@ -390,6 +390,10 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
                 mat = Material.valueOf(prefix + "HOE"); name = "Scythe"; break;
             case "bard":
                 mat = Material.valueOf(prefix + "AXE"); name = "Flute"; break;
+            case "warrior":
+                mat = Material.valueOf(prefix + "SWORD"); name = "Sword"; break;
+            case "tanker":
+                mat = Material.SHIELD; name = "Shield"; break;
             default:
                 mat = Material.valueOf(prefix + "SWORD"); name = "Sword"; break;
         }
