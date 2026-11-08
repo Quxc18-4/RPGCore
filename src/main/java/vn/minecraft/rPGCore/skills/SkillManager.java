@@ -8,6 +8,8 @@ import vn.minecraft.rPGCore.skills.bard.*;
 import vn.minecraft.rPGCore.skills.mage.*;
 import vn.minecraft.rPGCore.skills.mage.fusion.FusionEngine;
 import vn.minecraft.rPGCore.skills.reaper.BloodStrikeSkill;
+import vn.minecraft.rPGCore.skills.reaper.DeathPactSkill;
+import vn.minecraft.rPGCore.skills.reaper.DeathReachSkill;
 import vn.minecraft.rPGCore.skills.summoner.*;
 import vn.minecraft.rPGCore.skills.summoner.pets.*;
 import vn.minecraft.rPGCore.skills.warrior.*;
@@ -108,6 +110,8 @@ public class SkillManager {
         registerSkill(new MaestroState());
         //Reaper
         registerSkill(new BloodStrikeSkill(plugin));
+        registerSkill(new DeathPactSkill(plugin));
+        registerSkill(new DeathReachSkill(plugin));
     }
 
     public void registerSkill(ISkill skill) {

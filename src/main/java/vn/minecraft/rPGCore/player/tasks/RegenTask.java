@@ -89,31 +89,66 @@ public class RegenTask extends BukkitRunnable {
                     // ==========================================
                     if (excessHealing > 0) {
                         double currentShield = player.hasMetadata("RPG_Absorption_Shield") ? player.getMetadata("RPG_Absorption_Shield").get(0).asDouble() : 0.0;
-                        double maxShieldBonus = 0.0;
                         double shieldToAdd = 0.0;
 
-                        // [REAPER - NỘI TẠI 3]: Chuyển 30% máu dư thành Khiên (Tối đa 30% HP)
+                        // [REAPER - NỘI TẠI 3]: Chuyển 30% máu dư thành Khiên
                         if (player.hasMetadata("REAPER_OVERHEAL_SHIELD")) {
-                            maxShieldBonus = maxHp * 0.30;
                             shieldToAdd = excessHealing * 0.30;
                         }
-                        // Set 4 Vampiric: 100% máu dư thành Khiên (Tối đa 20% HP)
+                        // Set 4 Vampiric: 100% máu dư thành Khiên
                         else if (rpgPlayer.hasSetBonus("vampiric", 4)) {
-                            maxShieldBonus = maxHp * 0.20;
                             shieldToAdd = excessHealing;
                         }
 
-                        if (shieldToAdd > 0 && currentShield < maxShieldBonus) {
-                            double newShield = Math.min(maxShieldBonus, currentShield + shieldToAdd);
-                            player.setMetadata("RPG_Absorption_Shield", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), newShield));
-                            player.setMetadata("RPG_Absorption_Shield_Max", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), Math.max(maxShieldBonus, player.hasMetadata("RPG_Absorption_Shield_Max") ? player.getMetadata("RPG_Absorption_Shield_Max").get(0).asDouble() : 0.0)));
-                            player.setAbsorptionAmount(20.0);
+                        if (shieldToAdd > 0) {
+                            double maxShieldAllowed = maxHp * 0.50; // [FIX]: Giới hạn tối đa 50% HP
+                            if (currentShield < maxShieldAllowed) {
+                                double newShield = Math.min(maxShieldAllowed, currentShield + shieldToAdd);
+                                player.setMetadata("RPG_Absorption_Shield", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), newShield));
+                            }
                         }
                     }
 
                 } else {
                     player.removeMetadata("Lifesteal_Pool", RPGCore.getInstance());
                     player.removeMetadata("Lifesteal_Full_Timer", RPGCore.getInstance());
+                }
+            }
+
+            // ==========================================
+            // [MỚI]: MÁY QUÉT GIÁP ẢO (GATEKEEPER & RENDER UI)
+            // ==========================================
+            if (player.hasMetadata("RPG_Absorption_Shield")) {
+                double currentShield = player.getMetadata("RPG_Absorption_Shield").get(0).asDouble();
+
+                // 1. NGƯỜI GÁC CỔNG: ÉP TRẦN 50% MÁU TỐI ĐA (Dành cho mọi nguồn giáp)
+                double maxShieldAllowed = maxHp * 0.50;
+                if (currentShield > maxShieldAllowed) {
+                    currentShield = maxShieldAllowed; // Chặt bỏ phần thừa
+                    player.setMetadata("RPG_Absorption_Shield", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), currentShield));
+                }
+
+                // 2. CƠ CHẾ TAN BIẾN: Trừ dần 5% Max HP mỗi giây nếu ngoài combat
+                if (!inCombat && currentShield > 0) {
+                    double decayAmount = maxHp * 0.05;
+                    currentShield = Math.max(0.0, currentShield - decayAmount);
+                    player.setMetadata("RPG_Absorption_Shield", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), currentShield));
+                }
+
+                // 3. RENDER TIM VÀNG (UI)
+                if (currentShield > 0) {
+                    if (!player.hasPotionEffect(org.bukkit.potion.PotionEffectType.ABSORPTION)) {
+                        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                                org.bukkit.potion.PotionEffectType.ABSORPTION,
+                                Integer.MAX_VALUE, 0, false, false, false));
+                    }
+
+                    double uiAbsorptionHearts = (currentShield / maxHp) * 20.0;
+                    player.setAbsorptionAmount(Math.min(20.0, uiAbsorptionHearts));
+                } else {
+                    player.removeMetadata("RPG_Absorption_Shield", RPGCore.getInstance());
+                    player.setAbsorptionAmount(0.0);
+                    player.removePotionEffect(org.bukkit.potion.PotionEffectType.ABSORPTION);
                 }
             }
             // ==========================================

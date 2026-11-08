@@ -1,5 +1,6 @@
 package vn.minecraft.rPGCore.skills.reaper;
 
+import org.bukkit.EntityEffect;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -26,53 +27,38 @@ public class DeathPactSkill implements ISkill {
     }
 
     @Override
-    public String getId() {
-        return "reaper_deaths_pact";
-    }
+    public String getId() { return "reaper_deaths_pact"; }
 
     @Override
-    public String getName() {
-        return "Khế Ước Tử Thần";
-    }
+    public String getName() { return "Khế Ước Máu"; }
 
     @Override
-    public String getRequiredClass() {
-        return "reaper";
-    }
+    public String getRequiredClass() { return "reaper"; }
 
     @Override
-    public Material getIcon() {
-        return Material.WRITABLE_BOOK;
-    }
+    public Material getIcon() { return Material.WRITABLE_BOOK; }
 
     @Override
-    public int getMaxLevel() {
-        return 6; // Tối đa 6 cấp theo yêu cầu
-    }
+    public int getMaxLevel() { return 6; }
 
     @Override
-    public int getUpgradeCost(int currentLevel) {
-        return 1; // Mỗi lần nâng tốn 1 SP
-    }
+    public int getUpgradeCost(int currentLevel) { return 1; }
 
     @Override
-    public Map<String, Integer> getRequiredSkills() {
-        return Collections.emptyMap();
-    }
+    public Map<String, Integer> getRequiredSkills() { return Collections.emptyMap(); }
 
     @Override
-    public double getManaCost(int level) {
-        return 40.0 + (level * 10.0);
-    }
+    public double getManaCost(int level) { return 40.0 + (level * 10.0); }
 
     @Override
-    public long getCooldown(int level) {
-        // Hồi chiêu từ 24s giảm dần xuống 19s
-        return (22 - (level - 1)) * 1000L;
-    }
+    public long getCooldown(int level) { return (22 - (level - 1)) * 1000L; }
 
     @Override
     public List<String> getDescription(int level) {
+        return getDescription(null, level);
+    }
+
+    public List<String> getDescription(Player player, int level) {
         List<String> lore = new ArrayList<>();
         int l = Math.min(Math.max(1, level), 6);
 
@@ -82,11 +68,11 @@ public class DeathPactSkill implements ISkill {
         lore.add("§7Vượt qua ranh giới sinh tử, tự rút máu");
         lore.add("§7bản thân để đổi lấy khả năng phục hồi mãnh liệt.");
         lore.add("");
-        lore.add("§c[-] Thế chấp: §4" + cost + "% Máu Tối Đa");
-        lore.add("§a[+] Thu về: §2" + heal + "% Máu Tối Đa §7(Hồi trong 6s)");
+        lore.add("[Thi Triển - Khế Ước Máu]");
+        lore.add("§f- Lập tức hi sinh §4" + cost + "§f% Máu Tối Đa");
+        lore.add("§f- Trong 8s kế tiếp, hồi phục: §2" + heal + "§f% Máu Tối Đa.");
         lore.add("");
-        lore.add("§8§o* Khế ước này ép buộc cơ thể phục hồi,");
-        lore.add("§8§obỏ qua mọi trạng thái Cấm Hồi Phục (Anti-heal).");
+        lore.add("§8§o* Không gì có thể cản trở khế ước máu hồi phục");
 
         return lore;
     }
@@ -112,24 +98,26 @@ public class DeathPactSkill implements ISkill {
         }
 
         // ==========================================
-        // 1. KIỂM TRA NGƯỠNG MÁU THẾ CHẤP (HARD THRESHOLD)
+        // 1. KIỂM TRA NGƯỠNG MÁU THẾ CHẤP
         // ==========================================
         double maxHp = rpgPlayer.getTotalMaxHealth();
         double hpCost = maxHp * (costPcts[level - 1] / 100.0);
         double currentHp = player.getHealth();
 
-        // Bắt buộc máu hiện tại phải lớn hơn lượng máu thế chấp (Cộng dư 1.0 để không bị chết oan)
-        if (currentHp <= hpCost + 1.0) {
+        if (currentHp <= hpCost + 3.0) {
             player.sendMessage("§c§l[!] §cSinh lực quá thấp, không đủ để thế chấp Khế Ước!");
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
             return false;
         }
 
         // ==========================================
-        // 2. THANH TOÁN TÀI NGUYÊN
+        // 2. THANH TOÁN TÀI NGUYÊN & HIỆU ỨNG RÚT MÁU
         // ==========================================
         rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - manaCost);
         player.setHealth(currentHp - hpCost);
+
+        // Tạo cảm giác mất máu thực tế bằng cách ép màn hình chớp đỏ
+        player.playEffect(EntityEffect.ENTITY_POOF);
 
         long finalCd = getFinalCooldown(rpgPlayer, getCooldown(level));
         player.setMetadata(cdKey, new FixedMetadataValue(plugin, System.currentTimeMillis() + finalCd));
@@ -138,42 +126,45 @@ public class DeathPactSkill implements ISkill {
         // Hiệu ứng hình ảnh khi hiến máu
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_WITHER_SPAWN, 0.5f, 1.5f);
         player.getWorld().spawnParticle(Particle.DAMAGE_INDICATOR, player.getLocation().add(0, 1, 0), 15, 0.3, 0.5, 0.3, 0.1);
-        //player.sendMessage("§4§l[KHẾ ƯỚC] §cThế chấp " + (int)hpCost + " Sinh lực!");
 
         // ==========================================
-        // 3. CƠ CHẾ HỒI MÁU ĐẶC QUYỀN (6 GIÂY - BYPASS ANTI-HEAL)
+        // 3. ĐẶT CỜ "TRUE HEAL" BỎ QUA ANTI-HEAL TRONG 8 GIÂY
         // ==========================================
+        // Dựa vào logic chúng ta đã thống nhất để vượt qua StatusEffectManager một cách hợp pháp
+        player.setMetadata("RPG_True_Heal_Priority", new FixedMetadataValue(plugin, System.currentTimeMillis() + 8000L));
+
+        // ==========================================
+        // 4. BUKKIT RUNNABLE: HỒI MÁU CHẬM TRONG 8 GIÂY
+        // ==========================================
+        // 8 giây chia cho mỗi nhịp 0.5 giây (10 ticks) -> Có tổng cộng 16 nhịp hồi máu
         double totalHeal = maxHp * (healPcts[level - 1] / 100.0);
-        double healPerTick = totalHeal / 12.0; // Chia làm 12 nhịp, mỗi nhịp 0.5s -> Tổng 6s
+        double healPerTick = totalHeal / 16.0;
 
         new BukkitRunnable() {
             int ticks = 0;
             @Override
             public void run() {
-                if (!player.isOnline() || player.isDead()) {
-                    this.cancel();
-                    return;
-                }
-                if (ticks >= 12) {
+                // Kiểm tra trạng thái an toàn trước khi hồi
+                if (!player.isOnline() || player.isDead() || ticks >= 16) {
                     this.cancel();
                     return;
                 }
 
+                // Lấy Max HP trực tiếp từ Bukkit để tương thích hoàn hảo với player.setHealth
+                double dynamicMaxHp = player.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue();
                 double dynamicCurrentHp = player.getHealth();
-                double dynamicMaxHp = rpgPlayer.getTotalMaxHealth();
 
-                // Ép máu trực tiếp lên Player Bukkit, tuyệt đối không dùng rpgPlayer.heal()
-                // Cơ chế này lách qua lớp phòng ngự của StatusEffectManager (Cấm Heal)
                 if (dynamicCurrentHp < dynamicMaxHp) {
+                    // Ép máu an toàn, đảm bảo không bao giờ vượt qua Max HP
                     player.setHealth(Math.min(dynamicMaxHp, dynamicCurrentHp + healPerTick));
 
-                    // Particle phun tim đỏ thẫm đặc trưng của Khế Ước
+                    // Hiệu ứng bong bóng máu mỗi 0.5s
                     player.getWorld().spawnParticle(Particle.CRIMSON_SPORE, player.getLocation().add(0, 2, 0), 5, 0.3, 0.2, 0.3, 0);
                 }
 
                 ticks++;
             }
-        }.runTaskTimer(plugin, 0L, 10L); // Chạy mỗi 10 ticks (0.5 giây)
+        }.runTaskTimer(plugin, 0L, 10L); // Chạy mỗi 0.5s (10 ticks)
 
         return true;
     }

@@ -444,19 +444,22 @@ public class RPGPlayer {
     }
 
     public void updateMaxStats() {
-        // Hàm get bây giờ đã an toàn tuyệt đối
         double safeMaxHealth = getTotalMaxHealth();
-
         org.bukkit.attribute.AttributeInstance maxHpAttr = this.bukkitPlayer.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
-        if (maxHpAttr != null) maxHpAttr.setBaseValue(safeMaxHealth);
+
+        if (maxHpAttr != null) {
+            // [FIX BUG UI]: Chỉ set lại máu nếu max HP thực sự thay đổi
+            if (maxHpAttr.getBaseValue() != safeMaxHealth) {
+                maxHpAttr.setBaseValue(safeMaxHealth);
+                this.bukkitPlayer.setHealthScale(20.0);
+                this.bukkitPlayer.setHealthScaled(true);
+            }
+        }
 
         // Vẫn phải ép máu hiện tại xuống để tránh lỗi vượt trần HP
         if (this.bukkitPlayer.getHealth() > safeMaxHealth) {
             this.bukkitPlayer.setHealth(safeMaxHealth);
         }
-
-        this.bukkitPlayer.setHealthScale(20.0);
-        this.bukkitPlayer.setHealthScaled(true);
     }
 
     public void updateMoveSpeed() {
