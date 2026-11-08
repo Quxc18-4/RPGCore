@@ -341,6 +341,11 @@ public class StatusEffectManager {
     }
 
     public static boolean isHealingBlocked(LivingEntity target) {
+        // NẾU CÓ CỜ "TRUE HEAL" -> CHO PHÉP HỒI MÁU BẤT CHẤP ANTI-HEAL!
+        if (target.hasMetadata("RPG_True_Heal_Priority")) {
+            return false;
+        }
+
         if (!target.hasMetadata("STATUS_ANTI_HEAL")) return false;
         long expire = target.getMetadata("STATUS_ANTI_HEAL").get(0).asLong();
         return System.currentTimeMillis() < expire;

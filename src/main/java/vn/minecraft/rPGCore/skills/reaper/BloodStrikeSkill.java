@@ -48,24 +48,31 @@ public class BloodStrikeSkill extends AbstractEnhancementSkill {
     @Override
     public List<String> getDescription(Player player, int level) {
         int displayLvl = Math.max(1, level);
-        double dmg1 = 170 + ((displayLvl - 1) * 20);
+
+        // Cân bằng lại: Lvl 1: 130%, Lvl 10: 265%
+        double dmg1 = 130 + ((displayLvl - 1) * 15);
         double trueDmg = 1 + ((displayLvl - 1) * 1);
+
+        // Tính toán hiển thị cho đợt 2 (x1.6 trung tâm, x0.8 cho AoE)
+        double dmg2Center = dmg1 * 1.6;
+        double dmg2Aoe = dmg2Center * 0.8;
 
         return List.of(
                 "§7Hiến tế §c10% Máu hiện tại§7 nạp vào vũ khí.",
                 "",
-                "§e[Tích Tụ: Chờ 8 Giây]",
-                "§f- §cĐợt 1 & 2: §fVũ khí rực đỏ, chém gây §c" + (int)dmg1 + "% ST",
-                "§f  kèm §e" + (int)trueDmg + "% ST Chuẩn §f(Từ tổng máu hiến tế).",
-                "§f- Đợt 2 gây sát thương Diện rộng 3x3.",
+                "§e[Thi Triển - Cường hóa máu]",
+                "§f- §cLần 1: §fĐòn đánh gây §c" + (int)dmg1 + "% ST",
+                "§f  kèm §e" + (int)trueDmg + "% ST Chuẩn §ftương đương 10% máu.",
+                "§f- §cLần 2: §fGây §c" + (int)dmg2Center + "% ST§f lên mục tiêu",
+                "§f  và §c" + (int)dmg2Aoe + "% ST§f cho kẻ địch xung quanh 3x3.",
+                "§8§o(Kéo dài 8s, nếu không chém sẽ tự tiêu tán)",
                 "",
-                "§4[Cuồng Huyết: Đợt 3]",
-                "§f- Ép xung cơ thể trong §c12s cố định§f.",
-                "§f- Chém gây ST diện rộng, đồng thời bản thân",
+                "§4[Nội Tại - Cuồng huyết]",
+                "§f- Khi thi triển lần 3, nhận Buff trong §c12s§f.",
+                "§f- Đòn chém gây ST diện rộng, đồng thời bản thân",
                 "§f  tăng §c5% Sát thương§f & §c20% Hút máu§f.",
-                "",
-                "§8§o* Khi Cuồng Huyết hết 12s, trạng thái Đợt 3",
-                "§8§osẽ bị KHÓA (Suy kiệt) trong 8s tiếp theo."
+                "§8§o(Hết Cuồng huyết, rơi vào Suy kiệt 8s. Trong",
+                "§8§olúc này chỉ có thể thi triển tối đa Lần 2)"
         );
     }
 
@@ -117,7 +124,7 @@ public class BloodStrikeSkill extends AbstractEnhancementSkill {
         // ==========================================
         int currentStage = player.hasMetadata("Reaper_BS_Stage") ? player.getMetadata("Reaper_BS_Stage").get(0).asInt() : 0;
 
-        // Kiểm tra xem Đợt 3 có đang bị KHÓA (Suy kiệt) không?
+        // Kiểm tra xem Nội tại Cuồng Huyết có đang bị KHÓA (Suy kiệt) không?
         boolean isFatigued = false;
         if (player.hasMetadata("Reaper_BS_Fatigue")) {
             if (System.currentTimeMillis() < player.getMetadata("Reaper_BS_Fatigue").get(0).asLong()) {
@@ -131,22 +138,22 @@ public class BloodStrikeSkill extends AbstractEnhancementSkill {
         if (currentStage == 0) {
             player.setMetadata("Reaper_BS_Stage", new FixedMetadataValue(plugin, 1));
             applyWeaponEnhancement(player, "Reaper_BS_OnHit", 1, 160L, "§c§l[Cường Hóa Máu I] §fSẵn Sàng!", null);
-            startTimeoutClear(player, 160L); // Hết 8s tự động reset Stage 1 về 0 (Không phạt)
+            startTimeoutClear(player, 160L);
         }
         else if (currentStage == 1) {
             player.setMetadata("Reaper_BS_Stage", new FixedMetadataValue(plugin, 2));
             applyWeaponEnhancement(player, "Reaper_BS_OnHit", 2, 160L, "§c§l[Cường Hóa Máu II] §fSẵn Sàng!", null);
-            startTimeoutClear(player, 160L); // Hết 8s tự động reset Stage 2 về 0 (Không phạt)
+            startTimeoutClear(player, 160L);
         }
         else if (currentStage >= 2) {
-            // [CƠ CHẾ FATIGUE: Đang Suy Kiệt -> ÉP VỀ GIAI ĐOẠN 2]
+            // [CƠ CHẾ FATIGUE: Đang Suy Kiệt -> KHÔNG THỂ LÊN CUỒNG HUYẾT]
             if (isFatigued) {
                 player.setMetadata("Reaper_BS_Stage", new FixedMetadataValue(plugin, 2)); // Ép thành 2, không cho lên 3
-                applyWeaponEnhancement(player, "Reaper_BS_OnHit", 2, 160L, "§8§l[SUY KIỆT] §fVũ khí rực đỏ (Giai đoạn 2).", null);
+                applyWeaponEnhancement(player, "Reaper_BS_OnHit", 2, 160L, "§8§l[SUY KIỆT] §fVũ khí rực đỏ (Lần 2).", null);
                 startTimeoutClear(player, 160L);
                 player.getWorld().playSound(player.getLocation(), Sound.BLOCK_FIRE_EXTINGUISH, 1.0f, 1.5f);
             }
-            // KHÔNG Suy Kiệt -> CHẠY GIAI ĐOẠN 3 (CUỒNG HUYẾT)
+            // KHÔNG Suy Kiệt -> CHẠY CUỒNG HUYẾT
             else {
                 player.setMetadata("Reaper_BS_Stage", new FixedMetadataValue(plugin, 3));
                 applyWeaponEnhancement(player, "Reaper_BS_OnHit", 3, 100L, "§4§l[CUỒNG HUYẾT] §fVũ khí khát máu!", null);
@@ -182,7 +189,7 @@ public class BloodStrikeSkill extends AbstractEnhancementSkill {
                     player.removeMetadata("Reaper_BS_Task", plugin);
                     player.removeMetadata("Reaper_BS_Drawn_HP", plugin);
                     player.removeMetadata("Reaper_BS_OnHit", plugin);
-                    player.sendMessage("§8§o(Huyết Kích tiêu tán...)");
+                    player.sendMessage("§8§o(Cường Hóa hết hiệu lực...)");
                 }
             }
         }.runTaskLater(plugin, delayTicks);
@@ -194,7 +201,7 @@ public class BloodStrikeSkill extends AbstractEnhancementSkill {
     private void startBloodlustTimer(Player player, long delayTicks) {
         long bloodlustId = System.currentTimeMillis();
         player.setMetadata("Reaper_Bloodlust_End", new FixedMetadataValue(plugin, bloodlustId));
-        player.removeMetadata("Reaper_BS_Task", plugin); // Hủy đếm 8s của Giai đoạn 2
+        player.removeMetadata("Reaper_BS_Task", plugin); // Hủy đếm 8s
 
         new BukkitRunnable() {
             @Override
@@ -208,10 +215,10 @@ public class BloodStrikeSkill extends AbstractEnhancementSkill {
                     player.removeMetadata("Reaper_BS_Drawn_HP", plugin);
                     player.removeMetadata("Reaper_BS_OnHit", plugin);
 
-                    // KHÓA GIAI ĐOẠN 3 (CUỒNG HUYẾT) TRONG 8 GIÂY TỚI
+                    // KHÓA CUỒNG HUYẾT TRONG 8 GIÂY TỚI
                     player.setMetadata("Reaper_BS_Fatigue", new FixedMetadataValue(plugin, System.currentTimeMillis() + 8000L));
 
-                    player.sendMessage("§c§l[!] §4Cơ thể quá tải! Giai đoạn 3 bị khóa trong 8 giây.");
+                    player.sendMessage("§c§l[!] §4Cơ thể suy kiệt! Không thể kích hoạt Cuồng Huyết trong 8s tới.");
                     player.playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_MIRROR_MOVE, 1.0f, 0.5f);
                 }
             }
@@ -224,7 +231,8 @@ public class BloodStrikeSkill extends AbstractEnhancementSkill {
     public void processOnHit(Player attacker, RPGPlayer rpgAttacker, LivingEntity target, int level, int stageBuff) {
         double drawnBlood = attacker.hasMetadata("Reaper_BS_Drawn_HP") ? attacker.getMetadata("Reaper_BS_Drawn_HP").get(0).asDouble() : 0.0;
 
-        double baseDmgMulti = 1.7 + ((level - 1) * 0.2);
+        // [CÂN BẰNG]: Giảm base dmg, Level 10 đạt 2.65 (265%)
+        double baseDmgMulti = 1.3 + ((level - 1) * 0.15);
         double trueDmgPct = 0.01 + ((level - 1) * 0.01);
         double trueDmgAmount = drawnBlood * trueDmgPct;
 
@@ -242,7 +250,8 @@ public class BloodStrikeSkill extends AbstractEnhancementSkill {
             clearComboSafely(attacker);
         }
         else if (stageBuff == 2 || stageBuff == 3) {
-            double centerDmgMulti = baseDmgMulti * 1.8;
+            // [CÂN BẰNG]: Giảm hệ số cường hóa từ 1.8 xuống 1.6
+            double centerDmgMulti = baseDmgMulti * 1.6;
             double aoeDmgMulti = centerDmgMulti * 0.8;
 
             attacker.getWorld().playSound(target.getLocation(), Sound.ENTITY_WITHER_BREAK_BLOCK, 0.8f, 1.5f);
