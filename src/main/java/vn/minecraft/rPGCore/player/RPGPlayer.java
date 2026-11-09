@@ -715,7 +715,7 @@ public class RPGPlayer {
                 // Nhóm Mage
                 "Mage_Domain_Channeling", "Mage_Domain_Phase", "Light_Blink_Combo",
                 // Nhóm Summoner
-                "Resonance_Stats", "RPG_Absorption_Shield", "RPG_Absorption_Shield_Max",
+                "Resonance_Stats", "RPG_Absorption_Shield", "Hard_Shield_Active",
                 "Summoner_Pet",
                 // Nhóm bard
                 "BARD_TONE_VISUALIZER", "BARD_AUTO_TONE_TASK", "BARD_TONES_LIST", "BARD_TONE_COUNT",

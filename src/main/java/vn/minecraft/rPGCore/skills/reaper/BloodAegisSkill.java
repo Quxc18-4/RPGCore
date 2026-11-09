@@ -9,7 +9,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
-import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.managers.CombatManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 import vn.minecraft.rPGCore.skills.AbstractEnhancementSkill;
@@ -28,16 +27,20 @@ public class BloodAegisSkill extends AbstractEnhancementSkill {
     @Override public String getName() { return "Huyết Thuẫn"; }
     @Override public String getRequiredClass() { return "reaper"; }
     @Override public Material getIcon() { return Material.RED_DYE; }
-    @Override public int getMaxLevel() { return 10; }
+
+    // Yêu cầu mới: Max Level 6
+    @Override public int getMaxLevel() { return 6; }
     @Override public int getUpgradeCost(int currentLevel) { return 1; }
     @Override public Map<String, Integer> getRequiredSkills() { return Collections.emptyMap(); }
 
+    // Resource: 60/70/80/90/100/110
     @Override
-    public double getManaCost(int level) { return 40.0 + (level * 2.0); }
+    public double getManaCost(int level) { return 50.0 + (level * 10.0); }
 
+    // CD: 25s (Lv1) -> 20s (Lv6)
     @Override
     public long getCooldown(int level) {
-        double cd = 20.0 - (level * 0.5); // 19.5s -> 15s
+        double cd = 26.0 - level;
         return (long) (cd * 1000);
     }
 
@@ -47,24 +50,25 @@ public class BloodAegisSkill extends AbstractEnhancementSkill {
     @Override
     public List<String> getDescription(Player player, int level) {
         int displayLvl = Math.max(1, level);
-        int baseDmg = 150 + (displayLvl * 10);
-        int shieldRatio = 30 + (displayLvl * 2); // 32% -> 50%
+
+        int hpCostRatio = 20 + (displayLvl * 5); // 25% -> 50%
+        int shieldRatio = 12 + (displayLvl * 3); // 15% -> 30%
+        int physMulti = 220 + (displayLvl * 30); // 250% -> 400%
+        int trueMulti = 20 + (displayLvl * 10);  // 30% -> 80%
 
         return List.of(
-                "§7Cô đặc toàn bộ máu đang cuộn chảy trong",
-                "§7Bể Máu (Lifesteal Pool) thành một lớp",
-                "§7giáp bảo vệ tuyệt đối.",
+                "§7Thiêu đốt máu thịt để tạo ra",
+                "§7một lớp khiên máu bảo hộ.",
                 "",
                 "§e[Kích Hoạt - Huyết Thuẫn]",
-                "§f- Rút §c100%§f lượng máu từ Bể Máu, lập tức",
-                "§f  chuyển hóa thành §eGiáp Ảo (Tối đa 50% HP)§f.",
+                "§f- Hiến tế §c" + hpCostRatio + "% Máu tối đa§f của bản thân,",
+                "§f  chuyển hóa chúng thành §e" + shieldRatio + "% Giáp Ảo§f.",
                 "",
-                "§4[Phản Công - Nổ Huyết Áp]",
+                "§4[Nội Tại - Bùng Nổ Máu]",
                 "§f- Nếu lớp Giáp Ảo này bị đánh vỡ hoàn toàn",
-                "§f  trong vòng §c5 giây§f, nó sẽ phát nổ 5x5.",
-                "§f- Sát thương nổ: §c" + baseDmg + "% ST Vũ khí",
-                "§f  kèm §e" + shieldRatio + "% ST Chuẩn §f(Dựa trên lượng Giáp",
-                "§f  vừa nhận được lúc bật chiêu)."
+                "§f  trong vòng §c5 giây§f, nó sẽ phát nổ và gây ST.",
+                "§f- Sát thương nổ: §c" + physMulti + "% Sát Thương",
+                "§f  kèm §e" + trueMulti + "% ST Chuẩn §f(Lượng giáp đã nhận)"
         );
     }
 
@@ -88,65 +92,60 @@ public class BloodAegisSkill extends AbstractEnhancementSkill {
         }
 
         // ==========================================
-        // 1. KIỂM TRA BỂ MÁU (LIFESTEAL POOL)
+        // 1. TÍNH TOÁN HIẾN TẾ MÁU (BLOOD SACRIFICE)
         // ==========================================
-        double poolAmount = 0.0;
-        if (player.hasMetadata("Lifesteal_Pool")) {
-            poolAmount = player.getMetadata("Lifesteal_Pool").get(0).asDouble();
-        }
+        double maxHp = rpgPlayer.getTotalMaxHealth();
+        double hpCostRatio = 0.20 + (level * 0.05); // 25% -> 50%
+        double requiredHp = maxHp * hpCostRatio;
 
-        if (poolAmount <= 10.0) {
-            player.sendMessage("§c§l[!] §fBể máu trống rỗng, không thể ngưng tụ Huyết Thuẫn!");
+        // Cấm tự sát: Nếu máu hiện tại thấp hơn hoặc bằng lượng máu cần hiến tế thì cấm cast
+        if (player.getHealth() <= requiredHp) {
+            player.sendMessage("§c§l[!] §fKhông đủ Sinh lực để hiến tế cho Huyết Thuẫn!");
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
             return false;
         }
 
-        // Trừ Thể lực & Xóa trắng Bể Máu
+        // Trừ Thể lực & Trừ thẳng Máu
         rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - cost);
-        player.removeMetadata("Lifesteal_Pool", plugin);
+        player.setHealth(player.getHealth() - requiredHp);
 
-        long finalCd = getCooldown(level);
+        // Xử lý Cooldown chuẩn RPGCore
+        long finalCd = getFinalCooldown(rpgPlayer, getCooldown(level));
         player.setMetadata(cdKey, new FixedMetadataValue(plugin, System.currentTimeMillis() + finalCd));
         startCooldownNotifier(player, finalCd);
 
         // ==========================================
-        // 2. NẠP GIÁP ẢO (KHÔNG CHẶN TRẦN Ở ĐÂY NỮA)
+        // 2. TÍNH TOÁN & NẠP GIÁP ẢO (SHIELD GENERATION)
         // ==========================================
-        double maxHp = rpgPlayer.getTotalMaxHealth();
+        double shieldRatio = 0.12 + (level * 0.03); // 15% -> 30%
+        double rawShieldGain = maxHp * shieldRatio;
+
         double currentShield = player.hasMetadata("RPG_Absorption_Shield") ? player.getMetadata("RPG_Absorption_Shield").get(0).asDouble() : 0.0;
+        double maxShieldAllowed = maxHp * 0.50; // Giới hạn 50% Max HP của server
 
-        // Đẩy thẳng lượng giáp thô vào hệ thống. RegenTask sẽ tự động gọt phần thừa ở tick tiếp theo.
-        double newShieldTotal = currentShield + poolAmount;
-        player.setMetadata("RPG_Absorption_Shield", new FixedMetadataValue(plugin, newShieldTotal));
+        // Tính Giáp thực nhận để không vượt trần, dùng làm đạn sát thương nổ
+        double newShield = Math.min(maxShieldAllowed, currentShield + rawShieldGain);
+        double actualShieldGained = newShield - currentShield;
 
-        // [FIX BUKKIT UI]: Ép Client vẽ tim vàng ngay lúc bật chiêu (Phản hồi tức thời)
-        if (!player.hasPotionEffect(org.bukkit.potion.PotionEffectType.ABSORPTION)) {
-            player.addPotionEffect(new org.bukkit.potion.PotionEffect(
-                    org.bukkit.potion.PotionEffectType.ABSORPTION,
-                    Integer.MAX_VALUE, 0, false, false, false));
-        }
+        // Đẩy thẳng lượng giáp vào Metadata, Gatekeeper của Server sẽ tự động render UI Tim Vàng
+        player.setMetadata("RPG_Absorption_Shield", new FixedMetadataValue(plugin, newShield));
 
-        // Tạm thời vẽ UI kịch khung 20 tim (RegenTask sẽ gọt lại chuẩn xác ngay sau đó)
-        double uiAbsorptionHearts = (newShieldTotal / maxHp) * 20.0;
-        player.setAbsorptionAmount(Math.min(20.0, uiAbsorptionHearts));
-
+        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_CAST_SPELL, 1.0f, 0.5f);
         player.getWorld().playSound(player.getLocation(), Sound.ITEM_SHIELD_BLOCK, 1.0f, 0.5f);
         player.getWorld().spawnParticle(Particle.BLOCK_CRUMBLE, player.getLocation().add(0, 1.5, 0), 50, 0.5, 0.8, 0.5, Material.REDSTONE_BLOCK.createBlockData());
+        player.getWorld().spawnParticle(Particle.DAMAGE_INDICATOR, player.getLocation().add(0, 1.5, 0), 20, 0.5, 0.5, 0.5, 0.2);
 
-        // Báo số lượng giáp bơm vào (dù sau đó RegenTask có vứt phần thừa đi)
-        player.sendMessage("§4§l[HUYẾT THUẪN] §fBơm §e" + (int)poolAmount + " Huyết Khí§f vào khiên!");
+        player.sendMessage("§4§l[HUYẾT THUẪN] §fHiến tế máu, tạo ra §e" + (int)actualShieldGained + " Giáp Ảo§f!");
 
         // ==========================================
-        // 3. CƠ CHẾ PHẢN CÔNG (NỔ SAU KHI VỠ GIÁP TRONG 5S)
+        // 3. CƠ CHẾ PHẢN CÔNG (RETALIATION TASK)
         // ==========================================
-        // Lượng giáp dùng để tính sát thương nổ bây giờ chính là số máu rút từ Bể
-        startRetaliationTask(player, rpgPlayer, level, poolAmount);
+        startRetaliationTask(player, rpgPlayer, level, actualShieldGained);
 
         return true;
     }
 
     private void startRetaliationTask(Player player, RPGPlayer rpgPlayer, int level, double shieldGained) {
-        // Khóa định danh Task để chống đè
         long taskId = System.currentTimeMillis();
         player.setMetadata("Reaper_Aegis_Task", new FixedMetadataValue(plugin, taskId));
 
@@ -161,21 +160,18 @@ public class BloodAegisSkill extends AbstractEnhancementSkill {
                     return;
                 }
 
-                // Nếu người chơi dùng chiêu lại (override), hủy task cũ
                 if (player.hasMetadata("Reaper_Aegis_Task") && player.getMetadata("Reaper_Aegis_Task").get(0).asLong() != taskId) {
                     this.cancel();
                     return;
                 }
 
                 if (ticks >= maxTicks) {
-                    // Hết 5s mà giáp không vỡ -> Hủy bom nổ chậm
                     player.sendMessage("§8§o(Huyết Thuẫn mất trạng thái phản công...)");
                     player.removeMetadata("Reaper_Aegis_Task", plugin);
                     this.cancel();
                     return;
                 }
 
-                // Kiểm tra liên tục: Giáp vỡ chưa?
                 double currentShield = player.hasMetadata("RPG_Absorption_Shield") ? player.getMetadata("RPG_Absorption_Shield").get(0).asDouble() : 0.0;
 
                 if (currentShield <= 0) {
@@ -186,7 +182,7 @@ public class BloodAegisSkill extends AbstractEnhancementSkill {
                     return;
                 }
 
-                // Hiệu ứng vòng sáng bảo vệ quay quanh người trong 5s
+                // Vẽ hạt Particle bao quanh người trong 5 giây
                 if (ticks % 5 == 0) {
                     double angle = (ticks * Math.PI / 10);
                     double x = 1.2 * Math.cos(angle);
@@ -196,7 +192,7 @@ public class BloodAegisSkill extends AbstractEnhancementSkill {
 
                 ticks++;
             }
-        }.runTaskTimer(plugin, 0L, 1L); // Chạy 1 tick / lần
+        }.runTaskTimer(plugin, 0L, 1L);
     }
 
     private void explode(Player player, RPGPlayer rpgPlayer, int level, double shieldGained) {
@@ -204,19 +200,23 @@ public class BloodAegisSkill extends AbstractEnhancementSkill {
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.2f);
         player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation().add(0, 1, 0), 3);
 
-        double baseDmgMulti = 1.5 + (level * 0.10); // 150% -> 250%
-        double trueDmgRatio = 0.30 + (level * 0.02); // 32% -> 50% ST chuẩn từ giáp nạp vào
+        double baseDmgMulti = 2.2 + (level * 0.30); // 250% -> 400%
+        double trueDmgRatio = 0.20 + (level * 0.10); // 30% -> 80%
+
+        // Game Balancing: ST Chuẩn quy đổi từ lượng Giáp Thực tế (đã áp trần 50% HP)
         double trueDmgAmount = shieldGained * trueDmgRatio;
 
         for (Entity e : player.getWorld().getNearbyEntities(player.getLocation(), 2.5, 2.5, 2.5)) {
-            if (e instanceof LivingEntity && !e.equals(player) && CombatManager.canTarget(player, e)) {
+            if (e instanceof LivingEntity && !e.equals(player) && CombatManager.canTarget(player, e)) { // Lọc đồng minh/đệ tử[cite: 7, 8]
                 LivingEntity victim = (LivingEntity) e;
 
+                // Tính toán sát thương vật lý qua CombatManager[cite: 7, 8]
                 double finalPhysDmg = CombatManager.calculateDamage(player, rpgPlayer, victim, baseDmgMulti, 0.0, false, false);
                 double totalDmg = finalPhysDmg + trueDmgAmount;
 
+                // Khóa lặp sát thương đệ quy[cite: 7, 8]
                 player.setMetadata("Ghost_L_Blocker", new FixedMetadataValue(plugin, true));
-                CombatManager.applySkillDamage(player, victim, totalDmg);
+                CombatManager.applySkillDamage(player, victim, totalDmg); // Gây sát thương & kích hoạt Hút Máu[cite: 7, 8]
                 player.removeMetadata("Ghost_L_Blocker", plugin);
             }
         }

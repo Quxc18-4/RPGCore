@@ -424,14 +424,10 @@ public class ResonanceSkill implements ISkill {
         // ==========================================
 
         if (totalEarthShield > 0) {
-            player.setMetadata("RPG_Absorption_Shield", new FixedMetadataValue(plugin, totalEarthShield));
-            player.setMetadata("RPG_Absorption_Shield_Max", new FixedMetadataValue(plugin, totalEarthShield));
-            player.setAbsorptionAmount(20.0);
-            player.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.ABSORPTION, durationSeconds * 20, 4, false, false, false));
-        } else {
-            player.removeMetadata("RPG_Absorption_Shield", plugin);
-            player.removeMetadata("RPG_Absorption_Shield_Max", plugin);
-            player.setAbsorptionAmount(0);
+            // [CHUẨN RPGCORE V2]: Cộng dồn giáp hiện tại và ủy quyền Vẽ UI cho RegenTask
+            double currentShield = player.hasMetadata("RPG_Absorption_Shield") ? player.getMetadata("RPG_Absorption_Shield").get(0).asDouble() : 0.0;
+            player.setMetadata("RPG_Absorption_Shield", new FixedMetadataValue(plugin, currentShield + totalEarthShield));
+            player.setMetadata("Hard_Shield_Active", new FixedMetadataValue(plugin, true)); // Bảo vệ khỏi decay
         }
 
         player.setMetadata("Resonance_Stats", new FixedMetadataValue(plugin, finalBuffs));
@@ -479,9 +475,8 @@ public class ResonanceSkill implements ISkill {
                 if (player.isOnline()) {
                     player.removeMetadata("Resonance_Stats", plugin);
                     player.removeMetadata("RPG_Absorption_Shield", plugin);
-                    player.removeMetadata("RPG_Absorption_Shield_Max", plugin);
+                    player.removeMetadata("Hard_Shield_Active", plugin); // [MỚI]: Xóa thẻ bảo vệ giáp
                     playerStacks.remove(player.getUniqueId());
-                    player.setAbsorptionAmount(0);
 
                     // [CẬP NHẬT 2]: Trả lại tốc độ gốc khi hết buff
                     RPGPlayer rp = RPGCore.getInstance().getPlayerManager().getRPGPlayer(player.getUniqueId());

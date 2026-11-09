@@ -116,9 +116,6 @@ public class DeathPactSkill implements ISkill {
         rpgPlayer.setCurrentResource(rpgPlayer.getCurrentResource() - manaCost);
         player.setHealth(currentHp - hpCost);
 
-        // Tạo cảm giác mất máu thực tế bằng cách ép màn hình chớp đỏ
-        player.playEffect(EntityEffect.ENTITY_POOF);
-
         long finalCd = getFinalCooldown(rpgPlayer, getCooldown(level));
         player.setMetadata(cdKey, new FixedMetadataValue(plugin, System.currentTimeMillis() + finalCd));
         startCooldownNotifier(player, finalCd);

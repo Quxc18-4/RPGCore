@@ -7,6 +7,7 @@ import vn.minecraft.rPGCore.skills.assassin.*;
 import vn.minecraft.rPGCore.skills.bard.*;
 import vn.minecraft.rPGCore.skills.mage.*;
 import vn.minecraft.rPGCore.skills.mage.fusion.FusionEngine;
+import vn.minecraft.rPGCore.skills.reaper.BloodAegisSkill;
 import vn.minecraft.rPGCore.skills.reaper.BloodStrikeSkill;
 import vn.minecraft.rPGCore.skills.reaper.DeathPactSkill;
 import vn.minecraft.rPGCore.skills.reaper.DeathReachSkill;
@@ -112,6 +113,7 @@ public class SkillManager {
         registerSkill(new BloodStrikeSkill(plugin));
         registerSkill(new DeathPactSkill(plugin));
         registerSkill(new DeathReachSkill(plugin));
+        registerSkill(new BloodAegisSkill(plugin));
     }
 
     public void registerSkill(ISkill skill) {
