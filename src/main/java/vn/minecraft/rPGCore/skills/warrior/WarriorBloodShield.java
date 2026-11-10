@@ -61,7 +61,7 @@ public class WarriorBloodShield extends AbstractEnhancementSkill {
                 "",
                 "§e[Nội tại: Huyết Giáp & Bạo Phá]",
                 "§f- Khi ngắt chiêu: Chuyển hóa §6100%§f lượng máu dư",
-                "§f  thành §eGiáp Ảo (Tối đa 160% Máu tối đa)§f.",
+                "§f  thành §eGiáp Ảo (Tối đa 100% Máu tối đa)§f.",
                 "§f- Giáp ảo tồn tại §a18 giây§f, nhận thêm §c8% Hút máu§f.",
                 "",
                 "§c[Thức Tỉnh Kỹ Năng]",
@@ -197,27 +197,20 @@ public class WarriorBloodShield extends AbstractEnhancementSkill {
         if (finalShieldValue > 0) {
             double maxHp = player.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue();
 
-            // [ĐÃ SỬA]: Cap giáp ảo tối đa bằng 160% (1.6) Tổng máu
-            double maxShieldCap = maxHp * 1.6;
+            // Ép trần Cuồng Huyết bằng đúng 100% Máu Tối Đa (Max Cap Sever)
+            double maxShieldCap = maxHp * 1.0;
             finalShieldValue = Math.min(finalShieldValue, maxShieldCap);
 
             long expireTime = System.currentTimeMillis() + (18 * 1000L); // 18 Giây
 
             // [CHUẨN RPGCORE V2]: Cộng dồn giáp và ủy quyền UI cho RegenTask
             double currentShield = player.hasMetadata("RPG_Absorption_Shield") ? player.getMetadata("RPG_Absorption_Shield").get(0).asDouble() : 0.0;
-            double newShield = currentShield + finalShieldValue;
-
-            // Vẫn giữ cơ chế Cap nội bộ của Warrior (160% Máu)
-            newShield = Math.min(newShield, maxShieldCap);
+            double newShield = Math.min(maxShieldCap, currentShield + finalShieldValue);
 
             player.setMetadata("RPG_Absorption_Shield", new FixedMetadataValue(plugin, newShield));
             player.setMetadata("RPG_Absorption_Shield_Expire", new FixedMetadataValue(plugin, expireTime));
-
-            // Đánh dấu người chơi đang có Khiên Huyết Giáp để theo dõi Shatter
+            player.setMetadata("Hard_Shield_Active", new FixedMetadataValue(plugin, true));
             player.setMetadata("BloodShield_Shatter_Check", new FixedMetadataValue(plugin, level));
-
-            // XÓA Lệnh ép 20.0 Tim và Effect (Để RegenTask lo)
-
             player.sendMessage("§e§l[!] §fNhận §6" + (int)finalShieldValue + " Giáp ảo §f(+8% Hút máu)!");
             player.getWorld().playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_GOLD, 1.5f, 0.5f);
 

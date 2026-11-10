@@ -60,7 +60,7 @@ public class RegenTask extends BukkitRunnable {
                     // ==========================================
                     // [DEBUG LOGGING] - THEO DÕI POOL & DRAIN
                     // ==========================================
-                    RPGCore.getInstance().getLogger().info("[DEBUG-REGEN] " + player.getName() + " | Pool Hiện Tại: " + pool + " | Mức xả tick này: " + drainAmount);
+                    //RPGCore.getInstance().getLogger().info("[DEBUG-REGEN] " + player.getName() + " | Pool Hiện Tại: " + pool + " | Mức xả tick này: " + drainAmount);
 
                     pool -= drainAmount;
                     player.setMetadata("Lifesteal_Pool", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), pool));
@@ -80,16 +80,16 @@ public class RegenTask extends BukkitRunnable {
                         }
                         player.getWorld().spawnParticle(org.bukkit.Particle.HEART, player.getLocation().add(0, 2, 0), 1, 0.3, 0.3, 0.3, 0);
 
-                        RPGCore.getInstance().getLogger().info("[DEBUG-REGEN] " + player.getName() + " | Đã hồi máu: " + healAmount + " | Máu Dư thừa (Excess): " + excessHealing);
+                        //RPGCore.getInstance().getLogger().info("[DEBUG-REGEN] " + player.getName() + " | Đã hồi máu: " + healAmount + " | Máu Dư thừa (Excess): " + excessHealing);
                     } else {
                         excessHealing = drainAmount;
                         if (player.hasMetadata("Lifesteal_Full_Timer")) {
-                            RPGCore.getInstance().getLogger().warning("[DEBUG-REGEN] " + player.getName() + " | Đã bị xóa Pool do Full máu quá 1s. Máu lãng phí: " + pool);
+                            //RPGCore.getInstance().getLogger().warning("[DEBUG-REGEN] " + player.getName() + " | Đã bị xóa Pool do Full máu quá 1s. Máu lãng phí: " + pool);
                             player.removeMetadata("Lifesteal_Pool", RPGCore.getInstance());
                             player.removeMetadata("Lifesteal_Full_Timer", RPGCore.getInstance());
                         } else {
                             player.setMetadata("Lifesteal_Full_Timer", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), true));
-                            RPGCore.getInstance().getLogger().info("[DEBUG-REGEN] " + player.getName() + " | Vừa đầy máu, cắm cờ chờ xóa Pool ở tick sau.");
+                           // RPGCore.getInstance().getLogger().info("[DEBUG-REGEN] " + player.getName() + " | Vừa đầy máu, cắm cờ chờ xóa Pool ở tick sau.");
                         }
                     }
 
@@ -99,24 +99,67 @@ public class RegenTask extends BukkitRunnable {
                     if (excessHealing > 0) {
                         double currentShield = player.hasMetadata("RPG_Absorption_Shield") ? player.getMetadata("RPG_Absorption_Shield").get(0).asDouble() : 0.0;
                         double shieldToAdd = 0.0;
+                        double maxShieldAllowed = 0.0;
 
-                        // [REAPER - NỘI TẠI 3]: Chuyển 30% máu dư thành Khiên
-                        if (player.hasMetadata("REAPER_OVERHEAL_SHIELD")) {
-                            shieldToAdd = excessHealing * 0.30;
+                        // [ƯU TIÊN 1]: Set 4 Vampiric -> 100% Chuyển hóa, Trần 30% Máu Tối Đa
+                        if (rpgPlayer.hasSetBonus("vampiric", 4)) {
+                            shieldToAdd = excessHealing * 1.0;
+                            maxShieldAllowed = maxHp * 0.30;
                         }
-                        // Set 4 Vampiric: 100% máu dư thành Khiên
-                        else if (rpgPlayer.hasSetBonus("vampiric", 4)) {
-                            shieldToAdd = excessHealing;
+                        // [ƯU TIÊN 2]: Nội tại Reaper -> 50% Chuyển hóa, Trần 15% Máu Tối Đa
+                        else if (player.hasMetadata("REAPER_OVERHEAL_SHIELD")) {
+                            shieldToAdd = excessHealing * 0.50;
+                            maxShieldAllowed = maxHp * 0.15;
                         }
 
-                        if (shieldToAdd > 0) {
-                            double maxShieldAllowed = maxHp * 0.50; // [FIX]: Giới hạn tối đa 50% HP
+                        if (shieldToAdd > 0 && maxShieldAllowed > 0) {
                             if (currentShield < maxShieldAllowed) {
                                 double newShield = Math.min(maxShieldAllowed, currentShield + shieldToAdd);
                                 player.setMetadata("RPG_Absorption_Shield", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), newShield));
 
-                                RPGCore.getInstance().getLogger().info("[DEBUG-REGEN] " + player.getName() + " | Chuyển đổi Khiên: " + currentShield + " -> " + newShield + " (Giới hạn: " + maxShieldAllowed + ")");
+                                //RPGCore.getInstance().getLogger().info("[DEBUG-REGEN] " + player.getName() + " | Bơm giáp Nội tại: " + currentShield + " -> " + newShield + " (Trần cho phép: " + maxShieldAllowed + ")");
                             }
+                        }
+                    }
+
+                    // ==========================================
+                    // [MỚI]: MÁY QUÉT GIÁP ẢO CHUẨN V2 (GLOBAL CAP 100%)
+                    // ==========================================
+                    if (player.hasMetadata("RPG_Absorption_Shield")) {
+                        double currentShield = player.getMetadata("RPG_Absorption_Shield").get(0).asDouble();
+
+                        // 1. NGƯỜI GÁC CỔNG: ÉP TRẦN TOÀN SERVER (100% MAX HP)
+                        double absoluteMaxShield = maxHp * 1.0;
+                        if (currentShield > absoluteMaxShield) {
+                            currentShield = absoluteMaxShield;
+                            player.setMetadata("RPG_Absorption_Shield", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), currentShield));
+                        }
+
+                        // 2. CƠ CHẾ TAN BIẾN (CHỈ ÁP DỤNG CHO GIÁP MỀM)
+                        if (!inCombat && currentShield > 0 && !player.hasMetadata("Hard_Shield_Active")) {
+                            double decayAmount = maxHp * 0.05;
+                            currentShield = Math.max(0.0, currentShield - decayAmount);
+                            player.setMetadata("RPG_Absorption_Shield", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), currentShield));
+                        }
+
+                        // ==========================================
+                        // 3. RENDER TIM VÀNG CHUẨN (100% MAX HP = 10 TIM VÀNG)
+                        // ==========================================
+                        if (currentShield > 0) {
+                            if (!player.hasPotionEffect(org.bukkit.potion.PotionEffectType.ABSORPTION)) {
+                                player.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                                        org.bukkit.potion.PotionEffectType.ABSORPTION,
+                                        Integer.MAX_VALUE, 4, false, false, false));
+                            }
+
+                            // Tỉ lệ chuẩn 100% Máu: (currentShield / maxHp) * 20.0
+                            // Tuyệt đối KHÔNG chia cho (maxHp * 0.50) ở mẫu số nữa
+                            double uiAbsorptionAmount = (currentShield / maxHp) * 20.0;
+                            player.setAbsorptionAmount(Math.max(1.0, Math.min(20.0, uiAbsorptionAmount)));
+                        } else {
+                            player.removeMetadata("RPG_Absorption_Shield", RPGCore.getInstance());
+                            player.setAbsorptionAmount(0.0);
+                            player.removePotionEffect(org.bukkit.potion.PotionEffectType.ABSORPTION);
                         }
                     }
 
@@ -126,49 +169,6 @@ public class RegenTask extends BukkitRunnable {
                 }
             }
 
-            // ==========================================
-            // [MỚI]: MÁY QUÉT GIÁP ẢO CHUẨN V2 (CÓ PHÂN LOẠI)
-            // ==========================================
-            if (player.hasMetadata("RPG_Absorption_Shield")) {
-                double currentShield = player.getMetadata("RPG_Absorption_Shield").get(0).asDouble();
-
-                // 1. NGƯỜI GÁC CỔNG: ÉP TRẦN MÁY CHỦ
-                // Reaper nội tại cap 50%, nhưng Cuồng Huyết của Warrior cap tới 160%
-                // Để hệ thống không xung đột, RegenTask sẽ nới trần tổng lên 200% Max HP (Giới hạn tối đa tuyệt đối)
-                double absoluteMaxShield = maxHp * 2.0;
-                if (currentShield > absoluteMaxShield) {
-                    currentShield = absoluteMaxShield;
-                    player.setMetadata("RPG_Absorption_Shield", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), currentShield));
-                }
-
-                // 2. CƠ CHẾ TAN BIẾN (CHỈ ÁP DỤNG CHO GIÁP MỀM)
-                // Nếu người chơi KHÔNG CÓ thẻ "Hard_Shield_Active" -> Bị trừ 5%/s ngoài combat
-                if (!inCombat && currentShield > 0 && !player.hasMetadata("Hard_Shield_Active")) {
-                    double decayAmount = maxHp * 0.05;
-                    currentShield = Math.max(0.0, currentShield - decayAmount);
-                    player.setMetadata("RPG_Absorption_Shield", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), currentShield));
-                }
-
-                // 3. RENDER TIM VÀNG (UI TỰ ĐỘNG ĐIỀU CHỈNH)
-                if (currentShield > 0) {
-                    if (!player.hasPotionEffect(org.bukkit.potion.PotionEffectType.ABSORPTION)) {
-                        player.addPotionEffect(new org.bukkit.potion.PotionEffect(
-                                org.bukkit.potion.PotionEffectType.ABSORPTION,
-                                Integer.MAX_VALUE, 4, false, false, false));
-                    }
-
-                    // Vẽ UI dựa trên mốc 50% Máu (Người chơi có 50% máu = 10 tim vàng)
-                    // Nếu Warrior bật Cuồng huyết (160% Máu), tim vàng sẽ kẹt ở mức tối đa 20.0 (10 tim) cho đến khi giáp rớt xuống dưới 50%
-                    double shieldPercentage = currentShield / (maxHp * 0.50);
-                    double uiAbsorptionAmount = shieldPercentage * 20.0;
-
-                    player.setAbsorptionAmount(Math.max(1.0, Math.min(20.0, uiAbsorptionAmount)));
-                } else {
-                    player.removeMetadata("RPG_Absorption_Shield", RPGCore.getInstance());
-                    player.setAbsorptionAmount(0.0);
-                    player.removePotionEffect(org.bukkit.potion.PotionEffectType.ABSORPTION);
-                }
-            }
             // ==========================================
             // 1. CƠ CHẾ TỤT THANH ĐÓI (ĐÃ NERF MẠNH)
             // ==========================================
@@ -256,32 +256,29 @@ public class RegenTask extends BukkitRunnable {
             // ==========================================
             // [TRINKET]: HỘ THỂ TUẦN HOÀN (MỖI 15 GIÂY)
             // ==========================================
+            // ==========================================
+            // [TRINKET]: HỘ THỂ TUẦN HOÀN (MỖI 15 GIÂY)
+            // ==========================================
             double periodicShieldPct = stats.getOrDefault("Hộ Thể Tuần Hoàn", 0.0);
             if (periodicShieldPct > 0 && !player.isDead()) {
-                int shieldTimer = player.hasMetadata("Trinket_Shield_Timer") ? player.getMetadata("Trinket_Shield_Timer").get(0).asInt() : 15;
+                int shieldTimer = player.hasMetadata("Trinket_Shield_Timer") ? player.getMetadata("Trinket_Shield_Timer").getFirst().asInt() : 15;
                 shieldTimer--;
 
                 if (shieldTimer <= 0) {
                     shieldTimer = 15; // Reset đồng hồ
                     double shieldAmount = maxHp * (periodicShieldPct / 100.0);
 
-                    // [CHUẨN RPGCORE V2]: Cộng dồn giáp và để luồng quét Giáp ở cuối RegenTask tự tính toán UI
-                    double currentShield = player.hasMetadata("RPG_Absorption_Shield") ? player.getMetadata("RPG_Absorption_Shield").get(0).asDouble() : 0.0;
-                    player.setMetadata("RPG_Absorption_Shield", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), currentShield + shieldAmount));
+                    double currentShield = player.hasMetadata("RPG_Absorption_Shield") ? player.getMetadata("RPG_Absorption_Shield").getFirst().asDouble() : 0.0;
 
-                    // Cấp thẻ Hard Shield nếu bạn KHÔNG muốn lớp khiên trang sức này bị tan biến 5%/s khi thoát combat
-                    // (Tùy chọn: Nếu muốn nó bị tan biến như khiên hút máu thì xóa dòng dưới đi)
-                    player.setMetadata("Hard_Shield_Active", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), true));
-
-                    // Đã xóa dòng RPG_Absorption_Shield_Max
-                    // Đã xóa lệnh setAbsorptionAmount(20.0) ép UI
-
-                    player.playSound(player.getLocation(), org.bukkit.Sound.ITEM_ARMOR_EQUIP_GOLD, 0.5f, 1.5f);
+                    // Chỉ bơm nếu chưa đủ, và KHÔNG GẮN CỜ HARD SHIELD nữa (Để giáp Trinket tự tan như giáp Vampiric nếu tháo nhẫn)
+                    if (currentShield < shieldAmount) {
+                        player.setMetadata("RPG_Absorption_Shield", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), Math.max(currentShield, shieldAmount)));
+                        player.playSound(player.getLocation(), org.bukkit.Sound.ITEM_ARMOR_EQUIP_GOLD, 0.5f, 1.5f);
+                    }
                 }
                 player.setMetadata("Trinket_Shield_Timer", new org.bukkit.metadata.FixedMetadataValue(RPGCore.getInstance(), shieldTimer));
             } else if (player.hasMetadata("Trinket_Shield_Timer")) {
-                player.removeMetadata("Trinket_Shield_Timer", RPGCore.getInstance()); // Dọn rác nếu tháo nhẫn
-                player.removeMetadata("Hard_Shield_Active", RPGCore.getInstance()); // Dọn thẻ nếu có
+                player.removeMetadata("Trinket_Shield_Timer", RPGCore.getInstance());
             }
             // ==========================================
             // 5. HÌNH PHẠT GIAO TRANH

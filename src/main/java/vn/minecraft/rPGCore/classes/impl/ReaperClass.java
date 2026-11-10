@@ -31,8 +31,21 @@ public class ReaperClass extends RPGClass {
         CombatManager.registerCombatModifier(new CombatManager.ICombatModifier() {
             @Override
             public double getOutgoingDamageModifier(LivingEntity attacker, LivingEntity target) {
-                if (attacker.hasMetadata("Reaper_Bloodlust")) return 0.05; // Tăng 5% sát thương cuối
-                return 0.0;
+                double bonus = 0.0;
+
+                // Buff nội tại cũ
+                if (attacker.hasMetadata("Reaper_Bloodlust")) {
+                    bonus += 0.05;
+                }
+
+                // [CƠ CHẾ HUYẾT QUỶ]: Cấp thẳng mức Buff Kỹ năng (20% -> 45%) cho TOÀN BỘ sát thương
+                if (attacker.hasMetadata("Reaper_BloodDemon_Level")) {
+                    int demonLvl = attacker.getMetadata("Reaper_BloodDemon_Level").get(0).asInt();
+                    double skillBuff = 0.15 + (demonLvl * 0.05); // Cấp 1: 20% -> Cấp 6: 45%
+                    bonus += skillBuff;
+                }
+
+                return bonus;
             }
         });
     }
@@ -94,8 +107,26 @@ public class ReaperClass extends RPGClass {
 
     @Override
     public double onMeleeHit(Player attacker, RPGPlayer rpgAttacker, LivingEntity target, double rawDamage) {
-        // Xóa đoạn hứng kỹ năng ở đây, chỉ giữ lại super
-        return super.onMeleeHit(attacker, rpgAttacker, target, rawDamage);
+        // Gọi hàm cha: Đã tự động lặp qua ICombatModifier và cộng sẵn 20%->45% từ Huyết Quỷ ở trên[cite: 12]
+        double finalMultiplier = super.onMeleeHit(attacker, rpgAttacker, target, rawDamage);
+
+        // [BÙ TRỪ HUYẾT QUỶ]: Bơm nốt phần sát thương chênh lệch cho Đánh tay
+        if (attacker.hasMetadata("Reaper_BloodDemon_Level")) {
+            int demonLvl = attacker.getMetadata("Reaper_BloodDemon_Level").get(0).asInt();
+
+            double targetMeleeBuff = 0.42 + (demonLvl * 0.08); // Tổng mốc cần đạt: 50% -> 90%
+            double alreadyAppliedBuff = 0.15 + (demonLvl * 0.05); // Phần đã nhận từ ICombatModifier: 20% -> 45%
+
+            // Chỉ cộng phần bù (Ví dụ ở Lv6: Cần 90%, đã có 45% -> Cộng thêm 45%)
+            double extraMeleeNeeded = targetMeleeBuff - alreadyAppliedBuff;
+
+            finalMultiplier += extraMeleeNeeded;
+
+            // Âm thanh chém đặc trưng của trạng thái quỷ
+            attacker.getWorld().playSound(target.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_ATTACK_CRIT, 0.7f, 0.8f);
+        }
+
+        return finalMultiplier;
     }
 
     @Override
