@@ -56,18 +56,17 @@ public class BloodDemonSkill extends AbstractEnhancementSkill {
                 "§7Đánh thức dòng máu ác quỷ chảy trong",
                 "§7huyết quản, hóa thân thành Huyết Quỷ.",
                 "",
-                "§e[ Kích Hoạt - Ác Quỷ Thức Tỉnh ]",
+                "§e[Kích Hoạt - Ác Quỷ Thức Tỉnh]",
                 "§f- Yêu cầu tối thiểu §a80% Máu Tối Đa§f.",
                 "§f- Khi kích hoạt, trạng thái duy trì liên tục",
                 "§f  cho đến khi sinh lực chạm ngưỡng §c33%§f.",
                 "",
-                "§4[ Lời Nguyền Thiêu Đốt ]",
+                "§4[Nội Tại - Lời Nguyền Thiêu Đốt]",
                 "§f- Thiêu đốt §c" + burnRate + "% Máu Tối Đa§f mỗi giây.",
                 "",
-                "§a[ Quyền Năng Huyết Quỷ ]",
+                "§a[Nội Tại - Quyền Năng Huyết Quỷ]",
                 "§f- Sát thương Đánh thường tăng §c" + meleeBuff + "%§f.",
-                "§f- Sát thương Mọi Kỹ năng tăng §c" + skillBuff + "%§f.",
-                "§7§o(Hồi chiêu tính từ lúc Ác Quỷ ngủ yên)"
+                "§f- Sát thương Mọi Kỹ năng tăng §c" + skillBuff + "%§f."
         );
     }
 

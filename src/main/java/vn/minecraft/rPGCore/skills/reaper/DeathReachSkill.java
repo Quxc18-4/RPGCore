@@ -58,17 +58,19 @@ public class DeathReachSkill implements ISkill {
         int dotDmg = 30 + (l * 5);
 
         return List.of(
-                "§7Phóng một Huyết Liềm xuyên thấu về phía trước.",
+                "§7Phóng ra một lưỡi Huyết Liềm mang theo xiềng",
+                "§7xích linh hồn xuyên thấu về phía trước.",
                 "",
-                "§c[Trúng Địa Hình] §fTạo ra Huyết Vực 3x3 tồn tại 4s.",
+                "§e[Thi Triển - Huyết Liềm]",
+                "§f- Gây §c" + hitDmg + "% ST §f khi trúng kẻ địch.",
+                "§f- §aTrên 50% Máu: §fLướt tới mục tiêu và",
+                "§f  §eTrói chân§f chúng trong §c1.0 giây§f.",
+                "§f- §cDưới 50% Máu: §fGiật xích kéo kẻ địch về.",
+                "",
+                "§4[Nội Tại - Huyết Vực]",
+                "§f- Khi chạm địa hình, tạo vùng máu trong §c4 giây§f.",
                 "§f- Kẻ địch bước vào bị §eLàm chậm 20%§f và chịu",
-                "§f  §c" + dotDmg + "% ST§f mỗi giây.",
-                "",
-                "§4[Trúng Kẻ Địch] §fGây §c" + hitDmg + "% ST§f và chia 2 trường hợp:",
-                "§a> Máu bạn trên 50%: §fLướt thẳng đến mục tiêu",
-                "§f  và §eTrói chân (Root)§f chúng trong 1.0s.",
-                "§c> Máu bạn dưới 50%: §fGiật mạnh dây xích, kéo",
-                "§f  kẻ địch về phía bạn (Bị giảm bởi Kháng H.Ứng)."
+                "§f  §c" + dotDmg + "% ST Vũ Khí§f mỗi giây."
         );
     }
 

@@ -59,6 +59,13 @@ public class ReaperClass extends RPGClass {
         // [CẬP NHẬT 2]: Khởi đầu 25% Hồi phục thay vì 20%
         stats.put("Tỉ lệ hồi phục", stats.getOrDefault("Tỉ lệ hồi phục", 0.0) + 25.0);
 
+        // [NỘI TẠI MỚI]: HUYẾT MẠCH TRƯỜNG SINH (+4% Tỉ lệ hồi phục mỗi cấp, tối đa 40%)
+        int bloodVitalityLevel = rpgPlayer.getSkillData() != null ? rpgPlayer.getSkillData().getSkillLevel("reaper_blood_vitality") : 0;
+        if (bloodVitalityLevel > 0) {
+            double passiveRegen = bloodVitalityLevel * 4.0;
+            stats.put("Tỉ lệ hồi phục", stats.getOrDefault("Tỉ lệ hồi phục", 0.0) + passiveRegen);
+        }
+
         // Hiển thị % Máu Tối Đa lên UI cho người chơi xem (Đồng bộ với Global)
         double actualHpBonusPercent = getGlobalMaxHpMultiplier(rpgPlayer) * 100.0;
         stats.put("% Máu Tối Đa", stats.getOrDefault("% Máu Tối Đa", 0.0) + actualHpBonusPercent);
@@ -134,6 +141,12 @@ public class ReaperClass extends RPGClass {
         super.onAttackLanded(attacker, target);
         // Bắt sự kiện sau khi chém TRÚNG mục tiêu.
         // Ý tưởng tương lai: Đánh trúng sẽ tích 1 'Huyết Ấn' lên quái. Đủ 5 Ấn quái phát nổ hồi lại máu cho Reaper.
+        // Kích hoạt phóng 1 Huyết Cầu Bất Ổn khi tấn công thường trúng mục tiêu
+        if (attacker.hasMetadata(vn.minecraft.rPGCore.skills.reaper.BloodSiphonSkill.META_UNSTABLE_ORBS)) {
+            vn.minecraft.rPGCore.skills.reaper.BloodSiphonSkill.triggerUnstableOrbAttack(
+                    RPGCore.getInstance(), attacker, target
+            );
+        }
     }
 
     // ==========================================
@@ -181,8 +194,11 @@ public class ReaperClass extends RPGClass {
         double vitRegen = rpgPlayer.getAttributeData().getAttribute("VIT") * 0.1;
         double gearRegen = rpgPlayer.getStats() != null ? rpgPlayer.getStats().regenRate : 0.0;
 
-        // [CẬP NHẬT 3]: Base là 25.0
-        double rawRegen = vitRegen + gearRegen + 25.0;
+        int bloodVitalityLevel = rpgPlayer.getSkillData() != null ? rpgPlayer.getSkillData().getSkillLevel("reaper_blood_vitality") : 0;
+        double passiveRegen = bloodVitalityLevel * 4.0;
+
+        // [CẬP NHẬT 3]: Base là 25.0 + Nội tại Huyết Mạch Trường Sinh
+        double rawRegen = vitRegen + gearRegen + 25.0 + passiveRegen;
 
         double dynamicBonus = 0.0;
         if (rawRegen > 200.0) {

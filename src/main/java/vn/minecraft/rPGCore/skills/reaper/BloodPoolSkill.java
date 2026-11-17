@@ -59,14 +59,13 @@ public class BloodPoolSkill extends AbstractEnhancementSkill {
                 "§7Tự hòa tan cơ thể thành một Huyết Trì (Vũng",
                 "§7máu) di động, trốn tránh thực tại.",
                 "",
-                "§e[ Thi Triển - Huyết Độn ]",
+                "§e[Thi Triển - Huyết Độn]",
                 "§f- Tiêu hao §c20% Máu Hiện Tại§f, lặn xuống",
                 "§f  vũng máu trong §c3.0 giây§f.",
                 "§f- Trong trạng thái này, bản thân được §eTăng 30%",
-                "§e  Tốc Độ§f, hoàn toàn §aVô nhiễm sát thương§f,",
-                "§f  §aẨn thân tuyệt đối§f và §aKhông thể bị chọn làm mục tiêu§f.",
+                "§e  Tốc Độ§f, và được §aMiễn nhiễm sát thương§f.",
                 "",
-                "§4[ Lãnh Địa Khát Máu ]",
+                "§4[Nội tại - Lãnh Địa Khát Máu]",
                 "§f- Kẻ địch dẫm lên Huyết Trì sẽ bị §eLàm chậm 30%§f",
                 "§f  và chịu §c" + dotDmg + "% ST Vũ Khí§f mỗi 0.5s."
         );

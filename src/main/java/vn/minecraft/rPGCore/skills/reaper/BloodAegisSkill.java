@@ -139,7 +139,7 @@ public class BloodAegisSkill extends AbstractEnhancementSkill {
         player.getWorld().spawnParticle(Particle.BLOCK_CRUMBLE, player.getLocation().add(0, 1.5, 0), 50, 0.5, 0.8, 0.5, Material.REDSTONE_BLOCK.createBlockData());
         player.getWorld().spawnParticle(Particle.DAMAGE_INDICATOR, player.getLocation().add(0, 1.5, 0), 20, 0.5, 0.5, 0.5, 0.2);
 
-        player.sendMessage("§4§l[HUYẾT THUẪN] §fHiến tế máu, tạo ra §e" + (int)actualShieldGained + " Giáp Ảo§f!");
+        player.sendMessage("§4§l[CHUYỂN HÓA] §fHiến tế máu, tạo thành công §e" + (int)actualShieldGained + " Giáp Ảo§f!");
 
         // ==========================================
         // 3. CƠ CHẾ PHẢN CÔNG & TỰ HỦY GIÁP
@@ -217,7 +217,7 @@ public class BloodAegisSkill extends AbstractEnhancementSkill {
     }
 
     private void explode(Player player, RPGPlayer rpgPlayer, int level, double shieldGained) {
-        player.sendMessage("§c§l[!] HUYẾT ÁP BÙNG NỔ!");
+        player.sendMessage("§c§l[!] BÙNG NỔ MÁU!");
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.2f);
         player.getWorld().spawnParticle(Particle.EXPLOSION, player.getLocation().add(0, 1, 0), 3);
 

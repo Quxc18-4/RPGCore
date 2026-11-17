@@ -114,6 +114,8 @@ public class SkillManager {
         registerSkill(new BloodPoolSkill(plugin));
         registerSkill(new BloodSiphonSkill(plugin));
         registerSkill(new BloodDemonSkill(plugin));
+        registerSkill(new ReaperBloodVitality());
+        registerSkill(new BloodPrisonSkill(plugin));
     }
 
     public void registerSkill(ISkill skill) {
