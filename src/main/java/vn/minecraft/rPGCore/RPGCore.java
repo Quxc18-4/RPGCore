@@ -68,6 +68,7 @@ public final class RPGCore extends JavaPlugin {
     private FriendManager friendManager;
     private ArenaManager arenaManager;
     private DuelManager duelManager;
+    private WebActionManager webActionManager;
 
     private IPartyProvider partyProvider;
 
@@ -75,6 +76,8 @@ public final class RPGCore extends JavaPlugin {
     public void onEnable() {
         instance = this;
         MongoManager.init(this);
+        this.webActionManager = new WebActionManager(this);
+        this.webActionManager.start();
         AuthManager authManager = new AuthManager(this);
         ClassManager classManager = new ClassManager(this);
         classManager.loadClasses();
@@ -343,6 +346,9 @@ public final class RPGCore extends JavaPlugin {
         }
         if (this.mountManager != null) {
             this.mountManager.despawnAllActiveMounts();
+        }
+        if (this.webActionManager != null) {
+            this.webActionManager.stop();
         }
 
         getLogger().info("RPGCore da tat va luu du lieu an toan.");
