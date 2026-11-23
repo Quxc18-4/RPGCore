@@ -61,8 +61,8 @@ classes:
       - "&7Sử dụng máu để tấn công và hồi phục liên tục."
     icon: NETHERITE_HOE
     max-health: 1400.0
-    max-resource: 100.0
-    resource-type: MANA
+    max-resource: 80.0
+    resource-type: STAMINA
     enchanted: true
 
   summoner:

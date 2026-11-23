@@ -58,6 +58,8 @@ public abstract class RPGClass {
     // [THÊM MỚI]: Cap hồi năng lượng mặc định cho tất cả các phái là 400%
     protected double resourceRegenCap = 400.0;
     protected double costReductionCap = 33.0; // [THÊM MỚI]: Giới hạn Giảm tiêu hao NL tối đa 33%
+    // [THÊM MỚI 1]: Khai báo Cap riêng cho Tỉ lệ hồi phục (HP Regen)
+    protected double hpRegenCap = 400.0;
 
     // ==========================================
     // CÁC HÀM SỰ KIỆN (HOOKS) CHO PHÉP OVERRIDE
@@ -196,6 +198,8 @@ public abstract class RPGClass {
         combatStats.put("Tỉ lệ hút máu phép", Math.min(combatStats.getOrDefault("Tỉ lệ hút máu phép", 0.0), lifeStealCap));
         combatStats.put("Tốc độ đánh", Math.min(combatStats.getOrDefault("Tốc độ đánh", 0.0), 100.0));
         combatStats.put("Tốc độ di chuyển", Math.min(combatStats.getOrDefault("Tốc độ di chuyển", 0.0), moveSpeedCap));
+        // [THÊM MỚI 2]: Khóa Cap cho Tỉ lệ hồi phục
+        combatStats.put("Tỉ lệ hồi phục", Math.min(combatStats.getOrDefault("Tỉ lệ hồi phục", 0.0), hpRegenCap));
         // Khóa Cap Hồi Năng Lượng
         combatStats.put("Hồi Năng lượng", Math.min(combatStats.getOrDefault("Hồi Năng lượng", 0.0), resourceRegenCap));
         combatStats.put("Giảm tiêu hao Năng lượng", Math.min(combatStats.getOrDefault("Giảm tiêu hao Năng lượng", 0.0), costReductionCap));
@@ -244,4 +248,20 @@ public abstract class RPGClass {
 
     public boolean onSwapItem(Player player, RPGPlayer rpgPlayer, ItemStack weapon) { return false; }
 
+    // Đặt vào trong RPGClass.java
+    /**
+     * Trả về hệ số % Máu Tối Đa cộng thêm vào TỔNG MÁU cuối cùng.
+     * Chỉ dành cho những class có đặc quyền (như Reaper). 0.1 tương đương +10%.
+     */
+    public double getGlobalMaxHpMultiplier(RPGPlayer rpgPlayer) {
+        return 0.0; // Mặc định các class khác không có
+    }
+    /**
+     * Hook 5: Trả về lượng % Tỉ lệ Hồi phục cộng thêm linh hoạt dựa trên bối cảnh.
+     * Trị số này sẽ cộng trực tiếp vào Tốc độ Hồi máu thực tế trong RegenTask,
+     * KHÔNG lưu vào Stats Map tĩnh nên KHÔNG buff lây sang % Máu Tối Đa của Reaper.
+     */
+    public double getDynamicHpRegenRate(Player player, RPGPlayer rpgPlayer) {
+        return 0.0;
+    }
 }

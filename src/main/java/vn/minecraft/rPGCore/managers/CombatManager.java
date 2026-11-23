@@ -201,7 +201,6 @@ public class CombatManager {
         // ==========================================
         if (victim.hasMetadata("RPG_Absorption_Shield")) {
             double currentShield = victim.getMetadata("RPG_Absorption_Shield").get(0).asDouble();
-            double maxShield = victim.getMetadata("RPG_Absorption_Shield_Max").get(0).asDouble();
 
             if (currentShield > 0) {
                 if (finalDamage <= currentShield) {
@@ -210,16 +209,13 @@ public class CombatManager {
                     victim.setMetadata("RPG_Absorption_Shield", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), currentShield));
                 } else {
                     finalDamage -= currentShield;
-                    currentShield = 0;
                     victim.removeMetadata("RPG_Absorption_Shield", vn.minecraft.rPGCore.RPGCore.getInstance());
-                    victim.removeMetadata("RPG_Absorption_Shield_Max", vn.minecraft.rPGCore.RPGCore.getInstance());
-                    victim.setAbsorptionAmount(0);
-                    victim.playSound(victim.getLocation(), org.bukkit.Sound.ITEM_SHIELD_BREAK, 1.0f, 1.2f);
-                }
 
-                if (currentShield > 0) {
-                    double displayAbsorption = (currentShield / maxShield) * 20.0;
-                    victim.setAbsorptionAmount(Math.max(1.0, displayAbsorption));
+                    // Cập nhật lại UI ngay lập tức khi giáp vỡ (Tránh đợi 1 giây của RegenTask)
+                    victim.setAbsorptionAmount(0);
+                    victim.removePotionEffect(org.bukkit.potion.PotionEffectType.ABSORPTION);
+
+                    victim.playSound(victim.getLocation(), org.bukkit.Sound.ITEM_SHIELD_BREAK, 1.0f, 1.2f);
                 }
             }
         }

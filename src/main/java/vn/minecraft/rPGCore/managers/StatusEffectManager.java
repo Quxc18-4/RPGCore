@@ -341,9 +341,59 @@ public class StatusEffectManager {
     }
 
     public static boolean isHealingBlocked(LivingEntity target) {
+        // NẾU CÓ CỜ "TRUE HEAL" -> CHO PHÉP HỒI MÁU BẤT CHẤP ANTI-HEAL!
+        if (target.hasMetadata("RPG_True_Heal_Priority")) {
+            return false;
+        }
+
         if (!target.hasMetadata("STATUS_ANTI_HEAL")) return false;
         long expire = target.getMetadata("STATUS_ANTI_HEAL").get(0).asLong();
         return System.currentTimeMillis() < expire;
+    }
+
+    // ==========================================
+    // [RPGCORE V2]: HỆ THỐNG KÉO (PULL) CÓ TÍNH KHÁNG HIỆU ỨNG
+    // ==========================================
+    public static void applyPullWithResistance(LivingEntity target, org.bukkit.Location destination, double baseForce) {
+        double resistance = 0.0;
+
+        // 1. Đọc Kháng hiệu ứng của Người chơi (Nếu mục tiêu là Player)
+        if (target instanceof org.bukkit.entity.Player) {
+            vn.minecraft.rPGCore.player.RPGPlayer rpgVictim = vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager().getRPGPlayer(target.getUniqueId());
+            if (rpgVictim != null) {
+                resistance = rpgVictim.getTotalStatsMap().getOrDefault("Kháng hiệu ứng", 0.0);
+            }
+        }
+        // 2. Đọc Kháng hiệu ứng của Quái/Boss (Thông qua Metadata)
+        else if (target.hasMetadata("Effect_Resistance")) {
+            resistance = target.getMetadata("Effect_Resistance").get(0).asDouble();
+        }
+
+        // 3. Tính toán Hệ số tác động (Effectiveness)
+        resistance = Math.min(100.0, Math.max(0.0, resistance)); // Cap 0 - 100%
+        double effectiveness = 1.0 - (resistance / 100.0);
+
+        // Nếu kháng 100% (Hoặc kháng sát thương khống chế cứng), miễn nhiễm kéo
+        if (effectiveness <= 0.01 || target.hasMetadata("Immune_To_CC")) {
+            return;
+        }
+
+        // 4. Tính toán Vector Lực kéo
+        org.bukkit.util.Vector dir = destination.toVector().subtract(target.getLocation().toVector());
+        double distance = dir.length();
+
+        // Tránh lỗi chia cho 0 nếu đứng quá sát
+        if (distance < 0.5) return;
+
+        dir.normalize(); // Lấy hướng chuẩn
+
+        // Ép lực kéo dựa trên Kháng hiệu ứng
+        org.bukkit.util.Vector velocity = dir.multiply(baseForce * effectiveness);
+
+        // Thêm một chút lực nẩy Y (Jump bump) để mục tiêu không bị kẹt mặt đất khi bị kéo
+        velocity.setY(velocity.getY() + (0.3 * effectiveness));
+
+        target.setVelocity(velocity);
     }
 
     /**

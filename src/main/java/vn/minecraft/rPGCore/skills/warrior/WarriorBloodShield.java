@@ -61,7 +61,7 @@ public class WarriorBloodShield extends AbstractEnhancementSkill {
                 "",
                 "§e[Nội tại: Huyết Giáp & Bạo Phá]",
                 "§f- Khi ngắt chiêu: Chuyển hóa §6100%§f lượng máu dư",
-                "§f  thành §eGiáp Ảo (Tối đa 160% Máu tối đa)§f.",
+                "§f  thành §eGiáp Ảo (Tối đa 100% Máu tối đa)§f.",
                 "§f- Giáp ảo tồn tại §a18 giây§f, nhận thêm §c8% Hút máu§f.",
                 "",
                 "§c[Thức Tỉnh Kỹ Năng]",
@@ -197,23 +197,20 @@ public class WarriorBloodShield extends AbstractEnhancementSkill {
         if (finalShieldValue > 0) {
             double maxHp = player.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue();
 
-            // [ĐÃ SỬA]: Cap giáp ảo tối đa bằng 160% (1.6) Tổng máu
-            double maxShieldCap = maxHp * 1.6;
+            // Ép trần Cuồng Huyết bằng đúng 100% Máu Tối Đa (Max Cap Sever)
+            double maxShieldCap = maxHp * 1.0;
             finalShieldValue = Math.min(finalShieldValue, maxShieldCap);
 
             long expireTime = System.currentTimeMillis() + (18 * 1000L); // 18 Giây
 
-            player.setMetadata("RPG_Absorption_Shield", new FixedMetadataValue(plugin, finalShieldValue));
-            player.setMetadata("RPG_Absorption_Shield_Max", new FixedMetadataValue(plugin, finalShieldValue));
+            // [CHUẨN RPGCORE V2]: Cộng dồn giáp và ủy quyền UI cho RegenTask
+            double currentShield = player.hasMetadata("RPG_Absorption_Shield") ? player.getMetadata("RPG_Absorption_Shield").get(0).asDouble() : 0.0;
+            double newShield = Math.min(maxShieldCap, currentShield + finalShieldValue);
+
+            player.setMetadata("RPG_Absorption_Shield", new FixedMetadataValue(plugin, newShield));
             player.setMetadata("RPG_Absorption_Shield_Expire", new FixedMetadataValue(plugin, expireTime));
-
-            // Đánh dấu người chơi đang có Khiên Huyết Giáp để theo dõi Shatter
+            player.setMetadata("Hard_Shield_Active", new FixedMetadataValue(plugin, true));
             player.setMetadata("BloodShield_Shatter_Check", new FixedMetadataValue(plugin, level));
-
-            // Hiệu ứng Tim Vàng
-            player.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.ABSORPTION, 18 * 20, 4, false, false, false));
-            player.setAbsorptionAmount(20.0); // Full 1 thanh máu vàng hiển thị
-
             player.sendMessage("§e§l[!] §fNhận §6" + (int)finalShieldValue + " Giáp ảo §f(+8% Hút máu)!");
             player.getWorld().playSound(player.getLocation(), Sound.ITEM_ARMOR_EQUIP_GOLD, 1.5f, 0.5f);
 
@@ -235,7 +232,7 @@ public class WarriorBloodShield extends AbstractEnhancementSkill {
                         triggerShatterExplosion(player, rpgPlayer, level);
 
                         player.removeMetadata("BloodShield_Shatter_Check", plugin);
-                        player.removePotionEffect(org.bukkit.potion.PotionEffectType.ABSORPTION);
+                        player.removeMetadata("Hard_Shield_Active", plugin); // [MỚI]: Xóa thẻ bảo vệ giáp
                         rpgPlayer.updateMaxStats(); // Xóa 8% Buff
                         this.cancel();
                     }
@@ -254,12 +251,9 @@ public class WarriorBloodShield extends AbstractEnhancementSkill {
                                 System.currentTimeMillis() >= player.getMetadata("RPG_Absorption_Shield_Expire").get(0).asLong() - 100) {
 
                             player.removeMetadata("RPG_Absorption_Shield", plugin);
-                            player.removeMetadata("RPG_Absorption_Shield_Max", plugin);
                             player.removeMetadata("RPG_Absorption_Shield_Expire", plugin);
                             player.removeMetadata("BloodShield_Shatter_Check", plugin); // Hủy cờ Shatter để không nổ
-
-                            player.removePotionEffect(org.bukkit.potion.PotionEffectType.ABSORPTION);
-                            player.setAbsorptionAmount(0);
+                            player.removeMetadata("Hard_Shield_Active", plugin); // [MỚI]: Xóa thẻ bảo vệ giáp
 
                             rpgPlayer.updateMaxStats();
                             player.sendMessage("§8§o(Lớp giáp máu đã hết thời gian và tiêu tán...)");

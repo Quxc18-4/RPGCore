@@ -5,11 +5,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
-import vn.minecraft.rPGCore.classes.impl.ArcherClass;
-import vn.minecraft.rPGCore.classes.impl.AssassinClass;
-import vn.minecraft.rPGCore.classes.impl.DefaultClass;
-import vn.minecraft.rPGCore.classes.impl.SummonerClass;
-import vn.minecraft.rPGCore.classes.impl.WarriorClass;
+import vn.minecraft.rPGCore.classes.impl.*;
 import vn.minecraft.rPGCore.classes.impl.bard.BardClass;
 import vn.minecraft.rPGCore.classes.impl.mage.MageClass;
 
@@ -73,6 +69,9 @@ public class ClassManager {
                     break;
                 case "bard":
                     rpgClass = new BardClass(key, displayName, icon, desc, maxHp, maxRes, resType, regen, enchanted);
+                    break;
+                case "reaper": // [THÊM MỚI]
+                    rpgClass = new ReaperClass(key, displayName, icon, desc, maxHp, maxRes, resType, regen, enchanted);
                     break;
                 default:
                     // Các phái chưa code riêng sẽ xài khung mặc định

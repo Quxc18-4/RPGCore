@@ -34,7 +34,7 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
             {new String[]{"Divine", "Godly", "Ascended", "Transcendent"}, 1.10, 1.20, 2}
     };
 
-    private static final List<String> VALID_CLASSES = Arrays.asList("warrior", "archer", "mage", "assassin", "summoner", "reaper", "guardian", "bard");
+    private static final List<String> VALID_CLASSES = Arrays.asList("warrior", "archer", "mage", "assassin", "summoner", "reaper", "tanker", "bard");
     private static final List<String> VALID_TIERS = Arrays.asList("common", "uncommon", "rare", "epic", "mythical", "heroic", "legendary", "divine");
     private static final List<String> ALL_LINEAGES = Arrays.asList("vampiric", "experienced", "hunter", "magical", "giant", "armored", "scavenger", "swift", "shattering");
     private static final List<String> WEAPON_LINEAGES = Arrays.asList("vampiric", "experienced", "hunter", "magical", "scavenger", "swift", "shattering");
@@ -342,7 +342,7 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
         switch (lineage) {
             case "vampiric":
                 lore.add("§8[Set 3 mảnh]: +15% Hút máu và Hút máu phép");
-                lore.add("§8[Set 4 mảnh]: Hút máu dư chuyển thành Máu ảo (Tối đa 20% Max HP)"); break;
+                lore.add("§8[Set 4 mảnh]: Hút máu dư chuyển thành Máu ảo (Tối đa 30% Máu tối đa)"); break;
             case "experienced":
                 lore.add("§8[Set 3 mảnh]: +20% Kinh nghiệm nhận được");
                 lore.add("§8[Set 4 mảnh]: Khi nhặt đồ có 5% rơi ra thêm Xu ngẫu nhiên"); break;
@@ -390,6 +390,10 @@ public class EquipmentCommand implements CommandExecutor, TabCompleter {
                 mat = Material.valueOf(prefix + "HOE"); name = "Scythe"; break;
             case "bard":
                 mat = Material.valueOf(prefix + "AXE"); name = "Flute"; break;
+            case "warrior":
+                mat = Material.valueOf(prefix + "SWORD"); name = "Sword"; break;
+            case "tanker":
+                mat = Material.SHIELD; name = "Shield"; break;
             default:
                 mat = Material.valueOf(prefix + "SWORD"); name = "Sword"; break;
         }

@@ -286,4 +286,37 @@ public class CurrencyManager {
             return false;
         }
     }
+    // ==========================================
+    // CỘNG TIỀN THƯỞNG ONLINE / OFFLINE AN TOÀN
+    // ==========================================
+    public boolean processOfflineDeposit(java.util.UUID uuid, long amountToAdd, String notifyMessage) {
+        if (amountToAdd <= 0) return true;
+
+        org.bukkit.entity.Player player = org.bukkit.Bukkit.getPlayer(uuid);
+
+        // Trường hợp 1: Người chơi đang Online -> Cộng thẳng vào RAM (RPGPlayer)
+        if (player != null && player.isOnline()) {
+            vn.minecraft.rPGCore.player.RPGPlayer rpgPlayer =
+                    vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager().getRPGPlayer(uuid);
+            if (rpgPlayer != null) {
+                rpgPlayer.addBalance(amountToAdd);
+                if (notifyMessage != null && !notifyMessage.isEmpty()) {
+                    player.sendMessage(notifyMessage);
+                    player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1f, 1.2f);
+                }
+                return true;
+            }
+            return false;
+        }
+        // Trường hợp 2: Người chơi Offline -> Dùng $inc cộng thẳng vào MongoDB
+        else {
+            com.mongodb.client.MongoCollection<org.bson.Document> collection =
+                    vn.minecraft.rPGCore.database.MongoManager.getInstance().getDatabase().getCollection("players");
+            com.mongodb.client.result.UpdateResult result = collection.updateOne(
+                    com.mongodb.client.model.Filters.eq("_id", uuid.toString()),
+                    com.mongodb.client.model.Updates.inc("balance", amountToAdd)
+            );
+            return result.getMatchedCount() > 0;
+        }
+    }
 }

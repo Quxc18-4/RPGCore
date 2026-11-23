@@ -444,19 +444,22 @@ public class RPGPlayer {
     }
 
     public void updateMaxStats() {
-        // Hàm get bây giờ đã an toàn tuyệt đối
         double safeMaxHealth = getTotalMaxHealth();
-
         org.bukkit.attribute.AttributeInstance maxHpAttr = this.bukkitPlayer.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
-        if (maxHpAttr != null) maxHpAttr.setBaseValue(safeMaxHealth);
+
+        if (maxHpAttr != null) {
+            // [FIX BUG UI]: Chỉ set lại máu nếu max HP thực sự thay đổi
+            if (maxHpAttr.getBaseValue() != safeMaxHealth) {
+                maxHpAttr.setBaseValue(safeMaxHealth);
+                this.bukkitPlayer.setHealthScale(20.0);
+                this.bukkitPlayer.setHealthScaled(true);
+            }
+        }
 
         // Vẫn phải ép máu hiện tại xuống để tránh lỗi vượt trần HP
         if (this.bukkitPlayer.getHealth() > safeMaxHealth) {
             this.bukkitPlayer.setHealth(safeMaxHealth);
         }
-
-        this.bukkitPlayer.setHealthScale(20.0);
-        this.bukkitPlayer.setHealthScaled(true);
     }
 
     public void updateMoveSpeed() {
@@ -478,8 +481,14 @@ public class RPGPlayer {
         // [LẤY THÊM MÁU TỪ BÌNH THUỐC]
         double potionFlatHp = vn.minecraft.rPGCore.RPGCore.getInstance().getAlchemistBuffManager().getBonus(this.bukkitPlayer.getUniqueId(), "Máu tối đa");
 
+        // TỔNG MÁU (Chưa tính nội tại Class)
         double totalMaxHp = baseHp + levelBonus + vitBonus + equipHp + foodMaxHp + potionFlatHp;
-        return Math.max(1.0, totalMaxHp);
+
+        // ĐẶC QUYỀN GLOBAL SCALING TỪ CLASS
+        double classGlobalMultiplier = this.currentClass != null ? this.currentClass.getGlobalMaxHpMultiplier(this) : 0.0;
+
+        // Nhân tổng máu với hệ số của Class
+        return Math.max(1.0, totalMaxHp * (1.0 + classGlobalMultiplier));
     }
 
     public double getRequiredExp() {
@@ -706,7 +715,7 @@ public class RPGPlayer {
                 // Nhóm Mage
                 "Mage_Domain_Channeling", "Mage_Domain_Phase", "Light_Blink_Combo",
                 // Nhóm Summoner
-                "Resonance_Stats", "RPG_Absorption_Shield", "RPG_Absorption_Shield_Max",
+                "Resonance_Stats", "RPG_Absorption_Shield", "Hard_Shield_Active",
                 "Summoner_Pet",
                 // Nhóm bard
                 "BARD_TONE_VISUALIZER", "BARD_AUTO_TONE_TASK", "BARD_TONES_LIST", "BARD_TONE_COUNT",
