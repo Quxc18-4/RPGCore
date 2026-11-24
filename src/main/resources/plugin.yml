@@ -104,4 +104,5 @@ commands:
     usage: /vip [buy]
   slot:
     description: Mở giao diện chuyển đổi Slot nhân vật
-    aliases: [ char, nhanvat ]
+    aliases: [char]
+    usage: /slot

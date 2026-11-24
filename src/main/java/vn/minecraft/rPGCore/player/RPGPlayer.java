@@ -28,6 +28,8 @@ public class RPGPlayer {
     private long lastCombatTime = 0;
     private long balance = 0;
     private int activeSlot = 1;
+    // 1. Thêm biến trạng thái chống double-click khi đổi slot (đặt cạnh biến activeSlot)
+    private boolean switchingSlot = false;
 
     // [MỚI]: Biến lưu trữ tổng số Năng lượng đang bị thế chấp bởi thú triệu hồi
     private double reservedResource = 0;
@@ -574,11 +576,9 @@ public class RPGPlayer {
         try {
             if (this.currentClass != null && !this.currentClass.getId().equalsIgnoreCase(newClass.getId())) {
 
-                // [MỚI]: Nếu đang là Summoner mà đổi class khác -> Tiêu diệt toàn bộ thú!
+                // Thu hồi toàn bộ thú triệu hồi nếu đang ở class Summoner (dùng chung cho cả đổi Class lẫn đổi Slot)
                 if (this.currentClass instanceof vn.minecraft.rPGCore.classes.impl.SummonerClass) {
-                    if (this.bukkitPlayer != null) {
-                        ((vn.minecraft.rPGCore.classes.impl.SummonerClass) this.currentClass).clearAllPets(this.bukkitPlayer);
-                    }
+                    ((vn.minecraft.rPGCore.classes.impl.SummonerClass) this.currentClass).clearAllPets(this.bukkitPlayer);
                 }
 
                 // Dọn dẹp tàn dư của Class cũ (Kiểm tra an toàn dữ liệu)
@@ -830,6 +830,9 @@ public class RPGPlayer {
         if (this.currentStats == null || this.currentStats.setCounts == null) return false;
         return this.currentStats.setCounts.getOrDefault(lineage.toLowerCase(), 0) >= requiredPieces;
     }
+
+    public boolean isSwitchingSlot() { return this.switchingSlot; }
+    public void setSwitchingSlot(boolean switchingSlot) { this.switchingSlot = switchingSlot; }
 
     public int getActiveSlot() { return this.activeSlot; }
     public void setActiveSlot(int activeSlot) { this.activeSlot = Math.max(1, activeSlot); }

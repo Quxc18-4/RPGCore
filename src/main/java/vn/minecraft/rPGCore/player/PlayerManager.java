@@ -8,11 +8,13 @@ import com.mongodb.client.model.Updates;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bukkit.Bukkit;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.io.BukkitObjectInputStream;
 import org.bukkit.util.io.BukkitObjectOutputStream;
+import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.classes.ClassManager;
 import vn.minecraft.rPGCore.classes.RPGClass;
 import vn.minecraft.rPGCore.database.MongoManager;
@@ -29,16 +31,134 @@ public class PlayerManager {
     private final JavaPlugin plugin;
     private final ClassManager classManager;
     private final MongoCollection<Document> collection;
+    private final MongoCollection<Document> accountCollection;
 
     public PlayerManager(JavaPlugin plugin, ClassManager classManager) {
         this.plugin = plugin;
         this.classManager = classManager;
-        // Móc nối vào Collection 'players' trên MongoDB
+        // Móc nối vào Collection 'players' và 'player_accounts' trên MongoDB
         this.collection = MongoManager.getInstance().getDatabase().getCollection("players");
+        this.accountCollection = MongoManager.getInstance().getDatabase().getCollection("player_accounts");
     }
 
     public MongoCollection<Document> getPlayerCollection() {
         return collection;
+    }
+
+    public MongoCollection<Document> getAccountCollection() {
+        return accountCollection;
+    }
+
+    /**
+     * Lấy số slot tối đa của tài khoản từ collection player_accounts (mặc định = 2)
+     */
+    public int getMaxSlots(UUID uuid) {
+        Document accDoc = accountCollection.find(
+                Filters.or(Filters.eq("_id", uuid.toString()), Filters.eq("uuid", uuid.toString()))
+        ).first();
+        return (accDoc != null) ? getSafeInt(accDoc, "max_slots", 2) : 2;
+    }
+
+    /**
+     * Chuyển đổi sang Slot nhân vật mục tiêu
+     */
+    public void switchSlot(Player player, int targetSlot) {
+        UUID uuid = player.getUniqueId();
+        RPGPlayer rpgPlayer = activePlayers.get(uuid);
+        if (rpgPlayer == null) return;
+
+        // 1. Kiểm tra điều kiện trên Main Thread
+        if (rpgPlayer.isSwitchingSlot()) {
+            player.sendMessage("§cHệ thống đang xử lý chuyển đổi nhân vật, vui lòng chờ giây lát...");
+            return;
+        }
+
+        if (rpgPlayer.isInCombat()) {
+            player.sendMessage("§cBạn không thể đổi nhân vật khi đang trong trạng thái giao tranh!");
+            return;
+        }
+
+        if (targetSlot == rpgPlayer.getActiveSlot()) {
+            player.sendMessage("§eBạn đang sử dụng nhân vật ở Slot " + targetSlot + " rồi.");
+            return;
+        }
+
+        if (targetSlot < 1 || targetSlot > 3) {
+            player.sendMessage("§cSlot nhân vật không hợp lệ.");
+            return;
+        }
+
+        rpgPlayer.setSwitchingSlot(true);
+
+        // 2. Truy vấn max_slots và dữ liệu targetSlot bất đồng bộ trên MongoDB
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try {
+                int maxSlots = getMaxSlots(uuid);
+                if (targetSlot > maxSlots) {
+                    Bukkit.getScheduler().runTask(plugin, () -> {
+                        player.sendMessage("§cBạn chưa mở khóa Slot nhân vật thứ " + targetSlot + "!");
+                        rpgPlayer.setSwitchingSlot(false);
+                    });
+                    return;
+                }
+
+                Document playerDoc = collection.find(Filters.eq("_id", uuid.toString())).first();
+                Document slotsDoc = (playerDoc != null) ? playerDoc.get("slots", Document.class) : null;
+                Document targetSlotDoc = (slotsDoc != null) ? slotsDoc.get(String.valueOf(targetSlot), Document.class) : null;
+
+                // 3. Quay lại Main Thread để lưu slot cũ và nạp slot mới an toàn
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    try {
+                        if (!player.isOnline()) return;
+
+                        if (rpgPlayer.isInCombat()) {
+                            player.sendMessage("§cBạn vừa vào trạng thái giao tranh! Hủy thao tác đổi Slot.");
+                            return;
+                        }
+
+                        // Bước A: Lưu đồng bộ slot hiện tại vào MongoDB
+                        savePlayer(uuid, false, false);
+
+                        // Bước B: Dọn dẹp hiệu ứng/thú triệu hồi/metadata của slot cũ & nạp dữ liệu targetSlot
+                        applySlotDocument(player, rpgPlayer, targetSlotDoc);
+
+                        // Bước C: Cập nhật active_slot sang targetSlot
+                        rpgPlayer.setActiveSlot(targetSlot);
+                        rpgPlayer.removeCombat();
+
+                        // Bước D: Nạp lại BossBar hiển thị máu & tài nguyên của nhân vật mới
+                        RPGCore core = RPGCore.getInstance();
+                        if (core != null && core.getBossBarManager() != null) {
+                            core.getBossBarManager().updateBars(player, rpgPlayer);
+                        }
+
+                        // Bước E: Cập nhật active_slot mới lên MongoDB
+                        savePlayer(uuid, true, false);
+
+                        if (targetSlotDoc == null || targetSlotDoc.isEmpty()) {
+                            player.sendMessage("§a§l[Slot " + targetSlot + "] §fĐã khởi tạo nhân vật tân thủ mới (§eCommoner §7- §bLv.1§f)!");
+                        } else {
+                            String classDisplay = rpgPlayer.getCurrentClass() != null
+                                    ? rpgPlayer.getCurrentClass().getDisplayName()
+                                    : "Commoner";
+                            player.sendMessage("§a§l[Slot " + targetSlot + "] §fĐã chuyển sang nhân vật: " + classDisplay + " §7(§bLv." + rpgPlayer.getLevel() + "§7)");
+                        }
+                        player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
+
+                    } finally {
+                        rpgPlayer.setSwitchingSlot(false);
+                    }
+                });
+
+            } catch (Exception e) {
+                plugin.getLogger().severe("[RPGCore] Lỗi khi chuyển đổi Slot nhân vật cho " + player.getName());
+                e.printStackTrace();
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    player.sendMessage("§cĐã xảy ra lỗi khi tải dữ liệu Slot nhân vật. Vui lòng thử lại!");
+                    rpgPlayer.setSwitchingSlot(false);
+                });
+            }
+        });
     }
 
     // --- CƠ CHẾ TẢI DỮ LIỆU KHI VÀO GAME (READ + AUTO MIGRATE) ---

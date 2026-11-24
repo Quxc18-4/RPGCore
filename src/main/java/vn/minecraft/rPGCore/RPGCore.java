@@ -40,6 +40,7 @@ public final class RPGCore extends JavaPlugin {
 
     private static RPGCore instance;
     private PlayerManager playerManager;
+    private ClassManager classManager;
     private BossBarManager bossBarManager;
     private VipManager vipManager;
 
@@ -77,12 +78,18 @@ public final class RPGCore extends JavaPlugin {
     public void onEnable() {
         instance = this;
         MongoManager.init(this);
+        if (MongoManager.getInstance() == null || MongoManager.getInstance().getDatabase() == null) {
+            getLogger().severe("Khong the ket noi MongoDB! Tat RPGCore de bao ve du lieu.");
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+
         this.webActionManager = new WebActionManager(this);
         this.webActionManager.start();
         AuthManager authManager = new AuthManager(this);
         this.vipManager = new VipManager(this, authManager);
-        ClassManager classManager = new ClassManager(this);
-        classManager.loadClasses();
+        this.classManager = new ClassManager(this);
+        this.classManager.loadClasses();
 
         playerManager = new PlayerManager(this, classManager);
         bossBarManager = new BossBarManager();
@@ -146,6 +153,7 @@ public final class RPGCore extends JavaPlugin {
 
         getServer().getPluginManager().registerEvents(new AuthListener(authManager), this);
         getServer().getPluginManager().registerEvents(new VipListener(this.vipManager), this);
+        getServer().getPluginManager().registerEvents(new SlotGUI(this), this);
         getServer().getPluginManager().registerEvents(new PlayerListener(playerManager, bossBarManager), this);
         getServer().getPluginManager().registerEvents(new ClassGUIListener(playerManager, bossBarManager, classManager), this);
         getServer().getPluginManager().registerEvents(new EquipmentListener(playerManager), this);
@@ -235,6 +243,11 @@ public final class RPGCore extends JavaPlugin {
         getCommand("ah").setExecutor(ahCmd);
         getCommand("ahc").setExecutor(ahCmd);
 
+        if (this.getCommand("slot") != null) {
+            this.getCommand("slot").setExecutor(new SlotCommand(this));
+        } else {
+            getLogger().warning("Khong the tim thay lenh /slot trong plugin.yml!");
+        }
         if (this.getCommand("bal") != null) {
             this.getCommand("bal").setExecutor(new BalanceCommand(this, playerManager, currencyManager));
         } else {
@@ -364,6 +377,7 @@ public final class RPGCore extends JavaPlugin {
 
     public static RPGCore getInstance() { return instance; }
     public PlayerManager getPlayerManager() { return this.playerManager; }
+    public ClassManager getClassManager() { return this.classManager; }
     public FoodBuffManager getFoodBuffManager() { return this.foodBuffManager; }
     public BoredomManager getBoredomManager() { return this.boredomManager; }
     public SkillManager getSkillManager() { return this.skillManager; }
