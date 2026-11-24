@@ -27,6 +27,10 @@ public class RPGPlayer {
     // 1. Khai báo biến lưu trữ thời điểm cuối cùng phát sinh giao tranh
     private long lastCombatTime = 0;
     private long balance = 0;
+    private int activeSlot = 1;
+    // 1. Thêm biến trạng thái chống double-click khi đổi slot (đặt cạnh biến activeSlot)
+    private boolean switchingSlot = false;
+    private long lastSlotSwitch = 0L;
 
     // [MỚI]: Biến lưu trữ tổng số Năng lượng đang bị thế chấp bởi thú triệu hồi
     private double reservedResource = 0;
@@ -254,7 +258,9 @@ public class RPGPlayer {
         ItemStack[] allEquips = getAllEquippedItems();
 
         String playerClassId = this.currentClass != null ? this.currentClass.getId() : "none";
-        String playerClassName = this.currentClass != null ? ChatColor.stripColor(this.currentClass.getDisplayName()) : "None";
+        String playerClassName = this.currentClass != null
+                ? ChatColor.stripColor(ChatColor.translateAlternateColorCodes('&', this.currentClass.getDisplayName()))
+                : "None";
 
         for (ItemStack item : allEquips) {
             if (item == null || !item.hasItemMeta() || !item.getItemMeta().hasLore()) continue;
@@ -573,11 +579,9 @@ public class RPGPlayer {
         try {
             if (this.currentClass != null && !this.currentClass.getId().equalsIgnoreCase(newClass.getId())) {
 
-                // [MỚI]: Nếu đang là Summoner mà đổi class khác -> Tiêu diệt toàn bộ thú!
+                // Thu hồi toàn bộ thú triệu hồi nếu đang ở class Summoner (dùng chung cho cả đổi Class lẫn đổi Slot)
                 if (this.currentClass instanceof vn.minecraft.rPGCore.classes.impl.SummonerClass) {
-                    if (this.bukkitPlayer != null) {
-                        ((vn.minecraft.rPGCore.classes.impl.SummonerClass) this.currentClass).clearAllPets(this.bukkitPlayer);
-                    }
+                    ((vn.minecraft.rPGCore.classes.impl.SummonerClass) this.currentClass).clearAllPets(this.bukkitPlayer);
                 }
 
                 // Dọn dẹp tàn dư của Class cũ (Kiểm tra an toàn dữ liệu)
@@ -591,7 +595,8 @@ public class RPGPlayer {
                     int currentLevel = this.bukkitPlayer.getLevel();
                     if (this.skillData != null) this.skillData.setSkillPoints(currentLevel);
 
-                    this.bukkitPlayer.sendMessage("§a§l[!] §fBạn đã chuyển sang hệ phái: §e" + newClass.getDisplayName());
+                    String translatedClassName = ChatColor.translateAlternateColorCodes('&', newClass.getDisplayName());
+                    this.bukkitPlayer.sendMessage("§a§l[!] §fBạn đã chuyển sang Chức Nghiệp: §e" + translatedClassName);
                     this.bukkitPlayer.sendMessage("§b⟳ Toàn bộ Kỹ năng và Phím tắt đã được reset! Hoàn trả §e" + currentLevel + " SP§b.");
                 }
             }
@@ -642,7 +647,7 @@ public class RPGPlayer {
             org.bukkit.Bukkit.getLogger().severe("[RPGCore] Loi nghiem trong khi doi Class cho nguoi choi " + (this.bukkitPlayer != null ? this.bukkitPlayer.getName() : "Unknown"));
             e.printStackTrace();
             if (this.bukkitPlayer != null && this.bukkitPlayer.isOnline()) {
-                this.bukkitPlayer.sendMessage("§c§l[!] §cĐã xảy ra lỗi hệ thống khi chuyển phái. Vui lòng báo cáo cho Admin!");
+                this.bukkitPlayer.sendMessage("§c§l[!] §cĐã xảy ra lỗi hệ thống khi chuyển Chức Nghiệp. Vui lòng báo cáo cho Admin!");
             }
         }
     }
@@ -829,4 +834,13 @@ public class RPGPlayer {
         if (this.currentStats == null || this.currentStats.setCounts == null) return false;
         return this.currentStats.setCounts.getOrDefault(lineage.toLowerCase(), 0) >= requiredPieces;
     }
+
+    public boolean isSwitchingSlot() { return this.switchingSlot; }
+    public void setSwitchingSlot(boolean switchingSlot) { this.switchingSlot = switchingSlot; }
+
+    public int getActiveSlot() { return this.activeSlot; }
+    public void setActiveSlot(int activeSlot) { this.activeSlot = Math.max(1, activeSlot); }
+
+    public long getLastSlotSwitch() { return this.lastSlotSwitch; }
+    public void setLastSlotSwitch(long lastSlotSwitch) { this.lastSlotSwitch = lastSlotSwitch; }
 }

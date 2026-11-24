@@ -40,7 +40,7 @@ public class ElementalSwapSkill implements ISkill {
     @Override
     public List<String> getDescription(int level) {
         return Arrays.asList(
-                "§7Cơ chế đặc quyền của hệ phái Pháp Sư.",
+                "§7Cơ chế đặc quyền của Chức Nghiệp Pháp Sư.",
                 "§7Cho phép luân chuyển giữa các Nguyên tố.",
                 "",
                 "§8▪ §fPhím tắt: §e[F] §7(Đổi tay / Swap Item)",

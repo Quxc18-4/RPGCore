@@ -512,7 +512,7 @@ public class ArcherClass extends RPGClass implements Listener {
     @Override
     public boolean performMeleeAttack(Player attacker, RPGPlayer rpgAttacker, LivingEntity target, ItemStack weapon) {
         if (!attacker.hasMetadata("Ranged_Warning_Cooldown")) {
-            attacker.sendMessage("§c§l[!] §fHệ phái của bạn không thể tấn công cận chiến!");
+            attacker.sendMessage("§c§l[!] §fChức Nghiệp của bạn không thể tấn công cận chiến!");
             attacker.setMetadata("Ranged_Warning_Cooldown", new org.bukkit.metadata.FixedMetadataValue(vn.minecraft.rPGCore.RPGCore.getInstance(), true));
 
             new org.bukkit.scheduler.BukkitRunnable() {

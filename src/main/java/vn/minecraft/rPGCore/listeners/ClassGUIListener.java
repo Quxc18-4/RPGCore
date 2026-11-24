@@ -8,11 +8,14 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
+import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.classes.ClassManager;
 import vn.minecraft.rPGCore.classes.RPGClass;
+import vn.minecraft.rPGCore.managers.ItemManager;
 import vn.minecraft.rPGCore.player.PlayerManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 import vn.minecraft.rPGCore.ui.BossBarManager;
+import vn.minecraft.rPGCore.ui.ClassConfirmGUI;
 import vn.minecraft.rPGCore.ui.ClassGUI;
 
 public class ClassGUIListener implements Listener {
@@ -21,7 +24,6 @@ public class ClassGUIListener implements Listener {
     private final BossBarManager bossBarManager;
     private final ClassManager classManager;
 
-    // Truyền 3 công cụ quản lý vào
     public ClassGUIListener(PlayerManager playerManager, BossBarManager bossBarManager, ClassManager classManager) {
         this.playerManager = playerManager;
         this.bossBarManager = bossBarManager;
@@ -30,27 +32,19 @@ public class ClassGUIListener implements Listener {
 
     @EventHandler
     public void onGUIClick(InventoryClickEvent event) {
-        // Kiểm tra xem có đúng là người chơi đang mở GUI Chọn Class không
         if (!event.getView().getTitle().equals(ClassGUI.GUI_TITLE)) return;
-
-        // 1. CHẶN NGAY LẬP TỨC việc nhấc item ra khỏi rương (Chặn mọi cú click)
         event.setCancelled(true);
 
-        if (event.getCurrentItem() == null) return;
+        if (event.getCurrentItem() == null || !(event.getWhoClicked() instanceof Player player)) return;
         ItemStack clickedItem = event.getCurrentItem();
-        Player player = (Player) event.getWhoClicked();
 
-        // Bỏ qua nếu click vào kính màu đen hoặc ô trống
         if (clickedItem.getType() == Material.BLACK_STAINED_GLASS_PANE || clickedItem.getType() == Material.AIR) return;
-
-        // Lấy tên hiển thị của item (ví dụ: "§cChiến Binh")
         if (!clickedItem.hasItemMeta() || !clickedItem.getItemMeta().hasDisplayName()) return;
+
         String clickedName = clickedItem.getItemMeta().getDisplayName();
 
-        // 2. TÌM CLASS TƯƠNG ỨNG VỚI TÊN ITEM
         RPGClass selectedClass = null;
         for (RPGClass rpgClass : classManager.getClasses().values()) {
-            // Dịch mã màu (ví dụ &c thành §c) để so sánh cho khớp chuẩn
             String translatedName = ChatColor.translateAlternateColorCodes('&', rpgClass.getDisplayName());
             if (translatedName.equals(clickedName)) {
                 selectedClass = rpgClass;
@@ -58,22 +52,41 @@ public class ClassGUIListener implements Listener {
             }
         }
 
-        // 3. THỰC HIỆN ĐỔI CLASS
-        if (selectedClass != null) {
-            RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
-            if (rpgPlayer != null) {
-                // Cập nhật dữ liệu
-                rpgPlayer.changeClass(selectedClass);
+        if (selectedClass == null) return;
 
-                // Cập nhật UI BossBar
-                bossBarManager.updateBars(player, rpgPlayer);
+        RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
+        if (rpgPlayer == null) return;
 
-                // Thông báo, phát âm thanh level up và đóng GUI
-                player.sendMessage(ChatColor.GREEN + "Bạn đã chuyển sang Class: " +
-                        ChatColor.translateAlternateColorCodes('&', selectedClass.getDisplayName()));
-                player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
-                player.closeInventory();
-            }
+        String currentClassId = (rpgPlayer.getCurrentClass() != null)
+                ? rpgPlayer.getCurrentClass().getId()
+                : "commoner";
+
+        // Không cho chọn lại chính Commoner nếu đang có hệ phái
+        if (selectedClass.getId().equalsIgnoreCase(currentClassId)) {
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+            player.sendMessage("§eBạn đang thuộc Chức Nghiệp này rồi!");
+            return;
         }
+
+        // Trường hợp 1: Nhân vật mới (Commoner) -> Gia nhập miễn phí ngay
+        if (currentClassId.equalsIgnoreCase("commoner")) {
+            rpgPlayer.changeClass(selectedClass);
+            bossBarManager.updateBars(player, rpgPlayer);
+            playerManager.savePlayer(player.getUniqueId(), true, false);
+
+            String display = ChatColor.translateAlternateColorCodes('&', selectedClass.getDisplayName());
+            player.sendMessage("§aBạn đã gia nhập Chức Nghiệp: " + display);
+            player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+            player.closeInventory();
+            return;
+        }
+
+        // Trường hợp 2 & 3: Đã có Class -> Luôn mở SubMenu Cảnh báo (tự phân nhánh theo việc có cuộn giấy hay không)
+        RPGCore core = RPGCore.getInstance();
+        ItemManager itemManager = (core != null) ? core.getItemManager() : null;
+        ItemStack scrollTemplate = (itemManager != null) ? itemManager.buildItem("class_change_scroll", 1) : null;
+        boolean hasScroll = (scrollTemplate != null && itemManager.countItem(player, scrollTemplate) > 0);
+
+        ClassConfirmGUI.open(player, core, rpgPlayer, selectedClass, hasScroll);
     }
 }

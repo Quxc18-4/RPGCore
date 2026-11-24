@@ -254,7 +254,6 @@ public class CurrencyManager {
 
         org.bukkit.entity.Player player = org.bukkit.Bukkit.getPlayer(uuid);
 
-        // Trường hợp 1: Người chơi đang Online -> Trừ thẳng vào RAM (RPGPlayer)
         if (player != null && player.isOnline()) {
             vn.minecraft.rPGCore.player.RPGPlayer rpgPlayer = vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager().getRPGPlayer(uuid);
             if (rpgPlayer != null && rpgPlayer.getBalance() >= amountRequired) {
@@ -262,23 +261,26 @@ public class CurrencyManager {
                 return true;
             }
             return false;
-        }
-        // Trường hợp 2: Người chơi Offline -> Query trực tiếp xuống MongoDB
-        else {
+        } else {
             com.mongodb.client.MongoCollection<org.bson.Document> collection = vn.minecraft.rPGCore.database.MongoManager.getInstance().getDatabase().getCollection("players");
             org.bson.Document doc = collection.find(com.mongodb.client.model.Filters.eq("_id", uuid.toString())).first();
 
             if (doc != null) {
+                int activeSlot = (doc.get("active_slot") instanceof Number) ? ((Number) doc.get("active_slot")).intValue() : 1;
+                org.bson.Document slotsDoc = doc.get("slots", org.bson.Document.class);
+                org.bson.Document slotData = (slotsDoc != null) ? slotsDoc.get(String.valueOf(activeSlot), org.bson.Document.class) : null;
+
                 long currentBalance = 0L;
-                Object balObj = doc.get("balance");
-                if (balObj instanceof Number) {
-                    currentBalance = ((Number) balObj).longValue();
+                if (slotData != null && slotData.get("balance") instanceof Number) {
+                    currentBalance = ((Number) slotData.get("balance")).longValue();
+                } else if (doc.get("balance") instanceof Number) {
+                    currentBalance = ((Number) doc.get("balance")).longValue();
                 }
 
                 if (currentBalance >= amountRequired) {
                     collection.updateOne(
                             com.mongodb.client.model.Filters.eq("_id", uuid.toString()),
-                            com.mongodb.client.model.Updates.set("balance", currentBalance - amountRequired)
+                            com.mongodb.client.model.Updates.set("slots." + activeSlot + ".balance", currentBalance - amountRequired)
                     );
                     return true;
                 }
@@ -289,12 +291,12 @@ public class CurrencyManager {
     // ==========================================
     // CỘNG TIỀN THƯỞNG ONLINE / OFFLINE AN TOÀN
     // ==========================================
+
     public boolean processOfflineDeposit(java.util.UUID uuid, long amountToAdd, String notifyMessage) {
         if (amountToAdd <= 0) return true;
 
         org.bukkit.entity.Player player = org.bukkit.Bukkit.getPlayer(uuid);
 
-        // Trường hợp 1: Người chơi đang Online -> Cộng thẳng vào RAM (RPGPlayer)
         if (player != null && player.isOnline()) {
             vn.minecraft.rPGCore.player.RPGPlayer rpgPlayer =
                     vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager().getRPGPlayer(uuid);
@@ -307,14 +309,16 @@ public class CurrencyManager {
                 return true;
             }
             return false;
-        }
-        // Trường hợp 2: Người chơi Offline -> Dùng $inc cộng thẳng vào MongoDB
-        else {
+        } else {
             com.mongodb.client.MongoCollection<org.bson.Document> collection =
                     vn.minecraft.rPGCore.database.MongoManager.getInstance().getDatabase().getCollection("players");
+            org.bson.Document doc = collection.find(com.mongodb.client.model.Filters.eq("_id", uuid.toString())).first();
+            if (doc == null) return false;
+
+            int activeSlot = (doc.get("active_slot") instanceof Number) ? ((Number) doc.get("active_slot")).intValue() : 1;
             com.mongodb.client.result.UpdateResult result = collection.updateOne(
                     com.mongodb.client.model.Filters.eq("_id", uuid.toString()),
-                    com.mongodb.client.model.Updates.inc("balance", amountToAdd)
+                    com.mongodb.client.model.Updates.inc("slots." + activeSlot + ".balance", amountToAdd)
             );
             return result.getMatchedCount() > 0;
         }
