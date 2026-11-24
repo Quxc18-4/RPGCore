@@ -65,12 +65,11 @@ public class PlayerManager {
     }
 
     /**
-     * Tính giá mở khóa (VNĐ) cho từng Slot từ 3 -> 10:
-     * Slot 3: 100.000đ (hoặc gói VIP), Slot 4: 200.000đ, ..., Slot 10: 800.000đ
+     * Giá mở khóa (VNĐ) đồng giá 100.000đ cho mỗi Slot từ 3 -> 10
      */
     public int getSlotUnlockCostVnd(int slotNum) {
         if (slotNum <= 2) return 0;
-        return (slotNum - 2) * 100_000;
+        return 100_000;
     }
 
     /**

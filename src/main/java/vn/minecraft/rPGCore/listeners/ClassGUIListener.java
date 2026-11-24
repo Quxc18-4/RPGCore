@@ -64,38 +64,29 @@ public class ClassGUIListener implements Listener {
         // Không cho chọn lại chính Commoner nếu đang có hệ phái
         if (selectedClass.getId().equalsIgnoreCase(currentClassId)) {
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
-            player.sendMessage("§eBạn đang thuộc hệ phái này rồi!");
+            player.sendMessage("§eBạn đang thuộc Chức Nghiệp này rồi!");
             return;
         }
 
-        // TRƯỜNG HỢP 1: Nhân vật chưa chọn Class (Commoner) -> Chọn miễn phí lần đầu và khóa cố định
+        // Trường hợp 1: Nhân vật mới (Commoner) -> Gia nhập miễn phí ngay
         if (currentClassId.equalsIgnoreCase("commoner")) {
             rpgPlayer.changeClass(selectedClass);
             bossBarManager.updateBars(player, rpgPlayer);
             playerManager.savePlayer(player.getUniqueId(), true, false);
 
             String display = ChatColor.translateAlternateColorCodes('&', selectedClass.getDisplayName());
-            player.sendMessage("§aBạn đã gia nhập hệ phái: " + display + " §7(Hệ phái của nhân vật này đã được cố định)");
+            player.sendMessage("§aBạn đã gia nhập Chức Nghiệp: " + display);
             player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
             player.closeInventory();
             return;
         }
 
-        // Kiểm tra Cuộn Giấy Chuyển Hệ Phái trong túi đồ
+        // Trường hợp 2 & 3: Đã có Class -> Luôn mở SubMenu Cảnh báo (tự phân nhánh theo việc có cuộn giấy hay không)
         RPGCore core = RPGCore.getInstance();
         ItemManager itemManager = (core != null) ? core.getItemManager() : null;
         ItemStack scrollTemplate = (itemManager != null) ? itemManager.buildItem("class_change_scroll", 1) : null;
         boolean hasScroll = (scrollTemplate != null && itemManager.countItem(player, scrollTemplate) > 0);
 
-        // TRƯỜNG HỢP 2: Đã có Class nhưng KHÔNG mang theo class_change_scroll -> Chặn
-        if (!hasScroll) {
-            player.closeInventory();
-            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
-            player.sendMessage("§c§l[!] §cHệ phái của nhân vật này đã cố định! Hãy dùng lệnh §e/slot §cđể chuyển sang nhân vật khác, hoặc mang theo §5[Cuộn Giấy Chuyển Hệ Phái] §ctrong túi đồ để đổi phái.");
-            return;
-        }
-
-        // TRƯỜNG HỢP 3: Đã có Class VÀ có class_change_scroll -> Mở SubMenu Cảnh báo xác nhận
-        ClassConfirmGUI.open(player, core, rpgPlayer, selectedClass);
+        ClassConfirmGUI.open(player, core, rpgPlayer, selectedClass, hasScroll);
     }
 }

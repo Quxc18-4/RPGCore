@@ -1,6 +1,7 @@
 package vn.minecraft.rPGCore.commands;
 
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.model.Projections;
 import org.bson.Document;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
@@ -14,9 +15,7 @@ import vn.minecraft.rPGCore.managers.CurrencyManager;
 import vn.minecraft.rPGCore.player.PlayerManager;
 import vn.minecraft.rPGCore.player.RPGPlayer;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 public class BalanceCommand implements CommandExecutor {
 
@@ -30,12 +29,23 @@ public class BalanceCommand implements CommandExecutor {
         this.currencyManager = currencyManager;
     }
 
+    private static class RichPlayerEntry {
+        final UUID uuid;
+        final String name;
+        final long totalBalance;
+
+        RichPlayerEntry(UUID uuid, String name, long totalBalance) {
+            this.uuid = uuid;
+            this.name = name;
+            this.totalBalance = totalBalance;
+        }
+    }
+
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        // Nếu không có arg nào -> Xem tiền của bản thân
+        // Xem tiền của bản thân
         if (args.length == 0) {
-            if (!(sender instanceof Player)) return true;
-            Player player = (Player) sender;
+            if (!(sender instanceof Player player)) return true;
             RPGPlayer rpgPlayer = playerManager.getRPGPlayer(player.getUniqueId());
             if (rpgPlayer != null) {
                 player.sendMessage("§e[Ngân Hàng] §7Số dư hiện tại của bạn: " + currencyManager.formatCurrency(rpgPlayer.getBalance()));
@@ -44,30 +54,94 @@ public class BalanceCommand implements CommandExecutor {
         }
 
         // ==========================================
-        // 1. LỆNH: /bal top (ĐÃ SỬA: ĐỌC TỪ MONGODB)
+        // 1. LỆNH: /bal top (ĐÃ FIX CHO CẤU TRÚC ĐA SLOT)
         // ==========================================
         if (args[0].equalsIgnoreCase("top")) {
             sender.sendMessage("§6§lBẢNG XẾP HẠNG PHÚ HÀO SERVER");
 
+            // Chụp nhanh số dư trên RAM của người chơi đang online để đảm bảo tính chính xác tức thời
+            Map<UUID, Integer> onlineActiveSlots = new HashMap<>();
+            Map<UUID, Long> onlineBalances = new HashMap<>();
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                RPGPlayer rp = playerManager.getRPGPlayer(p.getUniqueId());
+                if (rp != null) {
+                    onlineActiveSlots.put(p.getUniqueId(), rp.getActiveSlot());
+                    onlineBalances.put(p.getUniqueId(), rp.getBalance());
+                }
+            }
+
             Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
                 MongoCollection<Document> collection = MongoManager.getInstance().getDatabase().getCollection("players");
+                List<RichPlayerEntry> entries = new ArrayList<>();
 
-                // Truy vấn MongoDB: Sắp xếp theo "balance" giảm dần (-1) và giới hạn 10 người
-                List<Document> topDocs = collection.find().sort(new Document("balance", -1)).limit(10).into(new ArrayList<>());
-
-                int count = 1;
-                for (Document doc : topDocs) {
-                    long bal = doc.getLong("balance") != null ? doc.getLong("balance") : 0L;
-                    if (bal <= 0) continue;
-
+                // Chỉ lấy các trường cần thiết, loại bỏ Base64 túi đồ để tối ưu tốc độ đọc
+                for (Document doc : collection.find().projection(
+                        Projections.include("_id", "username", "balance", "slots")
+                )) {
                     String uuidStr = doc.getString("_id");
+                    if (uuidStr == null) continue;
+
+                    UUID uuid;
                     try {
-                        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(UUID.fromString(uuidStr));
-                        String name = offlinePlayer.getName() != null ? offlinePlayer.getName() : "Người chơi ẩn";
-                        sender.sendMessage("§e#" + count + " §f" + name + " §8- " + currencyManager.formatCurrency(bal));
-                        count++;
-                    } catch (Exception ignored) {}
+                        uuid = UUID.fromString(uuidStr);
+                    } catch (IllegalArgumentException ignored) {
+                        continue;
+                    }
+
+                    long totalBalance = 0L;
+                    Document slotsDoc = doc.get("slots", Document.class);
+                    Integer onlineSlot = onlineActiveSlots.get(uuid);
+                    Long onlineBal = onlineBalances.get(uuid);
+
+                    if (slotsDoc != null && !slotsDoc.isEmpty()) {
+                        for (String slotKey : slotsDoc.keySet()) {
+                            if (onlineSlot != null && onlineBal != null && String.valueOf(onlineSlot).equals(slotKey)) {
+                                totalBalance += onlineBal;
+                            } else {
+                                Document sDoc = slotsDoc.get(slotKey, Document.class);
+                                if (sDoc != null && sDoc.get("balance") instanceof Number num) {
+                                    totalBalance += num.longValue();
+                                }
+                            }
+                        }
+                        // Trường hợp người chơi vừa tạo slot mới trên RAM nhưng chưa kịp Auto-Save
+                        if (onlineSlot != null && onlineBal != null && !slotsDoc.containsKey(String.valueOf(onlineSlot))) {
+                            totalBalance += onlineBal;
+                        }
+                    } else {
+                        // Fallback cho dữ liệu cũ chưa chuyển sang cấu trúc slots
+                        if (onlineBal != null) {
+                            totalBalance = onlineBal;
+                        } else if (doc.get("balance") instanceof Number num) {
+                            totalBalance = num.longValue();
+                        }
+                    }
+
+                    if (totalBalance <= 0) continue;
+
+                    String name = doc.getString("username");
+                    if (name == null || name.isEmpty()) {
+                        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(uuid);
+                        name = offlinePlayer.getName() != null ? offlinePlayer.getName() : "Người chơi ẩn";
+                    }
+
+                    entries.add(new RichPlayerEntry(uuid, name, totalBalance));
                 }
+
+                entries.sort((a, b) -> Long.compare(b.totalBalance, a.totalBalance));
+                List<RichPlayerEntry> top10 = entries.subList(0, Math.min(10, entries.size()));
+
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    if (top10.isEmpty()) {
+                        sender.sendMessage("§7Chưa có dữ liệu xếp hạng.");
+                        return;
+                    }
+                    int rank = 1;
+                    for (RichPlayerEntry entry : top10) {
+                        sender.sendMessage("§e#" + rank + " §f" + entry.name + " §8- " + currencyManager.formatCurrency(entry.totalBalance));
+                        rank++;
+                    }
+                });
             });
             return true;
         }
@@ -80,8 +154,7 @@ public class BalanceCommand implements CommandExecutor {
                 sender.sendMessage("§cBạn không có quyền dùng lệnh này!");
                 return true;
             }
-            if (sender instanceof Player) {
-                Player player = (Player) sender;
+            if (sender instanceof Player player) {
                 player.getInventory().addItem(currencyManager.getCurrencyItem("copper", 63));
                 player.getInventory().addItem(currencyManager.getCurrencyItem("iron", 63));
                 player.getInventory().addItem(currencyManager.getCurrencyItem("gold", 63));
@@ -118,9 +191,10 @@ public class BalanceCommand implements CommandExecutor {
                     long currentBal = rpgTarget.getBalance();
                     long newBal = Math.max(0, currentBal + amount);
                     rpgTarget.setBalance(newBal);
+                    playerManager.savePlayer(target.getUniqueId(), true, false);
 
                     sender.sendMessage("§aĐã thay đổi số dư của " + target.getName() + " thành " + currencyManager.formatCurrency(newBal));
-                    target.sendMessage("§e[Ngân Hàng] §fBiến động số dư: " + " " + (amount > 0 ? "§a+" : "§c") + currencyManager.formatCurrency(Math.abs(amount)));
+                    target.sendMessage("§e[Ngân Hàng] §fBiến động số dư: " + (amount >= 0 ? "§a+" : "§c-") + currencyManager.formatCurrency(Math.abs(amount)));
                 }
             } catch (NumberFormatException e) {
                 sender.sendMessage("§cSố tiền không hợp lệ!");

@@ -117,8 +117,8 @@ public class SlotGUI implements InventoryHolder, Listener {
             lore.add("§8▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
             lore.add("§7• Mặc định mở sẵn §f2 Slot §7đầu tiên.");
             lore.add("§7• Tối đa §e10 Slot §7cho mỗi tài khoản.");
-            lore.add("§7• Mở thêm từ Web: mỗi Slot tiếp theo");
-            lore.add("§7  tăng thêm §6+100.000đ §7(100k → 800k).");
+            lore.add("§7• Mở thêm trên Web: đồng giá §650.000đ§7/Slot");
+            lore.add("§7  (Slot 3 được mở miễn phí khi mua VIP).");
             lore.add("§7• Thời gian chờ giữa 2 lần đổi: §e15 phút§7.");
             meta.setLore(lore);
             item.setItemMeta(meta);
@@ -137,7 +137,7 @@ public class SlotGUI implements InventoryHolder, Listener {
             meta.setDisplayName("§a§lSLOT " + slotNum + " §7(§aĐang chơi§7)");
             List<String> lore = new ArrayList<>();
             lore.add("§8▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
-            lore.add("§7Hệ phái: " + resolveClassDisplayName(classId));
+            lore.add("§7Chức Nghiệp: " + resolveClassDisplayName(classId));
             lore.add("§7Cấp độ: §bLv." + level);
             lore.add("§7Số dư: " + formatCurrency(balance));
             lore.add("§8▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
@@ -170,7 +170,7 @@ public class SlotGUI implements InventoryHolder, Listener {
                 long balance = (data.get("balance") instanceof Number) ? ((Number) data.get("balance")).longValue() : 0L;
 
                 meta.setDisplayName("§e§lSLOT " + slotNum + " §7(§fSẵn sàng§7)");
-                lore.add("§7Hệ phái: " + resolveClassDisplayName(classId));
+                lore.add("§7Chức Nghiệp: " + resolveClassDisplayName(classId));
                 lore.add("§7Cấp độ: §bLv." + level);
                 lore.add("§7Số dư: " + formatCurrency(balance));
                 lore.add("§8▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");

@@ -18,7 +18,7 @@ import java.util.List;
 
 public class ClassGUI {
 
-    public static final String GUI_TITLE = "§8§lCHỌN HỆ PHÁI NHÂN VẬT";
+    public static final String GUI_TITLE = "§8§lCHỌN CHỨC NGHIỆP NHÂN VẬT";
     private static final int[] CLASS_SLOTS = {10, 12, 14, 16, 28, 30, 32, 34};
 
     public void openGUI(Player player, List<RPGClass> availableClasses) {
@@ -66,15 +66,15 @@ public class ClassGUI {
             lore.add("");
 
             if (rpgClass.getId().equalsIgnoreCase(currentClassId)) {
-                lore.add("§aHệ phái hiện tại của nhân vật này");
+                lore.add("§aChức Nghiệp hiện tại của nhân vật này");
             } else if (isCommoner) {
-                lore.add("§e▶ Nhấp để gia nhập hệ phái này (Miễn phí lần đầu)");
-                lore.add("§7(Sau khi chọn, hệ phái sẽ cố định cho Slot này)");
+                lore.add("§e▶ Nhấp để gia nhập Chức Nghiệp này");
             } else if (hasScroll) {
-                lore.add("§d▶ Nhấp để chuyển đổi (Tiêu hao 1x Cuộn Giấy Chuyển Hệ Phái)");
+                lore.add("§d▶ Nhấp để đổi Chức Nghiệp (Giữ nguyên Cấp độ & Chỉ số)");
+                lore.add("§7Tiêu hao: §51x Cuộn Giấy Chuyển Chức Nghiệp");
             } else {
-                lore.add("§cHệ phái nhân vật đã cố định");
-                lore.add("§7Cần §5[Cuộn Giấy Chuyển Hệ Phái] §7hoặc dùng §e/slot");
+                lore.add("§cNhấp để đổi Chức Nghiệp (Reset về Cấp độ & Chỉ số)");
+                lore.add("§7Mang §5[Cuộn Giấy Chuyển Chức Nghiệp] §7để giữ lại tiến độ");
             }
 
             meta.setLore(lore);

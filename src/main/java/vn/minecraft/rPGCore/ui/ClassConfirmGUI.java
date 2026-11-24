@@ -24,7 +24,7 @@ import java.util.List;
 
 public class ClassConfirmGUI implements InventoryHolder, Listener {
 
-    public static final String GUI_TITLE = "§4§lXÁC NHẬN ĐỔI HỆ PHÁI";
+    public static final String GUI_TITLE = "§4§lXÁC NHẬN ĐỔI CHỨC NGHIỆP";
     private static final int CONFIRM_SLOT = 11;
     private static final int INFO_SLOT = 13;
     private static final int CANCEL_SLOT = 15;
@@ -32,17 +32,19 @@ public class ClassConfirmGUI implements InventoryHolder, Listener {
     private final RPGCore plugin;
     private final Inventory inventory;
     private final RPGClass targetClass;
+    private final boolean usingScroll;
 
-    // Constructor dùng để đăng ký Listener trong RPGCore.onEnable()
     public ClassConfirmGUI(RPGCore plugin) {
         this.plugin = plugin;
         this.inventory = null;
         this.targetClass = null;
+        this.usingScroll = false;
     }
 
-    private ClassConfirmGUI(RPGCore plugin, RPGPlayer rpgPlayer, RPGClass targetClass) {
+    private ClassConfirmGUI(RPGCore plugin, RPGPlayer rpgPlayer, RPGClass targetClass, boolean usingScroll) {
         this.plugin = plugin;
         this.targetClass = targetClass;
+        this.usingScroll = usingScroll;
         this.inventory = Bukkit.createInventory(this, 27, GUI_TITLE);
         render(rpgPlayer);
     }
@@ -56,9 +58,13 @@ public class ClassConfirmGUI implements InventoryHolder, Listener {
         return targetClass;
     }
 
-    public static void open(Player player, RPGCore plugin, RPGPlayer rpgPlayer, RPGClass targetClass) {
+    public boolean isUsingScroll() {
+        return usingScroll;
+    }
+
+    public static void open(Player player, RPGCore plugin, RPGPlayer rpgPlayer, RPGClass targetClass, boolean hasScroll) {
         if (plugin == null || rpgPlayer == null || targetClass == null) return;
-        ClassConfirmGUI gui = new ClassConfirmGUI(plugin, rpgPlayer, targetClass);
+        ClassConfirmGUI gui = new ClassConfirmGUI(plugin, rpgPlayer, targetClass, hasScroll);
         player.openInventory(gui.getInventory());
     }
 
@@ -74,38 +80,64 @@ public class ClassConfirmGUI implements InventoryHolder, Listener {
         String newClassName = ChatColor.translateAlternateColorCodes('&', targetClass.getDisplayName());
         int level = rpgPlayer.getLevel();
 
-        // Ô 13: Thông tin cảnh báo
-        ItemStack infoItem = new ItemStack(Material.NETHER_STAR);
-        ItemMeta infoMeta = infoItem.getItemMeta();
-        if (infoMeta != null) {
-            infoMeta.setDisplayName("§e§lTHÔNG TIN CHUYỂN ĐỔI HỆ PHÁI");
-            List<String> lore = new ArrayList<>();
-            lore.add("§8▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
-            lore.add("§7Thay đổi: " + oldClassName + " §f➔ " + newClassName);
-            lore.add("");
-            lore.add("§aGiữ nguyên Cấp độ: §bLv." + level + " §7(Không mất EXP)");
-            lore.add("§aGiữ nguyên Điểm Tiềm Năng: §eToàn bộ chỉ số được bảo toàn");
-            lore.add("§eLàm mới Kỹ năng: §fXóa toàn bộ Skill & Combo cũ,");
-            lore.add("§f   hoàn trả §b" + level + " điểm SP §fđể học kỹ năng mới.");
-            lore.add("§d★ Chi phí: §fTiêu hao §51x Cuộn Giấy Chuyển Hệ Phái");
-            lore.add("§8▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
-            infoMeta.setLore(lore);
-            infoMeta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
-            infoItem.setItemMeta(infoMeta);
+        if (usingScroll) {
+            // TRẠNG THÁI 1: CÓ CUỘN GIẤY CHUYỂN HỆ PHÁI (BẢO TOÀN LEVEL & ATTR)
+            ItemStack infoItem = new ItemStack(Material.NETHER_STAR);
+            ItemMeta infoMeta = infoItem.getItemMeta();
+            if (infoMeta != null) {
+                infoMeta.setDisplayName("§d§lCHUYỂN ĐỔI CHỨC NGHIỆP");
+                List<String> lore = new ArrayList<>();
+                lore.add("§8▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+                lore.add("§7Thay đổi: " + oldClassName + " §f➔ " + newClassName);
+                lore.add("");
+                lore.add("§aGiữ nguyên Cấp độ: §bLv." + level + " §7(Không mất EXP)");
+                lore.add("§aGiữ nguyên Điểm Tiềm Năng: §eBảo toàn toàn bộ chỉ số");
+                lore.add("§eLàm mới Kỹ năng: §fXóa Skill cũ, hoàn trả §b" + level + " SP");
+                lore.add("§dChi phí: §fTiêu hao §51x Cuộn Giấy Chuyển Chức Nghiệp");
+                lore.add("§8▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+                infoMeta.setLore(lore);
+                infoMeta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+                infoItem.setItemMeta(infoMeta);
+            }
+            inventory.setItem(INFO_SLOT, infoItem);
+
+            inventory.setItem(CONFIRM_SLOT, createItem(Material.LIME_WOOL,
+                    "§a§lXÁC NHẬN ĐỔI CHỨC NGHIỆP",
+                    "§7Chuyển sang " + newClassName + " §7và giữ nguyên tiến độ.",
+                    "§5(Tiêu hao 1x Cuộn Giấy Chuyển Chức Nghiệp)"));
+        } else {
+            // TRẠNG THÁI 2: KHÔNG CÓ CUỘN GIẤY (RESET LEVEL VỀ 1 & XÓA SẠCH ATTR)
+            ItemStack infoItem = new ItemStack(Material.WITHER_SKELETON_SKULL);
+            ItemMeta infoMeta = infoItem.getItemMeta();
+            if (infoMeta != null) {
+                infoMeta.setDisplayName("§c§lCẢNH BÁO: TÁI LẬP NHÂN VẬT");
+                List<String> lore = new ArrayList<>();
+                lore.add("§8▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+                lore.add("§7Thay đổi: " + oldClassName + " §f➔ " + newClassName);
+                lore.add("§cKhông tìm thấy §5[Cuộn Giấy Chuyển Chức Nghiệp]§c!");
+                lore.add("");
+                lore.add("§cĐặt lại Cấp độ: §bLv." + level + " §c➔ §eLv.1 §7(Mất toàn bộ EXP)");
+                lore.add("§cXóa Điểm Tiềm Năng: §f5 chỉ số & điểm dư đặt về §e0");
+                lore.add("§cXóa Kỹ năng: §fToàn bộ Skill cũ bị xóa, SP về §e1");
+                lore.add("");
+                lore.add("§7Mẹo: Dùng §5Cuộn Giấy Chuyển Chức Nghiệp §7để giữ lại Lv & Chỉ số.");
+                lore.add("§8▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+                infoMeta.setLore(lore);
+                infoMeta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+                infoItem.setItemMeta(infoMeta);
+            }
+            inventory.setItem(INFO_SLOT, infoItem);
+
+            inventory.setItem(CONFIRM_SLOT, createItem(Material.ORANGE_WOOL,
+                    "§6§lCHẤP NHẬN RESET & ĐỔI PHÁI",
+                    "§cHành động này không thể hoàn tác!",
+                    "§7Nhân vật sẽ trở về §eLv.1 §7và mất toàn bộ điểm chỉ số."));
         }
-        inventory.setItem(INFO_SLOT, infoItem);
 
-        // Ô 11: Xác nhận
-        inventory.setItem(CONFIRM_SLOT, createItem(Material.LIME_WOOL,
-                "§a§lXÁC NHẬN ĐỔI PHÁI",
-                "§7Nhấp để hoàn tất chuyển đổi sang " + newClassName,
-                "§c(Sẽ tiêu hao 1x Cuộn Giấy Chuyển Hệ Phái)"));
-
-        // Ô 15: Hủy bỏ
         inventory.setItem(CANCEL_SLOT, createItem(Material.RED_WOOL,
                 "§c§lHỦY BỎ",
-                "§7Quay lại bảng chọn Hệ Phái",
-                "§7(Không tiêu hao vật phẩm)"));
+                "§7Quay lại bảng chọn Chức Nghiệp",
+                "§7(Giữ nguyên trạng thái hiện tại)"));
     }
 
     @EventHandler
@@ -144,44 +176,71 @@ public class ClassConfirmGUI implements InventoryHolder, Listener {
         if (rpgPlayer.isInCombat()) {
             player.closeInventory();
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
-            player.sendMessage("§cBạn không thể đổi hệ phái khi đang trong trạng thái giao tranh!");
+            player.sendMessage("§cBạn không thể đổi Chức Nghiệp khi đang trong trạng thái giao tranh!");
             return;
         }
 
         // 2. Chặn trùng hệ phái
         if (rpgPlayer.getCurrentClass() != null && rpgPlayer.getCurrentClass().getId().equalsIgnoreCase(target.getId())) {
             player.closeInventory();
-            player.sendMessage("§eBạn đang thuộc hệ phái này rồi!");
+            player.sendMessage("§eBạn đang thuộc Chức Nghiệp này rồi!");
             return;
         }
-
-        // 3. Kiểm tra và tiêu hao 1x class_change_scroll ngay tại thời điểm bấm xác nhận (chống dupe)
-        ItemManager itemManager = plugin.getItemManager();
-        ItemStack scrollTemplate = (itemManager != null) ? itemManager.buildItem("class_change_scroll", 1) : null;
-        if (scrollTemplate == null || !itemManager.takeItem(player, scrollTemplate, 1)) {
-            player.closeInventory();
-            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
-            player.sendMessage("§cBạn không còn §5[Cuộn Giấy Chuyển Hệ Phái] §ctrong túi đồ!");
-            return;
-        }
-
-        // 4. Thực hiện đổi Class (giữ nguyên Level & Attribute, làm mới Skill/SP, roll nguyên tố nếu là Mage)
-        rpgPlayer.changeClass(target);
-        rpgPlayer.updateMaxStats();
-        rpgPlayer.updateEquipmentStats();
-
-        if (plugin.getBossBarManager() != null) {
-            plugin.getBossBarManager().updateBars(player, rpgPlayer);
-        }
-
-        // 5. Lưu ngay xuống MongoDB
-        plugin.getPlayerManager().savePlayer(player.getUniqueId(), true, false);
 
         String newClassName = ChatColor.translateAlternateColorCodes('&', target.getDisplayName());
-        player.closeInventory();
-        player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
-        player.sendMessage("§a§l[THÀNH CÔNG] §fBạn đã chuyển đổi sang hệ phái " + newClassName
-                + " §7(Giữ nguyên §bLv." + rpgPlayer.getLevel() + " §7& Điểm Tiềm Năng)!");
+
+        if (confirmGUI.isUsingScroll()) {
+            // NHÁNH 1: ĐỔI BẢO TOÀN BẰNG CUỘN GIẤY
+            ItemManager itemManager = plugin.getItemManager();
+            ItemStack scrollTemplate = (itemManager != null) ? itemManager.buildItem("class_change_scroll", 1) : null;
+            if (scrollTemplate == null || !itemManager.takeItem(player, scrollTemplate, 1)) {
+                player.closeInventory();
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+                player.sendMessage("§cKhông tìm thấy §5[Cuộn Giấy Chuyển Chức Nghiệp] §ctrong túi đồ! Thao tác đã bị hủy để bảo vệ cấp độ của bạn.");
+                return;
+            }
+
+            rpgPlayer.changeClass(target);
+            rpgPlayer.updateMaxStats();
+            rpgPlayer.updateEquipmentStats();
+
+            if (plugin.getBossBarManager() != null) {
+                plugin.getBossBarManager().updateBars(player, rpgPlayer);
+            }
+            plugin.getPlayerManager().savePlayer(player.getUniqueId(), true, false);
+
+            player.closeInventory();
+            player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
+            player.sendMessage("§a§l[THÀNH CÔNG] §fBạn đã chuyển đổi sang Chức Nghiệp " + newClassName
+                    + " §7(Giữ nguyên §bLv." + rpgPlayer.getLevel() + " §7& Điểm Tiềm Năng)!");
+        } else {
+            // NHÁNH 2: ĐỔI CHẤP NHẬN RESET TOÀN BỘ LEVEL & CHỈ SỐ
+            rpgPlayer.setLevel(1);
+            rpgPlayer.setCurrentExp(0);
+            player.setLevel(1);
+            player.setExp(0f);
+
+            String[] stats = {"STR", "INT", "VIT", "AGI", "LUK"};
+            for (String stat : stats) {
+                rpgPlayer.getAttributeData().setAttribute(stat, 0);
+            }
+            rpgPlayer.getAttributeData().setUnspentAttrPoints(0);
+
+            // Gọi changeClass sau khi đã đưa level về 1 để SP cũng tự đặt lại về 1
+            rpgPlayer.changeClass(target);
+            rpgPlayer.updateMaxStats();
+            rpgPlayer.updateEquipmentStats();
+
+            if (plugin.getBossBarManager() != null) {
+                plugin.getBossBarManager().updateBars(player, rpgPlayer);
+            }
+            plugin.getPlayerManager().savePlayer(player.getUniqueId(), true, false);
+
+            player.closeInventory();
+            player.playSound(player.getLocation(), Sound.ENTITY_WITHER_SPAWN, 0.7f, 1.2f);
+            player.sendMessage("§e§l[TÁI SINH] §fBạn đã chuyển sang Chức Nghiệp " + newClassName
+                    + " §7(Cấp độ đặt lại về §eLv.1 §7và toàn bộ chỉ số về §e0§7).");
+        }
     }
 
     private ItemStack createItem(Material mat, String name, String... lore) {

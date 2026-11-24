@@ -128,7 +128,7 @@ public class EquipmentListener implements Listener {
         }
 
         if (hasClassReq && !classMatch) {
-            sendWarning(player, "§c§l[!] §fBạn không thể sử dụng trang bị của Hệ phái khác!");
+            sendWarning(player, "§c§l[!] §fBạn không thể sử dụng trang bị của Chức Nghiệp khác!");
             return false;
         }
 

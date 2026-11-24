@@ -644,9 +644,9 @@ public class ItemManager {
         // --- 18. ĐỒ ĐỔI CLASS / ATTR ---
         // ==========================================
         register(new ItemData("class_change_scroll", Rarity.LEGENDARY, Category.MISC, 0.0, Material.ENCHANTED_BOOK,
-                "Cuộn Giấy Chuyển Hệ Phái",
-                "Mang trong túi đồ khi mở /class để đổi Hệ Phái",
-                "Chứng thư hoàng gia cho phép thay đổi Hệ Phái.",
+                "Cuộn Giấy Chuyển Chức Nghiệp",
+                "Mang trong túi đồ khi mở /class để đổi Chức Nghiệp",
+                "Chứng thư hoàng gia cho phép thay đổi Chức Nghiệp.",
                 "Giữ nguyên Cấp độ & Điểm Tiềm Năng hiện tại.",
                 "Tự động tiêu hao 1 cuộn khi xác nhận đổi."));
 

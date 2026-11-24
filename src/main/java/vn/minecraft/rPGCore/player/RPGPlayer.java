@@ -593,7 +593,7 @@ public class RPGPlayer {
                     int currentLevel = this.bukkitPlayer.getLevel();
                     if (this.skillData != null) this.skillData.setSkillPoints(currentLevel);
 
-                    this.bukkitPlayer.sendMessage("§a§l[!] §fBạn đã chuyển sang hệ phái: §e" + newClass.getDisplayName());
+                    this.bukkitPlayer.sendMessage("§a§l[!] §fBạn đã chuyển sang Chức Nghiệp: §e" + newClass.getDisplayName());
                     this.bukkitPlayer.sendMessage("§b⟳ Toàn bộ Kỹ năng và Phím tắt đã được reset! Hoàn trả §e" + currentLevel + " SP§b.");
                 }
             }
