@@ -30,6 +30,7 @@ public class RPGPlayer {
     private int activeSlot = 1;
     // 1. Thêm biến trạng thái chống double-click khi đổi slot (đặt cạnh biến activeSlot)
     private boolean switchingSlot = false;
+    private long lastSlotSwitch = 0L;
 
     // [MỚI]: Biến lưu trữ tổng số Năng lượng đang bị thế chấp bởi thú triệu hồi
     private double reservedResource = 0;
@@ -836,4 +837,7 @@ public class RPGPlayer {
 
     public int getActiveSlot() { return this.activeSlot; }
     public void setActiveSlot(int activeSlot) { this.activeSlot = Math.max(1, activeSlot); }
+
+    public long getLastSlotSwitch() { return this.lastSlotSwitch; }
+    public void setLastSlotSwitch(long lastSlotSwitch) { this.lastSlotSwitch = lastSlotSwitch; }
 }

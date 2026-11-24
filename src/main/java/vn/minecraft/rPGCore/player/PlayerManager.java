@@ -33,6 +33,10 @@ public class PlayerManager {
     private final MongoCollection<Document> collection;
     private final MongoCollection<Document> accountCollection;
 
+    // Hằng số cấu hình ở đầu class PlayerManager
+    public static final int MAX_ALLOWED_SLOTS = 10;
+    private static final long SLOT_SWITCH_COOLDOWN_MS = 15L * 60L * 1000L; // 15 phút
+
     public PlayerManager(JavaPlugin plugin, ClassManager classManager) {
         this.plugin = plugin;
         this.classManager = classManager;
@@ -50,17 +54,27 @@ public class PlayerManager {
     }
 
     /**
-     * Lấy số slot tối đa của tài khoản từ collection player_accounts (mặc định = 2)
+     * Lấy số slot tối đa của tài khoản từ collection player_accounts (mặc định = 2, tối đa = 10)
      */
     public int getMaxSlots(UUID uuid) {
         Document accDoc = accountCollection.find(
                 Filters.or(Filters.eq("_id", uuid.toString()), Filters.eq("uuid", uuid.toString()))
         ).first();
-        return (accDoc != null) ? getSafeInt(accDoc, "max_slots", 2) : 2;
+        int maxSlots = (accDoc != null) ? getSafeInt(accDoc, "max_slots", 2) : 2;
+        return Math.max(2, Math.min(MAX_ALLOWED_SLOTS, maxSlots));
     }
 
     /**
-     * Chuyển đổi sang Slot nhân vật mục tiêu
+     * Tính giá mở khóa (VNĐ) cho từng Slot từ 3 -> 10:
+     * Slot 3: 100.000đ (hoặc gói VIP), Slot 4: 200.000đ, ..., Slot 10: 800.000đ
+     */
+    public int getSlotUnlockCostVnd(int slotNum) {
+        if (slotNum <= 2) return 0;
+        return (slotNum - 2) * 100_000;
+    }
+
+    /**
+     * Chuyển đổi sang Slot nhân vật mục tiêu (1..10)
      */
     public void switchSlot(Player player, int targetSlot) {
         UUID uuid = player.getUniqueId();
@@ -83,9 +97,22 @@ public class PlayerManager {
             return;
         }
 
-        if (targetSlot < 1 || targetSlot > 3) {
-            player.sendMessage("§cSlot nhân vật không hợp lệ.");
+        if (targetSlot < 1 || targetSlot > MAX_ALLOWED_SLOTS) {
+            player.sendMessage("§cSlot nhân vật không hợp lệ (Chỉ hỗ trợ từ Slot 1 đến Slot " + MAX_ALLOWED_SLOTS + ").");
             return;
+        }
+
+        // Kiểm tra Cooldown 15 phút (Admin/OP được bỏ qua để test)
+        if (!player.isOp() && !player.hasPermission("rpgcore.admin")) {
+            long elapsed = System.currentTimeMillis() - rpgPlayer.getLastSlotSwitch();
+            if (elapsed < SLOT_SWITCH_COOLDOWN_MS) {
+                long remainingSec = (SLOT_SWITCH_COOLDOWN_MS - elapsed) / 1000L;
+                long minutes = remainingSec / 60L;
+                long seconds = remainingSec % 60L;
+                player.sendMessage("§cBạn chỉ có thể đổi nhân vật mỗi 15 phút một lần! Vui lòng chờ thêm §e"
+                        + minutes + " phút " + seconds + " giây§c.");
+                return;
+            }
         }
 
         rpgPlayer.setSwitchingSlot(true);
@@ -95,8 +122,10 @@ public class PlayerManager {
             try {
                 int maxSlots = getMaxSlots(uuid);
                 if (targetSlot > maxSlots) {
+                    int costVnd = getSlotUnlockCostVnd(targetSlot);
                     Bukkit.getScheduler().runTask(plugin, () -> {
-                        player.sendMessage("§cBạn chưa mở khóa Slot nhân vật thứ " + targetSlot + "!");
+                        player.sendMessage("§cBạn chưa mở khóa Slot nhân vật thứ " + targetSlot
+                                + " §7(Chi phí mở khóa trên Web: §e" + String.format("%,d", costVnd) + "đ§7)!");
                         rpgPlayer.setSwitchingSlot(false);
                     });
                     return;
@@ -119,29 +148,31 @@ public class PlayerManager {
                         // Bước A: Lưu đồng bộ slot hiện tại vào MongoDB
                         savePlayer(uuid, false, false);
 
-                        // Bước B: Dọn dẹp hiệu ứng/thú triệu hồi/metadata của slot cũ & nạp dữ liệu targetSlot
+                        // Bước B: Dọn dẹp trạng thái slot cũ & nạp dữ liệu targetSlot
                         applySlotDocument(player, rpgPlayer, targetSlotDoc);
 
-                        // Bước C: Cập nhật active_slot sang targetSlot
+                        // Bước C: Cập nhật active_slot & mốc cooldown 15 phút
                         rpgPlayer.setActiveSlot(targetSlot);
+                        rpgPlayer.setLastSlotSwitch(System.currentTimeMillis());
                         rpgPlayer.removeCombat();
 
-                        // Bước D: Nạp lại BossBar hiển thị máu & tài nguyên của nhân vật mới
+                        // Bước D: Nạp lại BossBar hiển thị máu & tài nguyên
                         RPGCore core = RPGCore.getInstance();
                         if (core != null && core.getBossBarManager() != null) {
                             core.getBossBarManager().updateBars(player, rpgPlayer);
                         }
 
-                        // Bước E: Cập nhật active_slot mới lên MongoDB
+                        // Bước E: Lưu active_slot mới & last_slot_switch lên MongoDB
                         savePlayer(uuid, true, false);
 
                         if (targetSlotDoc == null || targetSlotDoc.isEmpty()) {
                             player.sendMessage("§a§l[Slot " + targetSlot + "] §fĐã khởi tạo nhân vật tân thủ mới (§eCommoner §7- §bLv.1§f)!");
                         } else {
-                            String classDisplay = rpgPlayer.getCurrentClass() != null
+                            String rawName = rpgPlayer.getCurrentClass() != null
                                     ? rpgPlayer.getCurrentClass().getDisplayName()
                                     : "Commoner";
-                            player.sendMessage("§a§l[Slot " + targetSlot + "] §fĐã chuyển sang nhân vật: " + classDisplay + " §7(§bLv." + rpgPlayer.getLevel() + "§7)");
+                            String coloredName = org.bukkit.ChatColor.translateAlternateColorCodes('&', rawName);
+                            player.sendMessage("§a§l[Slot " + targetSlot + "] §fĐã chuyển sang nhân vật: " + coloredName + " §7(§bLv." + rpgPlayer.getLevel() + "§7)");
                         }
                         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
 
@@ -191,6 +222,11 @@ public class PlayerManager {
         }
 
         rpgPlayer.setActiveSlot(activeSlot);
+
+        if (doc != null) {
+            rpgPlayer.setLastSlotSwitch(getSafeLong(doc, "last_slot_switch", 0L));
+        }
+
         applySlotDocument(player, rpgPlayer, slotDoc);
 
         player.getWorld().setGameRule(org.bukkit.GameRules.KEEP_INVENTORY, true);
@@ -420,6 +456,7 @@ public class PlayerManager {
             Bson updates = Updates.combine(
                     Updates.set("username", playerName),
                     Updates.set("active_slot", slot),
+                    Updates.set("last_slot_switch", rpgPlayer.getLastSlotSwitch()),
                     Updates.set("slots." + slot, slotDoc)
             );
             UpdateOptions options = new UpdateOptions().upsert(true);

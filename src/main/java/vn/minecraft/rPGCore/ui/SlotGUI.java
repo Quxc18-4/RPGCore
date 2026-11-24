@@ -3,6 +3,7 @@ package vn.minecraft.rPGCore.ui;
 import com.mongodb.client.model.Filters;
 import org.bson.Document;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -26,19 +27,19 @@ public class SlotGUI implements InventoryHolder, Listener {
     private final RPGCore plugin;
     private final Inventory inventory;
 
-    // Vị trí trung tâm của 3 Slot trong GUI 27 ô: Slot 1 (ô 11), Slot 2 (ô 13), Slot 3 (ô 15)
-    private static final int[] SLOT_POSITIONS = {11, 13, 15};
+    // 10 Slot nhân vật: Hàng 2 bắt đầu từ ô 10 (10..14), Hàng 3 từ ô 19 (19..23)
+    private static final int[] SLOT_POSITIONS = {10, 11, 12, 13, 14, 19, 20, 21, 22, 23};
+    private static final int INFO_SLOT = 16;
 
-    // Constructor dùng để đăng ký Listener trong RPGCore.onEnable()
     public SlotGUI(RPGCore plugin) {
         this.plugin = plugin;
         this.inventory = null;
     }
 
-    private SlotGUI(RPGCore plugin, int activeSlot, int maxSlots, Document slotsDoc) {
+    private SlotGUI(RPGCore plugin, int activeSlot, int maxSlots, long lastSlotSwitch, boolean isAdmin, Document slotsDoc) {
         this.plugin = plugin;
-        this.inventory = Bukkit.createInventory(this, 27, "§8§lQUẢN LÝ SLOT NHÂN VẬT");
-        renderGUI(activeSlot, maxSlots, slotsDoc);
+        this.inventory = Bukkit.createInventory(this, 36, "§8§lQUẢN LÝ SLOT NHÂN VẬT");
+        renderGUI(activeSlot, maxSlots, lastSlotSwitch, isAdmin, slotsDoc);
     }
 
     @Override
@@ -46,65 +47,83 @@ public class SlotGUI implements InventoryHolder, Listener {
         return inventory;
     }
 
-    /**
-     * Lưu đồng bộ dữ liệu hiện tại rồi mở GUI bất đồng bộ để hiển thị thông số chính xác của cả 3 slot
-     */
     public static void open(Player player, RPGCore plugin) {
         PlayerManager playerManager = plugin.getPlayerManager();
         UUID uuid = player.getUniqueId();
         RPGPlayer rpgPlayer = playerManager.getRPGPlayer(uuid);
         if (rpgPlayer == null) return;
 
-        // Lưu đồng bộ slot đang chơi để số liệu hiển thị trong GUI luôn mới nhất
+        // Lưu đồng bộ slot đang chơi để số liệu hiển thị luôn chính xác
         playerManager.savePlayer(uuid, false, false);
+
+        boolean isAdmin = player.isOp() || player.hasPermission("rpgcore.admin");
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             int maxSlots = playerManager.getMaxSlots(uuid);
             Document playerDoc = playerManager.getPlayerCollection().find(Filters.eq("_id", uuid.toString())).first();
             Document slotsDoc = (playerDoc != null) ? playerDoc.get("slots", Document.class) : new Document();
             int activeSlot = rpgPlayer.getActiveSlot();
+            long lastSwitch = rpgPlayer.getLastSlotSwitch();
 
             Bukkit.getScheduler().runTask(plugin, () -> {
                 if (!player.isOnline()) return;
-                SlotGUI gui = new SlotGUI(plugin, activeSlot, maxSlots, slotsDoc);
+                SlotGUI gui = new SlotGUI(plugin, activeSlot, maxSlots, lastSwitch, isAdmin, slotsDoc);
                 player.openInventory(gui.getInventory());
             });
         });
     }
 
-    private void renderGUI(int activeSlot, int maxSlots, Document slotsDoc) {
+    private void renderGUI(int activeSlot, int maxSlots, long lastSlotSwitch, boolean isAdmin, Document slotsDoc) {
         ItemStack background = createPane(Material.GRAY_STAINED_GLASS_PANE, " ");
-        for (int i = 0; i < 27; i++) {
+        for (int i = 0; i < 36; i++) {
             inventory.setItem(i, background);
         }
 
-        for (int slotNum = 1; slotNum <= 3; slotNum++) {
-            int centerIndex = SLOT_POSITIONS[slotNum - 1];
+        // Đặt ô thông tin tổng quan ở vị trí 16
+        inventory.setItem(INFO_SLOT, buildInfoItem(maxSlots, lastSlotSwitch, isAdmin));
+
+        for (int slotNum = 1; slotNum <= PlayerManager.MAX_ALLOWED_SLOTS; slotNum++) {
+            int guiIndex = SLOT_POSITIONS[slotNum - 1];
             Document slotData = (slotsDoc != null) ? slotsDoc.get(String.valueOf(slotNum), Document.class) : null;
 
             if (slotNum == activeSlot) {
-                // Slot đang chơi: Viền xanh lá bao quanh
-                drawActiveGreenBorder(centerIndex);
-                inventory.setItem(centerIndex, buildActiveSlotItem(slotNum, slotData));
+                inventory.setItem(guiIndex, buildActiveSlotItem(slotNum, slotData));
             } else if (slotNum > maxSlots) {
-                // Slot 3 bị khóa (max_slots < 3)
-                inventory.setItem(centerIndex, buildLockedSlotItem(slotNum));
+                inventory.setItem(guiIndex, buildLockedSlotItem(slotNum, maxSlots));
             } else {
-                // Slot đã mở khóa nhưng chưa chọn
-                inventory.setItem(centerIndex, buildUnlockedSlotItem(slotNum, slotData));
+                inventory.setItem(guiIndex, buildUnlockedSlotItem(slotNum, slotData));
             }
         }
     }
 
-    private void drawActiveGreenBorder(int center) {
-        ItemStack greenPane = createPane(Material.LIME_STAINED_GLASS_PANE, "§a§lĐang Sử Dụng");
-        int[] offsets = {-10, -9, -8, -1, 1, 8, 9, 10};
-        for (int offset : offsets) {
-            int idx = center + offset;
-            if (idx >= 0 && idx < 27) {
-                inventory.setItem(idx, greenPane);
+    private ItemStack buildInfoItem(int maxSlots, long lastSlotSwitch, boolean isAdmin) {
+        ItemStack item = new ItemStack(Material.CLOCK);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName("§b§lTHÔNG TIN TÀI KHOẢN");
+            List<String> lore = new ArrayList<>();
+            lore.add("§8▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+            lore.add("§7Số Slot đã mở: §a" + maxSlots + "§7/§e" + PlayerManager.MAX_ALLOWED_SLOTS);
+
+            long cooldownMs = 15L * 60L * 1000L;
+            long elapsed = System.currentTimeMillis() - lastSlotSwitch;
+            if (isAdmin || elapsed >= cooldownMs) {
+                lore.add("§7Trạng thái đổi Slot: §aSẵn sàng");
+            } else {
+                long remainSec = (cooldownMs - elapsed) / 1000L;
+                lore.add("§7Hồi chiêu đổi Slot: §c" + (remainSec / 60L) + "p " + (remainSec % 60L) + "s");
             }
+
+            lore.add("§8▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+            lore.add("§7• Mặc định mở sẵn §f2 Slot §7đầu tiên.");
+            lore.add("§7• Tối đa §e10 Slot §7cho mỗi tài khoản.");
+            lore.add("§7• Mở thêm từ Web: mỗi Slot tiếp theo");
+            lore.add("§7  tăng thêm §6+100.000đ §7(100k → 800k).");
+            lore.add("§7• Thời gian chờ giữa 2 lần đổi: §e15 phút§7.");
+            meta.setLore(lore);
+            item.setItemMeta(meta);
         }
+        return item;
     }
 
     private ItemStack buildActiveSlotItem(int slotNum, Document data) {
@@ -165,7 +184,10 @@ public class SlotGUI implements InventoryHolder, Listener {
         return item;
     }
 
-    private ItemStack buildLockedSlotItem(int slotNum) {
+    private ItemStack buildLockedSlotItem(int slotNum, int currentMaxSlots) {
+        int costVnd = plugin.getPlayerManager().getSlotUnlockCostVnd(slotNum);
+        String formattedCost = String.format("%,d", costVnd) + "đ";
+
         ItemStack item = new ItemStack(Material.BARRIER);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
@@ -173,9 +195,15 @@ public class SlotGUI implements InventoryHolder, Listener {
             List<String> lore = new ArrayList<>();
             lore.add("§8▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
             lore.add("§c✖ Slot nhân vật này chưa được mở khóa.");
-            lore.add("");
-            lore.add("§eMua gói VIP (100 Vàng hoặc 50k trên Web)");
-            lore.add("§eđể mở khóa vĩnh viễn Slot nhân vật thứ 3");
+            lore.add("§7Giá mở khóa: §6" + formattedCost);
+            if (slotNum == 3) {
+                lore.add("§7Ưu đãi: §eMiễn phí khi mua gói VIP");
+            }
+            if (slotNum > currentMaxSlots + 1) {
+                lore.add("§c⚠ Cần mở khóa Slot " + (slotNum - 1) + " trước.");
+            } else {
+                lore.add("§e▶ Truy cập Web Portal để mở khóa vĩnh viễn!");
+            }
             lore.add("§8▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
             meta.setLore(lore);
             item.setItemMeta(meta);
@@ -219,8 +247,8 @@ public class SlotGUI implements InventoryHolder, Listener {
     private String resolveClassDisplayName(String classId) {
         if (plugin.getClassManager() != null && classId != null) {
             RPGClass rpgClass = plugin.getClassManager().getClassById(classId);
-            if (rpgClass != null) {
-                return rpgClass.getDisplayName();
+            if (rpgClass != null && rpgClass.getDisplayName() != null) {
+                return ChatColor.translateAlternateColorCodes('&', rpgClass.getDisplayName());
             }
         }
         return "§fCommoner";
