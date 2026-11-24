@@ -129,7 +129,7 @@ public class ClassConfirmGUI implements InventoryHolder, Listener {
             inventory.setItem(INFO_SLOT, infoItem);
 
             inventory.setItem(CONFIRM_SLOT, createItem(Material.ORANGE_WOOL,
-                    "§6§lCHẤP NHẬN RESET & ĐỔI PHÁI",
+                    "§6§lCHẤP NHẬN RESET & ĐỔI CHỨC NGHIỆP",
                     "§cHành động này không thể hoàn tác!",
                     "§7Nhân vật sẽ trở về §eLv.1 §7và mất toàn bộ điểm chỉ số."));
         }

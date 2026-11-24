@@ -644,7 +644,7 @@ public class RPGPlayer {
             org.bukkit.Bukkit.getLogger().severe("[RPGCore] Loi nghiem trong khi doi Class cho nguoi choi " + (this.bukkitPlayer != null ? this.bukkitPlayer.getName() : "Unknown"));
             e.printStackTrace();
             if (this.bukkitPlayer != null && this.bukkitPlayer.isOnline()) {
-                this.bukkitPlayer.sendMessage("§c§l[!] §cĐã xảy ra lỗi hệ thống khi chuyển phái. Vui lòng báo cáo cho Admin!");
+                this.bukkitPlayer.sendMessage("§c§l[!] §cĐã xảy ra lỗi hệ thống khi chuyển Chức Nghiệp. Vui lòng báo cáo cho Admin!");
             }
         }
     }
