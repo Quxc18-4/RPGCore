@@ -156,6 +156,7 @@ public final class RPGCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new SlotGUI(this), this);
         getServer().getPluginManager().registerEvents(new PlayerListener(playerManager, bossBarManager), this);
         getServer().getPluginManager().registerEvents(new ClassGUIListener(playerManager, bossBarManager, classManager), this);
+        getServer().getPluginManager().registerEvents(new ClassConfirmGUI(this), this);
         getServer().getPluginManager().registerEvents(new EquipmentListener(playerManager), this);
         getServer().getPluginManager().registerEvents(repairGUI, this);
         getServer().getPluginManager().registerEvents(attrGUI, this);

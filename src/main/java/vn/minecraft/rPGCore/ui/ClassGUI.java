@@ -9,37 +9,53 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import vn.minecraft.rPGCore.RPGCore;
 import vn.minecraft.rPGCore.classes.RPGClass;
+import vn.minecraft.rPGCore.player.RPGPlayer;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class ClassGUI {
 
-    public static final String GUI_TITLE = "§8§lCHỌN CLASS NHÂN VẬT";
-
-    // Vị trí cố định đặt 7 class sao cho căn giữa và cách nhau 1 ô (GUI 36 ô)
-    // Thay thế dòng cũ bằng dòng này (Xếp 4 ô hàng 2 và 4 ô hàng 4)
+    public static final String GUI_TITLE = "§8§lCHỌN HỆ PHÁI NHÂN VẬT";
     private static final int[] CLASS_SLOTS = {10, 12, 14, 16, 28, 30, 32, 34};
 
     public void openGUI(Player player, List<RPGClass> availableClasses) {
         Inventory gui = Bukkit.createInventory(null, 45, GUI_TITLE);
 
-        // 1. Lấp đầy toàn bộ bằng Kính Đen không tên
         ItemStack filler = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
         ItemMeta fillerMeta = filler.getItemMeta();
-        fillerMeta.setDisplayName(" "); // Để khoảng trắng để không hiện tooltip
-        filler.setItemMeta(fillerMeta);
+        if (fillerMeta != null) {
+            fillerMeta.setDisplayName(" ");
+            filler.setItemMeta(fillerMeta);
+        }
 
         for (int i = 0; i < gui.getSize(); i++) {
             gui.setItem(i, filler);
         }
 
-        // 2. Đặt các Class vào đúng vị trí
+        RPGCore core = RPGCore.getInstance();
+        RPGPlayer rpgPlayer = (core != null && core.getPlayerManager() != null)
+                ? core.getPlayerManager().getRPGPlayer(player.getUniqueId())
+                : null;
+
+        String currentClassId = (rpgPlayer != null && rpgPlayer.getCurrentClass() != null)
+                ? rpgPlayer.getCurrentClass().getId()
+                : "commoner";
+        boolean isCommoner = currentClassId.equalsIgnoreCase("commoner");
+
+        boolean hasScroll = false;
+        if (!isCommoner && core != null && core.getItemManager() != null) {
+            ItemStack scrollTemplate = core.getItemManager().buildItem("class_change_scroll", 1);
+            hasScroll = scrollTemplate != null && core.getItemManager().countItem(player, scrollTemplate) > 0;
+        }
+
         for (int i = 0; i < availableClasses.size() && i < CLASS_SLOTS.length; i++) {
             RPGClass rpgClass = availableClasses.get(i);
             ItemStack icon = new ItemStack(rpgClass.getIcon());
             ItemMeta meta = icon.getItemMeta();
+            if (meta == null) continue;
 
             // Set tên và mô tả
             meta.setDisplayName(ChatColor.translateAlternateColorCodes('&', rpgClass.getDisplayName()));
@@ -48,19 +64,25 @@ public class ClassGUI {
                 lore.add(ChatColor.translateAlternateColorCodes('&', line));
             }
             lore.add("");
-            lore.add("§eNhấp để chọn class này!");
+
+            if (rpgClass.getId().equalsIgnoreCase(currentClassId)) {
+                lore.add("§aHệ phái hiện tại của nhân vật này");
+            } else if (isCommoner) {
+                lore.add("§e▶ Nhấp để gia nhập hệ phái này (Miễn phí lần đầu)");
+                lore.add("§7(Sau khi chọn, hệ phái sẽ cố định cho Slot này)");
+            } else if (hasScroll) {
+                lore.add("§d▶ Nhấp để chuyển đổi (Tiêu hao 1x Cuộn Giấy Chuyển Hệ Phái)");
+            } else {
+                lore.add("§cHệ phái nhân vật đã cố định");
+                lore.add("§7Cần §5[Cuộn Giấy Chuyển Hệ Phái] §7hoặc dùng §e/slot");
+            }
+
             meta.setLore(lore);
+            meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES, ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
 
-            // ==========================================
-            // THÊM DÒNG NÀY ĐỂ ẨN "When in Main Hand..."
-            // ==========================================
-            meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ATTRIBUTES);
-            meta.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
-
-            // Thêm hiệu ứng phát sáng (Enchant) cho Mage/Reaper
-            if (rpgClass.isEnchanted()) {
+            if (rpgClass.isEnchanted() || rpgClass.getId().equalsIgnoreCase(currentClassId)) {
                 meta.addEnchant(Enchantment.FLAME, 1, true);
-                meta.addItemFlags(ItemFlag.HIDE_ENCHANTS); // Ẩn dòng chữ "Unbreaking I"
+                meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
             }
 
             icon.setItemMeta(meta);

@@ -255,9 +255,18 @@ public class SlotGUI implements InventoryHolder, Listener {
     }
 
     private String formatCurrency(long totalCopper) {
-        long gold = totalCopper / 10000L;
-        long silver = (totalCopper % 10000L) / 100L;
-        long copper = totalCopper % 100L;
-        return "§6" + gold + " Vàng §7" + silver + " Bạc §c" + copper + " Đồng";
+        if (plugin.getCurrencyManager() != null) {
+            return plugin.getCurrencyManager().formatCurrency(totalCopper);
+        }
+        if (totalCopper <= 0) return "§60 Đồng";
+        long gold = totalCopper / 4096L;
+        long iron = (totalCopper % 4096L) / 64L;
+        long copper = totalCopper % 64L;
+
+        StringBuilder sb = new StringBuilder();
+        if (gold > 0) sb.append("§e").append(gold).append(" Vàng ");
+        if (iron > 0) sb.append("§f").append(iron).append(" Bạc ");
+        if (copper > 0) sb.append("§6").append(copper).append(" Đồng");
+        return sb.toString().trim();
     }
 }

@@ -640,6 +640,22 @@ public class ItemManager {
         register(new ItemData("trinket_blank_ring", Rarity.RARE, Category.TOOL, 0.0, Material.GOLD_NUGGET, "Phôi Nhẫn Ma Thuật", null, "Khuôn đúc cơ bản để chế tác Nhẫn ngẫu nhiên."));
         register(new ItemData("trinket_blank_necklace", Rarity.RARE, Category.TOOL, 0.0, Material.END_CRYSTAL, "Phôi Dây Chuyền Ma Thuật", null, "Khuôn đúc cơ bản để chế tác Dây Chuyền ngẫu nhiên."));
         register(new ItemData("trinket_blank_bracelet", Rarity.RARE, Category.TOOL, 0.0, Material.STRING, "Phôi Vòng Tay Ma Thuật", null, "Khuôn đúc cơ bản để chế tác Vòng Tay ngẫu nhiên."));
+        // ==========================================
+        // --- 18. ĐỒ ĐỔI CLASS / ATTR ---
+        // ==========================================
+        register(new ItemData("class_change_scroll", Rarity.LEGENDARY, Category.MISC, 0.0, Material.ENCHANTED_BOOK,
+                "Cuộn Giấy Chuyển Hệ Phái",
+                "Mang trong túi đồ khi mở /class để đổi Hệ Phái",
+                "Chứng thư hoàng gia cho phép thay đổi Hệ Phái.",
+                "Giữ nguyên Cấp độ & Điểm Tiềm Năng hiện tại.",
+                "Tự động tiêu hao 1 cuộn khi xác nhận đổi."));
+
+        register(new ItemData("attr_change", Rarity.LEGENDARY, Category.MISC, 0.0, Material.PAPER,
+                "Cuộn Giấy Tái Lập Chỉ Số",
+                "Sử dụng trong /attr để hoàn trả 100% Điểm Tiềm Năng",
+                "Khế ước cổ xưa đặt lại 5 chỉ số cơ bản về 0.",
+                "Hoàn trả nguyên vẹn 100% số điểm đã cộng",
+                "mà không bị hao hụt 20% như cách thông thường."));
     }
 
     private void register(ItemData data) {
