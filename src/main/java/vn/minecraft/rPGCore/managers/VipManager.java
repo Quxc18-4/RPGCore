@@ -101,6 +101,7 @@ public class VipManager {
             long now = System.currentTimeMillis();
             long currentExpiry = AuthManager.getSafeLong(account, "vip_expires_at", 0L);
             boolean hasUnlockedSlot = Boolean.TRUE.equals(account.getBoolean("has_unlocked_vip_slot"));
+            int currentMaxSlots = AuthManager.getSafeInt(account, "max_slots", AuthManager.DEFAULT_MAX_SLOTS);
 
             long baseTime = Math.max(currentExpiry, now);
             long newExpiry = baseTime + (days * DAY_MILLIS);
@@ -110,16 +111,19 @@ public class VipManager {
             updates.add(Updates.set("vip_expires_at", newExpiry));
 
             boolean firstTimeUnlockSlot = false;
+            int updatedMaxSlots = currentMaxSlots;
             if (!hasUnlockedSlot) {
-                updates.add(Updates.set("max_slots", AuthManager.VIP_MAX_SLOTS));
+                updatedMaxSlots = Math.min(PlayerManager.MAX_ALLOWED_SLOTS, currentMaxSlots + 1);
+                updates.add(Updates.set("max_slots", updatedMaxSlots));
                 updates.add(Updates.set("has_unlocked_vip_slot", true));
-                firstTimeUnlockSlot = true;
+                firstTimeUnlockSlot = (updatedMaxSlots > currentMaxSlots);
             }
 
             accounts.updateOne(Filters.eq("_id", uuid.toString()), Updates.combine(updates));
             onlineVips.add(uuid);
 
             final boolean unlockedNow = firstTimeUnlockSlot;
+            final int finalMaxSlots = updatedMaxSlots;
             final String formattedDate = new SimpleDateFormat("dd/MM/yyyy HH:mm").format(new Date(newExpiry));
 
             Bukkit.getScheduler().runTask(plugin, () -> {
@@ -131,7 +135,7 @@ public class VipManager {
                     player.sendMessage("§6§l[VIP] §aKích hoạt / Gia hạn đặc quyền VIP thành công!");
                     player.sendMessage("§e• Thời hạn sử dụng đến: §f" + formattedDate);
                     if (unlockedNow) {
-                        player.sendMessage("§e• Đặc quyền lần đầu: §aMở khóa vĩnh viễn Slot nhân vật thứ 3 (§f/slot§a)!");
+                        player.sendMessage("§e• Đặc quyền lần đầu: §aMở khóa vĩnh viễn Slot nhân vật thứ " + finalMaxSlots + " (§f/slot§a)!");
                     }
                     player.sendMessage("§6§l========================================");
                 }
@@ -209,8 +213,8 @@ public class VipManager {
             String dateStr = expiresAt > 0L
                     ? new SimpleDateFormat("dd/MM/yyyy HH:mm").format(new Date(expiresAt))
                     : "Vĩnh viễn";
-            return "§6§l[VIP] Đang kích hoạt §7| §eHết hạn: §f" + dateStr + " §7| §eSố Slot: §a" + maxSlots + "/3";
+            return "§6§l[VIP] Đang kích hoạt §7| §eHết hạn: §f" + dateStr + " §7| §eSố Slot: §a" + maxSlots + "/" + PlayerManager.MAX_ALLOWED_SLOTS;
         }
-        return "§7Tài khoản Thường §7| §eSố Slot: §f" + maxSlots + "/3";
+        return "§7Tài khoản Thường §7| §eSố Slot: §f" + maxSlots + "/" + PlayerManager.MAX_ALLOWED_SLOTS;
     }
 }

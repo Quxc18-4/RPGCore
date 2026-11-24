@@ -258,7 +258,9 @@ public class RPGPlayer {
         ItemStack[] allEquips = getAllEquippedItems();
 
         String playerClassId = this.currentClass != null ? this.currentClass.getId() : "none";
-        String playerClassName = this.currentClass != null ? ChatColor.stripColor(this.currentClass.getDisplayName()) : "None";
+        String playerClassName = this.currentClass != null
+                ? ChatColor.stripColor(ChatColor.translateAlternateColorCodes('&', this.currentClass.getDisplayName()))
+                : "None";
 
         for (ItemStack item : allEquips) {
             if (item == null || !item.hasItemMeta() || !item.getItemMeta().hasLore()) continue;
@@ -593,7 +595,8 @@ public class RPGPlayer {
                     int currentLevel = this.bukkitPlayer.getLevel();
                     if (this.skillData != null) this.skillData.setSkillPoints(currentLevel);
 
-                    this.bukkitPlayer.sendMessage("§a§l[!] §fBạn đã chuyển sang Chức Nghiệp: §e" + newClass.getDisplayName());
+                    String translatedClassName = ChatColor.translateAlternateColorCodes('&', newClass.getDisplayName());
+                    this.bukkitPlayer.sendMessage("§a§l[!] §fBạn đã chuyển sang Chức Nghiệp: §e" + translatedClassName);
                     this.bukkitPlayer.sendMessage("§b⟳ Toàn bộ Kỹ năng và Phím tắt đã được reset! Hoàn trả §e" + currentLevel + " SP§b.");
                 }
             }

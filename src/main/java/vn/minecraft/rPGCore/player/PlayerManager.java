@@ -69,7 +69,7 @@ public class PlayerManager {
      */
     public int getSlotUnlockCostVnd(int slotNum) {
         if (slotNum <= 2) return 0;
-        return 100_000;
+        return 50_000;
     }
 
     /**
