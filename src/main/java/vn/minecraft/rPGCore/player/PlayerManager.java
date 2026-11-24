@@ -3,9 +3,11 @@ package vn.minecraft.rPGCore.player;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.ReplaceOptions;
+import com.mongodb.client.model.UpdateOptions;
+import com.mongodb.client.model.Updates;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.bukkit.Bukkit;
-import org.bukkit.GameRule;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -35,7 +37,11 @@ public class PlayerManager {
         this.collection = MongoManager.getInstance().getDatabase().getCollection("players");
     }
 
-    // --- CƠ CHẾ TẢI DỮ LIỆU KHI VÀO GAME (READ) ---
+    public MongoCollection<Document> getPlayerCollection() {
+        return collection;
+    }
+
+    // --- CƠ CHẾ TẢI DỮ LIỆU KHI VÀO GAME (READ + AUTO MIGRATE) ---
     public RPGPlayer loadPlayer(Player player) {
         UUID uuid = player.getUniqueId();
         RPGClass defaultClass = classManager.getClassById("commoner");
@@ -44,48 +50,120 @@ public class PlayerManager {
         // Truy vấn dữ liệu từ MongoDB (Đọc đồng bộ lúc Join game)
         Document doc = collection.find(Filters.eq("_id", uuid.toString())).first();
 
+        int activeSlot = 1;
+        Document slotDoc = null;
+
+        if (doc != null) {
+            // Kiểm tra cấu trúc đa Slot; nếu là document phẳng cũ -> tự động migrate vào slots.1
+            if (!doc.containsKey("slots") || !(doc.get("slots") instanceof Document)) {
+                doc = migrateLegacyPlayerDocument(uuid, player.getName(), doc);
+            }
+
+            Object rawActiveSlot = doc.get("active_slot");
+            if (rawActiveSlot instanceof Number) {
+                activeSlot = Math.max(1, ((Number) rawActiveSlot).intValue());
+            }
+
+            Document slotsDoc = doc.get("slots", Document.class);
+            if (slotsDoc != null) {
+                slotDoc = slotsDoc.get(String.valueOf(activeSlot), Document.class);
+            }
+        }
+
+        rpgPlayer.setActiveSlot(activeSlot);
+        applySlotDocument(player, rpgPlayer, slotDoc);
+
+        player.getWorld().setGameRule(org.bukkit.GameRules.KEEP_INVENTORY, true);
+
+        activePlayers.put(uuid, rpgPlayer);
+        return rpgPlayer;
+    }
+
+    /**
+     * Chuyển đổi document cấu trúc cũ (phẳng) sang cấu trúc mới (active_slot + slots.1)
+     */
+    private Document migrateLegacyPlayerDocument(UUID uuid, String fallbackName, Document legacyDoc) {
+        Document slot1 = new Document()
+                .append("class", legacyDoc.getString("class") != null ? legacyDoc.getString("class") : "commoner")
+                .append("level", getSafeInt(legacyDoc, "level", 1))
+                .append("resource", getSafeDouble(legacyDoc, "resource", 100.0))
+                .append("exp", getSafeDouble(legacyDoc, "exp", 0.0))
+                .append("balance", getSafeLong(legacyDoc, "balance", 0L))
+                .append("attributes", legacyDoc.get("attributes"))
+                .append("elements", legacyDoc.get("elements"))
+                .append("trinkets", legacyDoc.get("trinkets"))
+                .append("skills_data", legacyDoc.get("skills_data"))
+                .append("vanilla_inventory", legacyDoc.getString("vanilla_inventory") != null ? legacyDoc.getString("vanilla_inventory") : "")
+                .append("ender_chest", legacyDoc.getString("ender_chest") != null ? legacyDoc.getString("ender_chest") : "");
+
+        String username = legacyDoc.getString("username") != null ? legacyDoc.getString("username") : fallbackName;
+
+        Document migratedDoc = new Document("_id", uuid.toString())
+                .append("username", username)
+                .append("active_slot", 1)
+                .append("slots", new Document("1", slot1));
+
+        collection.replaceOne(Filters.eq("_id", uuid.toString()), migratedDoc, new ReplaceOptions().upsert(true));
+        plugin.getLogger().info("[RPGCore] Đã tự động migrate dữ liệu nhân vật sang cấu trúc đa Slot cho: " + username);
+        return migratedDoc;
+    }
+
+    /**
+     * Nạp dữ liệu của 1 Slot cụ thể vào đối tượng RPGPlayer trên RAM
+     */
+    public void applySlotDocument(Player player, RPGPlayer rpgPlayer, Document doc) {
+        RPGClass defaultClass = classManager.getClassById("commoner");
+
+        // Dọn dẹp trạng thái cũ trước khi nạp slot mới
+        rpgPlayer.cleanUpClassData();
+        rpgPlayer.getAttributeData().initDefaultAttributes();
+        rpgPlayer.getAttributeData().setUnspentAttrPoints(0);
+        for (String attr : new String[]{"STR", "INT", "VIT", "AGI", "LUK"}) {
+            rpgPlayer.getAttributeData().setAttribute(attr, 0);
+        }
+        rpgPlayer.getSkillData().clearAllSkills();
+        rpgPlayer.getSkillData().clearAllBinds();
+        rpgPlayer.setUnlockedElements(new ArrayList<>());
+        for (int i = 0; i < 4; i++) {
+            rpgPlayer.setTrinket(i, null);
+        }
+
         if (doc != null) {
             String classId = doc.getString("class");
-            double savedResource = doc.getDouble("resource");
-            double savedExp = doc.getDouble("exp") != null ? doc.getDouble("exp") : 0.0;
-
-            // [ĐỒNG BỘ LEVEL]: Lấy dữ liệu Level từ DB
-            int savedLevel = doc.getInteger("level") != null ? doc.getInteger("level") : 1;
-
-            long savedBalance = doc.getLong("balance") != null ? doc.getLong("balance") : 0L;
+            double savedResource = getSafeDouble(doc, "resource", defaultClass.getMaxResource());
+            double savedExp = getSafeDouble(doc, "exp", 0.0);
+            int savedLevel = getSafeInt(doc, "level", 1);
+            long savedBalance = getSafeLong(doc, "balance", 0L);
 
             rpgPlayer.setBalance(savedBalance);
+            rpgPlayer.setLevel(savedLevel);
+            rpgPlayer.setCurrentExp(savedExp);
 
             RPGClass savedClass = classManager.getClassById(classId);
             if (savedClass != null) {
                 rpgPlayer.setClass(savedClass);
                 rpgPlayer.setCurrentResource(savedResource);
+            } else {
+                rpgPlayer.setClass(defaultClass);
             }
 
-            rpgPlayer.setCurrentExp(savedExp);
-            // [ĐỒNG BỘ LEVEL]: Bơm Level vào cho người chơi
-            rpgPlayer.setLevel(savedLevel);
-
-            // Nạp dữ liệu Attribute
-            Document attrDoc = (Document) doc.get("attributes");
+            // Nạp Attribute
+            Document attrDoc = doc.get("attributes", Document.class);
             if (attrDoc != null) {
-                rpgPlayer.getAttributeData().setUnspentAttrPoints(attrDoc.getInteger("unspent", 0));
-                rpgPlayer.getAttributeData().setAttribute("STR", attrDoc.getInteger("STR", 0));
-                rpgPlayer.getAttributeData().setAttribute("INT", attrDoc.getInteger("INT", 0));
-                rpgPlayer.getAttributeData().setAttribute("VIT", attrDoc.getInteger("VIT", 0));
-                rpgPlayer.getAttributeData().setAttribute("AGI", attrDoc.getInteger("AGI", 0));
-                rpgPlayer.getAttributeData().setAttribute("LUK", attrDoc.getInteger("LUK", 0));
+                rpgPlayer.getAttributeData().setUnspentAttrPoints(getSafeInt(attrDoc, "unspent", 0));
+                rpgPlayer.getAttributeData().setAttribute("STR", getSafeInt(attrDoc, "STR", 0));
+                rpgPlayer.getAttributeData().setAttribute("INT", getSafeInt(attrDoc, "INT", 0));
+                rpgPlayer.getAttributeData().setAttribute("VIT", getSafeInt(attrDoc, "VIT", 0));
+                rpgPlayer.getAttributeData().setAttribute("AGI", getSafeInt(attrDoc, "AGI", 0));
+                rpgPlayer.getAttributeData().setAttribute("LUK", getSafeInt(attrDoc, "LUK", 0));
             }
 
-            // Nạp dữ liệu Nguyên tố (Dành cho Mage) - [ĐÃ VÁ LỖI NULLPOINTER]
+            // Nạp Nguyên tố (Mage)
             List<String> elements = doc.getList("elements", String.class);
-            if (elements == null) {
-                elements = new ArrayList<>(); // Nếu DB trả về null, nhét ngay 1 cái list rỗng vào!
-            }
-            rpgPlayer.setUnlockedElements(elements);
+            rpgPlayer.setUnlockedElements(elements != null ? new ArrayList<>(elements) : new ArrayList<>());
 
-            // Nạp dữ liệu Trang sức (Giải mã từ Base64)
-            Document trinketsDoc = (Document) doc.get("trinkets");
+            // Nạp Trang sức
+            Document trinketsDoc = doc.get("trinkets", Document.class);
             if (trinketsDoc != null) {
                 for (int i = 0; i < 4; i++) {
                     String base64Item = trinketsDoc.getString(String.valueOf(i));
@@ -95,138 +173,143 @@ public class PlayerManager {
                 }
             }
 
-            // Nạp dữ liệu Kỹ năng & Combo
-            Document skillsDoc = (Document) doc.get("skills_data");
+            // Nạp Kỹ năng & Combo
+            Document skillsDoc = doc.get("skills_data", Document.class);
             if (skillsDoc != null) {
-                rpgPlayer.getSkillData().setSkillPoints(skillsDoc.getInteger("sp", 0));
+                rpgPlayer.getSkillData().setSkillPoints(getSafeInt(skillsDoc, "sp", 0));
 
-                Document levels = (Document) skillsDoc.get("levels");
+                Document levels = skillsDoc.get("levels", Document.class);
                 if (levels != null) {
                     for (String skillId : levels.keySet()) {
-                        rpgPlayer.getSkillData().setSkillLevel(skillId, levels.getInteger(skillId));
+                        rpgPlayer.getSkillData().setSkillLevel(skillId, getSafeInt(levels, skillId, 0));
                     }
                 }
 
-                Document binds = (Document) skillsDoc.get("binds");
+                Document binds = skillsDoc.get("binds", Document.class);
                 if (binds != null) {
                     for (String combo : binds.keySet()) {
                         rpgPlayer.getSkillData().bindCombo(combo, binds.getString(combo));
                     }
                 }
             }
-            // [MỚI CHÈN]: Phục hồi Túi đồ (Inventory + Armor + Offhand)
+
+            // Phục hồi Túi đồ
             String invData = doc.getString("vanilla_inventory");
             if (invData != null && !invData.isEmpty()) {
                 ItemStack[] restoredInv = itemArrayFromBase64(invData);
                 if (restoredInv.length > 0) {
                     player.getInventory().setContents(restoredInv);
+                } else {
+                    player.getInventory().clear();
                 }
             } else {
-                // Đảm bảo túi đồ trống nếu DB không có (Phòng trường hợp file World còn giữ đồ rác)
                 player.getInventory().clear();
             }
 
-            // [MỚI CHÈN]: Phục hồi Ender Chest
+            // Phục hồi Ender Chest
             String ecData = doc.getString("ender_chest");
             if (ecData != null && !ecData.isEmpty()) {
                 ItemStack[] restoredEc = itemArrayFromBase64(ecData);
                 if (restoredEc.length > 0) {
                     player.getEnderChest().setContents(restoredEc);
+                } else {
+                    player.getEnderChest().clear();
                 }
             } else {
                 player.getEnderChest().clear();
             }
         } else {
-            // Nếu là Tân thủ (Chưa có trên DB), xóa sạch túi đồ để tránh đồ rác từ World cũ
+            // Khởi tạo nhân vật mới hoàn toàn cho Slot trống
             player.getInventory().clear();
             player.getEnderChest().clear();
+            rpgPlayer.setLevel(1);
+            rpgPlayer.setCurrentExp(0.0);
+            rpgPlayer.setBalance(0L);
+            rpgPlayer.getSkillData().setSkillPoints(1);
             rpgPlayer.setClass(defaultClass);
         }
 
         rpgPlayer.updateMaxStats();
         rpgPlayer.updateExpBar();
         rpgPlayer.updateEquipmentStats();
-
-        // ==========================================
-        // [AUTO KEEP INVENTORY]: Ép luật bảo vệ đồ cho World hiện tại
-        // ==========================================
-        player.getWorld().setGameRule(org.bukkit.GameRules.KEEP_INVENTORY, true);
-
-        activePlayers.put(uuid, rpgPlayer);
-        return rpgPlayer;
     }
 
-    // --- CƠ CHẾ LƯU DỮ LIỆU KHI THOÁT GAME (CREATE/UPDATE) ---
+    // --- ĐÓNG GÓI DỮ LIỆU CỦA 1 SLOT THÀNH DOCUMENT ---
+    public Document buildSlotDocument(RPGPlayer rpgPlayer) {
+        Document attrDoc = new Document("unspent", rpgPlayer.getAttributeData().getUnspentAttrPoints())
+                .append("STR", rpgPlayer.getAttributeData().getAttribute("STR"))
+                .append("INT", rpgPlayer.getAttributeData().getAttribute("INT"))
+                .append("VIT", rpgPlayer.getAttributeData().getAttribute("VIT"))
+                .append("AGI", rpgPlayer.getAttributeData().getAttribute("AGI"))
+                .append("LUK", rpgPlayer.getAttributeData().getAttribute("LUK"));
+
+        Document trinketsDoc = new Document();
+        for (int i = 0; i < 4; i++) {
+            ItemStack trinket = rpgPlayer.getTrinket(i);
+            if (trinket != null) {
+                trinketsDoc.append(String.valueOf(i), itemToBase64(trinket));
+            }
+        }
+
+        Document levelsDoc = new Document();
+        for (Map.Entry<String, Integer> entry : rpgPlayer.getSkillData().getSkills().entrySet()) {
+            levelsDoc.append(entry.getKey(), entry.getValue());
+        }
+
+        Document bindsDoc = new Document();
+        for (Map.Entry<String, String> entry : rpgPlayer.getSkillData().getBinds().entrySet()) {
+            bindsDoc.append(entry.getKey(), entry.getValue());
+        }
+
+        Document skillsDoc = new Document("sp", rpgPlayer.getSkillData().getSkillPoints())
+                .append("levels", levelsDoc)
+                .append("binds", bindsDoc);
+
+        Player bukkitPlayer = rpgPlayer.getBukkitPlayer();
+        String inventoryBase64 = "";
+        String enderChestBase64 = "";
+
+        if (bukkitPlayer != null && bukkitPlayer.isOnline()) {
+            inventoryBase64 = itemArrayToBase64(bukkitPlayer.getInventory().getContents());
+            enderChestBase64 = itemArrayToBase64(bukkitPlayer.getEnderChest().getContents());
+        }
+
+        return new Document("class", rpgPlayer.getCurrentClass().getId())
+                .append("level", rpgPlayer.getLevel())
+                .append("resource", rpgPlayer.getCurrentResource())
+                .append("exp", rpgPlayer.getCurrentExp())
+                .append("balance", rpgPlayer.getBalance())
+                .append("attributes", attrDoc)
+                .append("elements", rpgPlayer.getUnlockedElements())
+                .append("trinkets", trinketsDoc)
+                .append("skills_data", skillsDoc)
+                .append("vanilla_inventory", inventoryBase64)
+                .append("ender_chest", enderChestBase64);
+    }
+
+    // --- CƠ CHẾ LƯU DỮ LIỆU THEO ACTIVE SLOT ---
     public void savePlayer(UUID uuid, boolean isAsync, boolean removeFromRAM) {
         RPGPlayer rpgPlayer = activePlayers.get(uuid);
         if (rpgPlayer != null) {
+            int slot = rpgPlayer.getActiveSlot();
+            Document slotDoc = buildSlotDocument(rpgPlayer);
 
-            // 1. Đóng gói Attribute
-            Document attrDoc = new Document("unspent", rpgPlayer.getAttributeData().getUnspentAttrPoints())
-                    .append("STR", rpgPlayer.getAttributeData().getAttribute("STR"))
-                    .append("INT", rpgPlayer.getAttributeData().getAttribute("INT"))
-                    .append("VIT", rpgPlayer.getAttributeData().getAttribute("VIT"))
-                    .append("AGI", rpgPlayer.getAttributeData().getAttribute("AGI"))
-                    .append("LUK", rpgPlayer.getAttributeData().getAttribute("LUK"));
-
-            // 2. Đóng gói Trang sức (Mã hóa ra Base64)
-            Document trinketsDoc = new Document();
-            for (int i = 0; i < 4; i++) {
-                ItemStack trinket = rpgPlayer.getTrinket(i);
-                if (trinket != null) {
-                    trinketsDoc.append(String.valueOf(i), itemToBase64(trinket));
-                }
-            }
-
-            // 3. Đóng gói Kỹ năng và Combo
-            Document levelsDoc = new Document();
-            for (Map.Entry<String, Integer> entry : rpgPlayer.getSkillData().getSkills().entrySet()) {
-                levelsDoc.append(entry.getKey(), entry.getValue());
-            }
-
-            Document bindsDoc = new Document();
-            for (Map.Entry<String, String> entry : rpgPlayer.getSkillData().getBinds().entrySet()) {
-                bindsDoc.append(entry.getKey(), entry.getValue());
-            }
-
-            Document skillsDoc = new Document("sp", rpgPlayer.getSkillData().getSkillPoints())
-                    .append("levels", levelsDoc)
-                    .append("binds", bindsDoc);
-
-            // 4. Lấy Túi Đồ và Ender Chest
             Player bukkitPlayer = rpgPlayer.getBukkitPlayer();
-            String inventoryBase64 = "";
-            String enderChestBase64 = "";
-
-            if (bukkitPlayer != null && bukkitPlayer.isOnline()) {
-                inventoryBase64 = itemArrayToBase64(bukkitPlayer.getInventory().getContents());
-                enderChestBase64 = itemArrayToBase64(bukkitPlayer.getEnderChest().getContents());
-            }
-
             String playerName = (bukkitPlayer != null && bukkitPlayer.isOnline()) ? bukkitPlayer.getName() : "Unknown";
-            // 5. Gộp tất cả vào Document Chính
-            Document mainDoc = new Document("_id", uuid.toString())
-                    .append("username", playerName)
-                    .append("class", rpgPlayer.getCurrentClass().getId())
-                    .append("level", rpgPlayer.getLevel()) // [ĐỒNG BỘ LEVEL]: Lưu xuống DB
-                    .append("resource", rpgPlayer.getCurrentResource())
-                    .append("exp", rpgPlayer.getCurrentExp())
-                    .append("balance", rpgPlayer.getBalance())
-                    .append("attributes", attrDoc)
-                    .append("elements", rpgPlayer.getUnlockedElements())
-                    .append("trinkets", trinketsDoc)
-                    .append("skills_data", skillsDoc)
-                    .append("vanilla_inventory", inventoryBase64)
-                    .append("ender_chest", enderChestBase64);
 
-            // 6. XỬ LÝ LƯU (ĐỒNG BỘ HOẶC BẤT ĐỒNG BỘ)
+            Bson updates = Updates.combine(
+                    Updates.set("username", playerName),
+                    Updates.set("active_slot", slot),
+                    Updates.set("slots." + slot, slotDoc)
+            );
+            UpdateOptions options = new UpdateOptions().upsert(true);
+
             if (isAsync) {
                 Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-                    collection.replaceOne(Filters.eq("_id", uuid.toString()), mainDoc, new ReplaceOptions().upsert(true));
+                    collection.updateOne(Filters.eq("_id", uuid.toString()), updates, options);
                 });
             } else {
-                // Chạy đồng bộ: Bắt buộc server chờ lưu xong mới được tắt
-                collection.replaceOne(Filters.eq("_id", uuid.toString()), mainDoc, new ReplaceOptions().upsert(true));
+                collection.updateOne(Filters.eq("_id", uuid.toString()), updates, options);
             }
         }
 
@@ -245,6 +328,21 @@ public class PlayerManager {
 
     public RPGPlayer getRPGPlayer(UUID uuid) { return activePlayers.get(uuid); }
     public Set<UUID> getAllPlayerUUIDs() { return activePlayers.keySet(); }
+
+    private int getSafeInt(Document doc, String key, int defaultValue) {
+        Object val = doc.get(key);
+        return (val instanceof Number) ? ((Number) val).intValue() : defaultValue;
+    }
+
+    private long getSafeLong(Document doc, String key, long defaultValue) {
+        Object val = doc.get(key);
+        return (val instanceof Number) ? ((Number) val).longValue() : defaultValue;
+    }
+
+    private double getSafeDouble(Document doc, String key, double defaultValue) {
+        Object val = doc.get(key);
+        return (val instanceof Number) ? ((Number) val).doubleValue() : defaultValue;
+    }
 
     // ============================================================
     // CÔNG CỤ CHUYỂN ĐỔI ITEMSTACK <-> CHUỖI BASE64 CHO MONGODB

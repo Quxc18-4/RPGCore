@@ -27,6 +27,7 @@ public class RPGPlayer {
     // 1. Khai báo biến lưu trữ thời điểm cuối cùng phát sinh giao tranh
     private long lastCombatTime = 0;
     private long balance = 0;
+    private int activeSlot = 1;
 
     // [MỚI]: Biến lưu trữ tổng số Năng lượng đang bị thế chấp bởi thú triệu hồi
     private double reservedResource = 0;
@@ -829,4 +830,7 @@ public class RPGPlayer {
         if (this.currentStats == null || this.currentStats.setCounts == null) return false;
         return this.currentStats.setCounts.getOrDefault(lineage.toLowerCase(), 0) >= requiredPieces;
     }
+
+    public int getActiveSlot() { return this.activeSlot; }
+    public void setActiveSlot(int activeSlot) { this.activeSlot = Math.max(1, activeSlot); }
 }

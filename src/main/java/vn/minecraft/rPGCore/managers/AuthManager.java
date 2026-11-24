@@ -2,7 +2,9 @@ package vn.minecraft.rPGCore.managers;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Updates;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -11,13 +13,18 @@ import vn.minecraft.rPGCore.database.MongoManager;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 
 public class AuthManager {
+
+    public static final int DEFAULT_MAX_SLOTS = 2;
+    public static final int VIP_MAX_SLOTS = 3;
 
     private final JavaPlugin plugin;
     private final MongoCollection<Document> collection;
@@ -30,8 +37,42 @@ public class AuthManager {
         this.collection = MongoManager.getInstance().getDatabase().getCollection("player_accounts");
     }
 
+    public MongoCollection<Document> getAccountCollection() {
+        return collection;
+    }
+
     public boolean isLoggedIn(Player player) {
         return loggedInPlayers.getOrDefault(player.getUniqueId(), false);
+    }
+
+    public Document getAccountDocument(UUID uuid) {
+        return collection.find(Filters.eq("_id", uuid.toString())).first();
+    }
+
+    public int getMaxSlots(UUID uuid) {
+        Document account = getAccountDocument(uuid);
+        if (account == null) return DEFAULT_MAX_SLOTS;
+        return getSafeInt(account, "max_slots", DEFAULT_MAX_SLOTS);
+    }
+
+    public boolean isVipActive(UUID uuid) {
+        Document account = getAccountDocument(uuid);
+        if (account == null) return false;
+
+        boolean isVip = Boolean.TRUE.equals(account.getBoolean("is_vip"));
+        long expiresAt = getSafeLong(account, "vip_expires_at", 0L);
+
+        if (!isVip) return false;
+
+        // Nếu có mốc thời gian hết hạn và đã quá hạn -> tự động hạ cấp is_vip về false (vẫn giữ max_slots = 3)
+        if (expiresAt > 0L && expiresAt <= System.currentTimeMillis()) {
+            collection.updateOne(
+                    Filters.eq("_id", uuid.toString()),
+                    Updates.set("is_vip", false)
+            );
+            return false;
+        }
+        return true;
     }
 
     // ==========================================
@@ -63,7 +104,11 @@ public class AuthManager {
         Document account = new Document("_id", uuid.toString())
                 .append("playerName", player.getName())
                 .append("password", hashedPassword)
-                .append("email", email);
+                .append("email", email)
+                .append("is_vip", false)
+                .append("vip_expires_at", 0L)
+                .append("max_slots", DEFAULT_MAX_SLOTS)
+                .append("has_unlocked_vip_slot", false);
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             collection.insertOne(account);
@@ -82,7 +127,7 @@ public class AuthManager {
                         player.setInvulnerable(false);
                         player.sendMessage("§a§l[!] §aBảo vệ tân thủ đã kết thúc. Sẵn sàng chiến đấu!");
                     }
-                }, 60L); // 60 Ticks = 3 Giây
+                }, 60L);
             });
         });
     }
@@ -107,7 +152,10 @@ public class AuthManager {
             }
 
             String storedHash = account.getString("password");
-            if (storedHash.equals(hashPassword(password))) {
+            if (storedHash != null && storedHash.equals(hashPassword(password))) {
+                // Tự động bổ sung các field VIP & Slot cho tài khoản cũ nếu chưa có
+                migrateLegacyAccountFields(uuid, account);
+
                 loggedInPlayers.put(uuid, true);
                 player.sendMessage("§a§l[!] §aĐăng nhập thành công! Chúc bạn chơi game vui vẻ.");
 
@@ -123,13 +171,32 @@ public class AuthManager {
                             player.setInvulnerable(false);
                             player.sendMessage("§a§l[!] §aBảo vệ đăng nhập đã kết thúc. Sẵn sàng chiến đấu!");
                         }
-                    }, 60L); // 60 Ticks = 3 Giây
+                    }, 60L);
                 });
 
             } else {
                 player.sendMessage("§c§l[!] §cSai mật khẩu! Nếu quên, hãy dùng lệnh /forgotpw <email>");
             }
         });
+    }
+
+    private void migrateLegacyAccountFields(UUID uuid, Document account) {
+        List<Bson> missingUpdates = new ArrayList<>();
+        if (!account.containsKey("is_vip")) {
+            missingUpdates.add(Updates.set("is_vip", false));
+        }
+        if (!account.containsKey("vip_expires_at")) {
+            missingUpdates.add(Updates.set("vip_expires_at", 0L));
+        }
+        if (!account.containsKey("max_slots")) {
+            missingUpdates.add(Updates.set("max_slots", DEFAULT_MAX_SLOTS));
+        }
+        if (!account.containsKey("has_unlocked_vip_slot")) {
+            missingUpdates.add(Updates.set("has_unlocked_vip_slot", false));
+        }
+        if (!missingUpdates.isEmpty()) {
+            collection.updateOne(Filters.eq("_id", uuid.toString()), Updates.combine(missingUpdates));
+        }
     }
 
     // ==========================================
@@ -173,9 +240,24 @@ public class AuthManager {
         loggedInPlayers.remove(player.getUniqueId());
     }
 
-    // ==========================================
-    // HÀM TIỆN ÍCH BẢO MẬT & RANDOM
-    // ==========================================
+    public static long getSafeLong(Document doc, String key, long defaultValue) {
+        if (doc == null) return defaultValue;
+        Object val = doc.get(key);
+        if (val instanceof Number) {
+            return ((Number) val).longValue();
+        }
+        return defaultValue;
+    }
+
+    public static int getSafeInt(Document doc, String key, int defaultValue) {
+        if (doc == null) return defaultValue;
+        Object val = doc.get(key);
+        if (val instanceof Number) {
+            return ((Number) val).intValue();
+        }
+        return defaultValue;
+    }
+
     private String generateRandomPassword() {
         String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
         StringBuilder sb = new StringBuilder();
@@ -193,21 +275,19 @@ public class AuthManager {
             return Base64.getEncoder().encodeToString(hash);
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
-            return rawPassword; // Fallback an toàn (không khuyến khích thực tế)
+            return rawPassword;
         }
     }
-    // ==========================================
-    // CƠ CHẾ GỬI EMAIL THỰC TẾ (SMTP)
-    // ==========================================
+
     private void sendRealEmail(String recipient, String newPassword) {
         // Cấu hình tài khoản trạm phát của server
         final String senderEmail = "noreply@haha.com";
-        final String senderPassword = "mat_khau_app_cua_ban"; // Mật khẩu ứng dụng (App Password)
+        final String senderPassword = "mat_khau_app_cua_ban";
 
         java.util.Properties props = new java.util.Properties();
         props.put("mail.smtp.auth", "true");
         props.put("mail.smtp.starttls.enable", "true");
-        props.put("mail.smtp.host", "smtp.gmail.com"); // Đổi host tùy theo máy chủ mail bạn dùng
+        props.put("mail.smtp.host", "smtp.gmail.com");
         props.put("mail.smtp.port", "587");
 
         javax.mail.Session session = javax.mail.Session.getInstance(props, new javax.mail.Authenticator() {
