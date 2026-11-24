@@ -56,7 +56,8 @@ public class WebActionManager {
             }
 
             // 2. Nhóm action Web Shop (VIP, Mở Slot, Vật phẩm RPG)
-            if ("GRANT_VIP".equals(action) || "UNLOCK_SLOT".equals(action) || "GIVE_RPG_ITEM".equals(action)) {
+            if ("GRANT_VIP".equals(action) || "REFRESH_VIP".equals(action) || "BUY_VIP_GOLD".equals(action)
+                    || "UNLOCK_SLOT".equals(action) || "GIVE_RPG_ITEM".equals(action)) {
                 handleWebShopAction(doc, action, payload);
                 continue;
             }
@@ -253,6 +254,42 @@ public class WebActionManager {
                     Filters.eq("_id", actionId),
                     Updates.combine(Updates.set("status", "EXECUTED"), Updates.set("executedAt", new Date()))
             );
+            return;
+        }
+
+        if ("REFRESH_VIP".equals(action)) {
+            boolean unlockedSlotNow = Boolean.TRUE.equals(payload.getBoolean("unlockedSlotNow"));
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                org.bukkit.entity.Player online = Bukkit.getPlayer(targetUuid);
+                if (online != null && online.isOnline()) {
+                    core.getVipManager().applyVipVisuals(online);
+                    online.playSound(online.getLocation(), org.bukkit.Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+                    online.sendMessage("§6§l[VIP] §aThanh toán thành công! Đặc quyền §6§l[VIP] 30 Ngày §ađã được kích hoạt!");
+                    if (unlockedSlotNow) {
+                        online.sendMessage("§e• Đặc quyền lần đầu: §aMở khóa vĩnh viễn +1 Slot nhân vật (§f/slot§a)!");
+                    }
+                }
+            });
+            actionCollection.updateOne(
+                    Filters.eq("_id", actionId),
+                    Updates.combine(Updates.set("status", "EXECUTED"), Updates.set("executedAt", new Date()))
+            );
+            return;
+        }
+
+        if ("BUY_VIP_GOLD".equals(action)) {
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                org.bukkit.entity.Player online = Bukkit.getPlayer(targetUuid);
+                if (online == null || !online.isOnline()) {
+                    markActionFailedAsync(actionId, "PLAYER_OFFLINE_FOR_GOLD_PURCHASE");
+                    return;
+                }
+                core.getVipManager().purchaseVipWithGold(online);
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> actionCollection.updateOne(
+                        Filters.eq("_id", actionId),
+                        Updates.combine(Updates.set("status", "EXECUTED"), Updates.set("executedAt", new Date()))
+                ));
+            });
             return;
         }
 
