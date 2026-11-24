@@ -99,3 +99,9 @@ commands:
   shop:
     description: "Mở cửa hàng hệ thống"
     aliases: [ "store" ]
+  vip:
+    description: Xem đặc quyền và mua gói VIP bằng Vàng
+    usage: /vip [buy]
+  slot:
+    description: Mở giao diện chuyển đổi Slot nhân vật
+    aliases: [ char, nhanvat ]

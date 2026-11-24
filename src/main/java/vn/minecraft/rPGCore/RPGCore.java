@@ -41,6 +41,7 @@ public final class RPGCore extends JavaPlugin {
     private static RPGCore instance;
     private PlayerManager playerManager;
     private BossBarManager bossBarManager;
+    private VipManager vipManager;
 
     private BoredomManager boredomManager;
     private FoodBuffManager foodBuffManager;
@@ -79,6 +80,7 @@ public final class RPGCore extends JavaPlugin {
         this.webActionManager = new WebActionManager(this);
         this.webActionManager.start();
         AuthManager authManager = new AuthManager(this);
+        this.vipManager = new VipManager(this, authManager);
         ClassManager classManager = new ClassManager(this);
         classManager.loadClasses();
 
@@ -143,6 +145,7 @@ public final class RPGCore extends JavaPlugin {
         MountStorageGUI mountStorageGUI = new MountStorageGUI();
 
         getServer().getPluginManager().registerEvents(new AuthListener(authManager), this);
+        getServer().getPluginManager().registerEvents(new VipListener(this.vipManager), this);
         getServer().getPluginManager().registerEvents(new PlayerListener(playerManager, bossBarManager), this);
         getServer().getPluginManager().registerEvents(new ClassGUIListener(playerManager, bossBarManager, classManager), this);
         getServer().getPluginManager().registerEvents(new EquipmentListener(playerManager), this);
@@ -204,6 +207,7 @@ public final class RPGCore extends JavaPlugin {
 
         new vn.minecraft.rPGCore.jobs.core.JobResetTask().runTaskTimerAsynchronously(this, 6000L, 6000L);
 
+        getCommand("vip").setExecutor(new VipCommand(this, this.vipManager));
         getCommand("class").setExecutor(new ClassCommand(classManager, classGUI));
         getCommand("rpgadmin").setExecutor(new RPGAdminCommand(playerManager));
         getCommand("profile").setExecutor(new ProfileCommand(playerManager));
@@ -395,6 +399,10 @@ public final class RPGCore extends JavaPlugin {
 
     public DuelManager getDuelManager() {
         return this.duelManager;
+    }
+    // Getter trong RPGCore:
+    public VipManager getVipManager() {
+        return this.vipManager;
     }
     // ==========================================
     // [THÊM 2 HÀM NÀY ĐỂ KẾT NỐI API VỚI RPGPARTY]

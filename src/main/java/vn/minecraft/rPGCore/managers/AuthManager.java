@@ -119,6 +119,7 @@ public class AuthManager {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 vn.minecraft.rPGCore.player.RPGPlayer rpgPlayer = vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager().loadPlayer(player);
                 vn.minecraft.rPGCore.RPGCore.getInstance().getBossBarManager().createBars(player, rpgPlayer);
+                vn.minecraft.rPGCore.RPGCore.getInstance().getVipManager().applyVipVisuals(player);
                 player.sendMessage("§e[Hệ Thống] §fDữ liệu nhân vật và túi đồ đã tải thành công!");
 
                 // [MỚI]: Chờ 3 giây sau đó gỡ chế độ Bất tử
@@ -163,6 +164,7 @@ public class AuthManager {
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     vn.minecraft.rPGCore.player.RPGPlayer rpgPlayer = vn.minecraft.rPGCore.RPGCore.getInstance().getPlayerManager().loadPlayer(player);
                     vn.minecraft.rPGCore.RPGCore.getInstance().getBossBarManager().createBars(player, rpgPlayer);
+                    vn.minecraft.rPGCore.RPGCore.getInstance().getVipManager().applyVipVisuals(player);
                     player.sendMessage("§e[Hệ Thống] §fDữ liệu nhân vật và túi đồ đã tải thành công!");
 
                     // [MỚI]: Chờ 3 giây sau đó gỡ chế độ Bất tử
