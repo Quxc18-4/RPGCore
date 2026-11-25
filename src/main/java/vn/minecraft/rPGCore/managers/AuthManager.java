@@ -167,6 +167,9 @@ public class AuthManager {
                     vn.minecraft.rPGCore.RPGCore.getInstance().getVipManager().applyVipVisuals(player);
                     player.sendMessage("§e[Hệ Thống] §fDữ liệu nhân vật và túi đồ đã tải thành công!");
 
+                    // Trả vật phẩm mua từ Web Shop lúc offline (nếu có)
+                    WebActionManager.deliverPendingWebItems(player);
+
                     // [MỚI]: Chờ 3 giây sau đó gỡ chế độ Bất tử
                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
                         if (player.isOnline()) {

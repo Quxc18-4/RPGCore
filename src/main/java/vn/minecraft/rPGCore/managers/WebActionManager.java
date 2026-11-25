@@ -368,4 +368,52 @@ public class WebActionManager {
             });
         }
     }
+    public static void deliverPendingWebItems(org.bukkit.entity.Player player) {
+        if (player == null || !player.isOnline()) return;
+        vn.minecraft.rPGCore.RPGCore core = vn.minecraft.rPGCore.RPGCore.getInstance();
+        String uuidStr = player.getUniqueId().toString();
+
+        Bukkit.getScheduler().runTaskAsynchronously(core, () -> {
+            MongoCollection<Document> accounts = MongoManager.getInstance()
+                    .getDatabase()
+                    .getCollection("player_accounts");
+
+            // Lấy và xóa nguyên tử mảng pending_web_items để tránh phát trùng nếu relog nhanh
+            Document oldAcc = accounts.findOneAndUpdate(
+                    Filters.and(
+                            Filters.eq("_id", uuidStr),
+                            Filters.exists("pending_web_items.0")
+                    ),
+                    Updates.unset("pending_web_items")
+            );
+
+            if (oldAcc == null) return;
+            java.util.List<Document> pendingList = oldAcc.getList("pending_web_items", Document.class);
+            if (pendingList == null || pendingList.isEmpty()) return;
+
+            Bukkit.getScheduler().runTask(core, () -> {
+                if (!player.isOnline()) return;
+
+                for (Document entry : pendingList) {
+                    String itemId = entry.getString("item_id");
+                    int amount = (entry.get("amount") instanceof Number n) ? Math.max(1, n.intValue()) : 1;
+                    if (itemId == null || itemId.isEmpty()) continue;
+
+                    org.bukkit.inventory.ItemStack item = core.getItemManager().buildItem(itemId, amount);
+                    if (item == null) continue;
+
+                    java.util.HashMap<Integer, org.bukkit.inventory.ItemStack> leftover = player.getInventory().addItem(item);
+                    for (org.bukkit.inventory.ItemStack drop : leftover.values()) {
+                        player.getWorld().dropItemNaturally(player.getLocation(), drop);
+                    }
+
+                    String displayName = (item.getItemMeta() != null && item.getItemMeta().hasDisplayName())
+                            ? item.getItemMeta().getDisplayName()
+                            : itemId;
+                    player.sendMessage("§a§l[Web Shop] §fBạn vừa nhận được §e" + amount + "x " + displayName + " §ftừ đơn hàng lúc offline!");
+                }
+                player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
+            });
+        });
+    }
 }
